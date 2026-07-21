@@ -1,0 +1,92 @@
+x-healthcheck-postgres: &healthcheck-postgres
+  test: ["CMD-SHELL", "pg_isready -U foodlink -d foodlink_auth"]
+  interval: 5s
+  timeout: 3s
+  retries: 5
+
+x-healthcheck-redis: &healthcheck-redis
+  test: ["CMD", "redis-cli", "ping"]
+  interval: 5s
+  timeout: 3s
+  retries: 5
+
+services:
+  api:
+    build:
+      context: .
+      target: runtime
+    ports:
+      - "8000:8000"
+    env_file: ./.env
+    environment:
+      - DB_URL=postgresql+asyncpg://foodlink:foodlink@postgres:5432/foodlink_auth
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import http.client; c=http.client.HTTPConnection('localhost',8000); c.request('GET','/health'); r=c.getresponse(); exit(0) if r.status==200 else exit(1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    env_file: ./.env
+    environment:
+      POSTGRES_USER: foodlink
+      POSTGRES_PASSWORD: foodlink
+      POSTGRES_DB: foodlink_auth
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck: *healthcheck-postgres
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck: *healthcheck-redis
+    restart: unless-stopped
+
+  api-dev:
+    build:
+      context: .
+      target: development
+    profiles:
+      - dev
+    env_file: ./.env
+    environment:
+      - DB_URL=postgresql+asyncpg://foodlink:foodlink@postgres:5432/foodlink_auth
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    entrypoint: [""]
+    command: ["tail", "-f", "/dev/null"]
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    profiles:
+      - dev
+    env_file: ./.env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: dev@foodlink.local
+      PGADMIN_DEFAULT_PASSWORD: foodlink
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

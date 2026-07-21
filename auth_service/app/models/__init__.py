@@ -1,0 +1,81 @@
+"""SQLModel table=True models (DB-backed).
+
+Each model defined here inherits from SQLModel and has table=True,
+meaning it maps to a Postgres table.
+
+Import all models here so SQLModel.metadata is complete for Alembic.
+"""
+
+__all__ = [
+    "AuthEventType",
+    "AuthRiskEvent",
+    "AuthRiskLevel",
+    "Business",
+    "BusinessLocation",
+    "BusinessRole",
+    "BusinessRolePermission",
+    "BusinessType",
+    "Group",
+    "LocationType",
+    "LoginAttempt",
+    "Organization",
+    "Permission",
+    "PermissionType",
+    "PlatformRole",
+    "RefreshToken",
+    "Role",
+    "RolePermission",
+    "RoleTemplate",
+    "RoleTemplatePermission",
+    "User",
+    "UserBusinessPermission",
+    "UserBusinessLocationRole",
+    "UserBusinessRole",
+    "UserCategory",
+    "UserGroup",
+    "UserPlatformRole",
+    "UserRole",
+    "UserSession",
+    "VerificationCode",
+    "VerificationCodePurpose",
+    "VerificationCodeType",
+    "TrustedDevice",
+    "UserStatus",
+]
+
+from app.models.auth import (
+    AuthEventType,
+    AuthRiskEvent,
+    AuthRiskLevel,
+    LoginAttempt,
+    RefreshToken,
+    TrustedDevice,
+    UserSession,
+    VerificationCode,
+    VerificationCodePurpose,
+    VerificationCodeType,
+)
+from app.models.business import (
+    Business,
+    BusinessLocation,
+    BusinessRole,
+    BusinessRolePermission,
+    BusinessType,
+    LocationType,
+    Organization,
+    PermissionType,
+    UserBusinessLocationRole,
+    UserBusinessPermission,
+    UserBusinessRole,
+)
+from app.models.internal import (
+    Group,
+    Permission,
+    Role,
+    RolePermission,
+    UserGroup,
+    UserRole,
+)
+from app.models.platform import PlatformRole, UserPlatformRole
+from app.models.template import RoleTemplate, RoleTemplatePermission
+from app.models.user import User, UserCategory, UserStatus

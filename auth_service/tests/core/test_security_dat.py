@@ -1,0 +1,45 @@
+"""Embedded second RSA keypair for cross-key signature tests.
+
+Generated once and stored here so the test is deterministic and does not
+depend on filesystem state or runtime key generation.
+"""
+
+PRIVATE_KEY_2 = """-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEA26P3FF1Uo3QNnSDYcSoT5c8AX6xhDpLo3VNm+vArEeMqynTh
+YAUZpzw8Kf24XnKM2lg6x5OtKMIyc2+/aaUbc1EKx29SON6IMtNRuOkXJiDnNzTm
+F3GbxznElvPbmA03JfEEGYBOvGexkD2LqzYDIrTzsAIDlEct9t2TjSFg02TPyQbQ
+V81GW8ge9+BLUE0VBioynjCz0fyAeudrnUy3+ZVUw7bSZ4g8dv/tAwq1wsSWLXbR
+khhBpeuyuHURV6OEIeweN7fxpz4QETVt/1m6rS3JWAXg3KwAVGBhTOi/a5xBmsvi
+fpHfMBL36jEU5g/EryyThUDVi1RgUfmzKykMywIDAQABAoIBAEqh22orEIB+BcY3
+i/RgBOTYwtq/mzc1ijTyixKHm0r3sumab56N/RqLaDIoiYZmTCBBTK/WKUepPTVm
+alc+iCZWCmCcHgc+7m6+yY0YfwowsgBbVDfxHarDoV5dvGddTjjxPaBgreBtJ7PI
+hfYGY2herlNHS+oNibvRrLqO9fS+Mn7jGXZUr8vx7ZkQSstaH7p4FdkB2NmjdLAl
+eRHvMATGyW3dLcteGrEZkosMX4PGnrSsJaBI1JZS0jHIuVkSKs0LoRNgDA/gwJJS
+i7nzGIsXAa6lDpjtkaZfnQv7SzjhJH9zriAsLn8HIbmJV0wzElM3e9H5ckxQgIM0
+K2uWyJkCgYEA8tfrOHzbpuaWNpuVFrIaZpFd1U+L+I2eGPchllASqSKHxaii2p/e
+a5sR0Hpw0QG4NPz/Vuh+i6aBJq4/KgYJMHvLRdull0I2/OLAeTih6XVAtgG8spSp
+pWbgPnhmw0qe8cx4DNk26srbtg+LbLbRlqZszZ6sFZGh0yA5XugwliUCgYEA54o8
+jDGNLr7lz4qK6rofSYE6Nve3Otp3RwsuExwjAmnbSRa/o3yHJ8PX59pKkOnbXhUE
+NRLOBK9JKELIRzIzrqWysOT/LE8PsQ1tljezaKClgVsbCKrNXUj4N2OmSUlknsOH
+52WqPrmNpqoiUcC9slvpdNaq9Oeg3Iqvu8i4zC8CgYEA8BgQJJI1rObP3v+lwIGo
+Xn4ckpiKH90MUUyM9YsHWBeeuwrGsHZdNnBjhYZ44fvcPu9gGHHXI4UkrbSbGJZN
+IZVTXScTqd+6c/5QI8mdMy9NImXHRZx7ud9jl//8QdsWGKR6kOF1TV/xKChoRbze
+rR6v9f+Jze1lXFLAxhe0ac0CgYEAhplTzWPY4P3UdqvhScbc/UwEXYPvnmT1xfT3
+2eAXcgW7lmeFDDMOFs3Aq2W4xzlLbwvkoD3ISezkKGV6K/lBFhv5HuBgfo+PXaui
+sxq6Tu5kiChANO+l5r7OnNRvDFeACNM+JARzzXbso6Bvxvq2zAKmWmeYhjpIxyxQ
+MGflFb0CgYB/MJnESs1IFZJYhU3qs5+3+VesMW4xBpoXBPB+PEjirWZGDONbbkah
+I+wVGR4jCj7LwR7YjPRMjWYnvehZ9vg+iQKHk82U5eVEMJYVfwexHHM416A0doLb
+goTTOn4Uvqnmdlo3tu0kUBVuRP24wMC0hF+L1g3WeSfjkSUDG/1Bhw==
+-----END RSA PRIVATE KEY-----
+"""
+
+PUBLIC_KEY_2 = """-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA26P3FF1Uo3QNnSDYcSoT
+5c8AX6xhDpLo3VNm+vArEeMqynThYAUZpzw8Kf24XnKM2lg6x5OtKMIyc2+/aaUb
+c1EKx29SON6IMtNRuOkXJiDnNzTmF3GbxznElvPbmA03JfEEGYBOvGexkD2LqzYD
+IrTzsAIDlEct9t2TjSFg02TPyQbQV81GW8ge9+BLUE0VBioynjCz0fyAeudrnUy3
++ZVUw7bSZ4g8dv/tAwq1wsSWLXbRkhhBpeuyuHURV6OEIeweN7fxpz4QETVt/1m6
+rS3JWAXg3KwAVGBhTOi/a5xBmsvifpHfMBL36jEU5g/EryyThUDVi1RgUfmzKykM
+ywIDAQAB
+-----END PUBLIC KEY-----
+"""

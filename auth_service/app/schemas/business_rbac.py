@@ -1,0 +1,170 @@
+"""Schemas for business-level RBAC: business roles, permissions, and grant/deny overrides."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Literal
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, field_validator
+
+from app.core.permission_codes import PermissionCode
+
+# ── BusinessRole ──────────────────────────────────────────────────────────
+
+
+class BusinessRoleBase(BaseModel):
+    """Shared fields for business role schemas."""
+
+    business_id: UUID
+    name: str
+    description: str | None = None
+    is_protected: bool = False
+
+
+class BusinessRoleCreate(BusinessRoleBase):
+    """Fields required to create a business role.
+
+    Note: Protected-role edit rejection is enforced at the service layer,
+    not at the schema layer.
+    """
+
+
+class BusinessRoleUpdate(BaseModel):
+    """Fields that may be updated on a business role (partial update).
+
+    Note: Protected-role edit rejection is enforced at the service layer,
+    not at the schema layer.
+    """
+
+    name: str | None = None
+    description: str | None = None
+    is_protected: bool | None = None
+
+
+class BusinessRoleRead(BusinessRoleBase):
+    """Full business role representation returned by the API."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+# ── BusinessRolePermission (pure join table — no extra fields) ────────────
+
+
+class BusinessRolePermissionCreate(BaseModel):
+    """Fields required to attach a permission code to a business role.
+
+    This is a pure many-to-many join — no Update schema.
+    """
+
+    business_role_id: UUID
+    permission_code: str
+
+
+class BusinessRolePermissionRead(BaseModel):
+    """Business-role–permission association as returned by the API."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    business_role_id: UUID
+    permission_code: str
+
+
+# ── UserBusinessRole (pure join table — no extra fields) ──────────────────
+
+
+class UserBusinessRoleCreate(BaseModel):
+    """Fields required to assign a business role to a user within a business.
+
+    This is a pure many-to-many join — no Update schema.
+    """
+
+    user_id: UUID
+    business_id: UUID
+    business_role_id: UUID
+
+
+class UserBusinessRoleRead(BaseModel):
+    """User–business-role association as returned by the API."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    business_id: UUID
+    business_role_id: UUID
+
+
+# ── UserBusinessLocationRole (pure join table — no extra fields) ──────────
+
+
+class UserBusinessLocationRoleCreate(BaseModel):
+    """Fields required to assign a business role to a user at a specific location.
+
+    This is a pure many-to-many join — no Update schema.
+    """
+
+    user_id: UUID
+    business_id: UUID
+    business_location_id: UUID
+    business_role_id: UUID
+
+
+class UserBusinessLocationRoleRead(BaseModel):
+    """User–business-location–role association as returned by the API."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    business_id: UUID
+    business_location_id: UUID
+    business_role_id: UUID
+
+
+# ── UserBusinessPermission (grant/deny override — has extra fields) ───────
+
+_GrantDeny = Literal["grant", "deny"]
+
+
+class UserBusinessPermissionBase(BaseModel):
+    """Shared fields for user business permission override schemas."""
+
+    user_id: UUID
+    business_id: UUID
+    permission_code: str
+    type: _GrantDeny
+
+
+class UserBusinessPermissionCreate(UserBusinessPermissionBase):
+    """Fields required to create a grant or deny override for a user within a business.
+
+    permission_code is validated against the PermissionCode enum at the schema level.
+    """
+
+    @field_validator("permission_code")
+    @classmethod
+    def _validate_permission_code(cls, v: str) -> str:
+        PermissionCode(v)  # raises ValueError if invalid
+        return v
+
+
+class UserBusinessPermissionUpdate(BaseModel):
+    """Fields that may be updated on a grant/deny override (toggle the type)."""
+
+    type: _GrantDeny | None = None
+
+
+class UserBusinessPermissionRead(UserBusinessPermissionBase):
+    """Full user business permission override representation returned by the API."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    created_by: UUID | None = None
+    created_at: datetime
+    updated_at: datetime

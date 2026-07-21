@@ -1,0 +1,667 @@
+"""Integration tests for the business/driver/consumer auth API."""
+
+import random
+
+from httpx import AsyncClient
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from app.core.config import (
+    RATE_LIMIT_LOGIN_PASSWORD_PHONE_LIMIT,
+    RATE_LIMIT_OTP_REQUEST_PHONE_LIMIT,
+    RATE_LIMIT_PASSWORD_RESET_REQUEST_PHONE_LIMIT,
+    RATE_LIMIT_REFRESH_IP_LIMIT,
+    get_settings,
+)
+from app.core.security import hash_password
+from app.models import VerificationCodePurpose, VerificationCodeType
+from app.models.user import User, UserCategory, UserStatus
+from app.services.otp_service import generate_and_store_otp
+
+_TEST_PASSWORD = "TestPass1"
+
+
+def _valid_phone() -> str:
+    """Generate a valid Tanzanian phone number (E.164 format)."""
+    digits = "".join(str(random.randint(0, 9)) for _ in range(8))
+    return f"+2557{digits}"
+
+
+class TestRegister:
+    async def test_full_register_returns_tokens(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "phone": phone,
+                "full_name": "New User",
+                "password": _TEST_PASSWORD,
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert "access_token" in data
+        assert "refresh_token" in data
+        assert data["token_type"] == "bearer"
+
+        resp2 = await client.get(
+            "/api/v1/auth/sessions",
+            headers={"Authorization": f"Bearer {data['access_token']}"},
+        )
+        assert resp2.status_code == 200
+
+    async def test_duplicate_phone_returns_409(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        await client.post(
+            "/api/v1/auth/register",
+            json={
+                "phone": phone,
+                "full_name": "User One",
+                "password": _TEST_PASSWORD,
+            },
+        )
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "phone": phone,
+                "full_name": "User Two",
+                "password": _TEST_PASSWORD,
+            },
+        )
+        assert resp.status_code == 409
+
+
+class TestOTP:
+    async def test_otp_verify_with_correct_code_returns_tokens(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="OTP User",
+                user_category=UserCategory.BUSINESS_USER,
+                status=UserStatus.ACTIVE,
+            )
+            db_session.add(user)
+
+        code = await generate_and_store_otp(
+            db_session,
+            user_id=user.id,
+            purpose=VerificationCodePurpose.LOGIN,
+            delivery_type=VerificationCodeType.SMS,
+        )
+
+        resp = await client.post(
+            "/api/v1/auth/otp/verify",
+            json={"phone": phone, "code": code},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert "access_token" in data
+        assert "refresh_token" in data
+
+    async def test_otp_verify_wrong_code_returns_401(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="OTP User",
+                user_category=UserCategory.BUSINESS_USER,
+            )
+            db_session.add(user)
+
+        await generate_and_store_otp(
+            db_session,
+            user_id=user.id,
+            purpose=VerificationCodePurpose.LOGIN,
+            delivery_type=VerificationCodeType.SMS,
+        )
+
+        resp = await client.post(
+            "/api/v1/auth/otp/verify",
+            json={"phone": phone, "code": "999999"},
+        )
+        assert resp.status_code == 401
+        detail = resp.json()["detail"].lower()
+        assert "invalid" in detail or "expired" in detail
+
+    async def test_otp_verify_lockout_after_max_attempts(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        settings = get_settings()
+
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="Lockout User",
+                user_category=UserCategory.BUSINESS_USER,
+            )
+            db_session.add(user)
+
+        code = await generate_and_store_otp(
+            db_session,
+            user_id=user.id,
+            purpose=VerificationCodePurpose.LOGIN,
+            delivery_type=VerificationCodeType.SMS,
+        )
+
+        for _ in range(settings.otp_max_attempts):
+            resp = await client.post(
+                "/api/v1/auth/otp/verify",
+                json={"phone": phone, "code": "111111"},
+            )
+            assert resp.status_code == 401
+
+        resp = await client.post(
+            "/api/v1/auth/otp/verify",
+            json={"phone": phone, "code": code},
+        )
+        assert resp.status_code == 401
+
+
+class TestPasswordLogin:
+    async def test_correct_credentials_returns_tokens(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="Password User",
+                user_category=UserCategory.BUSINESS_USER,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            db_session.add(user)
+
+        resp = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone, "password": _TEST_PASSWORD},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "access_token" in data
+        assert "refresh_token" in data
+
+    async def test_wrong_password_returns_401(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="Password User",
+                user_category=UserCategory.BUSINESS_USER,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            db_session.add(user)
+
+        resp = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone, "password": "WrongPass1"},
+        )
+        assert resp.status_code == 401
+
+    async def test_nonexistent_phone_returns_401(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+    ) -> None:
+        resp = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": "+255712345678", "password": _TEST_PASSWORD},
+        )
+        assert resp.status_code == 401
+
+
+class TestPasswordReset:
+    async def test_full_reset_flow(self, client: AsyncClient, db_session: AsyncSession) -> None:
+        phone = _valid_phone()
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="Reset User",
+                user_category=UserCategory.BUSINESS_USER,
+                password_hash=hash_password("OldPass1"),
+            )
+            db_session.add(user)
+
+        resp = await client.post(
+            "/api/v1/auth/password/reset/request",
+            json={"phone": phone},
+        )
+        assert resp.status_code == 204
+
+        code = await generate_and_store_otp(
+            db_session,
+            user_id=user.id,
+            purpose=VerificationCodePurpose.PASSWORD_RESET,
+            delivery_type=VerificationCodeType.SMS,
+        )
+
+        resp = await client.post(
+            "/api/v1/auth/password/reset/confirm",
+            json={"phone": phone, "code": code, "new_password": "NewPass1"},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert "access_token" in data
+        assert "refresh_token" in data
+
+        resp = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone, "password": "NewPass1"},
+        )
+        assert resp.status_code == 200
+
+        resp = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone, "password": "OldPass1"},
+        )
+        assert resp.status_code == 401
+
+
+class TestRefreshToken:
+    async def test_refresh_rotation(self, client: AsyncClient, db_session: AsyncSession) -> None:
+        phone = _valid_phone()
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="Refresh User",
+                user_category=UserCategory.BUSINESS_USER,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            db_session.add(user)
+
+        login_resp = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone, "password": _TEST_PASSWORD},
+        )
+        assert login_resp.status_code == 200
+        old_refresh = login_resp.json()["refresh_token"]
+
+        refresh_resp = await client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": old_refresh},
+        )
+        assert refresh_resp.status_code == 200
+        new_data = refresh_resp.json()
+        assert new_data["refresh_token"] != old_refresh
+
+        reauth_resp = await client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": old_refresh},
+        )
+        assert reauth_resp.status_code == 401
+
+
+class TestLogout:
+    async def test_logout_revokes_session(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="Logout User",
+                user_category=UserCategory.BUSINESS_USER,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            db_session.add(user)
+
+        login_resp = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone, "password": _TEST_PASSWORD},
+        )
+        assert login_resp.status_code == 200
+        tokens = login_resp.json()
+
+        logout_resp = await client.post(
+            "/api/v1/auth/logout",
+            json={"refresh_token": tokens["refresh_token"]},
+            headers={"Authorization": f"Bearer {tokens['access_token']}"},
+        )
+        assert logout_resp.status_code == 204
+
+        reuse_resp = await client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": tokens["refresh_token"]},
+        )
+        assert reuse_resp.status_code == 401
+
+
+class TestSessions:
+    async def test_list_sessions_returns_only_own(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone1 = _valid_phone()
+        phone2 = _valid_phone()
+
+        async with db_session.begin():
+            user1 = User(
+                phone=phone1,
+                full_name="User One",
+                user_category=UserCategory.BUSINESS_USER,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            user2 = User(
+                phone=phone2,
+                full_name="User Two",
+                user_category=UserCategory.BUSINESS_USER,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            db_session.add(user1)
+            db_session.add(user2)
+
+        login1 = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone1, "password": _TEST_PASSWORD},
+        )
+        token1 = login1.json()["access_token"]
+
+        login2 = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone2, "password": _TEST_PASSWORD},
+        )
+        token2 = login2.json()["access_token"]
+
+        sessions1 = await client.get(
+            "/api/v1/auth/sessions",
+            headers={"Authorization": f"Bearer {token1}"},
+        )
+        assert sessions1.status_code == 200
+        data1 = sessions1.json()
+        for s in data1:
+            assert s["user_id"] == str(user1.id)
+
+        sessions2 = await client.get(
+            "/api/v1/auth/sessions",
+            headers={"Authorization": f"Bearer {token2}"},
+        )
+        data2 = sessions2.json()
+        for s in data2:
+            assert s["user_id"] == str(user2.id)
+
+    async def test_delete_other_users_session_returns_403(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone1 = _valid_phone()
+        phone2 = _valid_phone()
+
+        async with db_session.begin():
+            user1 = User(
+                phone=phone1,
+                full_name="User One",
+                user_category=UserCategory.BUSINESS_USER,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            user2 = User(
+                phone=phone2,
+                full_name="User Two",
+                user_category=UserCategory.BUSINESS_USER,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            db_session.add(user1)
+            db_session.add(user2)
+
+        login1 = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone1, "password": _TEST_PASSWORD},
+        )
+        token1 = login1.json()["access_token"]
+
+        login2 = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone2, "password": _TEST_PASSWORD},
+        )
+
+        sessions2 = await client.get(
+            "/api/v1/auth/sessions",
+            headers={"Authorization": f"Bearer {login2.json()['access_token']}"},
+        )
+        data2 = sessions2.json()
+
+        for s in data2:
+            resp = await client.delete(
+                f"/api/v1/auth/sessions/{s['id']}",
+                headers={"Authorization": f"Bearer {token1}"},
+            )
+            assert resp.status_code == 403
+
+
+class TestContextSwitch:
+    async def test_switch_to_unowned_business_returns_403(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        from app.models.business import Business, BusinessType
+
+        phone = _valid_phone()
+
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="Switch User",
+                user_category=UserCategory.BUSINESS_USER,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            db_session.add(user)
+
+        async with db_session.begin():
+            biz = Business(
+                name="Test Business",
+                business_type=BusinessType.RESTAURANT,
+                owner_user_id=user.id,
+                country_code="TZ",
+            )
+            db_session.add(biz)
+
+        login_resp = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone, "password": _TEST_PASSWORD},
+        )
+        token = login_resp.json()["access_token"]
+
+        resp = await client.post(
+            "/api/v1/auth/context/switch",
+            json={"business_id": str(biz.id)},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+
+
+class TestRateLimits:
+    """Tests for rate-limiting on auth endpoints."""
+
+    async def test_login_password_phone_limit_exceeded(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Repeated wrong password on same phone hits phone-based limit."""
+        phone = _valid_phone()
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="Rate Limit User",
+                user_category=UserCategory.BUSINESS_USER,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            db_session.add(user)
+
+        for _ in range(RATE_LIMIT_LOGIN_PASSWORD_PHONE_LIMIT):
+            resp = await client.post(
+                "/api/v1/auth/login/password",
+                json={"phone": phone, "password": "WrongPass1"},
+            )
+            assert resp.status_code == 401
+
+        # Next request should be rate-limited (429)
+        resp = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone, "password": "WrongPass1"},
+        )
+        assert resp.status_code == 429
+        assert "Retry-After" in resp.headers
+        assert resp.json()["detail"] == "Too many attempts, please try again later"
+
+    async def test_login_password_different_phone_not_blocked(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """A different phone is not affected by another phone's limit."""
+        phone1 = _valid_phone()
+        phone2 = _valid_phone()
+        async with db_session.begin():
+            user1 = User(
+                phone=phone1,
+                full_name="User One",
+                user_category=UserCategory.BUSINESS_USER,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            user2 = User(
+                phone=phone2,
+                full_name="User Two",
+                user_category=UserCategory.BUSINESS_USER,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            db_session.add(user1)
+            db_session.add(user2)
+
+        # Exhaust limit on phone1
+        for _ in range(RATE_LIMIT_LOGIN_PASSWORD_PHONE_LIMIT):
+            await client.post(
+                "/api/v1/auth/login/password",
+                json={"phone": phone1, "password": "WrongPass1"},
+            )
+
+        # phone2 should still work
+        resp = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone2, "password": _TEST_PASSWORD},
+        )
+        assert resp.status_code == 200
+
+    async def test_otp_request_phone_limit_exceeded(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Repeated OTP requests on same phone hits phone-based limit."""
+        phone = _valid_phone()
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="OTP Rate Limit User",
+                user_category=UserCategory.BUSINESS_USER,
+            )
+            db_session.add(user)
+
+        for _ in range(RATE_LIMIT_OTP_REQUEST_PHONE_LIMIT):
+            resp = await client.post(
+                "/api/v1/auth/otp/request",
+                json={"phone": phone},
+            )
+            assert resp.status_code == 204
+
+        # Next request should be rate-limited
+        resp = await client.post(
+            "/api/v1/auth/otp/request",
+            json={"phone": phone},
+        )
+        assert resp.status_code == 429
+        assert "Retry-After" in resp.headers
+
+    async def test_otp_request_different_phone_not_blocked(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """A different phone is not affected by another phone's OTP limit."""
+        phone1 = _valid_phone()
+        phone2 = _valid_phone()
+        async with db_session.begin():
+            user1 = User(
+                phone=phone1,
+                full_name="User One",
+                user_category=UserCategory.BUSINESS_USER,
+            )
+            user2 = User(
+                phone=phone2,
+                full_name="User Two",
+                user_category=UserCategory.BUSINESS_USER,
+            )
+            db_session.add(user1)
+            db_session.add(user2)
+
+        for _ in range(RATE_LIMIT_OTP_REQUEST_PHONE_LIMIT):
+            await client.post("/api/v1/auth/otp/request", json={"phone": phone1})
+
+        resp = await client.post("/api/v1/auth/otp/request", json={"phone": phone2})
+        assert resp.status_code == 204
+
+    async def test_password_reset_request_phone_limit_exceeded(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Repeated password reset requests on same phone hits phone-based limit."""
+        phone = _valid_phone()
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="Reset Rate Limit User",
+                user_category=UserCategory.BUSINESS_USER,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            db_session.add(user)
+
+        for _ in range(RATE_LIMIT_PASSWORD_RESET_REQUEST_PHONE_LIMIT):
+            resp = await client.post(
+                "/api/v1/auth/password/reset/request",
+                json={"phone": phone},
+            )
+            assert resp.status_code == 204
+
+        resp = await client.post(
+            "/api/v1/auth/password/reset/request",
+            json={"phone": phone},
+        )
+        assert resp.status_code == 429
+        assert "Retry-After" in resp.headers
+
+    async def test_refresh_ip_limit_exceeded(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Repeated refresh requests from same IP hits IP-based limit."""
+        phone = _valid_phone()
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="Refresh Rate Limit User",
+                user_category=UserCategory.BUSINESS_USER,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            db_session.add(user)
+
+        # First, login to get a valid refresh token
+        login_resp = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone, "password": _TEST_PASSWORD},
+        )
+        assert login_resp.status_code == 200
+        refresh_token = login_resp.json()["refresh_token"]
+
+        # Use refresh up to the limit
+        for _ in range(RATE_LIMIT_REFRESH_IP_LIMIT):
+            resp = await client.post(
+                "/api/v1/auth/refresh",
+                json={"refresh_token": refresh_token},
+            )
+            assert resp.status_code == 200
+            # rotate token for next attempt
+            refresh_token = resp.json()["refresh_token"]
+
+        # Next refresh should be rate-limited
+        resp = await client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+        assert resp.status_code == 429
+        assert "Retry-After" in resp.headers

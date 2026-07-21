@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+.env*
+# Keep README.md and ARCHITECTURE.md — needed for build & documentation
+*.md
+!README.md
+!ARCHITECTURE.md
+.venv/
+__pycache__/
+*.py[cod]
+.vscode/
+.idea/
+.pre-commit-config.yaml
