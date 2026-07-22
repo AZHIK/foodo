@@ -186,3 +186,36 @@ class UserPlatformRoleRead(BaseModel):
 
     user_id: UUID
     platform_role_id: UUID
+
+
+# ── Assignment-action schemas (join-table writes) ─────────────────────────
+
+
+class AssignUserToGroupRequest(BaseModel):
+    """Request body for assigning a user to a group."""
+
+    group_id: UUID
+
+
+class AssignInternalRoleRequest(BaseModel):
+    """Request body for assigning an internal role to a user."""
+
+    role_id: UUID
+
+
+class AssignPlatformRoleRequest(BaseModel):
+    """Request body for assigning a platform role to a user."""
+
+    platform_role_id: UUID
+
+
+class AssignRolePermissionRequest(BaseModel):
+    """Request body for assigning a permission code to a role."""
+
+    permission_code: str
+
+
+class AssignPlatformRolePermissionRequest(BaseModel):
+    """Request body for assigning a permission code to a platform role."""
+
+    permission_code: str

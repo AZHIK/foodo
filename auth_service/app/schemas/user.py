@@ -67,3 +67,28 @@ class UserStatusUpdate(BaseModel):
     """Dedicated schema for updating a user's status (sensitive operation)."""
 
     status: UserStatus
+
+
+class UserAdminUpdate(BaseModel):
+    """Admin-only schema for updating a user's account-level fields.
+
+    Unlike UserUpdate (self-service, limited to full_name/email), this
+    schema allows platform staff to change status, is_active, and
+    user_category — fields that should never be self-service.
+    """
+
+    status: UserStatus | None = None
+    is_active: bool | None = None
+    user_category: UserCategory | None = None
+
+
+class UserListFilters(BaseModel):
+    """Query-parameter schema for listing users with optional filters.
+
+    Used as query parameters on GET /admin/users, not a request body.
+    """
+
+    user_category: UserCategory | None = None
+    status: UserStatus | None = None
+    is_active: bool | None = None
+    search: str | None = None
