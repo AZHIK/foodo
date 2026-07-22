@@ -62,6 +62,13 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
+async def async_session(db_session: AsyncSession) -> AsyncSession:
+    """Alias for db_session — matches the parameter name used by
+    platform-role-permission tests and other async-SQLModel tests."""
+    return db_session
+
+
+@pytest_asyncio.fixture
 async def redis_client() -> AsyncGenerator[aioredis.Redis, None]:
     """Provide a Redis client connected to the test instance.
 

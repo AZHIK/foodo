@@ -344,3 +344,119 @@ class TestPlatformLoginRateLimit:
             json={"email": email2, "password": "WrongPass1!"},
         )
         assert resp.status_code == 401  # wrong password, but not rate limited
+
+
+class TestPlatformRegisterPermissionGuard:
+    """Verify the stacked require_platform_staff + require_role guards.
+
+    POST /api/v1/auth/platform/register now has two guards:
+      1. require_platform_staff() — category gate
+      2. require_role("admin")    — role gate
+
+    These tests confirm that each guard independently blocks the right tokens.
+    """
+
+    async def test_business_user_with_admin_role_is_rejected_by_category_gate(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """A business_user token carrying role='admin' must be blocked (403).
+
+        Before the require_platform_staff() retrofit, only require_role("admin")
+        was checked, meaning a business_user with 'admin' in their roles list
+        could theoretically reach this endpoint.  This test locks that down.
+        """
+        from app.models.user import User, UserCategory, UserStatus
+
+        async with db_session.begin():
+            biz_user = User(
+                phone="+255777000111",
+                full_name="Business Admin",
+                user_category=UserCategory.BUSINESS_USER,
+                status=UserStatus.ACTIVE,
+                is_phone_verified=True,
+            )
+            db_session.add(biz_user)
+
+        # Craft a business_user token that *also* has role "admin" — the worst case
+        business_admin_token = create_access_token(
+            subject=str(biz_user.id),
+            user_category=UserCategory.BUSINESS_USER.value,
+            roles=["admin"],
+            permissions=[],
+            active_business_id=None,
+        )
+
+        resp = await client.post(
+            "/api/v1/auth/platform/register",
+            json={
+                "email": "injected@evil.com",
+                "full_name": "Evil",
+                "password": "StrongPass1!",
+                "group_id": str(uuid4()),
+            },
+            headers={"Authorization": f"Bearer {business_admin_token}"},
+        )
+        # The category gate (require_platform_staff) blocks this before role check
+        assert resp.status_code == 403
+        assert "platform staff" in resp.json()["detail"].lower()
+
+    async def test_platform_staff_without_admin_role_is_rejected_by_role_gate(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """A platform_staff token without role='admin' must be blocked (403).
+
+        The category gate passes (it is platform_staff), but require_role("admin")
+        then blocks because "admin" is not in the token's roles list.
+        """
+        async with db_session.begin():
+            staff_user = User(
+                phone="+255777000222",
+                email="viewer@foodlink.com",
+                full_name="Viewer Staff",
+                user_category=UserCategory.PLATFORM_STAFF,
+                status=UserStatus.ACTIVE,
+                is_email_verified=True,
+            )
+            db_session.add(staff_user)
+
+        viewer_token = create_access_token(
+            subject=str(staff_user.id),
+            user_category=UserCategory.PLATFORM_STAFF.value,
+            roles=["viewer"],  # NOT admin
+            permissions=[],
+        )
+
+        resp = await client.post(
+            "/api/v1/auth/platform/register",
+            json={
+                "email": "newstaff_viewer_attempt@foodlink.com",
+                "full_name": "New Staff",
+                "password": "StrongPass1!",
+                "group_id": str(uuid4()),
+            },
+            headers={"Authorization": f"Bearer {viewer_token}"},
+        )
+        assert resp.status_code == 403
+
+    async def test_platform_staff_with_admin_role_succeeds(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """platform_staff + admin role must still succeed (regression guard)."""
+        async with db_session.begin():
+            group = Group(name=f"admins_{uuid4().hex[:8]}")
+            db_session.add(group)
+
+        admin_token = await _create_admin_token(db_session)
+        email = f"newstaff_{uuid4().hex[:8]}@foodlink.com"
+
+        resp = await client.post(
+            "/api/v1/auth/platform/register",
+            json={
+                "email": email,
+                "full_name": "Legit New Staff",
+                "password": "StrongPass1!",
+                "group_id": str(group.id),
+            },
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 201, resp.text

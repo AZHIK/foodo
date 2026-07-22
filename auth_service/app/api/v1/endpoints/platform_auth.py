@@ -21,6 +21,7 @@ from app.core.database import get_async_session
 from app.core.rate_limit import RateLimitDependency, body_field_source
 from app.core.security import create_access_token, hash_password, verify_password
 from app.deps.auth import require_role
+from app.deps.permissions import require_platform_staff
 from app.models.internal import Group, Role, RolePermission, UserGroup
 from app.models.user import User, UserCategory, UserStatus
 from app.schemas.auth import (
@@ -40,11 +41,16 @@ router = APIRouter(prefix="/api/v1/auth/platform", tags=["Platform Auth"])
 async def register_platform_staff(
     body: PlatformStaffRegisterRequest,
     request: Request,
-    # NOTE: This endpoint is protected behind require_role("admin") because
-    # self-serve internal-staff signup is unusual — platform staff accounts
+    # NOTE: Two guards are stacked here intentionally:
+    #   1. require_platform_staff() — category gate: business_user tokens
+    #      (even if they somehow carry role="admin") cannot reach this endpoint.
+    #   2. require_role("admin") — role gate: platform staff must additionally
+    #      hold the "admin" role within their group.
+    # Self-serve internal-staff signup is unusual — platform staff accounts
     # should be created by an existing admin. If a future requirement allows
     # self-registration for certain staff tiers, add a separate endpoint or
     # remove this dependency and add an invite-based flow.
+    _staff_claims: dict[str, Any] = Depends(require_platform_staff()),
     _admin_claims: dict[str, Any] = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_async_session),
 ) -> TokenResponse:

@@ -59,7 +59,10 @@ from app.schemas.auth import (
 from app.schemas.auth_security import UserSessionRead
 from app.services.otp_delivery_service import generate_and_send_otp_sms
 from app.services.otp_service import verify_otp
-from app.services.permission_resolver import resolve_effective_permissions
+from app.services.permission_resolver import (
+    compute_platform_role_permissions,
+    resolve_effective_permissions,
+)
 from app.services.session_service import (
     hash_refresh_token as session_hash_refresh_token,
 )
@@ -88,10 +91,12 @@ async def _issue_tokens(
     ip_address = request.client.host if request and request.client else None
 
     if user.user_category in (UserCategory.DRIVER, UserCategory.CONSUMER):
+        platform_perms = await compute_platform_role_permissions(session, user.id)
         access_token = create_access_token(
             subject=user_id_str,
             user_category=user.user_category.value,
             platform_role=user.user_category.value,
+            permissions=sorted(platform_perms),
         )
     else:
         access_token = create_access_token(
@@ -458,10 +463,12 @@ async def refresh(
         )
 
     if user.user_category in (UserCategory.DRIVER, UserCategory.CONSUMER):
+        platform_perms = await compute_platform_role_permissions(db, user.id)
         access_token = create_access_token(
             subject=user_id_str,
             user_category=user.user_category.value,
             platform_role=user.user_category.value,
+            permissions=sorted(platform_perms),
         )
     else:
         access_token = create_access_token(

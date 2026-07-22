@@ -3,7 +3,7 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.core.permission_codes import PermissionCode, validate_permission_code
 from app.db.seed_permissions import PERMISSION_SEEDS, seed_permissions
-from app.models import Permission
+from app.models import Permission, PlatformRole, PlatformRolePermission
 
 
 @pytest.fixture
@@ -22,6 +22,14 @@ def test_seeding_twice_produces_no_duplicates(session: Session) -> None:
 
     assert len(permissions) == len(PermissionCode)
     assert len({permission.code for permission in permissions}) == len(PermissionCode)
+
+    roles = session.exec(select(PlatformRole)).all()
+    assert len(roles) == 3
+    assert {r.name for r in roles} == {"driver", "consumer", "admin"}
+
+    platform_perms = session.exec(select(PlatformRolePermission)).all()
+    pairs = {(prp.platform_role_id, prp.permission_code) for prp in platform_perms}
+    assert len(platform_perms) == len(pairs)
 
 
 def test_every_enum_member_has_corresponding_row_after_seeding(session: Session) -> None:

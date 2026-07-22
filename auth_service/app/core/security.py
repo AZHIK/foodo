@@ -145,6 +145,7 @@ def create_access_token(
         payload["permissions"] = permissions or []
     elif user_category in ("driver", "consumer"):
         payload["platform_role"] = platform_role or user_category
+        payload["permissions"] = permissions or []
     else:
         # business_user (or any future category that carries business context)
         payload["active_business_id"] = active_business_id

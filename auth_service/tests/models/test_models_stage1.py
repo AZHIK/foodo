@@ -23,6 +23,7 @@ from app.models import (
     Permission,
     PermissionType,
     PlatformRole,
+    PlatformRolePermission,
     Role,
     RolePermission,
     RoleTemplate,
@@ -207,6 +208,16 @@ class TestPlatformRoleModel:
         assert pr.name == "driver"
 
 
+class TestPlatformRolePermissionModel:
+    def test_create_platform_role_permission(self) -> None:
+        prp = PlatformRolePermission(
+            platform_role_id=UUID("00000000-0000-0000-0000-000000000001"),
+            permission_code="delivery.update_status",
+        )
+        assert prp.platform_role_id == UUID("00000000-0000-0000-0000-000000000001")
+        assert prp.permission_code == "delivery.update_status"
+
+
 class TestUserPlatformRoleModel:
     def test_create_user_platform_role(self) -> None:
         upr = UserPlatformRole(
@@ -240,5 +251,5 @@ class TestRoleTemplatePermissionModel:
 
 
 class TestMetadata:
-    def test_all_25_tables_registered(self) -> None:
-        assert len(SQLModel.metadata.tables) == 25
+    def test_all_26_tables_registered(self) -> None:
+        assert len(SQLModel.metadata.tables) == 26

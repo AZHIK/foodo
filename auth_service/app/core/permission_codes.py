@@ -16,6 +16,12 @@ class PermissionCode(StrEnum):
     USERS_MANAGE = "users.manage"
     ROLES_ASSIGN = "roles.assign"
     BUSINESS_MANAGE_ROLES = "business.manage_roles"
+    DELIVERY_VIEW_ASSIGNED = "delivery.view_assigned"
+    DELIVERY_UPDATE_STATUS = "delivery.update_status"
+    DELIVERY_CONFIRM_DROPOFF = "delivery.confirm_dropoff"
+    ORDER_CREATE = "order.create"
+    ORDER_VIEW_OWN = "order.view_own"
+    ORDER_RATE = "order.rate"
 
 
 def coerce_permission_code(code: str | PermissionCode) -> PermissionCode:

@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import String, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 from app.models.base import SoftDeleteMixin, TimestampMixin, UUIDMixin
@@ -16,6 +16,16 @@ class PlatformRole(UUIDMixin, TimestampMixin, SoftDeleteMixin, SQLModel, table=T
     name: str = Field(unique=True, max_length=100)
 
     user_platform_roles: list["UserPlatformRole"] = Relationship(back_populates="platform_role")
+    permissions: list["PlatformRolePermission"] = Relationship(back_populates="platform_role")
+
+
+class PlatformRolePermission(SoftDeleteMixin, SQLModel, table=True):
+    __tablename__ = "platform_role_permissions"
+
+    platform_role_id: UUID = Field(foreign_key="platform_roles.id", primary_key=True)
+    permission_code: str = Field(primary_key=True, max_length=100, sa_type=String)
+
+    platform_role: PlatformRole = Relationship(back_populates="permissions")
 
 
 class UserPlatformRole(UUIDMixin, SoftDeleteMixin, SQLModel, table=True):

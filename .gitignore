@@ -1,0 +1,36 @@
+# ── Python ────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+
+# ── Virtual environment ───────────
+.venv/
+
+# ── Tool caches ───────────────────
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# ── Environment / secrets ─────────
+.env
+auth_service/keys/private.pem
+auth_service/keys/public.pem
+
+# ── IDE / editor ──────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ── AI agent artifacts ────────────
+.agents/
+.codex/
+
+# ── Testing / coverage ────────────
+.coverage
+htmlcov/

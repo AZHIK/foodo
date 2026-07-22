@@ -22,6 +22,7 @@ __all__ = [
     "Permission",
     "PermissionType",
     "PlatformRole",
+    "PlatformRolePermission",
     "RefreshToken",
     "Role",
     "RolePermission",
@@ -76,6 +77,6 @@ from app.models.internal import (
     UserGroup,
     UserRole,
 )
-from app.models.platform import PlatformRole, UserPlatformRole
+from app.models.platform import PlatformRole, PlatformRolePermission, UserPlatformRole
 from app.models.template import RoleTemplate, RoleTemplatePermission
 from app.models.user import User, UserCategory, UserStatus

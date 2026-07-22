@@ -146,6 +146,7 @@ class DriverConsumerTokenClaims(BaseModel):
     sub: str
     user_category: UserCategory  # DRIVER or CONSUMER
     platform_role: str
+    permissions: list[str] = Field(default_factory=list)
 
 
 class SwitchBusinessContextRequest(BaseModel):
