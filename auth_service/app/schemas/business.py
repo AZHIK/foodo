@@ -35,6 +35,18 @@ class BusinessCreate(BusinessBase):
     """
 
 
+class BusinessCreateRequest(BaseModel):
+    """API request body for POST /businesses — no owner_user_id (set server-side)."""
+
+    name: str
+    business_type: BusinessType
+    organization_id: UUID | None = None
+    tax_id: str | None = None
+    country_code: str = "TZ"
+    city: str | None = None
+    timezone: str = "Africa/Dar_es_Salaam"
+
+
 class BusinessUpdate(BaseModel):
     """Fields that may be updated on a business (partial update)."""
 
@@ -55,3 +67,16 @@ class BusinessRead(BusinessBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
+
+
+class BusinessCreateResponse(BaseModel):
+    """Response returned after a successful business creation."""
+
+    business: BusinessRead
+    roles_created: list[str]
+    owner_role_name: str
+    note: str = (
+        "Your current access token does not yet reflect this business. "
+        "Call POST /auth/context/switch with this business_id to obtain "
+        "a token scoped to the new business."
+    )

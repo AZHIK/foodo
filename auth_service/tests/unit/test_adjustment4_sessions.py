@@ -78,7 +78,9 @@ async def test_refreshing_rotates_token_and_updates_existing_session(
     assert rotated.session.id == original_session_id
     assert rotated.session.refresh_token_id == rotated.refresh_token.id
     assert rotated.session.last_activity_at >= original_activity
-    assert refresh_tokens[0].revoked_at is not None
+
+    old_token = next(rt for rt in refresh_tokens if rt.id != rotated.refresh_token.id)
+    assert old_token.revoked_at is not None
 
 
 async def test_revoking_session_revokes_linked_refresh_token(

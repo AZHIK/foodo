@@ -37,6 +37,7 @@ from app.core.exceptions import (
     OtpAttemptsExhaustedError,
     OtpCodeInvalidError,
     OtpDeliveryError,
+    TokenReuseDetectedError,
 )
 from app.core.rate_limit import RateLimitDependency, body_field_source
 from app.core.security import create_access_token, hash_password, verify_password
@@ -447,6 +448,11 @@ async def refresh(
             ip_address=ip_address,
         )
     except InvalidRefreshTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid, expired, or revoked refresh token",
+        ) from None
+    except TokenReuseDetectedError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid, expired, or revoked refresh token",

@@ -14,6 +14,14 @@ class InvalidRefreshTokenError(DomainError):
     """Raised when a refresh token cannot be used."""
 
 
+class TokenReuseDetectedError(DomainError):
+    """Raised when an already-rotated refresh token is reused (replay/theft signal).
+
+    The caller should still respond with a generic 401 to the client,
+    but should log/fire the security event internally.
+    """
+
+
 class InvalidTokenError(DomainError):
     """Raised when a JWT access token is invalid (bad signature, malformed, or wrong type)."""
 

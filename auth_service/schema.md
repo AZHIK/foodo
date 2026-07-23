@@ -283,6 +283,19 @@ Relationships:
 
 - Assigned to users through `user_platform_roles`.
 
+### `platform_role_permissions`
+
+Join table connecting platform roles to permission codes.
+
+Important columns:
+
+- `platform_role_id`: platform role.
+- `permission_code`: permission code.
+
+Primary key:
+
+- `platform_role_id`, `permission_code`.
+
 ### `user_platform_roles`
 
 Assigns platform-wide roles to users.
@@ -403,6 +416,13 @@ Important columns:
 
 - `name`: unique template name.
 - `description`: optional explanation.
+- `business_type`: optional business type scope, such as `restaurant`, `supplier`,
+  `farmer`, `distributor`, or `platform_operator`. When set, this template is used
+  when creating a business of that type. `NULL` means the template is generic or
+  intended for manual assignment only.
+- `is_owner_template`: when `true`, marks this as the Owner-equivalent template.
+  During business creation, the cloned role gets `is_protected=true` and is
+  auto-assigned to the business creator.
 
 Relationships:
 
@@ -459,6 +479,12 @@ Important columns:
 - `ip_address`: IP address used when token was issued.
 - `expires_at`: token expiration.
 - `revoked_at`: timestamp when the token was revoked.
+- `family_id`: UUID grouping all tokens in the same refresh family (original +
+  all rotations). Used for replay detection and full-family revocation.
+- `previous_token_id`: self-referencing FK to the token that was rotated to
+  produce this one.
+- `replaced_by_token_id`: self-referencing FK to the token that replaced this
+  one (set on the old token when rotation occurs).
 
 ### `user_sessions`
 
@@ -590,6 +616,19 @@ permissions
   -> user_roles
 
 permissions
+  -> platform_role_permissions
+  -> platform_roles
+  -> user_platform_roles
+
+permissions
+  -> role_template_permissions
+  -> role_templates
+  -> business_role_permissions (cloned at business creation)
+  -> business_roles
+  -> user_business_roles
+  -> user_business_location_roles
+
+permissions
   -> business_role_permissions
   -> business_roles
   -> user_business_roles
@@ -619,7 +658,7 @@ audit.recorded events
 
 ## Table Count
 
-The current schema registers 25 database tables:
+The current schema registers 26 database tables:
 
 1. `users`
 2. `organizations`
@@ -632,17 +671,18 @@ The current schema registers 25 database tables:
 9. `user_group`
 10. `user_roles`
 11. `platform_roles`
-12. `user_platform_roles`
-13. `business_roles`
-14. `business_role_permissions`
-15. `user_business_roles`
-16. `user_business_location_roles`
-17. `user_business_permissions`
-18. `role_templates`
-19. `role_template_permissions`
-20. `verification_codes`
-21. `refresh_tokens`
-22. `user_sessions`
-23. `trusted_devices`
-24. `login_attempts`
-25. `auth_risk_events`
+12. `platform_role_permissions`
+13. `user_platform_roles`
+14. `business_roles`
+15. `business_role_permissions`
+16. `user_business_roles`
+17. `user_business_location_roles`
+18. `user_business_permissions`
+19. `role_templates`
+20. `role_template_permissions`
+21. `verification_codes`
+22. `refresh_tokens`
+23. `user_sessions`
+24. `trusted_devices`
+25. `login_attempts`
+26. `auth_risk_events`

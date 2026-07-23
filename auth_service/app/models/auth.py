@@ -1,8 +1,10 @@
+import uuid as _uuid
 from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID
 
 from sqlalchemy import DateTime, String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlmodel import Field, SQLModel
 
 from app.models.base import SoftDeleteMixin, TimestampMixin, UUIDMixin
@@ -64,6 +66,18 @@ class RefreshToken(UUIDMixin, TimestampMixin, SoftDeleteMixin, SQLModel, table=T
     )
     revoked_at: datetime | None = Field(  # type: ignore[call-overload]
         default=None, sa_type=DateTime(timezone=True), nullable=True
+    )
+    family_id: UUID = Field(
+        default_factory=_uuid.uuid4,
+        nullable=False,
+        sa_type=PG_UUID,
+        index=True,
+    )
+    previous_token_id: UUID | None = Field(
+        default=None, foreign_key="refresh_tokens.id", nullable=True, sa_type=PG_UUID
+    )
+    replaced_by_token_id: UUID | None = Field(
+        default=None, foreign_key="refresh_tokens.id", nullable=True, sa_type=PG_UUID
     )
 
 

@@ -1,14 +1,19 @@
+import uuid as _uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from secrets import token_urlsafe
 from uuid import UUID
 
+import structlog
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.exceptions import InvalidRefreshTokenError
+from app.core.events import publish_event
+from app.core.exceptions import InvalidRefreshTokenError, TokenReuseDetectedError
 from app.models import RefreshToken, UserSession
+
+logger = structlog.get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -34,12 +39,14 @@ async def issue_login_session(
     now = datetime.now(UTC)
     token = raw_token or token_urlsafe(48)
     expires_at = now + ttl
+    family_id = _uuid.uuid4()
     refresh_token = RefreshToken(
         user_id=user_id,
         token_hash=hash_refresh_token(token),
         device_info=device_info,
         ip_address=ip_address,
         expires_at=expires_at,
+        family_id=family_id,
     )
     user_session = UserSession(
         user_id=user_id,
@@ -86,14 +93,34 @@ async def rotate_refresh_token(
 
     async with session.begin():
         old_result = await session.exec(
-            select(RefreshToken).where(
-                RefreshToken.token_hash == hash_refresh_token(raw_token),
-                RefreshToken.revoked_at.is_(None),
-                RefreshToken.expires_at > now,
-            )
+            select(RefreshToken)
+            .where(RefreshToken.token_hash == hash_refresh_token(raw_token))
+            .with_for_update()
         )
         old = old_result.one_or_none()
         if old is None:
+            raise InvalidRefreshTokenError("Refresh token is invalid, expired, or revoked.")
+
+        # Replay / theft detection: if this token was already rotated, the
+        # current request is a replay of an already-consumed token.
+        if old.replaced_by_token_id is not None:
+            logger.warning(
+                "refresh_token_replay_detected",
+                user_id=str(old.user_id),
+                token_id=str(old.id),
+                family_id=str(old.family_id),
+            )
+            await publish_event("auth:refresh_token_replay", {
+                "user_id": str(old.user_id),
+                "token_id": str(old.id),
+                "family_id": str(old.family_id),
+            })
+            raise TokenReuseDetectedError("Refresh token has already been used.")
+
+        if old.revoked_at is not None:
+            raise InvalidRefreshTokenError("Refresh token is invalid, expired, or revoked.")
+
+        if old.expires_at <= now:
             raise InvalidRefreshTokenError("Refresh token is invalid, expired, or revoked.")
 
         sess_result = await session.exec(
@@ -111,8 +138,13 @@ async def rotate_refresh_token(
             device_info=device_info or old.device_info,
             ip_address=ip_address or old.ip_address,
             expires_at=expires_at,
+            family_id=old.family_id,
+            previous_token_id=old.id,
         )
         session.add(new_refresh_token)
+        await session.flush()
+        old.replaced_by_token_id = new_refresh_token.id
+
         sess.refresh_token_id = new_refresh_token.id
         sess.device_info = new_refresh_token.device_info
         sess.ip_address = new_refresh_token.ip_address

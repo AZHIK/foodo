@@ -11,6 +11,8 @@ class RoleTemplate(UUIDMixin, TimestampMixin, SoftDeleteMixin, SQLModel, table=T
 
     name: str = Field(unique=True, max_length=100)
     description: str | None = Field(default=None, max_length=500)
+    business_type: str | None = Field(default=None, max_length=20, sa_type=String)
+    is_owner_template: bool = Field(default=False)
 
     permissions: list["RoleTemplatePermission"] = Relationship(back_populates="role_template")
 

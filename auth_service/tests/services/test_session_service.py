@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.exceptions import InvalidRefreshTokenError
+from app.core.exceptions import InvalidRefreshTokenError, TokenReuseDetectedError
 from app.models import RefreshToken, UserSession
 from app.models.user import User, UserCategory
 from app.services.session_service import (
@@ -108,7 +108,9 @@ class TestRotateRefreshToken:
         assert rotated.session.id == original_session_id
         assert rotated.session.refresh_token_id == rotated.refresh_token.id
         assert rotated.session.last_activity_at >= original_activity
-        assert refresh_tokens[0].revoked_at is not None
+
+        old_token = next(rt for rt in refresh_tokens if rt.id != rotated.refresh_token.id)
+        assert old_token.revoked_at is not None
 
     async def test_raises_for_invalid_token(self, db_session: AsyncSession) -> None:
         with pytest.raises(InvalidRefreshTokenError):
@@ -176,6 +178,106 @@ class TestRevokeRefreshToken:
         fake_id = UUID("00000000-0000-0000-0000-000000000999")
         with pytest.raises(InvalidRefreshTokenError):
             await revoke_refresh_token(db_session, fake_id)
+
+
+class TestTokenFamily:
+    """Token family tracking — family_id propagation, lineage linking, and
+    replay / theft detection via replaced_by_token_id."""
+
+    async def test_rotation_propagates_family_id(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
+        issued = await issue_login_session(
+            db_session,
+            user_id=test_user.id,
+            device_info=None,
+            ip_address=None,
+            raw_token="family-token",
+        )
+        family_id = issued.refresh_token.family_id
+        assert family_id is not None
+
+        rotated = await rotate_refresh_token(
+            db_session,
+            raw_token="family-token",
+            new_raw_token="family-token-v2",
+        )
+        assert rotated.refresh_token.family_id == family_id
+
+    async def test_rotation_links_previous_and_replaced(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
+        issued = await issue_login_session(
+            db_session,
+            user_id=test_user.id,
+            device_info=None,
+            ip_address=None,
+            raw_token="link-token",
+        )
+        old_id = issued.refresh_token.id
+
+        rotated = await rotate_refresh_token(
+            db_session,
+            raw_token="link-token",
+            new_raw_token="link-token-v2",
+        )
+        new_id = rotated.refresh_token.id
+        assert rotated.refresh_token.previous_token_id == old_id
+
+        old = await db_session.get(RefreshToken, old_id)
+        assert old is not None
+        assert old.replaced_by_token_id == new_id
+
+    async def test_reuse_of_already_rotated_token_raises(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
+        await issue_login_session(
+            db_session,
+            user_id=test_user.id,
+            device_info=None,
+            ip_address=None,
+            raw_token="replay-token",
+        )
+        await rotate_refresh_token(
+            db_session,
+            raw_token="replay-token",
+            new_raw_token="replay-v2",
+        )
+        with pytest.raises(TokenReuseDetectedError):
+            await rotate_refresh_token(
+                db_session,
+                raw_token="replay-token",
+                new_raw_token="replay-v3",
+            )
+
+    async def test_reuse_of_rotated_token_raises_twice(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
+        """Replaying a rotated token always raises regardless of prior attempts."""
+        await issue_login_session(
+            db_session,
+            user_id=test_user.id,
+            device_info=None,
+            ip_address=None,
+            raw_token="replay-twice",
+        )
+        await rotate_refresh_token(
+            db_session,
+            raw_token="replay-twice",
+            new_raw_token="replay-twice-v2",
+        )
+        with pytest.raises(TokenReuseDetectedError):
+            await rotate_refresh_token(
+                db_session,
+                raw_token="replay-twice",
+                new_raw_token="replay-twice-v3",
+            )
+        with pytest.raises(TokenReuseDetectedError):
+            await rotate_refresh_token(
+                db_session,
+                raw_token="replay-twice",
+                new_raw_token="replay-twice-v4",
+            )
 
 
 class TestListActiveSessions:

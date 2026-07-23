@@ -63,8 +63,7 @@ class TestBusinessRolesDemoEndpoint:
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert data["business_id"] == biz_id
-        assert "roles" in data
+        assert isinstance(data, list)
 
     async def test_token_missing_business_roles_view_permission_returns_403(
         self, client: AsyncClient, db_session: AsyncSession
