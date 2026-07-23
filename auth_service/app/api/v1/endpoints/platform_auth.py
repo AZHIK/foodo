@@ -22,6 +22,7 @@ from app.core.rate_limit import RateLimitDependency, body_field_source
 from app.core.security import create_access_token, hash_password, verify_password
 from app.deps.auth import require_role
 from app.deps.permissions import require_platform_staff
+from app.models.auth import AuthEventType, AuthRiskLevel
 from app.models.internal import Group, Role, RolePermission, UserGroup
 from app.models.user import User, UserCategory, UserStatus
 from app.schemas.auth import (
@@ -30,6 +31,11 @@ from app.schemas.auth import (
     PlatformStaffVerifyMFARequest,
     TokenResponse,
 )
+from app.services.auth_risk_event_service import (
+    rate_limit_with_risk_event,
+    record_auth_risk_event,
+)
+from app.services.login_attempt_service import record_login_attempt
 from app.services.session_service import issue_login_session
 
 logger = structlog.get_logger(__name__)
@@ -122,11 +128,16 @@ async def register_platform_staff(
     response_model=TokenResponse,
     dependencies=[
         Depends(
-            RateLimitDependency(
+            rate_limit_with_risk_event(
                 "platform_login_email",
                 RATE_LIMIT_PLATFORM_LOGIN_EMAIL_LIMIT,
                 RATE_LIMIT_PLATFORM_LOGIN_EMAIL_WINDOW,
                 body_field_source("email"),
+                event_type=AuthEventType.ACCOUNT_LOCKED,
+                risk_level=AuthRiskLevel.HIGH,
+                reason="rate_limit_exceeded",
+                identifier_field="email",
+                lookup_field="email",
             )
         ),
         Depends(
@@ -144,6 +155,9 @@ async def login_platform_staff(
     request: Request,
     db: AsyncSession = Depends(get_async_session),
 ) -> TokenResponse:
+    user_agent = request.headers.get("user-agent")
+    ip_address = request.client.host if request.client else None
+
     async with db.begin():
         result = await db.exec(
             select(User).where(
@@ -153,11 +167,32 @@ async def login_platform_staff(
         )
         user = result.one_or_none()
 
-    if (
-        user is None
-        or user.password_hash is None
-        or not verify_password(body.password, user.password_hash)
-    ):
+    if user is None:
+        await record_login_attempt(
+            db,
+            identifier=body.email,
+            success=False,
+            failure_reason="user_not_found",
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    if user.password_hash is None or not verify_password(body.password, user.password_hash):
+        await record_login_attempt(
+            db,
+            user_id=user.id,
+            identifier=body.email,
+            success=False,
+            failure_reason="invalid_credentials",
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -184,6 +219,24 @@ async def login_platform_staff(
                     for rp in role_perms.all():
                         all_permissions.append(rp.permission_code)
                 all_permissions = list(set(all_permissions))
+
+    await record_login_attempt(
+        db,
+        user_id=user.id,
+        identifier=body.email,
+        success=True,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await record_auth_risk_event(
+        db,
+        user_id=user.id,
+        event_type=AuthEventType.LOGIN_SUCCESS,
+        risk_level=AuthRiskLevel.LOW,
+        reason=None,
+        ip_address=ip_address,
+    )
+    await db.commit()
 
     user_id_str = str(user.id)
     access_token = create_access_token(

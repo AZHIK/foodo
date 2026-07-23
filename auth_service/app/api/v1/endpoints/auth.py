@@ -42,7 +42,7 @@ from app.core.exceptions import (
 from app.core.rate_limit import RateLimitDependency, body_field_source
 from app.core.security import create_access_token, hash_password, verify_password
 from app.deps.auth import get_current_claims
-from app.models.auth import VerificationCodePurpose
+from app.models.auth import AuthEventType, AuthRiskLevel, RefreshToken, VerificationCodePurpose
 from app.models.business import UserBusinessRole
 from app.models.user import User, UserCategory, UserStatus
 from app.schemas.auth import (
@@ -58,6 +58,11 @@ from app.schemas.auth import (
     VerifyOTPRequest,
 )
 from app.schemas.auth_security import UserSessionRead
+from app.services.auth_risk_event_service import (
+    rate_limit_with_risk_event,
+    record_auth_risk_event,
+)
+from app.services.login_attempt_service import record_login_attempt
 from app.services.otp_delivery_service import generate_and_send_otp_sms
 from app.services.otp_service import verify_otp
 from app.services.permission_resolver import (
@@ -237,10 +242,22 @@ async def verify_otp_endpoint(
     request: Request,
     db: AsyncSession = Depends(get_async_session),
 ) -> TokenResponse:
+    user_agent = request.headers.get("user-agent")
+    ip_address = request.client.host if request.client else None
+
     result = await db.exec(select(User).where(User.phone == body.phone))
     user = result.one_or_none()
 
     if user is None:
+        await record_login_attempt(
+            db,
+            identifier=body.phone,
+            success=False,
+            failure_reason="user_not_found",
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired code",
@@ -248,24 +265,88 @@ async def verify_otp_endpoint(
 
     await db.commit()
 
+    user_id = user.id
+    phone = body.phone
     try:
         valid = await verify_otp(
             db,
-            user_id=user.id,
+            user_id=user_id,
             purpose=VerificationCodePurpose.LOGIN,
             submitted_code=body.code,
         )
-    except (OtpCodeInvalidError, OtpAttemptsExhaustedError):
+    except OtpCodeInvalidError:
+        await db.rollback()
+        await record_login_attempt(
+            db,
+            user_id=user_id,
+            identifier=phone,
+            success=False,
+            failure_reason="invalid_otp",
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired code",
+        ) from None
+    except OtpAttemptsExhaustedError:
+        await db.rollback()
+        await record_login_attempt(
+            db,
+            user_id=user_id,
+            identifier=phone,
+            success=False,
+            failure_reason="otp_locked_out",
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        await record_auth_risk_event(
+            db,
+            user_id=user_id,
+            event_type=AuthEventType.OTP_FAILURE,
+            risk_level=AuthRiskLevel.MEDIUM,
+            reason="otp_attempts_exhausted",
+            ip_address=ip_address,
+        )
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired code",
         ) from None
 
     if not valid:
+        await record_login_attempt(
+            db,
+            user_id=user.id,
+            identifier=body.phone,
+            success=False,
+            failure_reason="invalid_otp",
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired code",
         )
+
+    await record_login_attempt(
+        db,
+        user_id=user.id,
+        identifier=body.phone,
+        success=True,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await record_auth_risk_event(
+        db,
+        user_id=user.id,
+        event_type=AuthEventType.LOGIN_SUCCESS,
+        risk_level=AuthRiskLevel.LOW,
+        reason=None,
+        ip_address=ip_address,
+    )
 
     if not user.is_phone_verified:
         user.is_phone_verified = True
@@ -281,11 +362,16 @@ async def verify_otp_endpoint(
     response_model=TokenResponse,
     dependencies=[
         Depends(
-            RateLimitDependency(
+            rate_limit_with_risk_event(
                 "login_password_phone",
                 RATE_LIMIT_LOGIN_PASSWORD_PHONE_LIMIT,
                 RATE_LIMIT_LOGIN_PASSWORD_PHONE_WINDOW,
                 body_field_source("phone"),
+                event_type=AuthEventType.ACCOUNT_LOCKED,
+                risk_level=AuthRiskLevel.HIGH,
+                reason="rate_limit_exceeded",
+                identifier_field="phone",
+                lookup_field="phone",
             )
         ),
         Depends(
@@ -303,19 +389,59 @@ async def login_password(
     request: Request,
     db: AsyncSession = Depends(get_async_session),
 ) -> TokenResponse:
+    user_agent = request.headers.get("user-agent")
+    ip_address = request.client.host if request.client else None
+
     result = await db.exec(select(User).where(User.phone == body.phone))
     user = result.one_or_none()
 
-    if (
-        user is None
-        or user.password_hash is None
-        or not verify_password(body.password, user.password_hash)
-    ):
+    if user is None:
+        await record_login_attempt(
+            db,
+            identifier=body.phone,
+            success=False,
+            failure_reason="user_not_found",
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid phone number or password",
         )
 
+    if user.password_hash is None or not verify_password(body.password, user.password_hash):
+        await record_login_attempt(
+            db,
+            user_id=user.id,
+            identifier=body.phone,
+            success=False,
+            failure_reason="invalid_credentials",
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid phone number or password",
+        )
+
+    await record_login_attempt(
+        db,
+        user_id=user.id,
+        identifier=body.phone,
+        success=True,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await record_auth_risk_event(
+        db,
+        user_id=user.id,
+        event_type=AuthEventType.LOGIN_SUCCESS,
+        risk_level=AuthRiskLevel.LOW,
+        reason=None,
+        ip_address=ip_address,
+    )
     await db.commit()
     return await _issue_tokens(db, user, request)
 
@@ -344,14 +470,27 @@ async def login_password(
 )
 async def password_reset_request(
     body: PasswordResetRequest,
+    request: Request,
     db: AsyncSession = Depends(get_async_session),
 ) -> None:
+    ip_address = request.client.host if request.client else None
+
     result = await db.exec(select(User).where(User.phone == body.phone))
     user = result.one_or_none()
 
     if user is None:
         return
 
+    await db.commit()
+
+    await record_auth_risk_event(
+        db,
+        user_id=user.id,
+        event_type=AuthEventType.PASSWORD_RESET_REQUEST,
+        risk_level=AuthRiskLevel.LOW,
+        reason=None,
+        ip_address=ip_address,
+    )
     await db.commit()
 
     try:
@@ -448,11 +587,46 @@ async def refresh(
             ip_address=ip_address,
         )
     except InvalidRefreshTokenError:
+        await record_login_attempt(
+            db,
+            identifier="refresh_token",
+            success=False,
+            failure_reason="invalid_refresh_token",
+            ip_address=ip_address,
+            user_agent=device_info,
+        )
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid, expired, or revoked refresh token",
         ) from None
     except TokenReuseDetectedError:
+        old_result = await db.exec(
+            select(RefreshToken).where(
+                RefreshToken.token_hash == session_hash_refresh_token(body.refresh_token)
+            )
+        )
+        replayed_token = old_result.one_or_none()
+        replay_user_id = replayed_token.user_id if replayed_token else None
+
+        await record_login_attempt(
+            db,
+            user_id=replay_user_id,
+            identifier="refresh_token",
+            success=False,
+            failure_reason="token_reuse_detected",
+            ip_address=ip_address,
+            user_agent=device_info,
+        )
+        await record_auth_risk_event(
+            db,
+            user_id=replay_user_id,
+            event_type=AuthEventType.ACCOUNT_LOCKED,
+            risk_level=AuthRiskLevel.CRITICAL,
+            reason="refresh_token_replay_detected",
+            ip_address=ip_address,
+        )
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid, expired, or revoked refresh token",
@@ -463,10 +637,32 @@ async def refresh(
     user = result.one_or_none()
 
     if user is None:
+        await record_login_attempt(
+            db,
+            user_id=rotated.refresh_token.user_id,
+            identifier="refresh_token",
+            success=False,
+            failure_reason="user_not_found",
+            ip_address=ip_address,
+            user_agent=device_info,
+        )
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
+
+    identifier = user.phone or user.email or "refresh_token"
+
+    await record_login_attempt(
+        db,
+        user_id=user.id,
+        identifier=identifier,
+        success=True,
+        ip_address=ip_address,
+        user_agent=device_info,
+    )
+    await db.commit()
 
     if user.user_category in (UserCategory.DRIVER, UserCategory.CONSUMER):
         platform_perms = await compute_platform_role_permissions(db, user.id)

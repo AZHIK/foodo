@@ -56,6 +56,13 @@ class Settings(BaseSettings):
     at_api_key: str = ""
     at_sender_id: str | None = None
 
+    # ── CORS ────────────────────────────────────
+    # Comma-separated list of allowed origins. In production, set this to
+    # the actual Flutter app origin (e.g. https://app.foodlink.com) and the
+    # Next.js admin dashboard domain. Defaults to http://localhost:3000 for
+    # local Next.js dev.
+    cors_allowed_origins: str = "http://localhost:3000"
+
     # ── Host ───────────────────────────────────
     host: str = "0.0.0.0"
     port: int = 8000

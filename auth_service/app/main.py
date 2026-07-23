@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.endpoints import auth, businesses, platform_auth
 from app.api.v1.endpoints.admin import internal_rbac, users
@@ -32,6 +33,21 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/docs" if settings.environment != "prod" else None,
     redoc_url="/redoc" if settings.environment != "prod" else None,
+)
+
+# CORS — locked to explicit origins from config.
+# The wildcard "*" is intentionally avoided.  Set CORS_ALLOWED_ORIGINS in
+# the environment to the comma-separated list of origins that need access
+# (e.g. http://localhost:3000,https://admin.foodlink.com).  The Flutter app
+# origin must be included here if Flutter makes direct browser-based
+# requests (otherwise Flutter uses native HTTP which is not subject to CORS).
+origins = [o.strip() for o in settings.cors_allowed_origins.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(health.router, prefix="")
