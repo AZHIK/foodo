@@ -47,14 +47,14 @@ def _platform_staff_token() -> str:
 class TestBusinessRolesDemoEndpoint:
     """Integration tests for GET /api/v1/businesses/{business_id}/roles."""
 
-    async def test_token_with_roles_assign_permission_returns_200(
+    async def test_token_with_business_roles_view_permission_returns_200(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
-        """A token with ROLES_ASSIGN permission and matching business context succeeds."""
+        """A token with BUSINESS_ROLES_VIEW permission and matching business context succeeds."""
         biz_id = str(uuid4())
         token = _token_with_permission(
             business_id=biz_id,
-            permissions=[str(PermissionCode.ROLES_ASSIGN)],
+            permissions=[str(PermissionCode.BUSINESS_ROLES_VIEW)],
         )
 
         resp = await client.get(
@@ -66,14 +66,14 @@ class TestBusinessRolesDemoEndpoint:
         assert data["business_id"] == biz_id
         assert "roles" in data
 
-    async def test_token_missing_roles_assign_permission_returns_403(
+    async def test_token_missing_business_roles_view_permission_returns_403(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
-        """A token without ROLES_ASSIGN is rejected even with a valid business context."""
+        """A token without BUSINESS_ROLES_VIEW is rejected even with a valid business context."""
         biz_id = str(uuid4())
         token = _token_with_permission(
             business_id=biz_id,
-            permissions=["inventory.view"],  # has a permission, but not roles.assign
+            permissions=["inventory.view"],
         )
 
         resp = await client.get(
@@ -81,7 +81,7 @@ class TestBusinessRolesDemoEndpoint:
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 403
-        assert "roles.assign" in resp.json()["detail"]
+        assert "business_roles.view" in resp.json()["detail"]
 
     async def test_token_with_no_business_context_returns_403(
         self, client: AsyncClient, db_session: AsyncSession
@@ -89,8 +89,8 @@ class TestBusinessRolesDemoEndpoint:
         """A token with the permission but no active business context is rejected."""
         biz_id = str(uuid4())
         token = _token_with_permission(
-            business_id=None,  # freshly-registered user, no context yet
-            permissions=[str(PermissionCode.ROLES_ASSIGN)],
+            business_id=None,
+            permissions=[str(PermissionCode.BUSINESS_ROLES_VIEW)],
         )
 
         resp = await client.get(
@@ -109,7 +109,7 @@ class TestBusinessRolesDemoEndpoint:
 
         token = _token_with_permission(
             business_id=token_business_id,
-            permissions=[str(PermissionCode.ROLES_ASSIGN)],
+            permissions=[str(PermissionCode.BUSINESS_ROLES_VIEW)],
         )
 
         resp = await client.get(

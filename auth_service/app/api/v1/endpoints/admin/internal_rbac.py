@@ -38,7 +38,7 @@ router = APIRouter(prefix="/admin", tags=["Admin Internal RBAC"])
 @router.get("/groups", response_model=list[GroupRead])
 async def list_groups(
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.GROUPS_VIEW)),
     db: AsyncSession = Depends(get_async_session),
 ) -> list[Group]:
     result = await db.exec(select(Group))
@@ -49,7 +49,7 @@ async def list_groups(
 async def get_group(
     group_id: UUID,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.GROUPS_VIEW)),
     db: AsyncSession = Depends(get_async_session),
 ) -> Group:
     group = await db.get(Group, group_id)
@@ -64,7 +64,7 @@ async def get_group(
 async def create_group(
     body: GroupCreate,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.GROUPS_CREATE)),
     db: AsyncSession = Depends(get_async_session),
 ) -> Group:
     group = Group(name=body.name, description=body.description)
@@ -79,7 +79,7 @@ async def update_group(
     group_id: UUID,
     body: GroupUpdate,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.GROUPS_UPDATE)),
     db: AsyncSession = Depends(get_async_session),
 ) -> Group:
     async with db.begin():
@@ -106,7 +106,7 @@ async def update_group(
 async def delete_group(
     group_id: UUID,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.GROUPS_DELETE)),
     db: AsyncSession = Depends(get_async_session),
 ) -> None:
     async with db.begin():
@@ -134,7 +134,7 @@ async def delete_group(
 @router.get("/roles", response_model=list[RoleRead])
 async def list_roles(
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.ROLES_VIEW)),
     db: AsyncSession = Depends(get_async_session),
 ) -> list[Role]:
     result = await db.exec(select(Role))
@@ -145,7 +145,7 @@ async def list_roles(
 async def get_role(
     role_id: UUID,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.ROLES_VIEW)),
     db: AsyncSession = Depends(get_async_session),
 ) -> Role:
     role = await db.get(Role, role_id)
@@ -160,7 +160,7 @@ async def get_role(
 async def create_role(
     body: RoleCreate,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.ROLES_CREATE)),
     db: AsyncSession = Depends(get_async_session),
 ) -> Role:
     role = Role(group_id=body.group_id, name=body.name, description=body.description)
@@ -175,7 +175,7 @@ async def update_role(
     role_id: UUID,
     body: RoleUpdate,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.ROLES_UPDATE)),
     db: AsyncSession = Depends(get_async_session),
 ) -> Role:
     async with db.begin():
@@ -202,7 +202,7 @@ async def update_role(
 async def delete_role(
     role_id: UUID,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.ROLES_DELETE)),
     db: AsyncSession = Depends(get_async_session),
 ) -> None:
     async with db.begin():
@@ -234,7 +234,7 @@ async def assign_role_permission(
     role_id: UUID,
     body: AssignRolePermissionRequest,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.ROLES_MANAGE_PERMISSIONS)),
     db: AsyncSession = Depends(get_async_session),
 ) -> dict[str, str]:
     async with db.begin():
@@ -274,7 +274,7 @@ async def remove_role_permission(
     role_id: UUID,
     permission_code: str = Query(...),
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.ROLES_MANAGE_PERMISSIONS)),
     db: AsyncSession = Depends(get_async_session),
 ) -> None:
     async with db.begin():
@@ -307,7 +307,7 @@ async def remove_role_permission(
 @router.get("/platform-roles", response_model=list[PlatformRoleRead])
 async def list_platform_roles(
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.PLATFORM_ROLES_VIEW)),
     db: AsyncSession = Depends(get_async_session),
 ) -> list[PlatformRole]:
     result = await db.exec(select(PlatformRole))
@@ -318,7 +318,7 @@ async def list_platform_roles(
 async def get_platform_role(
     platform_role_id: UUID,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.PLATFORM_ROLES_VIEW)),
     db: AsyncSession = Depends(get_async_session),
 ) -> PlatformRole:
     pr = await db.get(PlatformRole, platform_role_id)
@@ -337,7 +337,7 @@ async def get_platform_role(
 async def create_platform_role(
     body: PlatformRoleCreate,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.PLATFORM_ROLES_CREATE)),
     db: AsyncSession = Depends(get_async_session),
 ) -> PlatformRole:
     pr = PlatformRole(name=body.name)
@@ -354,7 +354,7 @@ async def update_platform_role(
     platform_role_id: UUID,
     body: PlatformRoleUpdate,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.PLATFORM_ROLES_UPDATE)),
     db: AsyncSession = Depends(get_async_session),
 ) -> PlatformRole:
     async with db.begin():
@@ -383,7 +383,7 @@ async def update_platform_role(
 async def delete_platform_role(
     platform_role_id: UUID,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.PLATFORM_ROLES_DELETE)),
     db: AsyncSession = Depends(get_async_session),
 ) -> None:
     async with db.begin():
@@ -420,7 +420,7 @@ async def assign_platform_role_permission(
     platform_role_id: UUID,
     body: AssignPlatformRolePermissionRequest,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.PLATFORM_ROLES_MANAGE_PERMISSIONS)),
     db: AsyncSession = Depends(get_async_session),
 ) -> dict[str, str]:
     async with db.begin():
@@ -465,7 +465,7 @@ async def remove_platform_role_permission(
     platform_role_id: UUID,
     permission_code: str = Query(...),
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.PLATFORM_ROLES_MANAGE_PERMISSIONS)),
     db: AsyncSession = Depends(get_async_session),
 ) -> None:
     async with db.begin():
@@ -503,7 +503,7 @@ async def assign_user_to_group(
     user_id: UUID,
     body: AssignUserToGroupRequest,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.GROUPS_ASSIGN_USER)),
     db: AsyncSession = Depends(get_async_session),
 ) -> dict[str, str]:
     async with db.begin():
@@ -545,7 +545,7 @@ async def assign_user_to_group(
 async def remove_user_from_group(
     user_id: UUID,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.GROUPS_ASSIGN_USER)),
     db: AsyncSession = Depends(get_async_session),
 ) -> None:
     async with db.begin():
@@ -578,7 +578,7 @@ async def assign_user_role(
     user_id: UUID,
     body: AssignInternalRoleRequest,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN_TO_USER)),
     db: AsyncSession = Depends(get_async_session),
 ) -> dict[str, str]:
     async with db.begin():
@@ -636,7 +636,7 @@ async def remove_user_role(
     user_id: UUID,
     role_id: UUID = Query(...),
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN_TO_USER)),
     db: AsyncSession = Depends(get_async_session),
 ) -> None:
     async with db.begin():
@@ -673,7 +673,7 @@ async def assign_user_platform_role(
     user_id: UUID,
     body: AssignPlatformRoleRequest,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.PLATFORM_ROLES_ASSIGN_TO_USER)),
     db: AsyncSession = Depends(get_async_session),
 ) -> dict[str, str]:
     async with db.begin():
@@ -714,7 +714,7 @@ async def remove_user_platform_role(
     user_id: UUID,
     platform_role_id: UUID = Query(...),
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.ROLES_ASSIGN)),
+    _perm: None = Depends(require_permission(PermissionCode.PLATFORM_ROLES_ASSIGN_TO_USER)),
     db: AsyncSession = Depends(get_async_session),
 ) -> None:
     async with db.begin():

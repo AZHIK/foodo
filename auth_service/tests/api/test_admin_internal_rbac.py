@@ -10,7 +10,15 @@ from app.models.internal import Group, Role, UserGroup, UserRole
 from app.models.platform import PlatformRole
 from app.models.user import User, UserCategory, UserStatus
 
-_TEST_PERMISSION = "roles.assign"
+# All fine-grained codes needed by the CRUD tests below.
+_TEST_PERMISSIONS = [
+    "groups.view", "groups.create", "groups.update", "groups.delete", "groups.assign_user",
+    "roles.view", "roles.create", "roles.update", "roles.delete",
+    "roles.assign_to_user", "roles.manage_permissions",
+    "platform_roles.view", "platform_roles.create",
+    "platform_roles.update", "platform_roles.delete",
+    "platform_roles.assign_to_user", "platform_roles.manage_permissions",
+]
 
 
 def _unique_phone() -> str:
@@ -71,7 +79,7 @@ async def _create_staff_token_with_perm(db_session: AsyncSession) -> str:
         subject=str(user.id),
         user_category=UserCategory.PLATFORM_STAFF.value,
         roles=["admin"],
-        permissions=[_TEST_PERMISSION],
+        permissions=_TEST_PERMISSIONS,
     )
 
 

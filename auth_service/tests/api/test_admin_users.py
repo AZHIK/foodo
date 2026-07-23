@@ -8,7 +8,14 @@ from app.core.database import async_session_factory
 from app.core.security import create_access_token
 from app.models.user import User, UserCategory, UserStatus
 
-_TEST_PERMISSION = "users.manage"
+# Specific fine-grained permission codes (new)
+USERS_VIEW = "users.view"
+USERS_UPDATE = "users.update"
+USERS_DEACTIVATE = "users.deactivate"
+USERS_REACTIVATE = "users.reactivate"
+
+# Coarse/legacy permission (old)
+USERS_MANAGE = "users.manage"
 
 
 def _unique_phone() -> str:
@@ -53,10 +60,9 @@ async def _create_staff_token_no_perm(db_session: AsyncSession) -> str:
     )
 
 
-async def _create_staff_token_with_perm(
-    db_session: AsyncSession, extra_perms: list[str] | None = None
+async def _create_staff_token_with_perms(
+    db_session: AsyncSession, perms: list[str]
 ) -> str:
-    perms = [_TEST_PERMISSION] + (extra_perms or [])
     async with db_session.begin():
         user = User(
             phone=_unique_phone(),
@@ -74,6 +80,13 @@ async def _create_staff_token_with_perm(
         roles=["admin"],
         permissions=perms,
     )
+
+
+async def _create_staff_token_with_coarse_perm(
+    db_session: AsyncSession
+) -> str:
+    """Token with only the legacy coarse USERS_MANAGE permission."""
+    return await _create_staff_token_with_perms(db_session, [USERS_MANAGE])
 
 
 async def _create_test_users(db_session: AsyncSession) -> list[User]:
@@ -135,11 +148,11 @@ class TestAdminUserAccess:
 
 
 class TestAdminUserList:
-    async def test_list_users_with_perm_succeeds(
+    async def test_list_users_with_view_perm_succeeds(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         await _create_test_users(db_session)
-        token = await _create_staff_token_with_perm(db_session)
+        token = await _create_staff_token_with_perms(db_session, [USERS_VIEW])
 
         resp = await client.get(
             "/admin/users", headers={"Authorization": f"Bearer {token}"}
@@ -149,11 +162,23 @@ class TestAdminUserList:
         assert isinstance(data, list)
         assert len(data) >= 5
 
+    async def test_list_users_with_coarse_perm_rejected(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Legacy coarse USERS_MANAGE should NOT grant access to specific endpoints."""
+        await _create_test_users(db_session)
+        token = await _create_staff_token_with_coarse_perm(db_session)
+
+        resp = await client.get(
+            "/admin/users", headers={"Authorization": f"Bearer {token}"}
+        )
+        assert resp.status_code == 403
+
     async def test_list_users_filters_user_category(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         await _create_test_users(db_session)
-        token = await _create_staff_token_with_perm(db_session)
+        token = await _create_staff_token_with_perms(db_session, [USERS_VIEW])
 
         resp = await client.get(
             "/admin/users?user_category=business_user",
@@ -167,7 +192,7 @@ class TestAdminUserList:
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         await _create_test_users(db_session)
-        token = await _create_staff_token_with_perm(db_session)
+        token = await _create_staff_token_with_perms(db_session, [USERS_VIEW])
 
         resp = await client.get(
             "/admin/users?status=suspended",
@@ -181,7 +206,7 @@ class TestAdminUserList:
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         await _create_test_users(db_session)
-        token = await _create_staff_token_with_perm(db_session)
+        token = await _create_staff_token_with_perms(db_session, [USERS_VIEW])
 
         resp = await client.get(
             "/admin/users?is_active=false",
@@ -196,7 +221,7 @@ class TestAdminUserList:
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         await _create_test_users(db_session)
-        token = await _create_staff_token_with_perm(db_session)
+        token = await _create_staff_token_with_perms(db_session, [USERS_VIEW])
 
         resp = await client.get(
             "/admin/users?search=Test+User",
@@ -212,7 +237,7 @@ class TestAdminUserDetail:
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         users = await _create_test_users(db_session)
-        token = await _create_staff_token_with_perm(db_session)
+        token = await _create_staff_token_with_perms(db_session, [USERS_VIEW])
         target = users[0]
 
         resp = await client.get(
@@ -227,7 +252,7 @@ class TestAdminUserDetail:
     async def test_get_user_detail_not_found(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
-        token = await _create_staff_token_with_perm(db_session)
+        token = await _create_staff_token_with_perms(db_session, [USERS_VIEW])
         resp = await client.get(
             f"/admin/users/{uuid4()}",
             headers={"Authorization": f"Bearer {token}"},
@@ -240,7 +265,7 @@ class TestAdminUserUpdate:
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         users = await _create_test_users(db_session)
-        token = await _create_staff_token_with_perm(db_session)
+        token = await _create_staff_token_with_perms(db_session, [USERS_UPDATE])
         target = users[0]
 
         resp = await client.patch(
@@ -256,7 +281,7 @@ class TestAdminUserUpdate:
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         users = await _create_test_users(db_session)
-        token = await _create_staff_token_with_perm(db_session)
+        token = await _create_staff_token_with_perms(db_session, [USERS_UPDATE])
         target = users[0]
 
         resp = await client.patch(
@@ -271,7 +296,7 @@ class TestAdminUserUpdate:
     async def test_patch_user_not_found(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
-        token = await _create_staff_token_with_perm(db_session)
+        token = await _create_staff_token_with_perms(db_session, [USERS_UPDATE])
         resp = await client.patch(
             f"/admin/users/{uuid4()}",
             json={"is_active": False},
@@ -279,13 +304,28 @@ class TestAdminUserUpdate:
         )
         assert resp.status_code == 404
 
+    async def test_patch_user_coarse_perm_rejected(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """USERS_MANAGE alone should NOT grant PATCH access to specific endpoint."""
+        users = await _create_test_users(db_session)
+        token = await _create_staff_token_with_coarse_perm(db_session)
+        target = users[0]
+
+        resp = await client.patch(
+            f"/admin/users/{target.id}",
+            json={"is_active": False},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+
 
 class TestAdminUserDelete:
     async def test_delete_sets_is_active_false(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         users = await _create_test_users(db_session)
-        token = await _create_staff_token_with_perm(db_session)
+        token = await _create_staff_token_with_perms(db_session, [USERS_DEACTIVATE])
         target_id = users[0].id
 
         resp = await client.delete(
@@ -303,7 +343,7 @@ class TestAdminUserDelete:
     async def test_delete_not_found(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
-        token = await _create_staff_token_with_perm(db_session)
+        token = await _create_staff_token_with_perms(db_session, [USERS_DEACTIVATE])
         resp = await client.delete(
             f"/admin/users/{uuid4()}",
             headers={"Authorization": f"Bearer {token}"},
@@ -328,7 +368,7 @@ class TestAdminUserDelete:
             subject=str(user.id),
             user_category=UserCategory.PLATFORM_STAFF.value,
             roles=["admin"],
-            permissions=[_TEST_PERMISSION],
+            permissions=[USERS_DEACTIVATE],
         )
 
         resp = await client.delete(
@@ -337,3 +377,17 @@ class TestAdminUserDelete:
         )
         assert resp.status_code == 400
         assert "Cannot deactivate yourself" in resp.json()["detail"]
+
+    async def test_delete_coarse_perm_rejected(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """USERS_MANAGE alone should NOT grant DELETE access to specific endpoint."""
+        users = await _create_test_users(db_session)
+        target_id = users[0].id
+
+        token = await _create_staff_token_with_coarse_perm(db_session)
+        resp = await client.delete(
+            f"/admin/users/{target_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403

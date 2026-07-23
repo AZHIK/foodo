@@ -53,7 +53,7 @@ AVAILABLE DEPENDENCY FACTORIES
         @router.get(
             "/businesses/{business_id}/roles",
             dependencies=[
-                Depends(require_business_permission(PermissionCode.ROLES_ASSIGN))
+                Depends(require_business_permission(PermissionCode.BUSINESS_ROLES_VIEW))
             ],
         )
         async def list_business_roles(...): ...
@@ -276,7 +276,7 @@ def require_business_permission(
         @router.get("/businesses/{business_id}/roles")
         async def list_roles(
             business_id: str = Depends(
-                require_business_permission(PermissionCode.ROLES_ASSIGN)
+                require_business_permission(PermissionCode.BUSINESS_ROLES_VIEW)
             ),
         ): ...
 

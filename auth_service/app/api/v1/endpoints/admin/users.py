@@ -22,7 +22,7 @@ router = APIRouter(prefix="/admin/users", tags=["Admin Users"])
 @router.get("", response_model=list[UserRead])
 async def list_users(
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.USERS_MANAGE)),
+    _perm: None = Depends(require_permission(PermissionCode.USERS_VIEW)),
     filters: UserListFilters = Depends(),
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
@@ -51,7 +51,7 @@ async def list_users(
 async def get_user_detail(
     user_id: UUID,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.USERS_MANAGE)),
+    _perm: None = Depends(require_permission(PermissionCode.USERS_VIEW)),
     db: AsyncSession = Depends(get_async_session),
 ) -> dict[str, Any]:
     user = await db.get(User, user_id)
@@ -117,7 +117,7 @@ async def update_user(
     user_id: UUID,
     body: UserAdminUpdate,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.USERS_MANAGE)),
+    _perm: None = Depends(require_permission(PermissionCode.USERS_UPDATE)),
     db: AsyncSession = Depends(get_async_session),
 ) -> User:
     async with db.begin():
@@ -147,7 +147,7 @@ async def update_user(
 async def deactivate_user(
     user_id: UUID,
     _staff: None = Depends(require_platform_staff()),
-    _perm: None = Depends(require_permission(PermissionCode.USERS_MANAGE)),
+    _perm: None = Depends(require_permission(PermissionCode.USERS_DEACTIVATE)),
     _current_user_id: str = Depends(get_current_user_id_uuid),
     db: AsyncSession = Depends(get_async_session),
 ) -> None:
@@ -173,3 +173,39 @@ async def deactivate_user(
 
         user.is_active = False
         db.add(user)
+
+
+@router.post("/{user_id}/reactivate", response_model=UserRead)
+async def reactivate_user(
+    user_id: UUID,
+    _staff: None = Depends(require_platform_staff()),
+    _perm: None = Depends(require_permission(PermissionCode.USERS_REACTIVATE)),
+    _current_user_id: str = Depends(get_current_user_id_uuid),
+    db: AsyncSession = Depends(get_async_session),
+) -> User:
+    """Reactivate a previously deactivated user by setting is_active=true."""
+    async with db.begin():
+        user = await db.get(User, user_id)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+
+        if str(user.id) == _current_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot reactivate yourself (you are already active)",
+            )
+
+        if user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User is already active",
+            )
+
+        user.is_active = True
+        db.add(user)
+
+    await db.refresh(user)
+    return user

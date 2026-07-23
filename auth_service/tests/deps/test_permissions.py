@@ -112,6 +112,25 @@ class TestRequirePermission:
         result = await _call(checker, claims)
         assert result is claims
 
+    # ── Remap regression: coarse ROLES_ASSIGN vs specific BUSINESS_ROLES_VIEW ──
+
+    async def test_remap_business_roles_view_rejects_coarse_roles_assign(self) -> None:
+        """Endpoint now requires BUSINESS_ROLES_VIEW; coarse ROLES_ASSIGN alone
+        must NOT satisfy the check (proves the remap in businesses.py took effect)."""
+        checker = require_permission(PermissionCode.BUSINESS_ROLES_VIEW)
+        claims = _business_claims(permissions=["roles.assign"])
+        with pytest.raises(HTTPException) as exc_info:
+            await _call(checker, claims)
+        assert exc_info.value.status_code == 403
+        assert "business_roles.view" in exc_info.value.detail
+
+    async def test_remap_business_roles_view_accepts_specific_code(self) -> None:
+        """A token with the new specific BUSINESS_ROLES_VIEW is accepted."""
+        checker = require_permission(PermissionCode.BUSINESS_ROLES_VIEW)
+        claims = _business_claims(permissions=["business_roles.view"])
+        result = await _call(checker, claims)
+        assert result is claims
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 2. require_any_permission
@@ -290,6 +309,31 @@ class TestRequireBusinessPermission:
         # Context check runs first → context-specific message
         assert exc_info.value.status_code == 403
         assert "business context" in exc_info.value.detail.lower()
+
+    # ── Remap regression: coarse ROLES_ASSIGN vs specific BUSINESS_ROLES_VIEW ──
+
+    async def test_remap_business_permission_rejects_coarse_roles_assign(self) -> None:
+        """require_business_permission now checks BUSINESS_ROLES_VIEW;
+        coarse ROLES_ASSIGN must NOT satisfy it."""
+        checker = require_business_permission(PermissionCode.BUSINESS_ROLES_VIEW)
+        claims = _business_claims(
+            permissions=["roles.assign"],
+            active_business_id="biz-xyz",
+        )
+        with pytest.raises(HTTPException) as exc_info:
+            await _call(checker, claims)
+        assert exc_info.value.status_code == 403
+        assert "business_roles.view" in exc_info.value.detail
+
+    async def test_remap_business_permission_accepts_new_specific_code(self) -> None:
+        """A business-context token with BUSINESS_ROLES_VIEW is accepted."""
+        checker = require_business_permission(PermissionCode.BUSINESS_ROLES_VIEW)
+        claims = _business_claims(
+            permissions=["business_roles.view"],
+            active_business_id="biz-xyz",
+        )
+        result = await _call(checker, claims)
+        assert result == "biz-xyz"
 
     async def test_invalid_code_raises_at_factory_time(self) -> None:
         with pytest.raises(ValueError):
