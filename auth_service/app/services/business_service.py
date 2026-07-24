@@ -40,9 +40,7 @@ async def create_business(
         await db.refresh(business)
 
         templates = (
-            await db.exec(
-                select(RoleTemplate).where(RoleTemplate.business_type == business_type)
-            )
+            await db.exec(select(RoleTemplate).where(RoleTemplate.business_type == business_type))
         ).all()
 
         if not templates:

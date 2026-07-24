@@ -110,11 +110,14 @@ async def rotate_refresh_token(
                 token_id=str(old.id),
                 family_id=str(old.family_id),
             )
-            await publish_event("auth:refresh_token_replay", {
-                "user_id": str(old.user_id),
-                "token_id": str(old.id),
-                "family_id": str(old.family_id),
-            })
+            await publish_event(
+                "auth:refresh_token_replay",
+                {
+                    "user_id": str(old.user_id),
+                    "token_id": str(old.id),
+                    "family_id": str(old.family_id),
+                },
+            )
             raise TokenReuseDetectedError("Refresh token has already been used.")
 
         if old.revoked_at is not None:

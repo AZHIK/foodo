@@ -54,9 +54,7 @@ _PROCUREMENT: tuple[PermissionCode, ...] = (
     PermissionCode.PROCUREMENT_APPROVE,
 )
 
-_PROCUREMENT_AUTO: tuple[PermissionCode, ...] = (
-    PermissionCode.PROCUREMENT_AUTO_ORDER_ENABLE,
-)
+_PROCUREMENT_AUTO: tuple[PermissionCode, ...] = (PermissionCode.PROCUREMENT_AUTO_ORDER_ENABLE,)
 
 _AI: tuple[PermissionCode, ...] = (
     PermissionCode.AI_FORECAST_VIEW,
@@ -70,9 +68,7 @@ _POS: tuple[PermissionCode, ...] = (
 
 _SUPPLIER: tuple[PermissionCode, ...] = (PermissionCode.SUPPLIER_PRICE_MANAGE,)
 
-_FARMER: tuple[PermissionCode, ...] = (
-    PermissionCode.FARMER_SUPPLY_COMMITMENT_MANAGE,
-)
+_FARMER: tuple[PermissionCode, ...] = (PermissionCode.FARMER_SUPPLY_COMMITMENT_MANAGE,)
 
 _PLATFORM_FULL: tuple[PermissionCode, ...] = (
     PermissionCode.USERS_VIEW,
@@ -118,32 +114,19 @@ ROLE_TEMPLATE_SEEDS: tuple[RoleTemplateSeed, ...] = (
         name="supplier_owner",
         business_type="supplier",
         description="Supplier owner — full supplier operational control.",
-        permissions=(
-            _BUSINESS_ADMIN_PERMS
-            + _INVENTORY_ADJUST
-            + _PROCUREMENT
-            + _SUPPLIER
-        ),
+        permissions=(_BUSINESS_ADMIN_PERMS + _INVENTORY_ADJUST + _PROCUREMENT + _SUPPLIER),
     ),
     RoleTemplateSeed(
         name="farmer_owner",
         business_type="farmer",
         description="Farmer owner — full farm operational control.",
-        permissions=(
-            _BUSINESS_ADMIN_PERMS
-            + _INVENTORY_ADJUST
-            + _FARMER
-        ),
+        permissions=(_BUSINESS_ADMIN_PERMS + _INVENTORY_ADJUST + _FARMER),
     ),
     RoleTemplateSeed(
         name="distributor_owner",
         business_type="distributor",
         description="Distributor owner — full distribution operational control.",
-        permissions=(
-            _BUSINESS_ADMIN_PERMS
-            + _INVENTORY_ADJUST
-            + _PROCUREMENT
-        ),
+        permissions=(_BUSINESS_ADMIN_PERMS + _INVENTORY_ADJUST + _PROCUREMENT),
     ),
     RoleTemplateSeed(
         name="platform_operator_owner",

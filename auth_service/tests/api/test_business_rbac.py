@@ -1,0 +1,529 @@
+"""Integration tests for business-scoped RBAC management endpoints."""
+
+from uuid import UUID, uuid4
+
+from httpx import AsyncClient
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from app.core.permission_codes import PermissionCode
+from app.core.security import create_access_token, hash_password
+from app.models.business import (
+    Business,
+    BusinessRole,
+    BusinessRolePermission,
+    BusinessType,
+    UserBusinessRole,
+)
+from app.models.user import User, UserCategory, UserStatus
+
+_TEST_PASSWORD = "TestPass1!"
+
+
+async def _make_business(db_session: AsyncSession, owner: User) -> Business:
+    biz = Business(
+        name=f"Test Biz {uuid4().hex[:8]}",
+        business_type=BusinessType.RESTAURANT,
+        owner_user_id=owner.id,
+        country_code="TZ",
+    )
+    db_session.add(biz)
+    await db_session.commit()
+    await db_session.refresh(biz)
+    return biz
+
+
+async def _make_business_user(db_session: AsyncSession, phone: str | None = None) -> User:
+    user = User(
+        phone=phone or f"+2557{uuid4().int % 100_000_000:08d}",
+        full_name="Business User",
+        user_category=UserCategory.BUSINESS_USER,
+        status=UserStatus.ACTIVE,
+        password_hash=hash_password(_TEST_PASSWORD),
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+def _owner_token(user: User, business_id) -> str:
+    return create_access_token(
+        subject=str(user.id),
+        user_category=UserCategory.BUSINESS_USER.value,
+        active_business_id=str(business_id),
+        roles=["owner"],
+        permissions=["*"],
+        other_businesses=[],
+    )
+
+
+def _staff_token(user: User, business_id, perms: list[str]) -> str:
+    return create_access_token(
+        subject=str(user.id),
+        user_category=UserCategory.BUSINESS_USER.value,
+        active_business_id=str(business_id),
+        roles=["manager"],
+        permissions=perms,
+        other_businesses=[],
+    )
+
+
+class TestCreateBusinessRole:
+    async def test_creates_role(self, client: AsyncClient, db_session: AsyncSession) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier", "description": "Handles POS transactions"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["name"] == "Cashier"
+        assert data["description"] == "Handles POS transactions"
+        assert data["is_protected"] is False
+        assert data["business_id"] == str(biz.id)
+
+    async def test_duplicate_name_returns_409(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 409
+        assert "already exists" in resp.json()["detail"].lower()
+
+    async def test_same_name_different_business_ok(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        owner = await _make_business_user(db_session)
+        biz1 = await _make_business(db_session, owner)
+        biz2 = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz1.id)
+
+        await client.post(
+            f"/api/v1/businesses/{biz1.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        await db_session.commit()
+
+        token_biz2 = _owner_token(owner, biz2.id)
+        resp = await client.post(
+            f"/api/v1/businesses/{biz2.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token_biz2}"},
+        )
+        assert resp.status_code == 201
+
+    async def test_without_permission_returns_403(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _staff_token(owner, biz.id, [PermissionCode.INVENTORY_VIEW])
+
+        resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+
+    async def test_no_business_context_returns_403(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        owner = await _make_business_user(db_session)
+        token = create_access_token(
+            subject=str(owner.id),
+            user_category=UserCategory.BUSINESS_USER.value,
+            permissions=["*"],
+        )
+
+        resp = await client.post(
+            f"/api/v1/businesses/{uuid4()}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+
+
+class TestUpdateBusinessRole:
+    async def test_updates_name(self, client: AsyncClient, db_session: AsyncSession) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = create_resp.json()["id"]
+
+        resp = await client.patch(
+            f"/api/v1/businesses/{biz.id}/roles/{role_id}",
+            json={"name": "Senior Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "Senior Cashier"
+
+    async def test_protected_role_returns_403(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Manager"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = create_resp.json()["id"]
+
+        role = await db_session.get(BusinessRole, UUID(role_id))
+        role.is_protected = True
+        db_session.add(role)
+        await db_session.commit()
+
+        resp = await client.patch(
+            f"/api/v1/businesses/{biz.id}/roles/{role_id}",
+            json={"name": "Changed"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+
+
+class TestDeleteBusinessRole:
+    async def test_deletes_role(self, client: AsyncClient, db_session: AsyncSession) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Temp Role"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = create_resp.json()["id"]
+
+        resp = await client.delete(
+            f"/api/v1/businesses/{biz.id}/roles/{role_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 204
+
+        fetched = await db_session.get(BusinessRole, UUID(role_id))
+        assert fetched is None or fetched.is_deleted is True
+
+    async def test_protected_role_returns_403(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Protected Role"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = create_resp.json()["id"]
+
+        role = await db_session.get(BusinessRole, UUID(role_id))
+        role.is_protected = True
+        db_session.add(role)
+        await db_session.commit()
+
+        resp = await client.delete(
+            f"/api/v1/businesses/{biz.id}/roles/{role_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+
+    async def test_role_with_assignments_returns_409(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Staff Role"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = UUID(create_resp.json()["id"])
+
+        staff = await _make_business_user(db_session)
+
+        ubr = UserBusinessRole(user_id=staff.id, business_id=biz.id, business_role_id=role_id)
+        db_session.add(ubr)
+        await db_session.commit()
+
+        resp = await client.delete(
+            f"/api/v1/businesses/{biz.id}/roles/{role_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 409
+        assert "active user assignments" in resp.json()["detail"].lower()
+
+
+class TestAssignPermission:
+    async def test_assigns_permission(self, client: AsyncClient, db_session: AsyncSession) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = create_resp.json()["id"]
+
+        resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles/{role_id}/permissions",
+            json={"permission_code": "pos.write"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 201
+        assert resp.json()["detail"] == "Permission assigned to role"
+
+        rp = (
+            await db_session.exec(
+                select(BusinessRolePermission).where(
+                    BusinessRolePermission.business_role_id == UUID(role_id),
+                    BusinessRolePermission.permission_code == "pos.write",
+                )
+            )
+        ).one_or_none()
+        assert rp is not None
+
+    async def test_invalid_permission_code_returns_422(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = create_resp.json()["id"]
+
+        resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles/{role_id}/permissions",
+            json={"permission_code": "not.a.real.code"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 422
+
+
+class TestRemovePermission:
+    async def test_removes_permission(self, client: AsyncClient, db_session: AsyncSession) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = create_resp.json()["id"]
+
+        await client.post(
+            f"/api/v1/businesses/{biz.id}/roles/{role_id}/permissions",
+            json={"permission_code": "pos.write"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        resp = await client.delete(
+            f"/api/v1/businesses/{biz.id}/roles/{role_id}/permissions/pos.write",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 204
+
+    async def test_not_found_returns_404(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = create_resp.json()["id"]
+
+        resp = await client.delete(
+            f"/api/v1/businesses/{biz.id}/roles/{role_id}/permissions/nonexistent.code",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 404
+
+
+class TestAssignStaff:
+    async def test_assigns_by_user_id(self, client: AsyncClient, db_session: AsyncSession) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = create_resp.json()["id"]
+
+        staff = await _make_business_user(db_session)
+
+        resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/staff",
+            json={
+                "business_role_id": role_id,
+                "user_id": str(staff.id),
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 201
+        assert resp.json()["detail"] == "Staff role assigned"
+
+    async def test_assigns_by_phone(self, client: AsyncClient, db_session: AsyncSession) -> None:
+        phone = f"+2557{uuid4().int % 100_000_000:08d}"
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = create_resp.json()["id"]
+
+        await _make_business_user(db_session, phone=phone)
+
+        resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/staff",
+            json={
+                "business_role_id": role_id,
+                "phone": phone,
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 201
+
+    async def test_duplicate_assignment_returns_409(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = create_resp.json()["id"]
+
+        staff = await _make_business_user(db_session)
+
+        await client.post(
+            f"/api/v1/businesses/{biz.id}/staff",
+            json={
+                "business_role_id": role_id,
+                "user_id": str(staff.id),
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/staff",
+            json={
+                "business_role_id": role_id,
+                "user_id": str(staff.id),
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 409
+
+    async def test_neither_user_id_nor_phone_returns_422(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = create_resp.json()["id"]
+
+        resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/staff",
+            json={
+                "business_role_id": role_id,
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 422
+
+    async def test_non_business_user_rejected(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = create_resp.json()["id"]
+
+        platform_user = User(
+            phone=f"+2557{uuid4().int % 100_000_000:08d}",
+            email=f"staff{uuid4().hex[:8]}@foodlink.com",
+            full_name="Platform Staff",
+            user_category=UserCategory.PLATFORM_STAFF,
+            status=UserStatus.ACTIVE,
+            is_email_verified=True,
+        )
+        db_session.add(platform_user)
+        await db_session.commit()
+
+        resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/staff",
+            json={
+                "business_role_id": role_id,
+                "user_id": str(platform_user.id),
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 400

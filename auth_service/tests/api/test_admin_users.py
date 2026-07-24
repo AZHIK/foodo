@@ -60,9 +60,7 @@ async def _create_staff_token_no_perm(db_session: AsyncSession) -> str:
     )
 
 
-async def _create_staff_token_with_perms(
-    db_session: AsyncSession, perms: list[str]
-) -> str:
+async def _create_staff_token_with_perms(db_session: AsyncSession, perms: list[str]) -> str:
     async with db_session.begin():
         user = User(
             phone=_unique_phone(),
@@ -82,9 +80,7 @@ async def _create_staff_token_with_perms(
     )
 
 
-async def _create_staff_token_with_coarse_perm(
-    db_session: AsyncSession
-) -> str:
+async def _create_staff_token_with_coarse_perm(db_session: AsyncSession) -> str:
     """Token with only the legacy coarse USERS_MANAGE permission."""
     return await _create_staff_token_with_perms(db_session, [USERS_MANAGE])
 
@@ -131,18 +127,14 @@ class TestAdminUserAccess:
         token = await _create_business_user_token(db_session)
         user_id = uuid4()
         path = path_template.format(user_id=user_id)
-        resp = await client.request(
-            method, path, headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.request(method, path, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 403
 
     async def test_staff_without_permission_rejected(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         token = await _create_staff_token_no_perm(db_session)
-        resp = await client.get(
-            "/admin/users", headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get("/admin/users", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 403
         assert "Permission" in resp.json()["detail"]
 
@@ -154,9 +146,7 @@ class TestAdminUserList:
         await _create_test_users(db_session)
         token = await _create_staff_token_with_perms(db_session, [USERS_VIEW])
 
-        resp = await client.get(
-            "/admin/users", headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get("/admin/users", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data, list)
@@ -169,9 +159,7 @@ class TestAdminUserList:
         await _create_test_users(db_session)
         token = await _create_staff_token_with_coarse_perm(db_session)
 
-        resp = await client.get(
-            "/admin/users", headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get("/admin/users", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 403
 
     async def test_list_users_filters_user_category(
@@ -261,9 +249,7 @@ class TestAdminUserDetail:
 
 
 class TestAdminUserUpdate:
-    async def test_patch_user_status(
-        self, client: AsyncClient, db_session: AsyncSession
-    ) -> None:
+    async def test_patch_user_status(self, client: AsyncClient, db_session: AsyncSession) -> None:
         users = await _create_test_users(db_session)
         token = await _create_staff_token_with_perms(db_session, [USERS_UPDATE])
         target = users[0]
@@ -340,9 +326,7 @@ class TestAdminUserDelete:
             assert row is not None
             assert row.is_active is False
 
-    async def test_delete_not_found(
-        self, client: AsyncClient, db_session: AsyncSession
-    ) -> None:
+    async def test_delete_not_found(self, client: AsyncClient, db_session: AsyncSession) -> None:
         token = await _create_staff_token_with_perms(db_session, [USERS_DEACTIVATE])
         resp = await client.delete(
             f"/admin/users/{uuid4()}",

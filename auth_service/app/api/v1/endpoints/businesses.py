@@ -35,9 +35,7 @@ async def create_business_endpoint(
     )
 
     roles = (
-        await db.exec(
-            select(BusinessRole).where(BusinessRole.business_id == business.id)
-        )
+        await db.exec(select(BusinessRole).where(BusinessRole.business_id == business.id))
     ).all()
     role_names = [r.name for r in roles]
     owner_role = next((r for r in roles if r.is_protected), None)
@@ -53,9 +51,7 @@ async def create_business_endpoint(
 async def get_business(
     business_id: UUID,
     db: AsyncSession = Depends(get_async_session),
-    _caller_business_id: str = Depends(
-        require_business_permission(PermissionCode.BUSINESSES_VIEW)
-    ),
+    _caller_business_id: str = Depends(require_business_permission(PermissionCode.BUSINESSES_VIEW)),
 ) -> BusinessRead:
     business = await db.get(Business, business_id)
     if business is None:

@@ -50,6 +50,7 @@ def rate_limit_with_risk_event(
     When the rate limit is exceeded, an ``auth_risk_events`` row is recorded
     before the ``429`` response is returned.
     """
+
     async def dependency(
         request: Request,
         db: AsyncSession = Depends(get_async_session),  # noqa: B008

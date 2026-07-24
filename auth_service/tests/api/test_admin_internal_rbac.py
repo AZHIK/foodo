@@ -12,12 +12,23 @@ from app.models.user import User, UserCategory, UserStatus
 
 # All fine-grained codes needed by the CRUD tests below.
 _TEST_PERMISSIONS = [
-    "groups.view", "groups.create", "groups.update", "groups.delete", "groups.assign_user",
-    "roles.view", "roles.create", "roles.update", "roles.delete",
-    "roles.assign_to_user", "roles.manage_permissions",
-    "platform_roles.view", "platform_roles.create",
-    "platform_roles.update", "platform_roles.delete",
-    "platform_roles.assign_to_user", "platform_roles.manage_permissions",
+    "groups.view",
+    "groups.create",
+    "groups.update",
+    "groups.delete",
+    "groups.assign_user",
+    "roles.view",
+    "roles.create",
+    "roles.update",
+    "roles.delete",
+    "roles.assign_to_user",
+    "roles.manage_permissions",
+    "platform_roles.view",
+    "platform_roles.create",
+    "platform_roles.update",
+    "platform_roles.delete",
+    "platform_roles.assign_to_user",
+    "platform_roles.manage_permissions",
 ]
 
 

@@ -46,9 +46,7 @@ class TestLoginAttemptsRecording:
         )
         assert resp.status_code == 401
 
-        result = await db_session.exec(
-            select(LoginAttempt).where(LoginAttempt.identifier == phone)
-        )
+        result = await db_session.exec(select(LoginAttempt).where(LoginAttempt.identifier == phone))
         attempts = result.all()
         assert len(attempts) == 1
         assert attempts[0].success is False
@@ -75,9 +73,7 @@ class TestLoginAttemptsRecording:
         )
         assert resp.status_code == 200
 
-        result = await db_session.exec(
-            select(LoginAttempt).where(LoginAttempt.identifier == phone)
-        )
+        result = await db_session.exec(select(LoginAttempt).where(LoginAttempt.identifier == phone))
         attempts = result.all()
         assert len(attempts) >= 1
         success_attempts = [a for a in attempts if a.success is True]
@@ -96,9 +92,7 @@ class TestLoginAttemptsRecording:
         )
         assert resp.status_code == 401
 
-        result = await db_session.exec(
-            select(LoginAttempt).where(LoginAttempt.identifier == phone)
-        )
+        result = await db_session.exec(select(LoginAttempt).where(LoginAttempt.identifier == phone))
         attempts = result.all()
         assert len(attempts) == 1
         assert attempts[0].success is False
@@ -133,9 +127,7 @@ class TestLoginAttemptsRecording:
         )
         assert resp.status_code == 401
 
-        result = await db_session.exec(
-            select(LoginAttempt).where(LoginAttempt.identifier == phone)
-        )
+        result = await db_session.exec(select(LoginAttempt).where(LoginAttempt.identifier == phone))
         attempts = result.all()
         assert len(attempts) >= 1
         assert attempts[-1].success is False
@@ -163,9 +155,7 @@ class TestLoginAttemptsRecording:
         )
         assert resp.status_code == 401
 
-        result = await db_session.exec(
-            select(LoginAttempt).where(LoginAttempt.identifier == email)
-        )
+        result = await db_session.exec(select(LoginAttempt).where(LoginAttempt.identifier == email))
         attempts = result.all()
         assert len(attempts) == 1
         assert attempts[0].success is False
@@ -193,9 +183,7 @@ class TestLoginAttemptsRecording:
         )
         assert resp.status_code == 200
 
-        result = await db_session.exec(
-            select(LoginAttempt).where(LoginAttempt.identifier == email)
-        )
+        result = await db_session.exec(select(LoginAttempt).where(LoginAttempt.identifier == email))
         attempts = result.all()
         success_attempts = [a for a in attempts if a.success is True]
         assert len(success_attempts) >= 1
@@ -434,9 +422,7 @@ class TestAuthRiskEventsRecording:
 class TestCORS:
     """Verify CORS configuration."""
 
-    async def test_cors_allowed_origin_returns_header(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_cors_allowed_origin_returns_header(self, client: AsyncClient) -> None:
         resp = await client.options(
             "/api/v1/auth/login/password",
             headers={
@@ -447,9 +433,7 @@ class TestCORS:
         assert resp.status_code == 200
         assert resp.headers.get("access-control-allow-origin") == "http://localhost:3000"
 
-    async def test_cors_disallowed_origin_no_header(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_cors_disallowed_origin_no_header(self, client: AsyncClient) -> None:
         resp = await client.options(
             "/api/v1/auth/login/password",
             headers={

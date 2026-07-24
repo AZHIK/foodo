@@ -23,23 +23,37 @@ class BusinessRoleBase(BaseModel):
 
 
 class BusinessRoleCreate(BusinessRoleBase):
-    """Fields required to create a business role.
+    """Fields required to create a business role (admin use)."""
 
-    Note: Protected-role edit rejection is enforced at the service layer,
-    not at the schema layer.
+
+class BusinessRoleCreateRequest(BaseModel):
+    """Request body for POST /businesses/{business_id}/roles.
+
+    ``business_id`` is taken from the URL path, and ``is_protected`` is
+    always ``false`` for roles created by business owners.
     """
+
+    name: str
+    description: str | None = None
 
 
 class BusinessRoleUpdate(BaseModel):
-    """Fields that may be updated on a business role (partial update).
-
-    Note: Protected-role edit rejection is enforced at the service layer,
-    not at the schema layer.
-    """
+    """Fields that may be updated on a business role (partial update, admin use)."""
 
     name: str | None = None
     description: str | None = None
     is_protected: bool | None = None
+
+
+class BusinessRoleUpdateRequest(BaseModel):
+    """Request body for PATCH /businesses/{business_id}/roles/{role_id}.
+
+    ``is_protected`` is never settable via this endpoint — only the seeded
+    Owner role carries ``is_protected=true``.
+    """
+
+    name: str | None = None
+    description: str | None = None
 
 
 class BusinessRoleRead(BusinessRoleBase):
@@ -63,6 +77,24 @@ class BusinessRolePermissionCreate(BaseModel):
 
     business_role_id: UUID
     permission_code: str
+
+
+class AddRolePermissionRequest(BaseModel):
+    """Request body for POST /businesses/{business_id}/roles/{role_id}/permissions."""
+
+    permission_code: str
+
+
+class AssignStaffRequest(BaseModel):
+    """Request body for POST /businesses/{business_id}/staff.
+
+    The target user can be identified by ``phone`` (looked up server-side)
+    or by ``user_id``.  At least one must be provided.
+    """
+
+    business_role_id: UUID
+    phone: str | None = None
+    user_id: UUID | None = None
 
 
 class BusinessRolePermissionRead(BaseModel):

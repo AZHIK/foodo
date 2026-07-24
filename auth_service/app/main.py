@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.endpoints import auth, businesses, platform_auth
+from app.api.v1.endpoints import auth, business_rbac, businesses, platform_auth
 from app.api.v1.endpoints.admin import internal_rbac, users
 from app.core.config import get_settings
 from app.core.logging import configure_logging
@@ -54,5 +54,6 @@ app.include_router(health.router, prefix="")
 app.include_router(auth.router)
 app.include_router(platform_auth.router)
 app.include_router(businesses.router)
+app.include_router(business_rbac.router)
 app.include_router(users.router)
 app.include_router(internal_rbac.router)

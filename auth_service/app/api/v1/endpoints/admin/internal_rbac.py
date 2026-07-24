@@ -54,9 +54,7 @@ async def get_group(
 ) -> Group:
     group = await db.get(Group, group_id)
     if group is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Group not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
     return group
 
 
@@ -85,9 +83,7 @@ async def update_group(
     async with db.begin():
         group = await db.get(Group, group_id)
         if group is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Group not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
 
         update_data = body.model_dump(exclude_unset=True)
         if not update_data:
@@ -112,9 +108,7 @@ async def delete_group(
     async with db.begin():
         group = await db.get(Group, group_id)
         if group is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Group not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
 
         active_users = (
             await db.exec(select(UserGroup).where(UserGroup.group_id == group_id))
@@ -150,9 +144,7 @@ async def get_role(
 ) -> Role:
     role = await db.get(Role, role_id)
     if role is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
     return role
 
 
@@ -181,9 +173,7 @@ async def update_role(
     async with db.begin():
         role = await db.get(Role, role_id)
         if role is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
 
         update_data = body.model_dump(exclude_unset=True)
         if not update_data:
@@ -208,9 +198,7 @@ async def delete_role(
     async with db.begin():
         role = await db.get(Role, role_id)
         if role is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
 
         active_assignments = (
             await db.exec(select(UserRole).where(UserRole.role_id == role_id))
@@ -227,9 +215,7 @@ async def delete_role(
 # ── Role Permissions ────────────────────────────────────────────────────────
 
 
-@router.post(
-    "/roles/{role_id}/permissions", status_code=status.HTTP_201_CREATED
-)
+@router.post("/roles/{role_id}/permissions", status_code=status.HTTP_201_CREATED)
 async def assign_role_permission(
     role_id: UUID,
     body: AssignRolePermissionRequest,
@@ -240,15 +226,13 @@ async def assign_role_permission(
     async with db.begin():
         role = await db.get(Role, role_id)
         if role is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
 
         try:
             validated_code = coerce_permission_code(body.permission_code)
         except ValueError:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f"Invalid permission code: {body.permission_code}",
             ) from None
 
@@ -280,9 +264,7 @@ async def remove_role_permission(
     async with db.begin():
         role = await db.get(Role, role_id)
         if role is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
 
         rp = (
             await db.exec(
@@ -323,9 +305,7 @@ async def get_platform_role(
 ) -> PlatformRole:
     pr = await db.get(PlatformRole, platform_role_id)
     if pr is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Platform role not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Platform role not found")
     return pr
 
 
@@ -347,9 +327,7 @@ async def create_platform_role(
     return pr
 
 
-@router.patch(
-    "/platform-roles/{platform_role_id}", response_model=PlatformRoleRead
-)
+@router.patch("/platform-roles/{platform_role_id}", response_model=PlatformRoleRead)
 async def update_platform_role(
     platform_role_id: UUID,
     body: PlatformRoleUpdate,
@@ -377,9 +355,7 @@ async def update_platform_role(
     return pr
 
 
-@router.delete(
-    "/platform-roles/{platform_role_id}", status_code=status.HTTP_204_NO_CONTENT
-)
+@router.delete("/platform-roles/{platform_role_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_platform_role(
     platform_role_id: UUID,
     _staff: None = Depends(require_platform_staff()),
@@ -434,7 +410,7 @@ async def assign_platform_role_permission(
             validated_code = coerce_permission_code(body.permission_code)
         except ValueError:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f"Invalid permission code: {body.permission_code}",
             ) from None
 
@@ -509,15 +485,11 @@ async def assign_user_to_group(
     async with db.begin():
         user = await db.get(User, user_id)
         if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
         group = await db.get(Group, body.group_id)
         if group is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Group not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
 
         existing = (
             await db.exec(select(UserGroup).where(UserGroup.user_id == user_id))
@@ -551,13 +523,9 @@ async def remove_user_from_group(
     async with db.begin():
         user = await db.get(User, user_id)
         if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-        ug = (
-            await db.exec(select(UserGroup).where(UserGroup.user_id == user_id))
-        ).one_or_none()
+        ug = (await db.exec(select(UserGroup).where(UserGroup.user_id == user_id))).one_or_none()
         if ug is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -584,15 +552,11 @@ async def assign_user_role(
     async with db.begin():
         user = await db.get(User, user_id)
         if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
         role = await db.get(Role, body.role_id)
         if role is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
 
         user_group = (
             await db.exec(select(UserGroup).where(UserGroup.user_id == user_id))
@@ -642,15 +606,11 @@ async def remove_user_role(
     async with db.begin():
         user = await db.get(User, user_id)
         if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
         ur = (
             await db.exec(
-                select(UserRole).where(
-                    UserRole.user_id == user_id, UserRole.role_id == role_id
-                )
+                select(UserRole).where(UserRole.user_id == user_id, UserRole.role_id == role_id)
             )
         ).one_or_none()
         if ur is None:
@@ -679,9 +639,7 @@ async def assign_user_platform_role(
     async with db.begin():
         user = await db.get(User, user_id)
         if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
         pr = await db.get(PlatformRole, body.platform_role_id)
         if pr is None:
@@ -720,9 +678,7 @@ async def remove_user_platform_role(
     async with db.begin():
         user = await db.get(User, user_id)
         if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
         upr = (
             await db.exec(

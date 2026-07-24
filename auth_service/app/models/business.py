@@ -77,6 +77,8 @@ class BusinessRole(UUIDMixin, TimestampMixin, SoftDeleteMixin, SQLModel, table=T
     description: str | None = Field(default=None, max_length=500)
     is_protected: bool = Field(default=False)
 
+    __table_args__ = (UniqueConstraint("business_id", "name"),)
+
     business: Business = Relationship(back_populates="roles")
     permissions: list["BusinessRolePermission"] = Relationship(back_populates="business_role")
     user_assignments: list["UserBusinessRole"] = Relationship(back_populates="business_role")
