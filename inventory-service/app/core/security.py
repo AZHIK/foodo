@@ -1,0 +1,48 @@
+"""JWT token verification — public-key-only, no signing capability.
+
+Inventory Service never possesses a private key.  It only verifies tokens
+issued by Identity Service using the shared public key.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+import jwt
+
+from app.core.config import get_settings
+from app.core.exceptions import ExpiredTokenError, InvalidTokenError
+
+
+def _load_public_key() -> str:
+    settings = get_settings()
+    if settings.jwt_public_key:
+        return settings.jwt_public_key
+    path = Path(settings.jwt_public_key_path)
+    try:
+        return path.read_text()
+    except FileNotFoundError:
+        raise RuntimeError(
+            f"JWT public key not found at {settings.jwt_public_key_path}. "
+            "Copy the public key from Identity Service's keys/ directory."
+        ) from None
+
+
+def decode_and_verify_access_token(token: str) -> dict[str, Any]:
+    settings = get_settings()
+    public_key = _load_public_key()
+    try:
+        payload: dict[str, Any] = jwt.decode(
+            token,
+            public_key,
+            algorithms=[settings.jwt_algorithm],
+            options={"require": ["exp", "iat", "type"]},
+        )
+    except jwt.ExpiredSignatureError:
+        raise ExpiredTokenError("Access token has expired") from None
+    except jwt.InvalidTokenError as exc:
+        raise InvalidTokenError(str(exc)) from None
+    if payload.get("type") != "access":
+        raise InvalidTokenError("Token type is not 'access' — possibly a refresh token")
+    return payload

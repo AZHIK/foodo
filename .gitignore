@@ -19,6 +19,9 @@ build/
 auth_service/keys/private.pem
 auth_service/keys/public.pem
 
+# ── Inventory Service ─────────────
+inventory-service/keys/
+
 # ── IDE / editor ──────────────────
 .vscode/
 .idea/
