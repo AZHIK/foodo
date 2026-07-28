@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from uuid import UUID
 
 import structlog
@@ -5,11 +6,32 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.events import publish_event
-from app.models.business import Business, BusinessRole, BusinessRolePermission, UserBusinessRole
+from app.models.business import (
+    Business,
+    BusinessLocation,
+    BusinessRole,
+    BusinessRolePermission,
+    LocationType,
+    UserBusinessRole,
+)
 from app.models.template import RoleTemplate, RoleTemplatePermission
 from app.services.audit_events import publish_audit_recorded
+from app.services.business_locations import validate_location_type
 
 logger = structlog.get_logger(__name__)
+
+
+@dataclass
+class CreateBusinessResult:
+    """Result of a successful business creation.
+
+    ``business`` — the newly created Business row.
+    ``default_location_id`` — the UUID of the auto-created primary location,
+    which Inventory Service will attach stock records to.
+    """
+
+    business: Business
+    default_location_id: UUID
 
 
 async def create_business(
@@ -23,7 +45,7 @@ async def create_business(
     country_code: str = "TZ",
     city: str | None = None,
     timezone: str = "Africa/Dar_es_Salaam",
-) -> Business:
+) -> CreateBusinessResult:
     async with db.begin():
         business = Business(
             name=name,
@@ -109,6 +131,30 @@ async def create_business(
             )
         )
 
+        default_location_type = LocationType.HEAD_OFFICE
+        validate_location_type(business_type, default_location_type.value)
+        location_name = "Main Location"
+        default_location = BusinessLocation(
+            business_id=business.id,
+            name=location_name,
+            location_type=default_location_type,
+            is_primary=True,
+            country_code=business.country_code,
+            city=business.city,
+            timezone=business.timezone,
+        )
+        db.add(default_location)
+        await db.flush()
+        await db.refresh(default_location)
+
+        logger.info(
+            "default_business_location_created",
+            business_id=str(business.id),
+            location_id=str(default_location.id),
+            location_name=location_name,
+            location_type=default_location_type.value,
+        )
+
     await publish_event(
         "business.created",
         {
@@ -147,4 +193,4 @@ async def create_business(
         },
     )
 
-    return business
+    return CreateBusinessResult(business=business, default_location_id=default_location.id)

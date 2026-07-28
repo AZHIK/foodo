@@ -22,7 +22,7 @@ async def create_business_endpoint(
     db: AsyncSession = Depends(get_async_session),
     creator_user_id: str = Depends(get_current_user_id),
 ) -> BusinessCreateResponse:
-    business = await create_business(
+    result = await create_business(
         db,
         creator_user_id=UUID(creator_user_id),
         name=body.name,
@@ -33,6 +33,7 @@ async def create_business_endpoint(
         city=body.city,
         timezone=body.timezone,
     )
+    business = result.business
 
     roles = (
         await db.exec(select(BusinessRole).where(BusinessRole.business_id == business.id))
