@@ -14,13 +14,16 @@ build/
 .pytest_cache/
 .ruff_cache/
 
-# ── Environment / secrets ─────────
+# ── Environment ────────────────────
 .env
-auth_service/keys/private.pem
-auth_service/keys/public.pem
 
-# ── Inventory Service ─────────────
+# ── Service keys (JWT, TLS, etc.) ─
+auth_service/keys/
+pos-service/keys/
 inventory-service/keys/
+
+# ── Logs ───────────────────────────
+*.log
 
 # ── IDE / editor ──────────────────
 .vscode/
