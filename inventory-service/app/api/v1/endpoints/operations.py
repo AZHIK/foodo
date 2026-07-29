@@ -4,15 +4,28 @@ Every endpoint calls ``record_movement()`` (Stage 5) and returns the
 resulting ``StockMovementRead``.
 
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ PERMISSION MODEL                                                         │
+│ PERMISSION MODEL  (Stage 8.5 Gap 3 — fine-grained codes)                 │
 │                                                                          │
 │   POST  /businesses/{business_id}/items/{item_id}/adjust   → ADJUST     │
-│   POST  /businesses/{business_id}/items/{item_id}/waste    → ADJUST     │
-│   POST  /businesses/{business_id}/items/{item_id}/transfer → ADJUST     │
+│   POST  /businesses/{business_id}/items/{item_id}/waste    →             │
+│                                              INVENTORY_WASTE_RECORD      │
+│   POST  /businesses/{business_id}/transfer                 →             │
+│                                              INVENTORY_TRANSFER          │
 │                                                                          │
-│ All three use the same coarse-grained INVENTORY_ADJUST permission.       │
-│ If finer-grained control is needed later, split into                   │
-│ INVENTORY_ADJUST / INVENTORY_WASTE / INVENTORY_TRANSFER.                 │
+│ Business-context binding is enforced at the shared dependency level      │
+│ (``require_business_permission``), not per-endpoint.                    │
+│                                                                          │
+│ ╔══════════════════════════════════════════════════════════════════════╗  │
+│ ║ KNOWN MVP LIMITATION — Location-scoped enforcement (Stage 8.5 Gap  │  │
+│ ║ 2).  The JWT token currently carries no location-scoped roles or    │  │
+│ ║ permissions.  Anyone with business-level INVENTORY_ADJUST /         │  │
+│ ║ INVENTORY_WASTE_RECORD / INVENTORY_TRANSFER can act at ANY location │  │
+│ ║ within the business.  Closing this requires Identity Service to     │  │
+│ ║ first include scoped permissions in issued tokens.                  │  │
+│ ║ TODO-LOCATION-SCOPING: revisit when Identity Service extends token  │  │
+│ ║ shape to include ``business_location_ids`` or per-location          │  │
+│ ║ permission claims.                                                  │  │
+│ ╚══════════════════════════════════════════════════════════════════════╝  │
 └──────────────────────────────────────────────────────────────────────────┘
 """
 
@@ -39,15 +52,11 @@ from app.services.stock_movement_service import (
 )
 
 logger = structlog.get_logger(__name__)
-router = APIRouter(prefix="/businesses/{business_id}/items/{item_id}", tags=["operations"])
 
-
-def _verify_biz_match(path_biz_id: UUID, jwt_biz_id: str) -> None:
-    if str(path_biz_id) != jwt_biz_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Business ID in path does not match authenticated business context",
-        )
+# Two routers so adjust/waste (item-scoped) and transfer (business-scoped)
+# can have different URL prefixes.
+items_router = APIRouter(prefix="/businesses/{business_id}/items/{item_id}", tags=["operations"])
+business_router = APIRouter(prefix="/businesses/{business_id}", tags=["operations"])
 
 
 def _extract_actor_id(claims: dict[str, Any]) -> UUID | None:
@@ -102,7 +111,7 @@ async def _call_movement(
         )
     except ItemTypeMismatchError as exc:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
     except InsufficientStockError as exc:
@@ -112,7 +121,7 @@ async def _call_movement(
         ) from exc
 
 
-@router.post("/adjust", response_model=StockMovementRead, status_code=status.HTTP_201_CREATED)
+@items_router.post("/adjust", response_model=StockMovementRead, status_code=status.HTTP_201_CREATED)
 async def adjust_stock(
     business_id: UUID,
     item_id: UUID,
@@ -122,7 +131,6 @@ async def adjust_stock(
     claims: Annotated[dict[str, Any], Depends(get_current_claims)],
 ) -> Any:
     """Manually adjust stock for an item by a positive or negative delta."""
-    _verify_biz_match(business_id, _jwt_biz_id)
     item = await _get_item_or_404(business_id, item_id, session)
 
     movement = await _call_movement(
@@ -146,17 +154,16 @@ async def adjust_stock(
     return movement
 
 
-@router.post("/waste", response_model=StockMovementRead, status_code=status.HTTP_201_CREATED)
+@items_router.post("/waste", response_model=StockMovementRead, status_code=status.HTTP_201_CREATED)
 async def record_waste(
     business_id: UUID,
     item_id: UUID,
     body: RecordWasteRequest,
     session: Annotated[AsyncSession, Depends(get_db)],
-    _jwt_biz_id: Annotated[str, Depends(require_business_permission("inventory.adjust"))],
+    _jwt_biz_id: Annotated[str, Depends(require_business_permission("inventory.waste.record"))],
     claims: Annotated[dict[str, Any], Depends(get_current_claims)],
 ) -> Any:
     """Record wasted/spoiled stock (quantity is a positive number, negated internally)."""
-    _verify_biz_match(business_id, _jwt_biz_id)
     item = await _get_item_or_404(business_id, item_id, session)
 
     movement = await _call_movement(
@@ -180,13 +187,12 @@ async def record_waste(
     return movement
 
 
-@router.post("/transfer", response_model=StockMovementRead, status_code=status.HTTP_201_CREATED)
+@business_router.post("/transfer", response_model=list[StockMovementRead], status_code=status.HTTP_201_CREATED)
 async def transfer_stock(
     business_id: UUID,
-    item_id: UUID,
     body: TransferStockRequest,
     session: Annotated[AsyncSession, Depends(get_db)],
-    _jwt_biz_id: Annotated[str, Depends(require_business_permission("inventory.adjust"))],
+    _jwt_biz_id: Annotated[str, Depends(require_business_permission("inventory.transfer"))],
     claims: Annotated[dict[str, Any], Depends(get_current_claims)],
 ) -> Any:
     """Transfer stock from one location to another within the same business.
@@ -195,19 +201,14 @@ async def transfer_stock(
     happen in a single transaction so that a failure in either leg rolls
     back both.
     """
-    _verify_biz_match(business_id, _jwt_biz_id)
+    await _get_item_or_404(business_id, body.item_id, session)
 
-    if body.item_id != item_id:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Item ID in path must match item_id in request body",
-        )
+    actor_id = _extract_actor_id(claims)
 
     try:
-        actor_id = _extract_actor_id(claims)
         movement_out = await record_movement(
             db=session,
-            item_id=item_id,
+            item_id=body.item_id,
             business_id=business_id,
             business_location_id=body.source_location_id,
             quantity_delta=-body.quantity,
@@ -219,7 +220,7 @@ async def transfer_stock(
         )
         movement_in = await record_movement(
             db=session,
-            item_id=item_id,
+            item_id=body.item_id,
             business_id=business_id,
             business_location_id=body.destination_location_id,
             quantity_delta=body.quantity,
@@ -232,20 +233,29 @@ async def transfer_stock(
         await session.commit()
         await session.refresh(movement_out)
         await session.refresh(movement_in)
-    except (ItemTypeMismatchError, InsufficientStockError) as exc:
+    except ItemTypeMismatchError as exc:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except InsufficientStockError as exc:
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc
+    except Exception:
+        await session.rollback()
+        raise
 
     logger.info(
         "operation.transfer",
-        item_id=str(item_id),
+        item_id=str(body.item_id),
         business_id=str(business_id),
         quantity=str(body.quantity),
         source=str(body.source_location_id),
         destination=str(body.destination_location_id),
     )
 
-    return movement_out
+    return [movement_out, movement_in]

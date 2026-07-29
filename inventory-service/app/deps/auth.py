@@ -30,6 +30,7 @@ AVAILABLE DEPENDENCY FACTORIES
 
 from collections.abc import Awaitable, Callable
 from typing import Annotated, Any
+from uuid import UUID
 
 from fastapi import Depends, Header, HTTPException, status
 
@@ -127,14 +128,28 @@ def require_business_permission(
 ) -> Callable[..., Awaitable[str]]:
     """Dependency factory: require a business context AND a specific permission.
 
-    - First verifies ``active_business_id`` is present and non-null (403 if not).
-    - Then verifies the permission code is in claims (403 if not).
+    - Verifies ``active_business_id`` is present and non-null (403 if not).
+    - Verifies the URL path ``business_id`` matches the token's
+      ``active_business_id`` (403 if mismatch — enforces business-scoped
+      access at the shared dependency level so no endpoint can forget).
+    - Verifies the permission code is in claims (403 if not).
     - Returns ``active_business_id`` for direct use in route handlers.
+
+    ═══════════════════════════════════════════════════════════════════════
+    BUSINESS-CONTEXT BINDING  (Stage 8.5, Gap 1)
+    ═══════════════════════════════════════════════════════════════════════
+
+    The ``business_id`` path parameter is injected by FastAPI into the
+    dependency via name resolution.  This ensures every protected endpoint
+    automatically rejects a token whose ``active_business_id`` doesn't
+    match the URL, even if a developer forgets to add ``_verify_biz_match``
+    manually.
     """
     validated: PermissionCode = coerce_permission_code(permission_code)
 
     async def _check_business_permission(
         claims: Annotated[dict[str, Any], Depends(get_current_claims)],
+        business_id: UUID,
     ) -> str:
         active_business_id: str | None = claims.get("active_business_id")
         if not active_business_id:
@@ -144,6 +159,12 @@ def require_business_permission(
                     "A valid business context is required. "
                     "Switch to a business context first via POST /auth/context/switch."
                 ),
+            )
+
+        if str(business_id) != active_business_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Business ID in path does not match authenticated business context",
             )
 
         permissions: list[str] = claims.get("permissions", [])

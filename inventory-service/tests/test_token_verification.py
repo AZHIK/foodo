@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from uuid import UUID
 
 import jwt
 import pytest
@@ -185,8 +186,8 @@ class TestGetCurrentClaims:
         assert "expired" in exc.value.detail.lower()
 
 
-async def _call(dep_factory_result, claims: dict):
-    return await dep_factory_result(claims)
+async def _call(dep_factory_result, claims: dict, **kwargs):
+    return await dep_factory_result(claims, **kwargs)
 
 
 class TestRequirePermission:
@@ -232,32 +233,34 @@ class TestRequireBusinessContext:
 class TestRequireBusinessPermission:
     async def test_allows_with_context_and_permission(self) -> None:
         checker = require_business_permission("inventory.view")
+        biz_id = UUID("550e8400-e29b-41d4-a716-446655440000")
         claims = {
             "sub": "user",
             "user_category": "business_user",
-            "active_business_id": "biz-abc",
+            "active_business_id": str(biz_id),
             "permissions": ["inventory.view"],
         }
-        result = await _call(checker, claims)
-        assert result == "biz-abc"
+        result = await _call(checker, claims, business_id=biz_id)
+        assert result == str(biz_id)
 
     async def test_rejects_without_context(self) -> None:
         checker = require_business_permission("inventory.view")
         claims = {"sub": "user", "user_category": "business_user", "permissions": ["inventory.view"]}
         with pytest.raises(HTTPException) as exc:
-            await _call(checker, claims)
+            await _call(checker, claims, business_id=UUID("550e8400-e29b-41d4-a716-446655440000"))
         assert exc.value.status_code == 403
 
     async def test_rejects_without_permission(self) -> None:
         checker = require_business_permission("inventory.adjust")
+        biz_id = UUID("550e8400-e29b-41d4-a716-446655440000")
         claims = {
             "sub": "user",
             "user_category": "business_user",
-            "active_business_id": "biz-abc",
+            "active_business_id": str(biz_id),
             "permissions": ["inventory.view"],
         }
         with pytest.raises(HTTPException) as exc:
-            await _call(checker, claims)
+            await _call(checker, claims, business_id=biz_id)
         assert exc.value.status_code == 403
 
 

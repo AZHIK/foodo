@@ -172,6 +172,7 @@ async def record_movement(
     reason: str | None = None,
     event_id: str | None = None,
     commit: bool = True,
+    skip_negative_check: bool = False,
 ) -> StockMovement:
     """Record a stock movement atomically.
 
@@ -211,6 +212,12 @@ async def record_movement(
         that needs both a TRANSFER_OUT and TRANSFER_IN committed together).
         When ``False`` the caller must call ``db.commit()``, refresh, and
         publish events manually.
+    skip_negative_check : bool
+        When ``True``, bypasses the ``InsufficientStockError`` check entirely.
+        Used by event handlers for sale/order events where the physical sale
+        has already happened and must be recorded even if it drives inventory
+        negative.  Defaults to ``False`` so all other callers (Stage 6
+        endpoints) are completely unaffected.
 
     Returns
     -------
@@ -222,8 +229,8 @@ async def record_movement(
     ItemTypeMismatchError
         If the movement type is incompatible with the item's ``item_type``.
     InsufficientStockError
-        If the movement would make quantity negative and the item does not
-        allow negative stock.
+        If ``skip_negative_check`` is ``False`` and the movement would make
+        quantity negative while the item does not allow negative stock.
     """
     # ── Step 0: Idempotency check (before any locks) ────────────────
     if event_id is not None:
@@ -282,7 +289,7 @@ async def record_movement(
     new_quantity = old_quantity + quantity_delta
 
     # ── Step 4: Negative stock check ────────────────────────────────
-    if new_quantity < Decimal("0.000") and not item.allow_negative_stock:
+    if not skip_negative_check and new_quantity < Decimal("0.000") and not item.allow_negative_stock:
         raise InsufficientStockError(
             f"Insufficient stock for item '{item_id}' at location "
             f"'{business_location_id}': current={old_quantity}, "

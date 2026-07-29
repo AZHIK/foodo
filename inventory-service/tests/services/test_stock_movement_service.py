@@ -537,3 +537,50 @@ async def test_sale_on_both_with_negative_stock_allowed(db_session: AsyncSession
         select(StockLevel).where(StockLevel.item_id == item.id)
     )
     assert result.one().current_quantity == Decimal("-10.000")
+
+
+# ── skip_negative_check bypass ────────────────────────────────────────────
+# Stage 7 introduces skip_negative_check for event handlers that must
+# record sales even when inventory goes negative.  These tests prove the
+# bypass works and the default (False) is unchanged.
+
+
+@pytest.mark.asyncio
+async def test_skip_negative_check_bypasses_insufficient_stock(db_session: AsyncSession) -> None:
+    """A movement with skip_negative_check=True on an allow_negative_stock=False
+    item SUCCEEDS and produces negative stock."""
+    item = await _create_item(db_session, allow_negative_stock=False)
+
+    movement = await record_movement(
+        db=db_session,
+        item_id=item.id,
+        business_id=BUSINESS_ID,
+        business_location_id=LOCATION_ID,
+        quantity_delta=Decimal("-5.000"),
+        movement_type=MovementType.SALE,
+        skip_negative_check=True,
+    )
+
+    assert movement.quantity_delta == Decimal("-5.000")
+    result = await db_session.exec(
+        select(StockLevel).where(StockLevel.item_id == item.id)
+    )
+    assert result.one().current_quantity == Decimal("-5.000")
+
+
+@pytest.mark.asyncio
+async def test_skip_negative_check_default_false_still_raises(db_session: AsyncSession) -> None:
+    """The default skip_negative_check=False behaves exactly as before —
+    InsufficientStockError is raised for negative-quantity movements on
+    items that disallow negative stock."""
+    item = await _create_item(db_session, allow_negative_stock=False)
+
+    with pytest.raises(InsufficientStockError, match="Insufficient stock"):
+        await record_movement(
+            db=db_session,
+            item_id=item.id,
+            business_id=BUSINESS_ID,
+            business_location_id=LOCATION_ID,
+            quantity_delta=Decimal("-1.000"),
+            movement_type=MovementType.MANUAL_ADJUSTMENT,
+        )

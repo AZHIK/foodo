@@ -1,15 +1,8 @@
 """Schemas for StockLevel — read-only.
 
-═══════════════════════════════════════════════════════════════════════════
-StockLevelRead includes denormalized item_name and item_unit_of_measure
-═══════════════════════════════════════════════════════════════════════════
-
-These fields are populated by a JOIN in the service layer so that callers
-can display "12 kg of Rice" without a second lookup.  Implementing the
-JOIN now (in the ``get_stock_levels`` / ``get_stock_level`` service
-methods, Stage 5+) rather than deferring to Stage 8 minimizes coupling
-between the API and internal representation and avoids a
-backwards-incompatible schema change later.
+StockLevelRead includes denormalized item fields populated by a JOIN in
+the endpoint layer (Stage 8 / reports.py) so that callers can display
+"12 kg of Rice" without a second lookup per row.
 
 No Create / Update / Delete schemas exist — stock_levels is never written
 directly via a generic API.  The only way to modify a stock level is
@@ -24,6 +17,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from app.models.inventory import ItemType
+
 
 class StockLevelRead(BaseModel):
     """Current stock level for an item at a specific location, with denormalized item info."""
@@ -36,3 +31,6 @@ class StockLevelRead(BaseModel):
     updated_at: datetime
     item_name: str
     item_unit_of_measure: str
+    item_category: str | None = None
+    item_reorder_threshold: Decimal
+    item_type: ItemType

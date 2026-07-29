@@ -3,18 +3,19 @@
 ┌──────────────────────────────────────────────────────────────────────────┐
 │ PERMISSION MODEL                                                         │
 │                                                                          │
-│   POST   /businesses/{business_id}/items  → INVENTORY_ADJUST             │
+│   POST   /businesses/{business_id}/items  → INVENTORY_ITEMS_CREATE       │
 │   GET    /businesses/{business_id}/items  → INVENTORY_VIEW               │
-│   GET    /businesses/{business_id}/items/{item_id} → INVENTORY_VIEW      │
-│   PATCH  /businesses/{business_id}/items/{item_id} → INVENTORY_ADJUST    │
-│   DELETE /businesses/{business_id}/items/{item_id} → INVENTORY_ADJUST    │
+│   GET    /businesses/{business_id}/items/{item_id} → INVENTORY_VIEW       │
+│   PATCH  /businesses/{business_id}/items/{item_id} → INVENTORY_ITEMS_UPDATE │
+│   DELETE /businesses/{business_id}/items/{item_id} → INVENTORY_ITEMS_DEACTIVATE │
 │                                                                          │
-│ Note: there is currently no INVENTORY_CREATE / INVENTORY_UPDATE /        │
-│ INVENTORY_DELETE split in PermissionCode.  The existing coarse-grained   │
-│ INVENTORY_ADJUST covers all mutation operations.  If finer-grained       │
-│ control is needed later (e.g. a cashier can adjust stock but not create  │
-│ new items), add dedicated codes to Identity Service and narrow the deps. │
+│ Per Stage 8.5 Gap 3, the old coarse INVENTORY_ADJUST has been split     │
+│ into INVENTORY_ITEMS_CREATE / UPDATE / DEACTIVATE, INVENTORY_WASTE_RECORD│
+│ and INVENTORY_TRANSFER for finer-grained control over each operation.    │
 └──────────────────────────────────────────────────────────────────────────┘
+
+Business-context binding is enforced at the shared dependency level
+(``require_business_permission``), not per-endpoint.
 """
 
 from __future__ import annotations
@@ -35,15 +36,6 @@ from app.schemas.items import ItemCreate, ItemListFilters, ItemRead, ItemUpdate
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/businesses/{business_id}/items", tags=["items"])
-
-
-def _verify_biz_match(path_biz_id: UUID, jwt_biz_id: str) -> None:
-    """Validate the path ``business_id`` matches the JWT's ``active_business_id``."""
-    if str(path_biz_id) != jwt_biz_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Business ID in path does not match authenticated business context",
-        )
 
 
 async def _get_item_or_404(
@@ -92,7 +84,7 @@ async def create_item(
     business_id: UUID,
     body: ItemCreate,
     session: Annotated[AsyncSession, Depends(get_db)],
-    _jwt_biz_id: Annotated[str, Depends(require_business_permission("inventory.adjust"))],
+    _jwt_biz_id: Annotated[str, Depends(require_business_permission("inventory.items.create"))],
 ) -> Item:
     """Create a new item for the business.
 
@@ -110,8 +102,6 @@ async def create_item(
     authorized via JWT).  A follow-up should add a gRPC or HTTP call to
     Identity Service to validate the location before persisting.
     """
-    _verify_biz_match(business_id, _jwt_biz_id)
-
     item = Item(
         business_id=business_id,
         business_location_id=body.business_location_id,
@@ -154,8 +144,6 @@ async def list_items(
     ``stock_levels`` and returns only items whose ``current_quantity``
     is at or below their ``reorder_threshold``.
     """
-    _verify_biz_match(business_id, _jwt_biz_id)
-
     stmt = await _build_list_query(business_id, filters)
     stmt = stmt.offset(offset).limit(limit)
     result = await session.exec(stmt)
@@ -175,7 +163,6 @@ async def get_item(
     status field, not an existence flag — downstream operations (e.g.
     historical movement lookups) need to reference deactivated items.
     """
-    _verify_biz_match(business_id, _jwt_biz_id)
     return await _get_item_or_404(business_id, item_id, session)
 
 
@@ -185,7 +172,7 @@ async def update_item(
     item_id: UUID,
     body: ItemUpdate,
     session: Annotated[AsyncSession, Depends(get_db)],
-    _jwt_biz_id: Annotated[str, Depends(require_business_permission("inventory.adjust"))],
+    _jwt_biz_id: Annotated[str, Depends(require_business_permission("inventory.items.update"))],
 ) -> Item:
     """Update an item's mutable fields.
 
@@ -193,8 +180,6 @@ async def update_item(
     this endpoint (``ItemUpdate`` excludes them by design).  Relocating
     an item is a transfer operation handled in a later stage.
     """
-    _verify_biz_match(business_id, _jwt_biz_id)
-
     item = await _get_item_or_404(business_id, item_id, session)
     update_data = body.model_dump(exclude_unset=True)
 
@@ -225,7 +210,7 @@ async def deactivate_item(
     business_id: UUID,
     item_id: UUID,
     session: Annotated[AsyncSession, Depends(get_db)],
-    _jwt_biz_id: Annotated[str, Depends(require_business_permission("inventory.adjust"))],
+    _jwt_biz_id: Annotated[str, Depends(require_business_permission("inventory.items.deactivate"))],
 ) -> None:
     """Soft-deactivate an item (sets ``is_active=False``).
 
@@ -241,8 +226,6 @@ async def deactivate_item(
     │ This matches Identity Service's admin user deactivation pattern.     │
     └─────────────────────────────────────────────────────────────────────┘
     """
-    _verify_biz_match(business_id, _jwt_biz_id)
-
     item = await _get_item_or_404(business_id, item_id, session)
     if not item.is_active:
         logger.warning(

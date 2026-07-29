@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from unittest.mock import AsyncMock
 from uuid import UUID
 
 import jwt
@@ -56,7 +57,22 @@ Miohh2E1Z9T1bGnvke8mHGpvQ4WurtmexOjz+KzVooCAkKzxIYKf
 """
 
 
-def _build_token(*, permissions: list[str] | None = None) -> str:
+ALL_INVENTORY_PERMS = [
+    "inventory.view",
+    "inventory.items.create",
+    "inventory.items.update",
+    "inventory.items.deactivate",
+    "inventory.adjust",
+    "inventory.waste.record",
+    "inventory.transfer",
+]
+
+
+def _build_token(
+    *,
+    permissions: list[str] | None = None,
+    active_business_id: str = "00000000-0000-0000-0000-000000000001",
+) -> str:
     settings = get_settings()
     now = datetime.now(UTC)
     payload = {
@@ -65,21 +81,28 @@ def _build_token(*, permissions: list[str] | None = None) -> str:
         "user_category": "business_user",
         "iat": now,
         "exp": now + timedelta(minutes=15),
-        "permissions": permissions or ["inventory.view", "inventory.adjust"],
-        "active_business_id": "00000000-0000-0000-0000-000000000001",
+        "permissions": permissions or ALL_INVENTORY_PERMS,
+        "active_business_id": active_business_id,
     }
     return jwt.encode(payload, TEST_PRIVATE_KEY, algorithm=settings.jwt_algorithm)
 
 
 BUSINESS_ID = UUID("00000000-0000-0000-0000-000000000001")
+OTHER_BUSINESS_ID = UUID("00000000-0000-0000-0000-000000000099")
 LOCATION_ID = UUID("00000000-0000-0000-0000-000000000010")
 LOCATION_ID_2 = UUID("00000000-0000-0000-0000-000000000020")
 AUTH_HEADER = {"Authorization": f"Bearer {_build_token()}"}
 API_PREFIX = f"/api/v1/businesses/{BUSINESS_ID}/items"
+BIZ_PREFIX = f"/api/v1/businesses/{BUSINESS_ID}"
 
 
 def _auth_header(permissions: list[str] | None = None) -> dict[str, str]:
     return {"Authorization": f"Bearer {_build_token(permissions=permissions)}"}
+
+
+def _other_biz_header() -> dict[str, str]:
+    token = _build_token(active_business_id=str(OTHER_BUSINESS_ID))
+    return {"Authorization": f"Bearer {token}"}
 
 
 async def _create_item(
@@ -253,6 +276,28 @@ async def test_record_waste_zero_quantity_rejected(
 
 
 @pytest.mark.asyncio
+async def test_record_waste_missing_reason_rejected(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    item = await _create_item(db_session)
+
+    resp = await client.post(
+        f"{API_PREFIX}/{item.id}/waste",
+        json={"quantity": 5.0, "reason": "ab"},
+        headers=AUTH_HEADER,
+    )
+    assert resp.status_code == 422, resp.text
+
+    resp2 = await client.post(
+        f"{API_PREFIX}/{item.id}/waste",
+        json={"quantity": 5.0, "reason": ""},
+        headers=AUTH_HEADER,
+    )
+    assert resp2.status_code == 422, resp2.text
+
+
+@pytest.mark.asyncio
 async def test_record_waste_insufficient_raises_409(
     client: AsyncClient,
     db_session: AsyncSession,
@@ -268,6 +313,22 @@ async def test_record_waste_insufficient_raises_409(
     assert resp.status_code == 409, resp.text
 
 
+@pytest.mark.asyncio
+async def test_record_waste_no_permission_returns_403(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    item = await _create_item(db_session)
+
+    restricted = _auth_header(permissions=["inventory.view"])
+    resp = await client.post(
+        f"{API_PREFIX}/{item.id}/waste",
+        json={"quantity": 1.0, "reason": "Should not work"},
+        headers=restricted,
+    )
+    assert resp.status_code == 403
+
+
 # ── Transfer ───────────────────────────────────────────────────────────────
 
 
@@ -281,7 +342,7 @@ async def test_transfer_moves_stock_between_locations(
     await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID_2, quantity=Decimal("0.000"))
 
     resp = await client.post(
-        f"{API_PREFIX}/{item.id}/transfer",
+        f"{BIZ_PREFIX}/transfer",
         json={
             "item_id": str(item.id),
             "source_location_id": str(LOCATION_ID),
@@ -292,8 +353,15 @@ async def test_transfer_moves_stock_between_locations(
     )
     assert resp.status_code == 201, resp.text
     data = resp.json()
-    assert data["movement_type"] == "transfer_out"
-    assert data["quantity_delta"] == "-4.000"
+    assert isinstance(data, list)
+    assert len(data) == 2
+
+    movement_out = data[0]
+    movement_in = data[1]
+    assert movement_out["movement_type"] == "transfer_out"
+    assert movement_out["quantity_delta"] == "-4.000"
+    assert movement_in["movement_type"] == "transfer_in"
+    assert movement_in["quantity_delta"] == "4.000"
 
     result = await db_session.exec(
         select(StockLevel).where(
@@ -313,7 +381,6 @@ async def test_transfer_moves_stock_between_locations(
     sl_dst = result.one()
     assert sl_dst.current_quantity == Decimal("4.000")
 
-    # Verify both movements recorded
     result = await db_session.exec(
         select(StockMovement).where(StockMovement.item_id == item.id)
     )
@@ -333,7 +400,7 @@ async def test_transfer_insufficient_stock_raises_409(
     await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID_2, quantity=Decimal("0.000"))
 
     resp = await client.post(
-        f"{API_PREFIX}/{item.id}/transfer",
+        f"{BIZ_PREFIX}/transfer",
         json={
             "item_id": str(item.id),
             "source_location_id": str(LOCATION_ID),
@@ -344,7 +411,6 @@ async def test_transfer_insufficient_stock_raises_409(
     )
     assert resp.status_code == 409, resp.text
 
-    # Verify no movements committed (rolled back)
     result = await db_session.exec(
         select(StockMovement).where(StockMovement.item_id == item.id)
     )
@@ -359,32 +425,11 @@ async def test_transfer_same_location_rejected(
     item = await _create_item(db_session)
 
     resp = await client.post(
-        f"{API_PREFIX}/{item.id}/transfer",
+        f"{BIZ_PREFIX}/transfer",
         json={
             "item_id": str(item.id),
             "source_location_id": str(LOCATION_ID),
             "destination_location_id": str(LOCATION_ID),
-            "quantity": 1.0,
-        },
-        headers=AUTH_HEADER,
-    )
-    assert resp.status_code == 422, resp.text
-
-
-@pytest.mark.asyncio
-async def test_transfer_item_id_mismatch_rejected(
-    client: AsyncClient,
-    db_session: AsyncSession,
-) -> None:
-    item = await _create_item(db_session)
-    other_id = UUID("ffffffff-ffff-ffff-ffff-ffffffffffff")
-
-    resp = await client.post(
-        f"{API_PREFIX}/{item.id}/transfer",
-        json={
-            "item_id": str(other_id),
-            "source_location_id": str(LOCATION_ID),
-            "destination_location_id": str(LOCATION_ID_2),
             "quantity": 1.0,
         },
         headers=AUTH_HEADER,
@@ -401,7 +446,7 @@ async def test_transfer_no_permission_returns_403(
 
     restricted = _auth_header(permissions=["inventory.view"])
     resp = await client.post(
-        f"{API_PREFIX}/{item.id}/transfer",
+        f"{BIZ_PREFIX}/transfer",
         json={
             "item_id": str(item.id),
             "source_location_id": str(LOCATION_ID),
@@ -411,3 +456,178 @@ async def test_transfer_no_permission_returns_403(
         headers=restricted,
     )
     assert resp.status_code == 403, resp.text
+
+
+@pytest.mark.asyncio
+async def test_transfer_atomicity_rolls_back_on_failure(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If the second record_movement (transfer_in) fails, the first
+    (transfer_out) must also be rolled back — no partial transfer."""
+    item = await _create_item(db_session, name="Atomic Item", location_id=LOCATION_ID)
+    await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID, quantity=Decimal("50.000"))
+    await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID_2, quantity=Decimal("0.000"))
+
+    from app.api.v1.endpoints import operations as ops_endpoints
+
+    original_record = ops_endpoints.record_movement
+
+    call_count = 0
+
+    async def failing_record(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 2:
+            raise ValueError("Simulated failure on second movement (transfer_in)")
+        return await original_record(*args, **kwargs)
+
+    monkeypatch.setattr(ops_endpoints, "record_movement", failing_record)
+
+    import pytest
+
+    with pytest.raises(Exception):
+        await client.post(
+            f"{BIZ_PREFIX}/transfer",
+            json={
+                "item_id": str(item.id),
+                "source_location_id": str(LOCATION_ID),
+                "destination_location_id": str(LOCATION_ID_2),
+                "quantity": 10.0,
+            },
+            headers=AUTH_HEADER,
+        )
+
+    result = await db_session.exec(
+        select(StockLevel).where(
+            StockLevel.item_id == item.id,
+            StockLevel.business_location_id == LOCATION_ID,
+        )
+    )
+    sl_src = result.one()
+    assert sl_src.current_quantity == Decimal("50.000"), (
+        f"Source stock changed from 50.000 to {sl_src.current_quantity} — "
+        "transfer_out was NOT rolled back!"
+    )
+
+    result = await db_session.exec(
+        select(StockMovement).where(StockMovement.item_id == item.id)
+    )
+    assert list(result.all()) == [], "No movements should have been committed"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Stage 8.5 — Gap 1: Business-context binding
+# ═══════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_adjust_wrong_business_rejected(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    """Token for business X is rejected when calling adjust for business Y."""
+    item = await _create_item(db_session)
+    await _create_stock_level(db_session, item_id=item.id, quantity=Decimal("10.000"))
+
+    wrong_url = f"/api/v1/businesses/{OTHER_BUSINESS_ID}/items/{item.id}/adjust"
+    resp = await client.post(
+        wrong_url,
+        json={"quantity_delta": 1.0, "reason": "Should fail"},
+        headers=AUTH_HEADER,
+    )
+    assert resp.status_code == 403
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Stage 8.5 — Gap 2: Location-scoping known limitation
+# ═══════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_KNOWN_GAP_location_scoping_not_enforced(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    """Document that location-scoping is NOT enforced (token has no location claims).
+
+    This test explicitly asserts the current (undesired) behavior so that
+    when Identity Service extends tokens with per-location claims and this
+    gap is closed, this test starts failing as a signal to finish the work.
+    """
+    item = await _create_item(db_session, name="Location Gap Item", location_id=LOCATION_ID)
+    await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID, quantity=Decimal("10.000"))
+
+    # The token has NO location-scoped permissions — any location works.
+    resp = await client.post(
+        f"{BIZ_PREFIX}/transfer",
+        json={
+            "item_id": str(item.id),
+            "source_location_id": str(LOCATION_ID),
+            "destination_location_id": str(LOCATION_ID_2),
+            "quantity": 1.0,
+        },
+        headers=AUTH_HEADER,
+    )
+    # Current behavior: succeeds because location scoping is not enforced.
+    # If this test starts failing, it means location-scoped enforcement was
+    # added — verify it's intentional and update the tests accordingly.
+    assert resp.status_code == 201, (
+        "KNOWN GAP: Location scoping is not enforced. "
+        "Token has no location claims, so any location is accepted. "
+        f"Got {resp.status_code}: {resp.text}"
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Stage 8.5 — Gap 3: Fine-grained permission remap
+# ═══════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_waste_requires_waste_record_perm(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    """Token with old INVENTORY_ADJUST (but not waste.record) is rejected."""
+    item = await _create_item(db_session)
+    await _create_stock_level(db_session, item_id=item.id, quantity=Decimal("10.000"))
+
+    old_token = _auth_header(permissions=["inventory.view", "inventory.adjust"])
+    resp = await client.post(
+        f"{API_PREFIX}/{item.id}/waste",
+        json={"quantity": 1.0, "reason": "Should fail"},
+        headers=old_token,
+    )
+    assert resp.status_code == 403, (
+        "Old INVENTORY_ADJUST should no longer grant waste — "
+        "inventory.waste.record is required"
+    )
+
+
+@pytest.mark.asyncio
+async def test_transfer_requires_transfer_perm(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    """Token with old INVENTORY_ADJUST (but not transfer) is rejected."""
+    item = await _create_item(db_session)
+    await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID, quantity=Decimal("10.000"))
+    await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID_2, quantity=Decimal("0.000"))
+
+    old_token = _auth_header(permissions=["inventory.view", "inventory.adjust"])
+    resp = await client.post(
+        f"{BIZ_PREFIX}/transfer",
+        json={
+            "item_id": str(item.id),
+            "source_location_id": str(LOCATION_ID),
+            "destination_location_id": str(LOCATION_ID_2),
+            "quantity": 1.0,
+        },
+        headers=old_token,
+    )
+    assert resp.status_code == 403, (
+        "Old INVENTORY_ADJUST should no longer grant transfer — "
+        "inventory.transfer is required"
+    )

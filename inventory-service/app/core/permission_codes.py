@@ -1,3 +1,18 @@
+"""
+╔══════════════════════════════════════════════════════════════════════╗
+║ DUPLICATION-DRIFT WARNING                                          ║
+║                                                                    ║
+║ This file is a COPY of Identity Service's PermissionCode enum.     ║
+║ It is NOT a shared import from a common package.  Changes made     ║
+║ here MUST also be made in Identity Service's copy, and vice versa. ║
+║                                                                    ║
+║ The long-term solution is to extract this into a shared Python     ║
+║ package that both services import.  This was discussed but left    ║
+║ unresolved during the initial service-scaffold build.              ║
+║ TODO-FIXME: Extract PermissionCode to a shared package.            ║
+╚══════════════════════════════════════════════════════════════════════╝
+"""
+
 from enum import StrEnum
 
 
@@ -6,6 +21,11 @@ class PermissionCode(StrEnum):
     POS_REFUND = "pos.refund"
     INVENTORY_VIEW = "inventory.view"
     INVENTORY_ADJUST = "inventory.adjust"
+    INVENTORY_ITEMS_CREATE = "inventory.items.create"
+    INVENTORY_ITEMS_UPDATE = "inventory.items.update"
+    INVENTORY_ITEMS_DEACTIVATE = "inventory.items.deactivate"
+    INVENTORY_WASTE_RECORD = "inventory.waste.record"
+    INVENTORY_TRANSFER = "inventory.transfer"
     PROCUREMENT_CREATE = "procurement.create"
     PROCUREMENT_APPROVE = "procurement.approve"
     PROCUREMENT_AUTO_ORDER_ENABLE = "procurement.auto_order.enable"

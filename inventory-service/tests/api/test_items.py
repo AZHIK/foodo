@@ -49,7 +49,22 @@ Miohh2E1Z9T1bGnvke8mHGpvQ4WurtmexOjz+KzVooCAkKzxIYKf
 """
 
 
-def _build_token(*, permissions: list[str] | None = None) -> str:
+ALL_INVENTORY_PERMS = [
+    "inventory.view",
+    "inventory.items.create",
+    "inventory.items.update",
+    "inventory.items.deactivate",
+    "inventory.adjust",
+    "inventory.waste.record",
+    "inventory.transfer",
+]
+
+
+def _build_token(
+    *,
+    permissions: list[str] | None = None,
+    active_business_id: str = "00000000-0000-0000-0000-000000000001",
+) -> str:
     settings = get_settings()
     now = datetime.now(UTC)
     payload = {
@@ -58,13 +73,14 @@ def _build_token(*, permissions: list[str] | None = None) -> str:
         "user_category": "business_user",
         "iat": now,
         "exp": now + timedelta(minutes=15),
-        "permissions": permissions or ["inventory.view", "inventory.adjust"],
-        "active_business_id": "00000000-0000-0000-0000-000000000001",
+        "permissions": permissions or ALL_INVENTORY_PERMS,
+        "active_business_id": active_business_id,
     }
     return jwt.encode(payload, TEST_PRIVATE_KEY, algorithm=settings.jwt_algorithm)
 
 
 BUSINESS_ID = UUID("00000000-0000-0000-0000-000000000001")
+OTHER_BUSINESS_ID = UUID("00000000-0000-0000-0000-000000000099")
 LOCATION_ID = UUID("00000000-0000-0000-0000-000000000010")
 LOCATION_ID_2 = UUID("00000000-0000-0000-0000-000000000020")
 AUTH_HEADER = {"Authorization": f"Bearer {_build_token()}"}
@@ -76,6 +92,12 @@ API_PREFIX = f"/api/v1/businesses/{BUSINESS_ID}/items"
 
 def _auth_header(permissions: list[str] | None = None) -> dict[str, str]:
     return {"Authorization": f"Bearer {_build_token(permissions=permissions)}"}
+
+
+def _other_biz_header() -> dict[str, str]:
+    """Token scoped to OTHER_BUSINESS_ID with all inventory permissions."""
+    token = _build_token(active_business_id=str(OTHER_BUSINESS_ID))
+    return {"Authorization": f"Bearer {token}"}
 
 
 async def _create_test_item(
@@ -319,3 +341,80 @@ async def test_list_filters_by_category(client: AsyncClient, db_session: AsyncSe
     names = [i["name"] for i in resp.json()]
     assert "Banana" in names
     assert "Apple" not in names
+
+
+# ── Stage 8.5 — Gap 1: Business-context binding ────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_wrong_business_rejected_for_list(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    """Token for business X is rejected when calling endpoint for business Y."""
+    await _create_test_item(db_session, name="Visible Item")
+    wrong_url = f"/api/v1/businesses/{OTHER_BUSINESS_ID}/items"
+    resp = await client.get(wrong_url, headers=AUTH_HEADER)
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_wrong_business_rejected_for_create(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    wrong_url = f"/api/v1/businesses/{OTHER_BUSINESS_ID}/items"
+    payload = {
+        "name": "Should Not Create",
+        "unit_of_measure": "kg",
+        "reorder_threshold": 1.0,
+        "reorder_quantity": 2.0,
+        "item_type": "both",
+        "business_location_id": str(LOCATION_ID),
+    }
+    resp = await client.post(wrong_url, json=payload, headers=AUTH_HEADER)
+    assert resp.status_code == 403
+
+
+# ── Stage 8.5 — Gap 3: Fine-grained permission remap ───────────────────────
+
+
+@pytest.mark.asyncio
+async def test_create_requires_items_create_perm(client: AsyncClient) -> None:
+    """Token with old INVENTORY_ADJUST (but not items.create) is rejected."""
+    payload = {
+        "name": "Needs Create",
+        "unit_of_measure": "kg",
+        "reorder_threshold": 1.0,
+        "reorder_quantity": 2.0,
+        "item_type": "both",
+        "business_location_id": str(LOCATION_ID),
+    }
+    old_token = _auth_header(permissions=["inventory.view", "inventory.adjust"])
+    resp = await client.post(API_PREFIX, json=payload, headers=old_token)
+    assert resp.status_code == 403, (
+        "Old INVENTORY_ADJUST should no longer grant create — "
+        "inventory.items.create is required"
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_requires_items_update_perm(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    item = await _create_test_item(db_session)
+    old_token = _auth_header(permissions=["inventory.view", "inventory.adjust"])
+    resp = await client.patch(
+        f"{API_PREFIX}/{item.id}", json={"name": "Should Fail"}, headers=old_token
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_deactivate_requires_items_deactivate_perm(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    item = await _create_test_item(db_session)
+    old_token = _auth_header(permissions=["inventory.view", "inventory.adjust"])
+    resp = await client.delete(f"{API_PREFIX}/{item.id}", headers=old_token)
+    assert resp.status_code == 403
