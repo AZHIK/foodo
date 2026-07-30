@@ -18,9 +18,9 @@ build/
 .env
 
 # ── Service keys (JWT, TLS, etc.) ─
-auth_service/keys/
-pos-service/keys/
-inventory-service/keys/
+services/identity-service/keys/
+services/pos-service/keys/
+services/inventory-service/keys/
 
 # ── Logs ───────────────────────────
 *.log
@@ -36,6 +36,15 @@ inventory-service/keys/
 # ── AI agent artifacts ────────────
 .agents/
 .codex/
+
+# ── Flutter / Dart ─────────────────
+.dart_tool/
+.pub/
+build/
+*.iml
+.flutter-plugins
+.flutter-plugins-dependencies
+local.properties
 
 # ── Testing / coverage ────────────
 .coverage
