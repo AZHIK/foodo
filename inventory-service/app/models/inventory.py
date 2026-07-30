@@ -91,7 +91,15 @@ class ItemType(str, PyEnum):
 
 
 class MovementType(str, PyEnum):
-    """Category of stock movement for audit trail classification."""
+    """Category of stock movement for audit trail classification.
+
+    ``sale_reversal`` — stock came back due to a voided sale
+    (POS Service's ``sale.voided`` event).  ``refund_reversal`` —
+    stock came back due to a refunded sale (POS Service's
+    ``sale.refunded`` event).  Both are semantically distinct from
+    ``manual_adjustment`` — an audit report should be able to count
+    reversal movements separately from manual corrections.
+    """
 
     SALE = "sale"
     PURCHASE_RECEIVED = "purchase_received"
@@ -99,6 +107,8 @@ class MovementType(str, PyEnum):
     WASTE = "waste"
     TRANSFER_IN = "transfer_in"
     TRANSFER_OUT = "transfer_out"
+    SALE_REVERSAL = "sale_reversal"
+    REFUND_REVERSAL = "refund_reversal"
 
 
 class ActorType(str, PyEnum):

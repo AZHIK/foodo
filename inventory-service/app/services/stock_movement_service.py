@@ -79,6 +79,8 @@ _MOVEMENTS_ALLOWED_FOR_ANY: frozenset[MovementType] = frozenset(
         MovementType.MANUAL_ADJUSTMENT,
         MovementType.TRANSFER_IN,
         MovementType.TRANSFER_OUT,
+        MovementType.SALE_REVERSAL,
+        MovementType.REFUND_REVERSAL,
     }
 )
 
@@ -90,6 +92,8 @@ _COMPATIBILITY_RULES: dict[ItemType, frozenset[MovementType]] = {
             MovementType.MANUAL_ADJUSTMENT,
             MovementType.TRANSFER_IN,
             MovementType.TRANSFER_OUT,
+            MovementType.SALE_REVERSAL,
+            MovementType.REFUND_REVERSAL,
         }
     ),
     ItemType.RAW_MATERIAL: frozenset(
@@ -99,6 +103,8 @@ _COMPATIBILITY_RULES: dict[ItemType, frozenset[MovementType]] = {
             MovementType.MANUAL_ADJUSTMENT,
             MovementType.TRANSFER_IN,
             MovementType.TRANSFER_OUT,
+            MovementType.SALE_REVERSAL,
+            MovementType.REFUND_REVERSAL,
         }
     ),
     ItemType.BOTH: frozenset(
@@ -109,6 +115,8 @@ _COMPATIBILITY_RULES: dict[ItemType, frozenset[MovementType]] = {
             MovementType.MANUAL_ADJUSTMENT,
             MovementType.TRANSFER_IN,
             MovementType.TRANSFER_OUT,
+            MovementType.SALE_REVERSAL,
+            MovementType.REFUND_REVERSAL,
         }
     ),
 }

@@ -1,5 +1,16 @@
 """Event handlers for inbound messages from POS, Food Delivery, and Procurement Service.
 
+Handlers in this module:
+* ``handle_sale_completed``      — POS Service ``sale.completed``      (decrement stock)
+* ``handle_sale_voided``         — POS Service ``sale.voided``         (reverse decrement)
+* ``handle_sale_refunded``       — POS Service ``sale.refunded``       (reverse decrement)
+* ``handle_order_confirmed``     — Food Delivery ``order.confirmed``   (decrement stock)
+* ``handle_purchase_received``   — Procurement ``purchase.received``   (increment stock)
+
+The void/refund handlers use distinct ``MovementType`` values
+(``sale_reversal`` / ``refund_reversal``) so stock-movement reports
+can distinguish voided-sale reversals from refunded-sale reversals.
+
 Each handler is a directly-callable async function that processes one
 event payload and returns ``list[StockMovement]``.  They are designed to
 be wired to a real RabbitMQ consumer later — the handler itself contains
@@ -126,6 +137,83 @@ async def handle_order_confirmed(
 # ═══════════════════════════════════════════════════════════════════════
 # Handler for Procurement Service: purchase.received
 # ═══════════════════════════════════════════════════════════════════════
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Handler for POS Service: sale.voided
+# ═══════════════════════════════════════════════════════════════════════
+
+
+async def handle_sale_voided(
+    db: AsyncSession,
+    event_payload: dict[str, Any],
+) -> list[Any]:
+    """Process a ``sale.voided`` event from POS Service.
+
+    Expected payload shape (identical to ``sale.completed``)::
+
+        {
+            "event_id": str,
+            "business_id": str|UUID,
+            "business_location_id": str|UUID,
+            "sale_id": str|UUID,
+            "line_items": [
+                {"item_id": str|UUID, "quantity": Decimal|float},
+                ...
+            ],
+        }
+
+    For each line item, calls ``record_movement`` with
+    ``movement_type=MovementType.SALE_REVERSAL`` and a **positive**
+    ``quantity_delta`` (reversing the original decrement).  ``skip_negative_check``
+    is not needed here — a reversal always increases stock.
+
+    ``sale_reversal`` is exempt from the ``item_type`` compatibility check
+    (same as ``waste`` / ``manual_adjustment`` / ``transfer_in`` /
+    ``transfer_out``), because a voided sale may affect raw_material-only or
+    sellable-only items without being a configuration error — it is a
+    correction, not a new sale transaction.
+
+    Returns a list of ``StockMovement`` instances (one per line item).
+    """
+    return await _process_line_items(
+        db=db,
+        event_payload=event_payload,
+        reference_type="sale",
+        reference_id_key="sale_id",
+        movement_type=MovementType.SALE_REVERSAL,
+        sign=1,
+        skip_negative_check=False,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Handler for POS Service: sale.refunded
+# ═══════════════════════════════════════════════════════════════════════
+
+
+async def handle_sale_refunded(
+    db: AsyncSession,
+    event_payload: dict[str, Any],
+) -> list[Any]:
+    """Process a ``sale.refunded`` event from POS Service.
+
+    Identical to ``handle_sale_voided`` except ``movement_type`` is
+    ``MovementType.REFUND_REVERSAL``, keeping voided vs refunded stock
+    movements distinguishable in audit reports even though their effect
+    on stock is identical (both increment quantity).
+
+    Returns a list of ``StockMovement`` instances (one per line item).
+    """
+    return await _process_line_items(
+        db=db,
+        event_payload=event_payload,
+        reference_type="sale",
+        reference_id_key="sale_id",
+        movement_type=MovementType.REFUND_REVERSAL,
+        sign=1,
+        skip_negative_check=False,
+    )
 
 
 async def handle_purchase_received(
