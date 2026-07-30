@@ -3,79 +3,124 @@
 Point-of-sale microservice for FoodLink Africa. Manages sales transactions,
 line items, payments, receipts, and local tax configuration.
 
-## Architecture
+- **Database**: dedicated `foodlink_pos` PostgreSQL instance (not shared).
+- **Auth**: verifies RS256 JWTs issued by Identity Service (never issues tokens).
+- **Events**: publishes sale lifecycle events (`sale.completed`, `sale.voided`,
+  `sale.refunded`) via a shared RabbitMQ exchange.
+- **Port**: `8200`
 
-This service is a **resource server** in the FoodLink ecosystem. It:
+---
 
-- **Verifies** JWT tokens issued by the Identity Service (it never issues
-  its own tokens — only the Identity Service possesses the private key).
-- **Owns its own data** in a dedicated `foodlink_pos` Postgres database
-  (it does not share Identity Service's or Inventory Service's database).
-- **Publishes and subscribes** to events via a shared RabbitMQ exchange
-  (configured via `RABBITMQ_URL` and `EVENTS_EXCHANGE`).
-
-## Cross-Service JWT Verification
-
-This service verifies tokens using the Identity Service's **public key**.
-The public key must be deployed alongside this service.
-
-### Operational Note: Public Key Distribution
-
-In a real deployment, the public key (`keys/public.pem`) is **not** committed
-as a permanent file in this repository. Instead:
-
-1. The Identity Service's deployment pipeline exports its public key to a
-   shared secret store (e.g., HashiCorp Vault, AWS Secrets Manager, or a
-   Kubernetes ConfigMap).
-2. This service's deployment pipeline copies that public key into
-   `keys/public.pem` at deployment time (or injects it via the
-   `JWT_PUBLIC_KEY_PATH` env var pointing to a mounted secret).
-
-**Do not** rely on the checked-in `keys/public.pem` for production — it
-exists here only for local development convenience. A deployment-time copy
-step ensures that key rotation in the Identity Service propagates to all
-resource servers without a source-control PR.
-
-## RabbitMQ Topology Notes
-
-The shared RabbitMQ instance may run:
-
-- **As part of this compose stack** — add a `rabbitmq` service to
-  `docker-compose.yml` and wire `RABBITMQ_URL` to it.
-- **As a separate shared stack** — point `RABBITMQ_URL` at the shared
-  instance's host and port.
-
-The choice depends on whether RabbitMQ is treated as platform infrastructure
-(shared stack) or per-service infrastructure (in-stack). The compose file
-in this repo currently assumes it is shared infrastructure and does not
-include a RabbitMQ container — this is the recommended default.
-
-## Local Development
+## Quick Start
 
 ```bash
 cp .env.example .env
-# Ensure keys/public.pem exists (copied from identity-service/keys/public.pem)
-# Requires Python 3.12+ and uv installed
-
+cp ../identity-service/keys/public.pem keys/
 uv sync
 uv run alembic upgrade head
 uv run uvicorn app.main:app --reload
 ```
 
-## Tests
+---
 
-Ensure the dev service is running, then exec into it:
+## Available Endpoints
+
+| Method | Path | Permission | Purpose |
+|--------|------|------------|---------|
+| `GET` | `/health` | none | Liveness probe |
+| `POST` | `/businesses/{business_id}/sales/sync` | `pos.write` | Batch-sync offline sales |
+| `GET` | `/businesses/{business_id}/sales` | `pos.view` | List sales (paginated, filterable) |
+| `GET` | `/businesses/{business_id}/sales/summary` | `pos.view` | Aggregate summary (revenue, voided, refunded, payment-method breakdown) |
+| `GET` | `/businesses/{business_id}/sales/{sale_id}` | `pos.view` | Read single sale by server ID |
+| `GET` | `/businesses/{business_id}/sales/by-client-id/{client_sale_id}` | `pos.view` | Read single sale by client idempotency key |
+| `POST` | `/businesses/{business_id}/sales/{sale_id}/void-or-refund` | `pos.refund` | Void or refund a completed sale |
+
+All `pos.*` endpoints enforce **business-context binding**: the URL path's
+`business_id` must match the JWT's `active_business_id` claim.
+
+---
+
+## Design Decisions (with in-file documentation anchors)
+
+Every non-trivial design choice is documented at the point of implementation.
+Key locations:
+
+| Decision | File & Line |
+|----------|-------------|
+| Cross-service reference columns (no FK constraints) | `app/models/pos.py:4-18` |
+| Why no `processed_sync_events` table | `app/models/pos.py:20-28` |
+| Sale state machine (terminal states only) | `app/models/pos.py:31-38` |
+| Pre-voided / pre-refunded sale on first sync | `app/schemas/sales.py:3-19` |
+| Partial-success batch design (not all-or-nothing) | `app/schemas/sales.py:14-20` |
+| Business-context binding (Gap 1 fix) | `app/deps/auth.py:126-148` |
+| Event-publish stub (RabbitMQ deferred) | `app/core/events.py:1-4` |
+| PermissionCode duplication / shared-package extraction | `app/core/permission_codes.py:1-13` |
+| Per-sale independent transactions in batch sync | `app/services/sale_service.py:69-75` |
+
+---
+
+## KNOWN GAPS
+
+### 1. Inventory Service does not yet consume `sale.voided` / `sale.refunded`
+
+POS Service correctly publishes `sale.voided` and `sale.refunded` events
+with full line-item payloads (`void_or_refund_sale()` at
+`sale_service.py:284-298`). However, Inventory Service has **no handler**
+for these events — stock is **not reversed** when a sale is voided or
+refunded.
+
+- POS-side test: `test_KNOWN_GAP_inventory_does_not_yet_reverse_stock_on_void`
+  in `tests/services/test_sale_service.py:928`.
+- Fix target: add `handle_sale_voided` / `handle_sale_refunded` in
+  Inventory Service's `app/services/event_handlers.py`.
+
+### 2. Shared-package extraction (prep for Service #4)
+
+`security.py`, `deps/auth.py`, and `PermissionCode` (`permission_codes.py`)
+are duplicated across POS Service and Identity Service. Before starting
+Service #4 (Procurement or whichever comes next), extract these into a
+**shared Python package** that both services import.
+
+- See the TODO-FIXME header in `app/core/permission_codes.py:12`.
+
+---
+
+## Cross-Service JWT Verification
+
+POS Service verifies tokens using Identity Service's **public key**
+(`keys/public.pem`). It never possesses a private key.
+
+**Operational note**: in production, the public key is deployed via a
+secret store (Vault, K8s ConfigMap, etc.) — do not rely on the checked-in
+key for production. Key rotation in Identity Service must propagate to all
+resource servers.
+
+---
+
+## RabbitMQ Topology
+
+The compose file in this repo does **not** include a RabbitMQ container
+(RabbitMQ is treated as shared platform infrastructure). Set
+`RABBITMQ_URL` and `EVENTS_EXCHANGE` in `.env` to point to the shared
+instance.
+
+Currently all event publishing is a **stub** that logs only
+(`app/core/events.py:13`). Real RabbitMQ wiring is deferred to a later
+stage.
+
+---
+
+## Local Development
 
 ```bash
-docker compose --profile dev up -d
-docker compose exec api-dev uv run pytest -v tests/
+cp .env.example .env
+cp ../identity-service/keys/public.pem keys/   # required for JWT verification
+uv sync
+uv run alembic upgrade head
+uv run uvicorn app.main:app --reload
 ```
 
-Run a specific test file:
-
-```bash
-docker compose exec api-dev uv run pytest -v tests/models/test_models.py
-```
+---
 
 ## Docker Compose
 
@@ -83,4 +128,33 @@ docker compose exec api-dev uv run pytest -v tests/models/test_models.py
 docker compose up --build
 ```
 
-This starts the API on port 8200 and a dedicated Postgres instance on port 5435.
+Starts the API on port 8200 and a dedicated Postgres on port 5435.
+
+A dev profile is also available (hot-reload via volume mount):
+
+```bash
+docker compose --profile dev up -d
+docker compose exec api-dev tail -f /dev/null  # attach your editor
+```
+
+---
+
+## Tests
+
+Requires a running Postgres (either via Docker Compose or a local instance
+with the `DB_URL` from `.env.example`).
+
+```bash
+# Via Docker Compose dev profile
+docker compose --profile dev up -d
+docker compose exec api-dev uv run pytest -v tests/
+
+# Or directly (if Postgres is running on localhost:5432)
+uv run pytest -v tests/
+```
+
+Full suite (113+ tests):
+
+```bash
+uv run pytest -v tests/ --tb=short
+```

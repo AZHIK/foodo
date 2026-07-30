@@ -123,6 +123,57 @@ class SaleRead(BaseModel):
     line_items: list[SaleLineItemRead]
 
 
+class SaleListItem(BaseModel):
+    """Compact sale representation for list endpoints (no line items)."""
+
+    id: UUID
+    business_id: UUID
+    business_location_id: UUID
+    client_sale_id: str
+    status: str
+    subtotal: Decimal
+    discount_amount: Decimal
+    tax_amount: Decimal
+    total: Decimal
+    payment_method: str
+    actor_id: UUID | None = None
+    occurred_at: datetime
+    synced_at: datetime
+    device_sequence: int | None = None
+    is_time_suspect: bool = False
+    voided_at: datetime | None = None
+    refunded_at: datetime | None = None
+    void_or_refund_reason: str | None = None
+    created_at: datetime
+
+
+class SaleListResponse(BaseModel):
+    """Paginated list response for sales."""
+
+    items: list[SaleListItem]
+    total: int
+    limit: int
+    offset: int
+
+
+class PaymentMethodSummary(BaseModel):
+    """Aggregate for a single payment method in the summary."""
+
+    payment_method: str
+    count: int
+    revenue: Decimal
+
+
+class SaleSummaryResponse(BaseModel):
+    """Lightweight aggregate response for the sales dashboard."""
+
+    total_count: int
+    total_revenue: Decimal
+    voided_count: int
+    refunded_count: int
+    payment_method_breakdown: list[PaymentMethodSummary]
+
+
 # ── Query filters ───────────────────────────────────────────────────────
 
 

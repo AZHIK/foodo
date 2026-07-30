@@ -923,18 +923,19 @@ class TestVoidOrRefundSale:
         ).all()
         assert len(sales) == 1
 
-    # ── KNOWN_GAP: Inventory Service does not yet reverse stock ──────
+    # ── KNOWN_GAP RESOLVED: Inventory Service now reverses stock ────
 
-    async def test_KNOWN_GAP_inventory_does_not_yet_reverse_stock_on_void(
+    async def test_void_publishes_sale_voided_event_gap_closed(
         self, db_session: AsyncSession,
     ) -> None:
-        """POS Service publishes ``sale.voided`` correctly, but Inventory
-        Service does NOT yet consume this event — stock will NOT be
-        reversed until a follow-up task adds ``handle_sale_voided`` /
-        ``handle_sale_refunded`` there.
+        """POS Service publishes ``sale.voided`` correctly — the consuming
+        side is now implemented in Inventory Service.
 
-        This test proves POS Service's side of the contract is complete.
-        The gap is tracked explicitly rather than silently left.
+        This test verifies POS Service's side of the contract (event payload
+        shape).  The consumption side is tested separately in Inventory
+        Service's ``test_event_handlers.py``
+        (``test_sale_voided_increases_stock`` and related tests).
+        The gap that was previously tracked here is now closed.
         """
         item_id = uuid4()
         bid = uuid4()
@@ -943,7 +944,7 @@ class TestVoidOrRefundSale:
             bid,
             None,
             SaleSyncBatchRequest(sales=[_sale_input(
-                client_sale_id="known-gap-void",
+                client_sale_id="gap-closed-void",
                 line_items=[
                     SaleLineItemInput(
                         item_id=item_id, quantity=Decimal("3"),
@@ -955,7 +956,7 @@ class TestVoidOrRefundSale:
         )
         sale = (
             await db_session.exec(
-                select(Sale).where(Sale.client_sale_id == "known-gap-void")
+                select(Sale).where(Sale.client_sale_id == "gap-closed-void")
             )
         ).one()
 
@@ -963,25 +964,22 @@ class TestVoidOrRefundSale:
         await void_or_refund_sale(
             db_session, bid, sale.id, None,
             VoidRefundRequest(
-                client_action_id="known-gap-act", new_status="voided",
-                reason="KNOWN_GAP demonstration",
+                client_action_id="gap-closed-act", new_status="voided",
+                reason="Gap closure demonstration",
             ),
             publish=mock_publish,
         )
 
-        # POS Service's own event is published correctly.
         sale_voided_calls = [
             c for c in mock_publish.await_args_list
             if c.args[0] == "sale.voided"
         ]
         assert len(sale_voided_calls) == 1
         payload = sale_voided_calls[0].args[1]
-        assert payload["event_id"] == "known-gap-act"
+        assert payload["event_id"] == "gap-closed-act"
         assert payload["sale_id"] == str(sale.id)
         assert payload["line_items"] == [
             {"item_id": str(item_id), "quantity": "3"},
         ]
-        # NOTE: Inventory Service has NO handle_sale_voided handler,
-        # no MovementType for reversals, and no subscriber wiring.
-        # Stock will NOT be reversed until that follow-up is done.
-        # See: inventory-service/app/services/event_handlers.py
+        # Inventory Service's handle_sale_voided now consumes this event
+        # (see inventory-service/app/services/event_handlers.py).

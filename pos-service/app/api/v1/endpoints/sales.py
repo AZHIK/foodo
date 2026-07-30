@@ -1,21 +1,29 @@
-"""Sales API endpoints — sync, read, and lookup."""
+"""Sales API endpoints — sync, read, lookup, list, and summary."""
 
 from __future__ import annotations
 
+from datetime import datetime
+from decimal import Decimal
+from typing import Annotated
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import case as sa_case, func as sa_func
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.permission_codes import PermissionCode
 from app.db.session import get_db
 from app.deps.auth import get_current_claims, require_business_permission
-from app.models.pos import Sale, SaleLineItem
+from app.models.pos import PaymentMethod, Sale, SaleLineItem, SaleStatus
 from app.schemas.line_items import SaleLineItemRead
 from app.schemas.sales import (
+    PaymentMethodSummary,
+    SaleListItem,
+    SaleListResponse,
     SaleRead,
+    SaleSummaryResponse,
     SaleSyncBatchRequest,
     SaleSyncBatchResponse,
 )
@@ -63,6 +71,123 @@ async def sync_sales(
     )
 
     return response
+
+
+@router.get(
+    "/businesses/{business_id}/sales",
+    response_model=SaleListResponse,
+)
+async def list_sales(
+    business_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _active_business: str = Depends(require_business_permission(PermissionCode.POS_VIEW)),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    from_date: datetime | None = Query(default=None, description="Start date (inclusive) for occurred_at"),
+    to_date: datetime | None = Query(default=None, description="End date (inclusive) for occurred_at"),
+    status: str | None = Query(default=None, description="Filter by status: completed, voided, refunded"),
+    payment_method: str | None = Query(default=None, description="Filter by payment method: cash, mobile_money, card, other"),
+    business_location_id: UUID | None = Query(default=None, description="Filter by business location"),
+) -> SaleListResponse:
+    """Paginated sale list, filterable by date range (occurred_at), status, payment method, and location.
+
+    Default sort: occurred_at descending (most recent first).
+    """
+    stmt = select(Sale).where(Sale.business_id == business_id)
+
+    if from_date is not None:
+        stmt = stmt.where(Sale.occurred_at >= from_date)
+    if to_date is not None:
+        stmt = stmt.where(Sale.occurred_at <= to_date)
+    if status is not None:
+        stmt = stmt.where(Sale.status == SaleStatus(status))
+    if payment_method is not None:
+        stmt = stmt.where(Sale.payment_method == PaymentMethod(payment_method))
+    if business_location_id is not None:
+        stmt = stmt.where(Sale.business_location_id == business_location_id)
+
+    count_stmt = select(sa_func.count()).select_from(stmt.subquery())
+    total = (await session.exec(count_stmt)).one()
+
+    stmt = stmt.order_by(Sale.occurred_at.desc()).offset(offset).limit(limit)
+    sales = (await session.exec(stmt)).all()
+
+    return SaleListResponse(
+        items=[_sale_to_list_item(s) for s in sales],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get(
+    "/businesses/{business_id}/sales/summary",
+    response_model=SaleSummaryResponse,
+)
+async def get_sales_summary(
+    business_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _active_business: str = Depends(require_business_permission(PermissionCode.POS_VIEW)),
+    from_date: datetime | None = Query(default=None, description="Start date (inclusive) for occurred_at"),
+    to_date: datetime | None = Query(default=None, description="End date (inclusive) for occurred_at"),
+    payment_method: str | None = Query(default=None, description="Filter by payment method: cash, mobile_money, card, other"),
+    business_location_id: UUID | None = Query(default=None, description="Filter by business location"),
+) -> SaleSummaryResponse:
+    """Lightweight aggregate: total count, revenue (completed only), and payment-method breakdown.
+
+    Voided/refunded sales are excluded from revenue but counted separately
+    as voided_count / refunded_count so dashboard views can show both figures.
+    """
+    base_where = [Sale.business_id == business_id]
+
+    if from_date is not None:
+        base_where.append(Sale.occurred_at >= from_date)
+    if to_date is not None:
+        base_where.append(Sale.occurred_at <= to_date)
+    if payment_method is not None:
+        base_where.append(Sale.payment_method == PaymentMethod(payment_method))
+    if business_location_id is not None:
+        base_where.append(Sale.business_location_id == business_location_id)
+
+    agg_stmt = select(
+        sa_func.count(Sale.id).label("total_count"),
+        sa_func.sum(
+            sa_case((Sale.status == SaleStatus.COMPLETED, Sale.total), else_=Decimal("0"))
+        ).label("total_revenue"),
+        sa_func.sum(
+            sa_case((Sale.status == SaleStatus.VOIDED, 1), else_=0)
+        ).label("voided_count"),
+        sa_func.sum(
+            sa_case((Sale.status == SaleStatus.REFUNDED, 1), else_=0)
+        ).label("refunded_count"),
+    ).where(*base_where)
+
+    agg_row = (await session.exec(agg_stmt)).one()
+
+    breakdown_stmt = select(
+        Sale.payment_method,
+        sa_func.count(Sale.id).label("count"),
+        sa_func.sum(
+            sa_case((Sale.status == SaleStatus.COMPLETED, Sale.total), else_=Decimal("0"))
+        ).label("revenue"),
+    ).where(*base_where).group_by(Sale.payment_method)
+
+    breakdown_rows = (await session.exec(breakdown_stmt)).all()
+
+    return SaleSummaryResponse(
+        total_count=agg_row.total_count,
+        total_revenue=agg_row.total_revenue or Decimal("0"),
+        voided_count=agg_row.voided_count or 0,
+        refunded_count=agg_row.refunded_count or 0,
+        payment_method_breakdown=[
+            PaymentMethodSummary(
+                payment_method=row.payment_method.value,
+                count=row.count,
+                revenue=row.revenue or Decimal("0"),
+            )
+            for row in breakdown_rows
+        ],
+    )
 
 
 @router.get(
@@ -128,6 +253,30 @@ async def get_sale_by_client_id(
     ).all()
 
     return _sale_to_read(sale, list(line_items))
+
+
+def _sale_to_list_item(sale: Sale) -> SaleListItem:
+    return SaleListItem(
+        id=sale.id,
+        business_id=sale.business_id,
+        business_location_id=sale.business_location_id,
+        client_sale_id=sale.client_sale_id,
+        status=sale.status.value,
+        subtotal=sale.subtotal,
+        discount_amount=sale.discount_amount,
+        tax_amount=sale.tax_amount,
+        total=sale.total,
+        payment_method=sale.payment_method.value,
+        actor_id=sale.actor_id,
+        occurred_at=sale.occurred_at,
+        synced_at=sale.synced_at,
+        device_sequence=sale.device_sequence,
+        is_time_suspect=sale.is_time_suspect,
+        voided_at=sale.voided_at,
+        refunded_at=sale.refunded_at,
+        void_or_refund_reason=sale.void_or_refund_reason,
+        created_at=sale.created_at,
+    )
 
 
 def _sale_to_read(sale: Sale, line_items: list[SaleLineItem]) -> SaleRead:
