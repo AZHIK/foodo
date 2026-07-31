@@ -40,6 +40,7 @@ class ItemBase(BaseModel):
     category: str | None = None
     reorder_threshold: Decimal
     reorder_quantity: Decimal
+    selling_price: Decimal | None = None
     allow_negative_stock: bool = False
     item_type: ItemType
 
@@ -73,6 +74,7 @@ class ItemUpdate(BaseModel):
     category: str | None = None
     reorder_threshold: Decimal | None = None
     reorder_quantity: Decimal | None = None
+    selling_price: Decimal | None = None
     allow_negative_stock: bool | None = None
     item_type: ItemType | None = None
     is_active: bool | None = None

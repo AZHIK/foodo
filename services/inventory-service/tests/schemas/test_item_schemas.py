@@ -1,5 +1,6 @@
 """Unit tests for item schemas — validation, field exclusion, and enum enforcement."""
 
+from decimal import Decimal
 from uuid import UUID
 
 import pytest
@@ -20,6 +21,19 @@ class TestItemCreate:
         )
         assert data.name == "Fresh Tomatoes"
         assert data.business_location_id == UUID("22222222-2222-2222-2222-222222222222")
+        assert data.selling_price is None
+
+    def test_valid_create_with_selling_price_succeeds(self) -> None:
+        data = ItemCreate(
+            name="Jollof Rice",
+            unit_of_measure="unit",
+            item_type="sellable",
+            reorder_threshold=10.0,
+            reorder_quantity=50.0,
+            selling_price=25.5,
+            business_location_id=UUID("22222222-2222-2222-2222-222222222222"),
+        )
+        assert data.selling_price == 25.5
 
     def test_rejects_invalid_unit_of_measure(self) -> None:
         with pytest.raises(ValidationError):
@@ -60,6 +74,11 @@ class TestItemUpdate:
         assert data.unit_of_measure is None
         assert data.category is None
 
+    def test_update_selling_price_works(self) -> None:
+        data = ItemUpdate(selling_price=Decimal("29.99"))
+        assert data.selling_price == Decimal("29.99")
+        assert "selling_price" in data.model_dump(exclude_unset=True)
+
 
 class TestItemRead:
     def test_iterface_fields(self) -> None:
@@ -68,6 +87,7 @@ class TestItemRead:
         assert "id" in fields
         assert "business_id" in fields
         assert "name" in fields
+        assert "selling_price" in fields
         assert "is_active" in fields
         assert "created_at" in fields
         assert "updated_at" in fields

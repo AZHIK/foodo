@@ -110,6 +110,7 @@ async def create_item(
         category=body.category,
         reorder_threshold=body.reorder_threshold,
         reorder_quantity=body.reorder_quantity,
+        selling_price=body.selling_price,
         allow_negative_stock=body.allow_negative_stock,
         item_type=body.item_type,
     )

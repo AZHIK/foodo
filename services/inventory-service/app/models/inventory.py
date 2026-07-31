@@ -159,6 +159,16 @@ class Item(SQLModel, table=True):
         nullable=False,
         sa_type=Numeric(precision=12, scale=3),
     )
+    # NOTE (validation judgment call): selling_price is intentionally NOT
+    # constrained by item_type.  A raw_material-only item may legitimately
+    # carry a selling_price (a raw material can later become sellable), and
+    # rejecting a harmless nullable field based on item_type adds friction
+    # for little protection.  Flagged as a deliberate decision — see the
+    # add-selling-price task summary.
+    selling_price: Decimal | None = Field(
+        default=None,
+        sa_type=Numeric(precision=12, scale=2),
+    )
     allow_negative_stock: bool = Field(default=False, nullable=False)
     item_type: ItemType = Field(nullable=False)
     is_active: bool = Field(default=True, nullable=False)

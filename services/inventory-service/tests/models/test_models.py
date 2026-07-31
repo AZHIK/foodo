@@ -50,12 +50,41 @@ class TestItemModel:
         assert item.name == "Fresh Tomatoes"
         assert item.unit_of_measure == UnitOfMeasure.KG
         assert item.reorder_threshold == Decimal("10.000")
+        assert item.selling_price is None
         assert item.allow_negative_stock is False
         assert item.item_type == ItemType.BOTH
         assert item.is_active is True
         assert item.category is None
         assert isinstance(item.created_at, datetime)
         assert isinstance(item.updated_at, datetime)
+
+    def test_create_item_with_selling_price(self) -> None:
+        item = Item(
+            business_id=UUID("00000000-0000-0000-0000-000000000001"),
+            business_location_id=UUID("00000000-0000-0000-0000-000000000002"),
+            name="Jollof Rice",
+            unit_of_measure=UnitOfMeasure.UNIT,
+            item_type=ItemType.SELLABLE,
+            reorder_threshold=Decimal("10.000"),
+            reorder_quantity=Decimal("50.000"),
+            selling_price=Decimal("12.99"),
+        )
+        assert item.selling_price == Decimal("12.99")
+
+    def test_selling_price_allowed_on_raw_material(self) -> None:
+        """raw_material items may carry a selling_price (unconstrained)."""
+        item = Item(
+            business_id=UUID("00000000-0000-0000-0000-000000000001"),
+            business_location_id=UUID("00000000-0000-0000-0000-000000000002"),
+            name="Flour",
+            unit_of_measure=UnitOfMeasure.KG,
+            item_type=ItemType.RAW_MATERIAL,
+            reorder_threshold=Decimal("10.000"),
+            reorder_quantity=Decimal("50.000"),
+            selling_price=Decimal("5.50"),
+        )
+        assert item.item_type == ItemType.RAW_MATERIAL
+        assert item.selling_price == Decimal("5.50")
 
     def test_item_type_enum_values(self) -> None:
         assert ItemType.SELLABLE.value == "sellable"
@@ -188,6 +217,30 @@ class TestPersistence:
         with pytest.raises(IntegrityError):
             await db_session.commit()
         await db_session.rollback()
+
+    async def test_selling_price_numeric_round_trip(self, db_session: AsyncSession) -> None:
+        """Confirm selling_price survives a round-trip without floating-point drift."""
+        item = Item(
+            business_id=UUID("00000000-0000-0000-0000-000000000001"),
+            business_location_id=UUID("00000000-0000-0000-0000-000000000002"),
+            name="Precision Priced Item",
+            unit_of_measure=UnitOfMeasure.UNIT,
+            item_type=ItemType.BOTH,
+            reorder_threshold=Decimal("10.000"),
+            reorder_quantity=Decimal("50.000"),
+            selling_price=Decimal("0.1") + Decimal("0.2"),
+        )
+        db_session.add(item)
+        await db_session.commit()
+        await db_session.refresh(item)
+
+        assert item.selling_price == Decimal("0.3")
+        assert item.selling_price == Decimal("0.1") + Decimal("0.2")
+
+    async def test_selling_price_none_persists_as_null(self, db_session: AsyncSession) -> None:
+        """An item without a selling_price stores NULL — genuinely optional."""
+        item = await self._create_item(db_session)
+        assert item.selling_price is None
 
     async def test_numeric_precision_round_trip(self, db_session: AsyncSession) -> None:
         """Confirm Decimal quantities survive a round-trip without floating-point drift.

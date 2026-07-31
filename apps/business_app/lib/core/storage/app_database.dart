@@ -1,34 +1,39 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:drift/drift.dart';
+import 'package:drift/native.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Placeholder for the Drift-powered encrypted local database.
-///
-/// SQLCipher-based encryption is prepared (passphrase generation below)
-/// but no tables are defined yet — that happens in Stage 2 when the
-/// POS and Inventory caching schemas are designed.
-///
-/// Once tables exist, this class will extend the drift-generated
-/// `_$AppDatabase` and be opened via:
-/// ```dart
-/// driftDatabase(
-///   name: 'foodlink_business',
-///   native: DriftNativeOptions(
-///     passphrase: getDatabasePassphrase,
-///   ),
-/// )
-/// ```
-class AppDatabase {
-  AppDatabase._();
-  static final AppDatabase instance = AppDatabase._();
+import 'converters/string_list_converter.dart';
+import 'tables/local_user_profiles.dart';
+import 'tables/cached_business_contexts.dart';
+import 'tables/cached_items.dart';
+import 'tables/pending_sales.dart';
+import 'tables/pending_sale_line_items.dart';
+
+part 'app_database.g.dart';
+
+@DriftDatabase(tables: [
+  LocalUserProfiles,
+  CachedBusinessContexts,
+  CachedItems,
+  PendingSales,
+  PendingSaleLineItems,
+])
+class AppDatabase extends _$AppDatabase {
+  AppDatabase(QueryExecutor e) : super(e);
+
+  @override
+  int get schemaVersion => 1;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) async {
+          await m.createAll();
+        },
+      );
 }
 
-/// Generates or retrieves a persistent 256-bit database encryption key
-/// from secure storage.
-///
-/// On first launch a random key is generated and persisted so that
-/// subsequent launches can re-read the same key.  This ensures the
-/// underlying SQLite file is always encrypted at rest.
 Future<String> getDatabasePassphrase() async {
   const keyName = 'db_passphrase_v1';
   const storage = FlutterSecureStorage();
