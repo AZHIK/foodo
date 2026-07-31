@@ -25,8 +25,13 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
+# The test suite runs with TEST_DB_URL set (via the api-dev container or
+# conftest), pointing the engine at the separate test database.  Normal
+# runs leave it unset and use the dev/prod URL.
+_db_url = settings.test_db_url or settings.db_url
+
 engine = create_async_engine(
-    settings.db_url,
+    _db_url,
     echo=settings.debug,
     pool_pre_ping=True,
 )

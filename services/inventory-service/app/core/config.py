@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     # ── Database ───────────────────────────────
     db_url: str = "postgresql+asyncpg://foodlink:foodlink@localhost:5432/foodlink_inventory"
 
+    # Genuinely separate test database.  When set (TEST_DB_URL env var), the
+    # app engine AND Alembic target this database instead of db_url.  The test
+    # suite sets it so tests never touch the dev database.
+    test_db_url: str | None = None
+
     # ── JWT (verification only — no private key in this service) ──
     jwt_public_key_path: str = "keys/public.pem"
     jwt_algorithm: str = "RS256"

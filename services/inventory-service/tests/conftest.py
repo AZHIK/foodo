@@ -1,21 +1,112 @@
-"""pytest fixtures — async client, test database session."""
+"""pytest fixtures — async client, test database session (real migrations).
 
+The test database is genuinely separate from dev: ``foodlink_inventory_test``
+(``TEST_DB_URL``).  The schema is built ONCE per test session by running
+``alembic upgrade head`` against it — the same path production uses — instead
+of the old ``create_all``/``drop_all``-per-test strategy, which silently hid
+migration drift (e.g. the enum case mismatch).  Per-test isolation is achieved
+by truncating rows, never by dropping and recreating tables.
+"""
+
+import asyncio
+import os
+import subprocess
+import sys
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlmodel import SQLModel
+from sqlalchemy import text
+from sqlalchemy.engine import make_url
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.database import async_session_factory, engine
-from app.main import app
+# ── Test database resolution ────────────────────────────────────────────────
+# Resolve TEST_DB_URL BEFORE importing any app module so that
+# app.core.database (via Settings) binds its engine to the test database,
+# never the dev database.  The api-dev container sets TEST_DB_URL; for a
+# bare local run we derive <db_url>_test from DB_URL.
+if "TEST_DB_URL" not in os.environ:
+    _dev_url = os.environ.get(
+        "DB_URL",
+        "postgresql+asyncpg://foodlink:foodlink@localhost:5432/foodlink_inventory",
+    )
+    _dev = make_url(_dev_url)
+    os.environ["TEST_DB_URL"] = _dev.set(database=f"{_dev.database}_test").render_as_string(
+        hide_password=False
+    )
+
+TEST_DB_URL = os.environ["TEST_DB_URL"]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+# App imports must come AFTER TEST_DB_URL is set.
+from app.core.database import async_session_factory, engine  # noqa: E402
+from app.main import app  # noqa: E402
+
+APP_TABLES = (
+    "item",
+    "recipecomponent",
+    "stocklevel",
+    "stockmovement",
+    "processedevent",
+)
+
+
+def _ensure_test_database_exists() -> None:
+    """Create the test database if it does not already exist (idempotent)."""
+
+    async def _create() -> None:
+        url = make_url(TEST_DB_URL)
+        admin_engine = create_async_engine(
+            url.set(database="postgres"),
+            isolation_level="AUTOCOMMIT",
+        )
+        async with admin_engine.connect() as conn:
+            row = await conn.execute(
+                text("SELECT 1 FROM pg_database WHERE datname = :name"),
+                {"name": url.database},
+            )
+            if row.scalar() is None:
+                await conn.execute(text(f'CREATE DATABASE "{url.database}"'))
+        await admin_engine.dispose()
+
+    asyncio.run(_create())
+
+
+def _run_alembic_upgrade() -> None:
+    """Run `alembic upgrade head` against the test database.
+
+    Executed in a subprocess so it is the real Alembic CLI (as in
+    deployment) and cannot conflict with pytest-asyncio's event loop.
+    """
+    env = dict(os.environ)
+    env["TEST_DB_URL"] = TEST_DB_URL
+    alembic_bin = Path(sys.executable).parent / "alembic"
+    subprocess.run(
+        [str(alembic_bin), "upgrade", "head"],
+        cwd=PROJECT_ROOT,
+        env=env,
+        check=True,
+    )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _migrate_test_database() -> None:
+    """Build the test schema with REAL migrations once per test session.
+
+    Replaces the old create_all/drop_all-per-test strategy.  The schema is
+    created by `alembic upgrade head` on the separate test database — the
+    exact path production uses — so enum-case drift and migration divergence
+    can no longer hide behind self-consistent create_all.
+    """
+    _ensure_test_database_exists()
+    _run_alembic_upgrade()
 
 
 @pytest_asyncio.fixture(scope="session")
 def event_loop():
-    import asyncio
-
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
@@ -30,28 +121,25 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def _apply_migrations() -> AsyncGenerator[None, None]:
-    """Create all tables before each test and drop them after.
+async def _clean_tables() -> AsyncGenerator[None, None]:
+    """Truncate app tables before each test (schema persists per session).
 
-    Uses SQLModel.metadata.create_all (standard test practice) rather than
-    running Alembic migrations.  This mirrors Identity Service's test setup
-    and avoids coupling test execution to migration file state.
+    The schema is created once by `alembic upgrade head` at session start;
+    per-test isolation comes from truncating rows, never from dropping or
+    recreating tables.  alembic_version is intentionally left untouched.
     """
     async with engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
-    try:
-        yield
-    finally:
-        async with engine.begin() as conn:
-            await conn.run_sync(SQLModel.metadata.drop_all)
+        await conn.execute(
+            text(
+                "TRUNCATE TABLE item, recipecomponent, stocklevel, "
+                "stockmovement, processedevent RESTART IDENTITY CASCADE"
+            )
+        )
+    yield
 
 
 @pytest_asyncio.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Provide an isolated DB session backed by Postgres.
-
-    Tables are created before each test and dropped after (autouse fixture above).
-    Each test gets a fresh set of tables, so data never leaks between tests.
-    """
+    """Provide an isolated DB session backed by the test database."""
     async with async_session_factory() as session:
         yield session

@@ -35,9 +35,9 @@ from decimal import Decimal
 from enum import Enum as PyEnum
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Numeric, UniqueConstraint, func
+from sqlalchemy import Column, DateTime, Enum as SAEnum, Numeric, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlmodel import Column, Field, ForeignKey, SQLModel
+from sqlmodel import Field, ForeignKey, SQLModel
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -119,6 +119,21 @@ class ActorType(str, PyEnum):
     SERVICE = "service"
 
 
+def _enum_db_values(enum_class: type[PyEnum]) -> list[str]:
+    """Return the ``.value`` strings (lowercase) for a Python enum.
+
+    SQLAlchemy's default for a PEP-435 enum class is to persist the member
+    **name** (``SELLABLE``) rather than the value (``sellable``).  The
+    hand-written Alembic migrations create the native Postgres enum types
+    with lowercase ``.value`` strings, so the ORM must be told explicitly
+    to send/read lowercase values or every insert on a migration-built
+    database is rejected.  ``values_callable`` removes that implicit
+    coupling between model code and migration files.
+    """
+
+    return [member.value for member in enum_class]
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # Tables
 # ═══════════════════════════════════════════════════════════════════════
@@ -149,7 +164,12 @@ class Item(SQLModel, table=True):
         sa_type=PG_UUID,
     )
     name: str = Field(nullable=False, max_length=255)
-    unit_of_measure: UnitOfMeasure = Field(nullable=False)
+    unit_of_measure: UnitOfMeasure = Field(
+        sa_column=Column(
+            SAEnum(UnitOfMeasure, values_callable=_enum_db_values, name="unitofmeasure"),
+            nullable=False,
+        ),
+    )
     category: str | None = Field(default=None, max_length=255)
     reorder_threshold: Decimal = Field(
         nullable=False,
@@ -170,7 +190,12 @@ class Item(SQLModel, table=True):
         sa_type=Numeric(precision=12, scale=2),
     )
     allow_negative_stock: bool = Field(default=False, nullable=False)
-    item_type: ItemType = Field(nullable=False)
+    item_type: ItemType = Field(
+        sa_column=Column(
+            SAEnum(ItemType, values_callable=_enum_db_values, name="itemtype"),
+            nullable=False,
+        ),
+    )
     is_active: bool = Field(default=True, nullable=False)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
@@ -311,10 +336,20 @@ class StockMovement(SQLModel, table=True):
         nullable=False,
         sa_type=Numeric(precision=12, scale=3),
     )
-    movement_type: MovementType = Field(nullable=False)
+    movement_type: MovementType = Field(
+        sa_column=Column(
+            SAEnum(MovementType, values_callable=_enum_db_values, name="movementtype"),
+            nullable=False,
+        ),
+    )
     reference_type: str | None = Field(default=None, max_length=100)
     reference_id: UUID | None = Field(default=None, sa_type=PG_UUID)
-    actor_type: ActorType = Field(nullable=False)
+    actor_type: ActorType = Field(
+        sa_column=Column(
+            SAEnum(ActorType, values_callable=_enum_db_values, name="actortype"),
+            nullable=False,
+        ),
+    )
     actor_id: UUID | None = Field(default=None, sa_type=PG_UUID)
     reason: str | None = Field(default=None, max_length=500)
     created_at: datetime = Field(
