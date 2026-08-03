@@ -6,7 +6,7 @@ import 'package:foodlink_business/core/network/api_client.dart';
 import 'package:foodlink_business/core/network/api_endpoints.dart';
 
 const _testEnvContent = '''
-IDENTITY_BASE_URL=http://localhost:8000
+IDENTITY_BASE_URL=http://localhost:8009
 INVENTORY_BASE_URL=http://localhost:8100
 POS_BASE_URL=http://localhost:8200
 ''';

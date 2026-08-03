@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Wrapper around [FlutterSecureStorage] that is multi-profile aware.
@@ -8,12 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Placeholder implementation — the actual encrypt / decrypt / refresh
 /// flows will be added once the auth service integration is built.
 class SecureStorageService {
-  SecureStorageService()
-      : _storage = const FlutterSecureStorage(
-          aOptions: AndroidOptions(
-            encryptedSharedPreferences: true,
-          ),
-        );
+  SecureStorageService() : _storage = const FlutterSecureStorage();
 
   final FlutterSecureStorage _storage;
 
@@ -36,3 +32,7 @@ class SecureStorageService {
   Future<void> delete(String key) => _storage.delete(key: key);
   Future<void> clearAll() => _storage.deleteAll();
 }
+
+/// App-wide [SecureStorageService] instance.
+final secureStorageServiceProvider =
+    Provider<SecureStorageService>((ref) => SecureStorageService());

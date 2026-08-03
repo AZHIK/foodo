@@ -86,6 +86,30 @@ class $LocalUserProfilesTable extends LocalUserProfiles
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _pinAttemptCountMeta = const VerificationMeta(
+    'pinAttemptCount',
+  );
+  @override
+  late final GeneratedColumn<int> pinAttemptCount = GeneratedColumn<int>(
+    'pin_attempt_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _pinLockedUntilMeta = const VerificationMeta(
+    'pinLockedUntil',
+  );
+  @override
+  late final GeneratedColumn<DateTime> pinLockedUntil =
+      GeneratedColumn<DateTime>(
+        'pin_locked_until',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     userId,
@@ -95,6 +119,8 @@ class $LocalUserProfilesTable extends LocalUserProfiles
     activeBusinessId,
     lastLoginAt,
     isCurrentlyActive,
+    pinAttemptCount,
+    pinLockedUntil,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -172,6 +198,24 @@ class $LocalUserProfilesTable extends LocalUserProfiles
         ),
       );
     }
+    if (data.containsKey('pin_attempt_count')) {
+      context.handle(
+        _pinAttemptCountMeta,
+        pinAttemptCount.isAcceptableOrUnknown(
+          data['pin_attempt_count']!,
+          _pinAttemptCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('pin_locked_until')) {
+      context.handle(
+        _pinLockedUntilMeta,
+        pinLockedUntil.isAcceptableOrUnknown(
+          data['pin_locked_until']!,
+          _pinLockedUntilMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -209,6 +253,14 @@ class $LocalUserProfilesTable extends LocalUserProfiles
         DriftSqlType.bool,
         data['${effectivePrefix}is_currently_active'],
       )!,
+      pinAttemptCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}pin_attempt_count'],
+      )!,
+      pinLockedUntil: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}pin_locked_until'],
+      ),
     );
   }
 
@@ -227,6 +279,8 @@ class LocalUserProfile extends DataClass
   final String? activeBusinessId;
   final DateTime lastLoginAt;
   final bool isCurrentlyActive;
+  final int pinAttemptCount;
+  final DateTime? pinLockedUntil;
   const LocalUserProfile({
     required this.userId,
     required this.phone,
@@ -235,6 +289,8 @@ class LocalUserProfile extends DataClass
     this.activeBusinessId,
     required this.lastLoginAt,
     required this.isCurrentlyActive,
+    required this.pinAttemptCount,
+    this.pinLockedUntil,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -248,6 +304,10 @@ class LocalUserProfile extends DataClass
     }
     map['last_login_at'] = Variable<DateTime>(lastLoginAt);
     map['is_currently_active'] = Variable<bool>(isCurrentlyActive);
+    map['pin_attempt_count'] = Variable<int>(pinAttemptCount);
+    if (!nullToAbsent || pinLockedUntil != null) {
+      map['pin_locked_until'] = Variable<DateTime>(pinLockedUntil);
+    }
     return map;
   }
 
@@ -262,6 +322,10 @@ class LocalUserProfile extends DataClass
           : Value(activeBusinessId),
       lastLoginAt: Value(lastLoginAt),
       isCurrentlyActive: Value(isCurrentlyActive),
+      pinAttemptCount: Value(pinAttemptCount),
+      pinLockedUntil: pinLockedUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pinLockedUntil),
     );
   }
 
@@ -278,6 +342,8 @@ class LocalUserProfile extends DataClass
       activeBusinessId: serializer.fromJson<String?>(json['activeBusinessId']),
       lastLoginAt: serializer.fromJson<DateTime>(json['lastLoginAt']),
       isCurrentlyActive: serializer.fromJson<bool>(json['isCurrentlyActive']),
+      pinAttemptCount: serializer.fromJson<int>(json['pinAttemptCount']),
+      pinLockedUntil: serializer.fromJson<DateTime?>(json['pinLockedUntil']),
     );
   }
   @override
@@ -291,6 +357,8 @@ class LocalUserProfile extends DataClass
       'activeBusinessId': serializer.toJson<String?>(activeBusinessId),
       'lastLoginAt': serializer.toJson<DateTime>(lastLoginAt),
       'isCurrentlyActive': serializer.toJson<bool>(isCurrentlyActive),
+      'pinAttemptCount': serializer.toJson<int>(pinAttemptCount),
+      'pinLockedUntil': serializer.toJson<DateTime?>(pinLockedUntil),
     };
   }
 
@@ -302,6 +370,8 @@ class LocalUserProfile extends DataClass
     Value<String?> activeBusinessId = const Value.absent(),
     DateTime? lastLoginAt,
     bool? isCurrentlyActive,
+    int? pinAttemptCount,
+    Value<DateTime?> pinLockedUntil = const Value.absent(),
   }) => LocalUserProfile(
     userId: userId ?? this.userId,
     phone: phone ?? this.phone,
@@ -312,6 +382,10 @@ class LocalUserProfile extends DataClass
         : this.activeBusinessId,
     lastLoginAt: lastLoginAt ?? this.lastLoginAt,
     isCurrentlyActive: isCurrentlyActive ?? this.isCurrentlyActive,
+    pinAttemptCount: pinAttemptCount ?? this.pinAttemptCount,
+    pinLockedUntil: pinLockedUntil.present
+        ? pinLockedUntil.value
+        : this.pinLockedUntil,
   );
   LocalUserProfile copyWithCompanion(LocalUserProfilesCompanion data) {
     return LocalUserProfile(
@@ -330,6 +404,12 @@ class LocalUserProfile extends DataClass
       isCurrentlyActive: data.isCurrentlyActive.present
           ? data.isCurrentlyActive.value
           : this.isCurrentlyActive,
+      pinAttemptCount: data.pinAttemptCount.present
+          ? data.pinAttemptCount.value
+          : this.pinAttemptCount,
+      pinLockedUntil: data.pinLockedUntil.present
+          ? data.pinLockedUntil.value
+          : this.pinLockedUntil,
     );
   }
 
@@ -342,7 +422,9 @@ class LocalUserProfile extends DataClass
           ..write('pinHash: $pinHash, ')
           ..write('activeBusinessId: $activeBusinessId, ')
           ..write('lastLoginAt: $lastLoginAt, ')
-          ..write('isCurrentlyActive: $isCurrentlyActive')
+          ..write('isCurrentlyActive: $isCurrentlyActive, ')
+          ..write('pinAttemptCount: $pinAttemptCount, ')
+          ..write('pinLockedUntil: $pinLockedUntil')
           ..write(')'))
         .toString();
   }
@@ -356,6 +438,8 @@ class LocalUserProfile extends DataClass
     activeBusinessId,
     lastLoginAt,
     isCurrentlyActive,
+    pinAttemptCount,
+    pinLockedUntil,
   );
   @override
   bool operator ==(Object other) =>
@@ -367,7 +451,9 @@ class LocalUserProfile extends DataClass
           other.pinHash == this.pinHash &&
           other.activeBusinessId == this.activeBusinessId &&
           other.lastLoginAt == this.lastLoginAt &&
-          other.isCurrentlyActive == this.isCurrentlyActive);
+          other.isCurrentlyActive == this.isCurrentlyActive &&
+          other.pinAttemptCount == this.pinAttemptCount &&
+          other.pinLockedUntil == this.pinLockedUntil);
 }
 
 class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
@@ -378,6 +464,8 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
   final Value<String?> activeBusinessId;
   final Value<DateTime> lastLoginAt;
   final Value<bool> isCurrentlyActive;
+  final Value<int> pinAttemptCount;
+  final Value<DateTime?> pinLockedUntil;
   final Value<int> rowid;
   const LocalUserProfilesCompanion({
     this.userId = const Value.absent(),
@@ -387,6 +475,8 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
     this.activeBusinessId = const Value.absent(),
     this.lastLoginAt = const Value.absent(),
     this.isCurrentlyActive = const Value.absent(),
+    this.pinAttemptCount = const Value.absent(),
+    this.pinLockedUntil = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalUserProfilesCompanion.insert({
@@ -397,6 +487,8 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
     this.activeBusinessId = const Value.absent(),
     required DateTime lastLoginAt,
     this.isCurrentlyActive = const Value.absent(),
+    this.pinAttemptCount = const Value.absent(),
+    this.pinLockedUntil = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : userId = Value(userId),
        phone = Value(phone),
@@ -411,6 +503,8 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
     Expression<String>? activeBusinessId,
     Expression<DateTime>? lastLoginAt,
     Expression<bool>? isCurrentlyActive,
+    Expression<int>? pinAttemptCount,
+    Expression<DateTime>? pinLockedUntil,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -421,6 +515,8 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
       if (activeBusinessId != null) 'active_business_id': activeBusinessId,
       if (lastLoginAt != null) 'last_login_at': lastLoginAt,
       if (isCurrentlyActive != null) 'is_currently_active': isCurrentlyActive,
+      if (pinAttemptCount != null) 'pin_attempt_count': pinAttemptCount,
+      if (pinLockedUntil != null) 'pin_locked_until': pinLockedUntil,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -433,6 +529,8 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
     Value<String?>? activeBusinessId,
     Value<DateTime>? lastLoginAt,
     Value<bool>? isCurrentlyActive,
+    Value<int>? pinAttemptCount,
+    Value<DateTime?>? pinLockedUntil,
     Value<int>? rowid,
   }) {
     return LocalUserProfilesCompanion(
@@ -443,6 +541,8 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
       activeBusinessId: activeBusinessId ?? this.activeBusinessId,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
       isCurrentlyActive: isCurrentlyActive ?? this.isCurrentlyActive,
+      pinAttemptCount: pinAttemptCount ?? this.pinAttemptCount,
+      pinLockedUntil: pinLockedUntil ?? this.pinLockedUntil,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -471,6 +571,12 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
     if (isCurrentlyActive.present) {
       map['is_currently_active'] = Variable<bool>(isCurrentlyActive.value);
     }
+    if (pinAttemptCount.present) {
+      map['pin_attempt_count'] = Variable<int>(pinAttemptCount.value);
+    }
+    if (pinLockedUntil.present) {
+      map['pin_locked_until'] = Variable<DateTime>(pinLockedUntil.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -487,6 +593,8 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
           ..write('activeBusinessId: $activeBusinessId, ')
           ..write('lastLoginAt: $lastLoginAt, ')
           ..write('isCurrentlyActive: $isCurrentlyActive, ')
+          ..write('pinAttemptCount: $pinAttemptCount, ')
+          ..write('pinLockedUntil: $pinLockedUntil, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2688,6 +2796,8 @@ typedef $$LocalUserProfilesTableCreateCompanionBuilder =
       Value<String?> activeBusinessId,
       required DateTime lastLoginAt,
       Value<bool> isCurrentlyActive,
+      Value<int> pinAttemptCount,
+      Value<DateTime?> pinLockedUntil,
       Value<int> rowid,
     });
 typedef $$LocalUserProfilesTableUpdateCompanionBuilder =
@@ -2699,6 +2809,8 @@ typedef $$LocalUserProfilesTableUpdateCompanionBuilder =
       Value<String?> activeBusinessId,
       Value<DateTime> lastLoginAt,
       Value<bool> isCurrentlyActive,
+      Value<int> pinAttemptCount,
+      Value<DateTime?> pinLockedUntil,
       Value<int> rowid,
     });
 
@@ -2743,6 +2855,16 @@ class $$LocalUserProfilesTableFilterComposer
 
   ColumnFilters<bool> get isCurrentlyActive => $composableBuilder(
     column: $table.isCurrentlyActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get pinAttemptCount => $composableBuilder(
+    column: $table.pinAttemptCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get pinLockedUntil => $composableBuilder(
+    column: $table.pinLockedUntil,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2790,6 +2912,16 @@ class $$LocalUserProfilesTableOrderingComposer
     column: $table.isCurrentlyActive,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get pinAttemptCount => $composableBuilder(
+    column: $table.pinAttemptCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get pinLockedUntil => $composableBuilder(
+    column: $table.pinLockedUntil,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LocalUserProfilesTableAnnotationComposer
@@ -2827,6 +2959,16 @@ class $$LocalUserProfilesTableAnnotationComposer
 
   GeneratedColumn<bool> get isCurrentlyActive => $composableBuilder(
     column: $table.isCurrentlyActive,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get pinAttemptCount => $composableBuilder(
+    column: $table.pinAttemptCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get pinLockedUntil => $composableBuilder(
+    column: $table.pinLockedUntil,
     builder: (column) => column,
   );
 }
@@ -2878,6 +3020,8 @@ class $$LocalUserProfilesTableTableManager
                 Value<String?> activeBusinessId = const Value.absent(),
                 Value<DateTime> lastLoginAt = const Value.absent(),
                 Value<bool> isCurrentlyActive = const Value.absent(),
+                Value<int> pinAttemptCount = const Value.absent(),
+                Value<DateTime?> pinLockedUntil = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalUserProfilesCompanion(
                 userId: userId,
@@ -2887,6 +3031,8 @@ class $$LocalUserProfilesTableTableManager
                 activeBusinessId: activeBusinessId,
                 lastLoginAt: lastLoginAt,
                 isCurrentlyActive: isCurrentlyActive,
+                pinAttemptCount: pinAttemptCount,
+                pinLockedUntil: pinLockedUntil,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2898,6 +3044,8 @@ class $$LocalUserProfilesTableTableManager
                 Value<String?> activeBusinessId = const Value.absent(),
                 required DateTime lastLoginAt,
                 Value<bool> isCurrentlyActive = const Value.absent(),
+                Value<int> pinAttemptCount = const Value.absent(),
+                Value<DateTime?> pinLockedUntil = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalUserProfilesCompanion.insert(
                 userId: userId,
@@ -2907,6 +3055,8 @@ class $$LocalUserProfilesTableTableManager
                 activeBusinessId: activeBusinessId,
                 lastLoginAt: lastLoginAt,
                 isCurrentlyActive: isCurrentlyActive,
+                pinAttemptCount: pinAttemptCount,
+                pinLockedUntil: pinLockedUntil,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

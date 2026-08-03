@@ -52,6 +52,7 @@ dependencies:
 
   # ── Path provider (for Drift database path) ──────────────────────
   path_provider: ^2.1.0
+  cryptography: ^2.9.0
 
 dev_dependencies:
   flutter_test:

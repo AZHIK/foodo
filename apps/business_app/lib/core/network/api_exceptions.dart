@@ -18,14 +18,11 @@ class NetworkConnectionException extends ApiException {
 }
 
 class UnauthorizedException extends ApiException {
-  const UnauthorizedException([super.message = 'Unauthorized', super.statusCode = 401]);
+  const UnauthorizedException([super.message = 'Unauthorized']);
 }
 
 class ServerErrorException extends ApiException {
-  const ServerErrorException([
-    super.message = 'Internal server error',
-    super.statusCode = 500,
-  ]);
+  const ServerErrorException([super.message = 'Internal server error']);
 }
 
 class TimeoutException extends ApiException {

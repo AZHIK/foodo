@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'converters/string_list_converter.dart';
 import 'tables/local_user_profiles.dart';
@@ -21,15 +24,21 @@ part 'app_database.g.dart';
   PendingSaleLineItems,
 ])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase(QueryExecutor e) : super(e);
+  AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from == 1) {
+            await m.addColumn(localUserProfiles, localUserProfiles.pinAttemptCount);
+            await m.addColumn(localUserProfiles, localUserProfiles.pinLockedUntil);
+          }
         },
       );
 }
@@ -45,4 +54,30 @@ Future<String> getDatabasePassphrase() async {
   final b64 = base64Url.encode(bytes);
   await storage.write(key: keyName, value: b64);
   return b64;
+}
+
+/// App-wide [AppDatabase] instance, encrypted with a passphrase persisted
+/// in secure storage. The passphrase is applied via SQLCipher's `PRAGMA
+/// key` when the connection is opened.
+final appDatabaseProvider = Provider<AppDatabase>((ref) {
+  final connection = DatabaseConnection.delayed(_openEncryptedConnection());
+
+  final db = AppDatabase(connection);
+  ref.onDispose(db.close);
+  return db;
+});
+
+Future<DatabaseConnection> _openEncryptedConnection() async {
+  final directory = await getApplicationDocumentsDirectory();
+  final passphrase = await getDatabasePassphrase();
+  final file = File('${directory.path}/foodlink.sqlite');
+
+  return DatabaseConnection(
+    NativeDatabase(
+      file,
+      setup: (db) {
+        db.execute('PRAGMA key = "$passphrase";');
+      },
+    ),
+  );
 }

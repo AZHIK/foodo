@@ -17,8 +17,8 @@ uv run python scripts/generate_keys.py
 docker compose up --build
 
 # 4. Verify health
-curl http://localhost:8000/health
-curl http://localhost:8000/health/ready
+curl http://localhost:8009/health
+curl http://localhost:8009/health/ready
 
 # 5. (Optional) pgAdmin + dev tools at http://localhost:5050
 docker compose --profile dev up
@@ -62,8 +62,8 @@ uv run mypy app
 
 ## OpenAPI docs
 
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+- Swagger UI: http://localhost:8009/docs
+- ReDoc: http://localhost:8009/redoc
 
 ### Client generation
 
@@ -74,7 +74,7 @@ Once endpoints are stable, generate typed clients:
 - **TypeScript/Next.js**: Use `openapi-typescript` to generate types + `openapi-fetch`
   for a thin client.
 
-These tools consume `GET http://localhost:8000/openapi.json`.
+These tools consume `GET http://localhost:8009/openapi.json`.
 
 ## What's NOT built yet
 

@@ -8,9 +8,12 @@ class AppRoutes {
   static const String splash = '/';
   static const String profilePicker = '/profile-picker';
   static const String loginOtp = '/login-otp';
+  static const String setPin = '/set-pin';
+  static const String pinUnlock = '/pin-unlock';
   static const String dashboard = '/dashboard';
   static const String pos = '/pos';
   static const String inventory = '/inventory';
   static const String staff = '/staff';
   static const String settings = '/settings';
+  static const String accountSettings = '/account-settings';
 }

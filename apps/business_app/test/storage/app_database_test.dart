@@ -1,13 +1,8 @@
-import 'package:drift/drift.dart' hide isNotNull;
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:foodlink_business/core/storage/app_database.dart';
-import 'package:foodlink_business/core/storage/tables/cached_business_contexts.dart';
-import 'package:foodlink_business/core/storage/tables/local_user_profiles.dart';
-import 'package:foodlink_business/core/storage/tables/cached_items.dart';
-import 'package:foodlink_business/core/storage/tables/pending_sales.dart';
-import 'package:foodlink_business/core/storage/tables/pending_sale_line_items.dart';
 
 void main() {
   late AppDatabase db;
@@ -21,8 +16,8 @@ void main() {
   });
 
   group('schema version', () {
-    test('is 1 for Stage 2', () {
-      expect(db.schemaVersion, equals(1));
+    test('is 2 (Stage 3 lockout columns)', () {
+      expect(db.schemaVersion, equals(2));
     });
   });
 
@@ -61,6 +56,42 @@ void main() {
 
       final rows = await db.select(db.localUserProfiles).get();
       expect(rows.first.isCurrentlyActive, isFalse);
+    });
+
+    test('pinAttemptCount defaults to 0 and pinLockedUntil to null', () async {
+      await db.into(db.localUserProfiles).insert(LocalUserProfilesCompanion(
+            userId: const Value('user_ghi'),
+            phone: const Value('+233507779999'),
+            displayName: const Value('Esi'),
+            pinHash: const Value('placeholder'),
+            activeBusinessId: const Value(null),
+            lastLoginAt: Value(DateTime.now()),
+          ));
+
+      final rows = await db.select(db.localUserProfiles).get();
+      expect(rows.first.pinAttemptCount, equals(0));
+      expect(rows.first.pinLockedUntil, isNull);
+    });
+
+    test('pinAttemptCount and pinLockedUntil round-trip', () async {
+      final lockedUntil = DateTime.now().add(const Duration(days: 1));
+      await db.into(db.localUserProfiles).insert(LocalUserProfilesCompanion(
+            userId: const Value('user_jkl'),
+            phone: const Value('+233507778888'),
+            displayName: const Value('Yaw'),
+            pinHash: const Value('placeholder'),
+            activeBusinessId: const Value(null),
+            lastLoginAt: Value(DateTime.now()),
+            pinAttemptCount: const Value(5),
+            pinLockedUntil: Value(lockedUntil),
+          ));
+
+      final rows = await db.select(db.localUserProfiles).get();
+      expect(rows.first.pinAttemptCount, equals(5));
+      expect(
+        rows.first.pinLockedUntil!.difference(lockedUntil).inSeconds,
+        equals(0),
+      );
     });
   });
 
