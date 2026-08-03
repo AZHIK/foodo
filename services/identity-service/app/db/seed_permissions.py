@@ -466,80 +466,13 @@ DEFAULT_PLATFORM_ROLE_PERMISSIONS: dict[str, list[PermissionCode]] = {
         PermissionCode.ORDER_VIEW_OWN,
         PermissionCode.ORDER_RATE,
     ],
-    "admin": [
-        # Coarse/legacy aliases — kept for backward compatibility
-        PermissionCode.USERS_MANAGE,
-        PermissionCode.ROLES_ASSIGN,
-        PermissionCode.BUSINESS_MANAGE_ROLES,
-        # Existing business-domain codes
-        PermissionCode.POS_WRITE,
-        PermissionCode.POS_REFUND,
-        PermissionCode.INVENTORY_VIEW,
-        PermissionCode.INVENTORY_ADJUST,
-        PermissionCode.PROCUREMENT_CREATE,
-        PermissionCode.PROCUREMENT_APPROVE,
-        PermissionCode.PROCUREMENT_AUTO_ORDER_ENABLE,
-        PermissionCode.AI_FORECAST_VIEW,
-        PermissionCode.AI_RECOMMENDATION_APPROVE,
-        PermissionCode.SUPPLIER_PRICE_MANAGE,
-        PermissionCode.FARMER_SUPPLY_COMMITMENT_MANAGE,
-        PermissionCode.DELIVERY_VIEW_ASSIGNED,
-        PermissionCode.DELIVERY_UPDATE_STATUS,
-        PermissionCode.DELIVERY_CONFIRM_DROPOFF,
-        PermissionCode.ORDER_CREATE,
-        PermissionCode.ORDER_VIEW_OWN,
-        PermissionCode.ORDER_RATE,
-        # Organizations
-        PermissionCode.ORGANIZATIONS_VIEW,
-        PermissionCode.ORGANIZATIONS_CREATE,
-        PermissionCode.ORGANIZATIONS_UPDATE,
-        PermissionCode.ORGANIZATIONS_DELETE,
-        # Businesses
-        PermissionCode.BUSINESSES_VIEW,
-        PermissionCode.BUSINESSES_CREATE,
-        PermissionCode.BUSINESSES_UPDATE,
-        PermissionCode.BUSINESSES_DELETE,
-        PermissionCode.BUSINESSES_ASSIGN_TO_ORGANIZATION,
-        # Business Locations
-        PermissionCode.BUSINESS_LOCATIONS_VIEW,
-        PermissionCode.BUSINESS_LOCATIONS_CREATE,
-        PermissionCode.BUSINESS_LOCATIONS_UPDATE,
-        PermissionCode.BUSINESS_LOCATIONS_DELETE,
-        # Business Roles
-        PermissionCode.BUSINESS_ROLES_VIEW,
-        PermissionCode.BUSINESS_ROLES_CREATE,
-        PermissionCode.BUSINESS_ROLES_UPDATE,
-        PermissionCode.BUSINESS_ROLES_DELETE,
-        PermissionCode.BUSINESS_ROLES_MANAGE_PERMISSIONS,
-        # User Business Role Assignment
-        PermissionCode.USER_BUSINESS_ROLES_VIEW,
-        PermissionCode.USER_BUSINESS_ROLES_ASSIGN,
-        PermissionCode.USER_BUSINESS_ROLES_REVOKE,
-        # User Business Location Role Assignment
-        PermissionCode.USER_BUSINESS_LOCATION_ROLES_VIEW,
-        PermissionCode.USER_BUSINESS_LOCATION_ROLES_ASSIGN,
-        PermissionCode.USER_BUSINESS_LOCATION_ROLES_REVOKE,
-        # User Business Permission Overrides
-        PermissionCode.USER_BUSINESS_PERMISSIONS_VIEW,
-        PermissionCode.USER_BUSINESS_PERMISSIONS_GRANT,
-        PermissionCode.USER_BUSINESS_PERMISSIONS_DENY,
-        PermissionCode.USER_BUSINESS_PERMISSIONS_REVOKE,
-        # Role Templates
-        PermissionCode.ROLE_TEMPLATES_VIEW,
-        PermissionCode.ROLE_TEMPLATES_CREATE,
-        PermissionCode.ROLE_TEMPLATES_UPDATE,
-        PermissionCode.ROLE_TEMPLATES_DELETE,
-        PermissionCode.ROLE_TEMPLATES_MANAGE_PERMISSIONS,
-        # Auth / Security
-        PermissionCode.VERIFICATION_CODES_VIEW,
-        PermissionCode.REFRESH_TOKENS_VIEW,
-        PermissionCode.USER_SESSIONS_VIEW,
-        PermissionCode.USER_SESSIONS_REVOKE,
-        PermissionCode.TRUSTED_DEVICES_VIEW,
-        PermissionCode.TRUSTED_DEVICES_REVOKE,
-        PermissionCode.LOGIN_ATTEMPTS_VIEW,
-        PermissionCode.AUTH_RISK_EVENTS_VIEW,
-    ],
+    # "admin" = platform-wide operational/administrative oversight.  Confirmed
+    # during the default-groups-and-roles seeding work: it aligns to the
+    # internal "Super Admin" resource set (Groups/Roles/PlatformRoles/Orgs/
+    # Businesses/Locations/RoleTemplates/Users) plus every business/value-chain
+    # code.  Across the whole PermissionCode surface that resolves to every
+    # member of the (reconciled) enum.
+    "admin": list(PermissionCode),
 }
 
 

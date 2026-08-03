@@ -5,6 +5,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_text_styles.dart';
+import '../../../../core/error/failure.dart';
 import '../../../../core/storage/app_database.dart';
 import '../../../auth/application/auth_notifier.dart';
 import '../../../auth/domain/auth_state.dart';
@@ -115,29 +116,28 @@ class _AccountSettingsBody extends ConsumerWidget {
                           await ref.read(authProvider.notifier).endShift();
                         },
                       ),
-                    AppListTile(
-                      leading: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: colorScheme.error.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
+                    if (activeProfile != null)
+                      AppListTile(
+                        leading: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: colorScheme.error.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
+                          ),
+                          child: Icon(
+                            Icons.delete_outline,
+                            color: colorScheme.error,
+                            size: 20,
+                          ),
                         ),
-                        child: Icon(
-                          Icons.delete_outline,
-                          color: colorScheme.error,
-                          size: 20,
-                        ),
+                        title: 'Remove Profile',
+                        subtitle: 'Permanently delete this profile and its PIN from this device',
+                        trailing: const Icon(Icons.chevron_right),
+                        isDestructive: true,
+                        onTap: () =>
+                            _showRemoveProfileDialog(context, activeProfile!),
                       ),
-                      title: 'Remove Profile',
-                      subtitle: 'Permanently delete this profile and its PIN from this device',
-                      trailing: const Icon(Icons.chevron_right),
-                      isDestructive: true,
-                      enabled: profiles.length > 1,
-                      onTap: profiles.length > 1
-                          ? () => _showRemoveProfileDialog(context, ref)
-                          : null,
-                    ),
                   ],
                 ),
 
@@ -159,20 +159,121 @@ class _AccountSettingsBody extends ConsumerWidget {
     );
   }
 
-  Future<void> _showRemoveProfileDialog(BuildContext context, WidgetRef ref) async {
-    final confirmed = await AppDialog.showConfirm(
-      context,
-      title: 'Remove Profile',
-      message: profiles.length == 1
-          ? "This will remove the only profile on this device. You'll need to sign in again."
-          : 'This will permanently delete this profile and its PIN from this device.',
-      confirmLabel: 'Remove',
-      isDestructive: true,
+  Future<void> _showRemoveProfileDialog(
+    BuildContext context,
+    LocalUserProfile active,
+  ) async {
+    final removed = await showDialog<bool>(
+      context: context,
+      builder: (_) => _ConfirmRemovalDialog(
+        displayName: active.displayName,
+        phone: active.phone,
+      ),
     );
-    if (!confirmed || !context.mounted) return;
-    if (profiles.isNotEmpty) {
-      await ref.read(authProvider.notifier).removeFromDevice(profiles.last.userId);
+    if (removed == true && context.mounted) {
+      AppSnackBar.showSuccess(context, 'Profile removed from this device.');
     }
+  }
+}
+
+/// Re-authentication step before permanently removing the active profile.
+///
+/// Refuses to run until the profile's own PIN is freshly verified against
+/// its Argon2id hash — the same seriousness as the lockout-resolution flow.
+/// Wrong PINs are rejected in place and the dialog stays open, so nothing
+/// is deleted until the correct PIN is entered.
+class _ConfirmRemovalDialog extends ConsumerStatefulWidget {
+  const _ConfirmRemovalDialog({required this.displayName, required this.phone});
+
+  final String displayName;
+  final String phone;
+
+  @override
+  ConsumerState<_ConfirmRemovalDialog> createState() =>
+      _ConfirmRemovalDialogState();
+}
+
+class _ConfirmRemovalDialogState extends ConsumerState<_ConfirmRemovalDialog> {
+  final _pinPadKey = GlobalKey<AppPinPadState>();
+  String? _error;
+  bool _isRemoving = false;
+
+  String? _mapFailure(Failure f) => f.when(
+        network: (m, _) => m ?? AppStrings.networkError,
+        validation: (m) => m ?? AppStrings.unknownError,
+        auth: (m) => m ?? AppStrings.pinWrong,
+        unknown: (m, _) => m ?? AppStrings.unknownError,
+      );
+
+  Future<void> _submit(String pin) async {
+    if (_isRemoving) return;
+    setState(() {
+      _error = null;
+      _isRemoving = true;
+    });
+
+    final failure = await ref.read(authProvider.notifier).removeFromDevice(pin: pin);
+    if (!mounted) return;
+
+    if (failure != null) {
+      setState(() {
+        _isRemoving = false;
+        _error = _mapFailure(failure);
+      });
+      _pinPadKey.currentState?.clear();
+      return;
+    }
+
+    Navigator.of(context).pop(true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+      ),
+      title: const Text('Remove Profile'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              widget.displayName.isEmpty
+                  ? 'This will permanently delete ${widget.phone} and its '
+                      'PIN from this device.'
+                  : 'This will permanently delete ${widget.displayName} '
+                      '(${widget.phone}) and its PIN from this device.',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: AppDimensions.spaceLG),
+            AppPinPad(
+              key: _pinPadKey,
+              errorText: _error,
+              compact: true,
+              enabled: !_isRemoving,
+              onChanged: (_) => setState(() => _error = null),
+              onCompleted: _submit,
+            ),
+            if (_isRemoving) ...[
+              const SizedBox(height: AppDimensions.spaceMD),
+              const AppLoadingIndicator(),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
   }
 }
 

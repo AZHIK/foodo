@@ -136,7 +136,7 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen>
                 },
               )
             : null,
-        scrollable: false,
+        scrollable: true,
         child: FadeTransition(
           opacity: _stepFade,
           child: Column(

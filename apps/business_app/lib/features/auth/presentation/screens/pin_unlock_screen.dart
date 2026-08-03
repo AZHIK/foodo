@@ -164,23 +164,29 @@ class _UnlockView extends StatelessWidget {
   final VoidCallback onLeave;
   final ColorScheme colorScheme;
 
-  @override
+@override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxHeight < 640;
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Column(
       children: [
         // Icon
         Container(
-          width: 72,
-          height: 72,
+          width: compact ? 56 : 72,
+          height: compact ? 56 : 72,
           decoration: BoxDecoration(
             color: colorScheme.primaryContainer,
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.lock_outline, size: 36, color: colorScheme.primary),
+          child: Icon(Icons.lock_outline, size: compact ? 28 : 36, color: colorScheme.primary),
         ),
 
-        const SizedBox(height: AppDimensions.spaceLG),
+        SizedBox(height: compact ? AppDimensions.spaceMD : AppDimensions.spaceLG),
 
         Text(
           AppStrings.pinUnlockTitle,
@@ -196,17 +202,18 @@ class _UnlockView extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
 
-        const SizedBox(height: AppDimensions.spaceXL),
+        SizedBox(height: compact ? AppDimensions.spaceMD : AppDimensions.spaceXL),
 
         AppPinPad(
           key: pinPadKey,
           errorText: error,
           enabled: !isVerifying,
+          compact: compact,
           onChanged: onPinChanged,
           onCompleted: onPinCompleted,
         ),
 
-        const SizedBox(height: AppDimensions.spaceLG),
+        SizedBox(height: compact ? AppDimensions.spaceSM : AppDimensions.spaceLG),
 
         AppPrimaryButton(
           label: AppStrings.pinUnlockTitle,
@@ -214,10 +221,15 @@ class _UnlockView extends StatelessWidget {
           onPressed: onSubmit,
         ),
 
-        const SizedBox(height: AppDimensions.spaceMD),
+        SizedBox(height: compact ? AppDimensions.spaceXS : AppDimensions.spaceMD),
 
         AppTextButton(label: 'End shift', onPressed: onLeave),
       ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -231,7 +243,13 @@ class _LockoutView extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
@@ -275,6 +293,11 @@ class _LockoutView extends StatelessWidget {
 
         AppTextButton(label: AppStrings.pinLockedOutBack, onPressed: onBack),
       ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -299,4 +299,95 @@ void main() {
     final unlocked = container.read(authProvider) as SessionActive;
     expect(unlocked.locked, isFalse);
   });
+
+  group('removeFromDevice', () {
+    test('is rejected when there is no active session and deletes nothing',
+        () async {
+      final repository = FakeLocalProfileRepository()
+        ..seedProfile(userId: userId, phone: phone, displayName: 'Ama', pin: '1234');
+      final container = createContainer(
+        repository: repository,
+        pinService: FakePinService(),
+        identityApi:
+            FakeIdentityApi(userId: userId, refreshToken: 'rt_1', validCode: '654321'),
+        secureStorage: FakeSecureStorageService(),
+      );
+      final notifier = container.read(authProvider.notifier);
+
+      await notifier.initialize();
+      expect(container.read(authProvider), isA<ProfilesAvailable>());
+
+      final result = await notifier.removeFromDevice(pin: '1234');
+
+      expect(result, isA<Failure>());
+      expect(await repository.listProfiles(), isNotEmpty);
+    });
+
+    test('removes only the ACTIVE profile with the correct PIN', () async {
+      const otherUserId = 'user_2';
+      const otherPhone = '+233500000002';
+      final repository = FakeLocalProfileRepository()
+        ..seedProfile(
+          userId: userId,
+          phone: phone,
+          displayName: 'Ama',
+          pin: '1234',
+        )
+        ..seedProfile(
+          userId: otherUserId,
+          phone: otherPhone,
+          displayName: 'Kofi',
+          pin: '5678',
+        );
+      final container = createContainer(
+        repository: repository,
+        pinService: FakePinService(),
+        identityApi:
+            FakeIdentityApi(userId: userId, refreshToken: 'rt_1', validCode: '654321'),
+        secureStorage: FakeSecureStorageService(),
+      );
+      final notifier = container.read(authProvider.notifier);
+
+      await notifier.initialize();
+      final result = await notifier.activateProfile(userId, pin: '1234');
+      expect(result, isNull);
+      expect(container.read(authProvider), isA<SessionActive>());
+
+      final removeResult = await notifier.removeFromDevice(pin: '1234');
+
+      expect(removeResult, isNull);
+      final remaining = await repository.listProfiles();
+      expect(remaining.map((p) => p.userId), isNot(contains(userId)));
+      expect(remaining.map((p) => p.userId), contains(otherUserId));
+      expect(container.read(authProvider), isA<ProfilesAvailable>());
+    });
+
+    test('wrong PIN blocks removal and deletes nothing', () async {
+      final repository = FakeLocalProfileRepository()
+        ..seedProfile(
+          userId: userId,
+          phone: phone,
+          displayName: 'Ama',
+          pin: '1234',
+          active: true,
+        );
+      final container = createContainer(
+        repository: repository,
+        pinService: FakePinService(),
+        identityApi:
+            FakeIdentityApi(userId: userId, refreshToken: 'rt_1', validCode: '654321'),
+        secureStorage: FakeSecureStorageService(),
+      );
+      final notifier = container.read(authProvider.notifier);
+
+      await notifier.initialize();
+      expect(container.read(authProvider), isA<SessionActive>());
+
+      final result = await notifier.removeFromDevice(pin: '9999');
+
+      expect(result, isA<Failure>());
+      expect(await repository.listProfiles(), hasLength(1));
+      expect(await repository.profileById(userId), isNotNull);
+    });
+  });
 }

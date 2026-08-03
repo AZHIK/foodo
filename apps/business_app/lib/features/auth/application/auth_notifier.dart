@@ -322,12 +322,51 @@ class AuthNotifier extends _$AuthNotifier {
     state = const AuthState.unauthenticated();
   }
 
-  /// Removes the profile from the device entirely (profile row and
-  /// refresh token).
-  Future<void> removeFromDevice(String userId) async {
+  /// Permanently removes the **currently active** profile from the device
+  /// (profile row and refresh token).
+  ///
+  /// This is a destructive, re-authenticated operation and is never passed
+  /// an arbitrary [userId] from the caller — the removal target is always
+  /// the profile held by [AuthState.sessionActive]. Before anything is
+  /// deleted the caller must supply [pin], which is freshly verified
+  /// against that profile's Argon2id hash (the same re-authentication
+  /// requirement as the lockout-resolution flow). The method refuses to
+  /// run unless a session is currently active.
+  ///
+  /// Returns `null` on success and a [Failure] otherwise (no active
+  /// session, correct-target mismatch, or incorrect PIN).
+  Future<Failure?> removeFromDevice({required String pin}) async {
+    final current = state;
+    if (current is! SessionActive) {
+      return const Failure.auth(
+        message: 'No active session to remove from this device.',
+      );
+    }
+
+    final activeId = current.profile.userId;
+    final profile = await ref
+        .read(localProfileRepositoryProvider)
+        .profileById(activeId);
+    if (profile == null) {
+      return const Failure.validation(message: 'Profile no longer exists.');
+    }
+
+    try {
+      final pinValid =
+          await ref.read(pinServiceProvider).verifyPin(pin, profile.pinHash);
+      if (!pinValid) {
+        await _handleFailedPinAttempt(profile);
+        return const Failure.auth(message: 'Incorrect PIN.');
+      }
+    } on Failure catch (failure) {
+      return failure;
+    } catch (error) {
+      return Failure.unknown(error: error);
+    }
+
     ref.read(tokenStoreProvider).accessToken = null;
-    await ref.read(localProfileRepositoryProvider).removeProfile(userId);
-    await ref.read(secureStorageServiceProvider).deleteRefreshToken(userId);
+    await ref.read(localProfileRepositoryProvider).removeProfile(activeId);
+    await ref.read(secureStorageServiceProvider).deleteRefreshToken(activeId);
 
     final profiles =
         await ref.read(localProfileRepositoryProvider).listProfiles();
@@ -336,6 +375,7 @@ class AuthNotifier extends _$AuthNotifier {
     } else {
       state = const AuthState.unauthenticated();
     }
+    return null;
   }
 
   // ── Lockout internals ───────────────────────────────────────────

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import String
+from sqlalchemy import String, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 from app.models.base import SoftDeleteMixin, TimestampMixin, UUIDMixin
@@ -8,8 +8,11 @@ from app.models.base import SoftDeleteMixin, TimestampMixin, UUIDMixin
 
 class RoleTemplate(UUIDMixin, TimestampMixin, SoftDeleteMixin, SQLModel, table=True):
     __tablename__ = "role_templates"
+    __table_args__ = (
+        UniqueConstraint("name", "business_type", name="uq_role_templates_name_business_type"),
+    )
 
-    name: str = Field(unique=True, max_length=100)
+    name: str = Field(max_length=100)
     description: str | None = Field(default=None, max_length=500)
     business_type: str | None = Field(default=None, max_length=20, sa_type=String)
     is_owner_template: bool = Field(default=False)

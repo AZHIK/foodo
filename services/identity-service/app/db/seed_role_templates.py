@@ -1,12 +1,18 @@
-"""Seed role_templates and role_template_permissions with Owner templates.
+"""Seed role_templates and role_template_permissions.
 
 One owner template per business_type (restaurant, supplier, farmer, distributor,
-platform_operator).  Each template gets a reasonable starting set of permission
-codes drawn exclusively from the existing PermissionCode enum.
+platform_operator) plus the deferred non-owner templates for the restaurant,
+supplier, farmer, and distributor business types (manager, cashier, kitchen
+staff, stock controller, sales admin, warehouse staff, farm coordinator).
+``platform_operator`` intentionally gets NO additional templates for this MVP.
 
-Non-owner templates (cashier, kitchen staff, supplier sales admin, farm
-coordinator, etc.) are deliberately deferred — only Owner templates are
-seeded here.
+Every permission code is drawn exclusively from the existing PermissionCode enum
+(or, for the handful of referenced-but-absent codes, resolved to the closest
+existing member via ``app/db/seed_mappings.py``).
+
+Protection is applied to the CLONED business_role at business-creation time
+(is_protected = template.is_owner_template), never to these templates — so none
+of the non-owner templates carry is_owner_template.
 """
 
 from dataclasses import dataclass
@@ -14,6 +20,17 @@ from dataclasses import dataclass
 from sqlmodel import Session, select
 
 from app.core.permission_codes import PermissionCode
+from app.db.seed_mappings import (
+    INVENTORY_ITEMS_CREATE,
+    INVENTORY_ITEMS_DEACTIVATE,
+    INVENTORY_ITEMS_UPDATE,
+    INVENTORY_TRANSFER,
+    INVENTORY_WASTE_RECORD,
+    POS_SALES_LIST,
+    POS_SALES_SYNC,
+    POS_SALES_VIEW,
+    uniq,
+)
 from app.models import RoleTemplate, RoleTemplatePermission
 
 
@@ -94,6 +111,64 @@ _PLATFORM_FULL: tuple[PermissionCode, ...] = (
     PermissionCode.USER_SESSIONS_REVOKE,
 )
 
+# ── Non-owner (deferred) template permission sets ─────────────────────
+
+# Restaurant "Manager" — the POS / inventory / staff codes requested, resolved
+# onto the existing enum (see seed_mappings.py).
+_MANAGER: tuple[PermissionCode, ...] = (
+    POS_SALES_SYNC,
+    POS_SALES_VIEW,
+    POS_SALES_LIST,
+    PermissionCode.POS_REFUND,
+    PermissionCode.INVENTORY_VIEW,
+    PermissionCode.INVENTORY_ADJUST,
+    INVENTORY_WASTE_RECORD,
+    INVENTORY_TRANSFER,
+    INVENTORY_ITEMS_CREATE,
+    INVENTORY_ITEMS_UPDATE,
+    INVENTORY_ITEMS_DEACTIVATE,
+    PermissionCode.USER_BUSINESS_ROLES_VIEW,
+    PermissionCode.USER_BUSINESS_ROLES_ASSIGN,
+)
+
+_CASHIER: tuple[PermissionCode, ...] = (
+    POS_SALES_SYNC,
+    POS_SALES_VIEW,
+    PermissionCode.INVENTORY_VIEW,
+)
+
+_KITCHEN_STAFF: tuple[PermissionCode, ...] = (
+    PermissionCode.INVENTORY_VIEW,
+    INVENTORY_WASTE_RECORD,
+)
+
+_STOCK_CONTROLLER: tuple[PermissionCode, ...] = (
+    PermissionCode.INVENTORY_VIEW,
+    PermissionCode.INVENTORY_ADJUST,
+    INVENTORY_WASTE_RECORD,
+    INVENTORY_TRANSFER,
+    INVENTORY_ITEMS_CREATE,
+    INVENTORY_ITEMS_UPDATE,
+)
+
+_SALES_ADMIN: tuple[PermissionCode, ...] = (
+    PermissionCode.SUPPLIER_PRICE_MANAGE,
+    PermissionCode.INVENTORY_VIEW,
+    PermissionCode.INVENTORY_ADJUST,
+)
+
+_WAREHOUSE_STAFF: tuple[PermissionCode, ...] = (
+    PermissionCode.INVENTORY_VIEW,
+    PermissionCode.INVENTORY_ADJUST,
+    INVENTORY_TRANSFER,
+)
+
+_FARM_COORDINATOR: tuple[PermissionCode, ...] = (
+    PermissionCode.FARMER_SUPPLY_COMMITMENT_MANAGE,
+    PermissionCode.INVENTORY_VIEW,
+    PermissionCode.INVENTORY_ADJUST,
+)
+
 # ── Seed definitions ───────────────────────────────────────────────────
 
 ROLE_TEMPLATE_SEEDS: tuple[RoleTemplateSeed, ...] = (
@@ -144,13 +219,84 @@ ROLE_TEMPLATE_SEEDS: tuple[RoleTemplateSeed, ...] = (
             + _PLATFORM_FULL
         ),
     ),
+    # ── Restaurant (non-owner) ───────────────────────────────
+    RoleTemplateSeed(
+        name="Manager",
+        business_type="restaurant",
+        is_owner_template=False,
+        description="Restaurant manager — POS, inventory, and staff roles.",
+        permissions=uniq(_MANAGER),
+    ),
+    RoleTemplateSeed(
+        name="Cashier",
+        business_type="restaurant",
+        is_owner_template=False,
+        description="Restaurant cashier — process POS sales and view inventory.",
+        permissions=uniq(_CASHIER),
+    ),
+    RoleTemplateSeed(
+        name="Kitchen Staff",
+        business_type="restaurant",
+        is_owner_template=False,
+        description="Restaurant kitchen staff — view and record inventory.",
+        permissions=uniq(_KITCHEN_STAFF),
+    ),
+    RoleTemplateSeed(
+        name="Stock Controller",
+        business_type="restaurant",
+        is_owner_template=False,
+        description="Restaurant stock controller — manage and transfer inventory.",
+        permissions=uniq(_STOCK_CONTROLLER),
+    ),
+    # ── Supplier (non-owner) ─────────────────────────────────
+    RoleTemplateSeed(
+        name="Sales Admin",
+        business_type="supplier",
+        is_owner_template=False,
+        description="Supplier sales admin — manage prices and inventory.",
+        permissions=uniq(_SALES_ADMIN),
+    ),
+    RoleTemplateSeed(
+        name="Warehouse Staff",
+        business_type="supplier",
+        is_owner_template=False,
+        description="Supplier warehouse staff — manage and transfer inventory.",
+        permissions=uniq(_WAREHOUSE_STAFF),
+    ),
+    # ── Farmer (non-owner) ──────────────────────────────────
+    RoleTemplateSeed(
+        name="Farm Coordinator",
+        business_type="farmer",
+        is_owner_template=False,
+        description="Farm coordinator — manage supply commitments and inventory.",
+        permissions=uniq(_FARM_COORDINATOR),
+    ),
+    # ── Distributor (non-owner) — same sets as supplier ─────
+    RoleTemplateSeed(
+        name="Sales Admin",
+        business_type="distributor",
+        is_owner_template=False,
+        description="Distributor sales admin — manage prices and inventory.",
+        permissions=uniq(_SALES_ADMIN),
+    ),
+    RoleTemplateSeed(
+        name="Warehouse Staff",
+        business_type="distributor",
+        is_owner_template=False,
+        description="Distributor warehouse staff — manage and transfer inventory.",
+        permissions=uniq(_WAREHOUSE_STAFF),
+    ),
+    # platform_operator intentionally gets NO additional templates for this MVP.
 )
 
 
 def seed_role_templates(session: Session) -> None:
     for seed in ROLE_TEMPLATE_SEEDS:
         template = session.exec(
-            select(RoleTemplate).where(RoleTemplate.name == seed.name)
+            select(RoleTemplate).where(
+                RoleTemplate.name == seed.name,
+                RoleTemplate.business_type == seed.business_type,
+            )
         ).one_or_none()
 
         if template is None:

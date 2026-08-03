@@ -24,6 +24,7 @@ class AppPinPad extends StatefulWidget {
     this.onCompleted,
     this.label,
     this.enabled = true,
+    this.compact = false,
   });
 
   final int minLength;
@@ -31,6 +32,9 @@ class AppPinPad extends StatefulWidget {
   final String? errorText;
   final String? label;
   final bool enabled;
+
+  /// Reduces key sizes and spacing for height-constrained layouts.
+  final bool compact;
   final ValueChanged<String>? onChanged;
 
   /// Called once when the PIN length reaches [maxLength].
@@ -115,13 +119,16 @@ class AppPinPadState extends State<AppPinPad> {
               : const SizedBox.shrink(),
         ),
 
-        const SizedBox(height: AppDimensions.spaceXL),
+        SizedBox(
+          height: widget.compact ? AppDimensions.spaceLG : AppDimensions.spaceXL,
+        ),
 
         // ── Numeric keyboard ─────────────────────────────────────
         _NumericKeypad(
           onDigit: _tap,
           onDelete: _delete,
           enabled: widget.enabled,
+          compact: widget.compact,
           colorScheme: colorScheme,
         ),
       ],
@@ -180,11 +187,13 @@ class _NumericKeypad extends StatelessWidget {
     required this.onDelete,
     required this.enabled,
     required this.colorScheme,
+    required this.compact,
   });
 
   final ValueChanged<String> onDigit;
   final VoidCallback onDelete;
   final bool enabled;
+  final bool compact;
   final ColorScheme colorScheme;
 
   static const _rows = [
@@ -205,11 +214,15 @@ class _NumericKeypad extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: row.map((key) {
               if (key.isEmpty) {
-                return const SizedBox(width: 80, height: 64);
+                return SizedBox(
+                  width: 80,
+                  height: compact ? 52 : 64,
+                );
               }
               if (key == 'del') {
                 return _KeypadButton(
                   onTap: enabled ? onDelete : null,
+                  compact: compact,
                   colorScheme: colorScheme,
                   child: Icon(
                     Icons.backspace_outlined,
@@ -222,6 +235,7 @@ class _NumericKeypad extends StatelessWidget {
               }
               return _KeypadButton(
                 onTap: enabled ? () => onDigit(key) : null,
+                compact: compact,
                 colorScheme: colorScheme,
                 child: Text(
                   key,
@@ -244,11 +258,13 @@ class _NumericKeypad extends StatelessWidget {
 class _KeypadButton extends StatelessWidget {
   const _KeypadButton({
     required this.onTap,
+    required this.compact,
     required this.colorScheme,
     required this.child,
   });
 
   final VoidCallback? onTap;
+  final bool compact;
   final ColorScheme colorScheme;
   final Widget child;
 
@@ -264,8 +280,8 @@ class _KeypadButton extends StatelessWidget {
           splashColor: colorScheme.primary.withValues(alpha: 0.12),
           highlightColor: colorScheme.primary.withValues(alpha: 0.08),
           child: Container(
-            width: 72,
-            height: 72,
+            width: compact ? 60 : 72,
+            height: compact ? 60 : 72,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
