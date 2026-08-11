@@ -8,15 +8,16 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.events import publish_event
 from app.models.business import (
     Business,
-    BusinessLocation,
     BusinessRole,
     BusinessRolePermission,
     LocationType,
+    Store,
+    StoreSetting,
     UserBusinessRole,
 )
 from app.models.template import RoleTemplate, RoleTemplatePermission
 from app.services.audit_events import publish_audit_recorded
-from app.services.business_locations import validate_location_type
+from app.services.store import generate_store_token, validate_store_type
 
 logger = structlog.get_logger(__name__)
 
@@ -26,12 +27,15 @@ class CreateBusinessResult:
     """Result of a successful business creation.
 
     ``business`` — the newly created Business row.
-    ``default_location_id`` — the UUID of the auto-created primary location,
+    ``default_store_id`` — the UUID of the auto-created primary store,
     which Inventory Service will attach stock records to.
+    ``default_store_setting_id`` — the UUID of the auto-created one-to-one
+    StoreSetting row for the default store.
     """
 
     business: Business
-    default_location_id: UUID
+    default_store_id: UUID
+    default_store_setting_id: UUID
 
 
 async def create_business(
@@ -42,6 +46,12 @@ async def create_business(
     business_type: str,
     organization_id: UUID | None = None,
     tax_id: str | None = None,
+    registration_number: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
+    address: str | None = None,
+    status: str = "active",
+    logo: str | None = None,
     country_code: str = "TZ",
     city: str | None = None,
     timezone: str = "Africa/Dar_es_Salaam",
@@ -53,6 +63,12 @@ async def create_business(
             owner_user_id=creator_user_id,
             organization_id=organization_id,
             tax_id=tax_id,
+            registration_number=registration_number,
+            email=email,
+            phone=phone,
+            address=address,
+            status=status,
+            logo=logo,
             country_code=country_code,
             city=city,
             timezone=timezone,
@@ -131,28 +147,35 @@ async def create_business(
             )
         )
 
-        default_location_type = LocationType.HEAD_OFFICE
-        validate_location_type(business_type, default_location_type.value)
-        location_name = "Main Location"
-        default_location = BusinessLocation(
+        default_store_type = LocationType.HEAD_OFFICE
+        validate_store_type(business_type, default_store_type.value)
+        store_name = "Main Location"
+        default_store = Store(
             business_id=business.id,
-            name=location_name,
-            location_type=default_location_type,
+            name=store_name,
+            token=generate_store_token(),
+            location_type=default_store_type,
             is_primary=True,
             country_code=business.country_code,
             city=business.city,
             timezone=business.timezone,
         )
-        db.add(default_location)
+        db.add(default_store)
         await db.flush()
-        await db.refresh(default_location)
+        await db.refresh(default_store)
+
+        default_store_setting = StoreSetting(store_id=default_store.id, active=True)
+        db.add(default_store_setting)
+        await db.flush()
+        await db.refresh(default_store_setting)
 
         logger.info(
-            "default_business_location_created",
+            "default_store_and_settings_created",
             business_id=str(business.id),
-            location_id=str(default_location.id),
-            location_name=location_name,
-            location_type=default_location_type.value,
+            store_id=str(default_store.id),
+            store_name=store_name,
+            location_type=default_store_type.value,
+            store_setting_id=str(default_store_setting.id),
         )
 
     await publish_event(
@@ -193,4 +216,8 @@ async def create_business(
         },
     )
 
-    return CreateBusinessResult(business=business, default_location_id=default_location.id)
+    return CreateBusinessResult(
+        business=business,
+        default_store_id=default_store.id,
+        default_store_setting_id=default_store_setting.id,
+    )

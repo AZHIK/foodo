@@ -53,11 +53,11 @@ _SUPER_ADMIN_VALUES = (
     PermissionCode.BUSINESSES_UPDATE,
     PermissionCode.BUSINESSES_DELETE,
     PermissionCode.BUSINESSES_ASSIGN_TO_ORGANIZATION,
-    # Business Locations
-    PermissionCode.BUSINESS_LOCATIONS_VIEW,
-    PermissionCode.BUSINESS_LOCATIONS_CREATE,
-    PermissionCode.BUSINESS_LOCATIONS_UPDATE,
-    PermissionCode.BUSINESS_LOCATIONS_DELETE,
+    # Stores
+    PermissionCode.STORES_VIEW,
+    PermissionCode.STORES_CREATE,
+    PermissionCode.STORES_UPDATE,
+    PermissionCode.STORES_DELETE,
     # Role Templates
     PermissionCode.ROLE_TEMPLATES_VIEW,
     PermissionCode.ROLE_TEMPLATES_CREATE,

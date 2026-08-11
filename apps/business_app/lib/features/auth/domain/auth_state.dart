@@ -14,9 +14,17 @@ part 'auth_state.freezed.dart';
 /// ```text
 /// unauthenticated ──requestOtp──> otpPending ──verifyOtp──> settingPin
 ///     │                                                    │
-///     │                                              setPin │
-///     │                                                      v
-///     └────────────<────────── profilesAvailable <── sessionActive
+///     │                                     setPin │(check onboarding)
+///     │                                                    v
+///     │                          needs_onboarding=false ──> sessionActive
+///     │                                (invited staff)     (has a business role)
+///     │                                                    │
+///     │                          needs_onboarding=true ──> onboardingRequired
+///     │                            (self-registered owner)     │
+///     │                                                       │ POST /businesses
+///     │                                                       │ + completeOnboarding()
+///     │                                                       v
+///     └────────────<────────── profilesAvailable <──────── sessionActive
 ///                                     │
 ///                              activateProfile ───────────> sessionActive
 ///                                     │
@@ -24,6 +32,14 @@ part 'auth_state.freezed.dart';
 ///                                     │
 ///                              OTP re-verify ──────────> settingPin (new PIN)
 /// ```
+///
+/// [AuthState.sessionActive] is the *terminal* "fully ready" state: it
+/// means the user is authenticated **and** has at least one business-role
+/// assignment (their own business, or an invited one).
+/// [AuthState.onboardingRequired] is a distinct intermediate state for an
+/// authenticated user who has *no* business yet — a self-registered owner
+/// who has set a PIN but not yet created a business.
+///
 @freezed
 sealed class AuthState with _$AuthState {
   const AuthState._();
@@ -45,6 +61,19 @@ sealed class AuthState with _$AuthState {
     LocalUserProfile profile, {
     @Default(false) bool locked,
   }) = SessionActive;
+
+  /// Authenticated (a local profile exists and a refresh token is stored)
+  /// but the user has **no business-role assignment yet** — a
+  /// self-registered owner who has set their PIN but not created a
+  /// business.
+  ///
+  /// This is an *intermediate* state: the router must send the user to the
+  /// business-onboarding flow, and [AuthState.sessionActive] is only
+  /// reached once a business exists (via `completeOnboarding`). Invited
+  /// staff never land here because their onboarding-status check returns
+  /// `needs_onboarding=false`.
+  const factory AuthState.onboardingRequired(LocalUserProfile profile) =
+      OnboardingRequired;
 
   /// An OTP has been requested for [phone]; waiting for the code.
   const factory AuthState.otpPending(String phone) = OtpPending;

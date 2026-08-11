@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:foodlink_business/core/constants/app_strings.dart';
 import 'package:foodlink_business/features/auth/application/auth_notifier.dart';
-import 'package:foodlink_business/features/auth/presentation/screens/account_settings_screen.dart';
 import 'package:foodlink_business/features/auth/presentation/screens/profile_picker_screen.dart';
 import 'package:foodlink_business/features/auth/presentation/screens/pin_unlock_screen.dart';
 import 'package:foodlink_business/shared/widgets/widgets.dart';
@@ -122,7 +121,8 @@ void main() {
 
       expect(find.text(AppStrings.pinUnlockTitle), findsWidgets);
       expect(find.text(AppStrings.pinUnlockSubtitle), findsOneWidget);
-      expect(find.byType(TextField), findsOneWidget);
+      // PIN entry is the keypad (dot indicator + digits), not a TextField.
+      expect(find.byType(AppPinPad), findsOneWidget);
     });
   });
 }

@@ -62,11 +62,11 @@ class PermissionCode(StrEnum):
     BUSINESSES_DELETE = "businesses.delete"
     BUSINESSES_ASSIGN_TO_ORGANIZATION = "businesses.assign_to_organization"
 
-    # --- Business Locations ---
-    BUSINESS_LOCATIONS_VIEW = "business_locations.view"
-    BUSINESS_LOCATIONS_CREATE = "business_locations.create"
-    BUSINESS_LOCATIONS_UPDATE = "business_locations.update"
-    BUSINESS_LOCATIONS_DELETE = "business_locations.delete"
+    # --- Stores (formerly Business Locations) ---
+    STORES_VIEW = "stores.view"
+    STORES_CREATE = "stores.create"
+    STORES_UPDATE = "stores.update"
+    STORES_DELETE = "stores.delete"
 
     # --- Business Roles (per-business custom roles) ---
     BUSINESS_ROLES_VIEW = "business_roles.view"

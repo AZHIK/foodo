@@ -103,7 +103,15 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen>
       });
       _pinPadKey2.currentState?.clear();
     } else {
-      context.go(AppRoutes.dashboard);
+      // Invited staff skip onboarding and land on the dashboard exactly as
+      // before; a self-registered owner (no business yet) is sent to the
+      // onboarding flow instead.
+      final resulting = ref.read(authProvider);
+      if (resulting is OnboardingRequired) {
+        context.go(AppRoutes.businessOnboarding);
+      } else {
+        context.go(AppRoutes.dashboard);
+      }
     }
   }
 

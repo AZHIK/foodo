@@ -348,8 +348,10 @@ async def verify_otp_endpoint(
         ip_address=ip_address,
     )
 
-    if not user.is_phone_verified:
+    if not user.is_phone_verified or user.status == UserStatus.INVITED:
         user.is_phone_verified = True
+        if user.status == UserStatus.INVITED:
+            user.status = UserStatus.ACTIVE
         db.add(user)
         await db.flush()
         await db.commit()

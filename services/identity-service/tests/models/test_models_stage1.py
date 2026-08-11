@@ -12,9 +12,9 @@ from sqlmodel import SQLModel
 
 from app.models import (
     Business,
-    BusinessLocation,
     BusinessRole,
     BusinessRolePermission,
+    BusinessStatus,
     BusinessType,
     Group,
     LocationType,
@@ -28,6 +28,8 @@ from app.models import (
     RolePermission,
     RoleTemplate,
     RoleTemplatePermission,
+    Store,
+    StoreSetting,
     User,
     UserBusinessLocationRole,
     UserBusinessPermission,
@@ -136,16 +138,34 @@ class TestBusinessModel:
         assert isinstance(b.id, UUID)
         assert b.name == "Nairobi Bistro"
         assert b.business_type == BusinessType.RESTAURANT
+        assert b.status == BusinessStatus.ACTIVE
+        assert b.logo is None
+        assert b.deleted_by is None
 
-    def test_create_business_location(self) -> None:
-        location = BusinessLocation(
+    def test_create_store(self) -> None:
+        store = Store(
             business_id=UUID("00000000-0000-0000-0000-000000000001"),
             name="Main Kitchen",
+            token="tok-123",
             location_type=LocationType.KITCHEN,
             is_primary=True,
         )
-        assert isinstance(location.id, UUID)
-        assert location.location_type == LocationType.KITCHEN
+        assert isinstance(store.id, UUID)
+        assert store.location_type == LocationType.KITCHEN
+        assert store.status == BusinessStatus.ACTIVE
+        assert store.token == "tok-123"
+        assert store.deleted_by is None
+
+    def test_create_store_setting(self) -> None:
+        setting = StoreSetting(store_id=UUID("00000000-0000-0000-0000-000000000001"))
+        assert isinstance(setting.id, UUID)
+        assert setting.active is True
+        assert setting.offer_retail is True
+        assert setting.offer_wholesale is False
+        assert setting.display_prices_inclusive_of_tax is False
+        assert setting.preferred_currency == "TZS"
+        assert setting.amount is None
+        assert setting.max_payment_time_minutes is None
 
 
 class TestBusinessRoleModel:
@@ -182,11 +202,11 @@ class TestUserBusinessRoleModel:
         assignment = UserBusinessLocationRole(
             user_id=UUID("00000000-0000-0000-0000-000000000001"),
             business_id=UUID("00000000-0000-0000-0000-000000000002"),
-            business_location_id=UUID("00000000-0000-0000-0000-000000000003"),
+            store_id=UUID("00000000-0000-0000-0000-000000000003"),
             business_role_id=UUID("00000000-0000-0000-0000-000000000004"),
         )
         assert isinstance(assignment.id, UUID)
-        assert assignment.business_location_id != assignment.business_role_id
+        assert assignment.store_id != assignment.business_role_id
 
 
 class TestUserBusinessPermissionModel:
@@ -251,5 +271,5 @@ class TestRoleTemplatePermissionModel:
 
 
 class TestMetadata:
-    def test_all_26_tables_registered(self) -> None:
-        assert len(SQLModel.metadata.tables) == 26
+    def test_all_27_tables_registered(self) -> None:
+        assert len(SQLModel.metadata.tables) == 27

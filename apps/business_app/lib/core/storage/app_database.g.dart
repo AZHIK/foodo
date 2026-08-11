@@ -601,6 +601,380 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
   }
 }
 
+class $DeviceConfigsTable extends DeviceConfigs
+    with TableInfo<$DeviceConfigsTable, DeviceConfig> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DeviceConfigsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _lockedBusinessIdMeta = const VerificationMeta(
+    'lockedBusinessId',
+  );
+  @override
+  late final GeneratedColumn<String> lockedBusinessId = GeneratedColumn<String>(
+    'locked_business_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lockedBusinessNameMeta =
+      const VerificationMeta('lockedBusinessName');
+  @override
+  late final GeneratedColumn<String> lockedBusinessName =
+      GeneratedColumn<String>(
+        'locked_business_name',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    lockedBusinessId,
+    lockedBusinessName,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'device_configs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DeviceConfig> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('locked_business_id')) {
+      context.handle(
+        _lockedBusinessIdMeta,
+        lockedBusinessId.isAcceptableOrUnknown(
+          data['locked_business_id']!,
+          _lockedBusinessIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('locked_business_name')) {
+      context.handle(
+        _lockedBusinessNameMeta,
+        lockedBusinessName.isAcceptableOrUnknown(
+          data['locked_business_name']!,
+          _lockedBusinessNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DeviceConfig map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeviceConfig(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      lockedBusinessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}locked_business_id'],
+      ),
+      lockedBusinessName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}locked_business_name'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DeviceConfigsTable createAlias(String alias) {
+    return $DeviceConfigsTable(attachedDatabase, alias);
+  }
+}
+
+class DeviceConfig extends DataClass implements Insertable<DeviceConfig> {
+  final int id;
+  final String? lockedBusinessId;
+  final String? lockedBusinessName;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const DeviceConfig({
+    required this.id,
+    this.lockedBusinessId,
+    this.lockedBusinessName,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || lockedBusinessId != null) {
+      map['locked_business_id'] = Variable<String>(lockedBusinessId);
+    }
+    if (!nullToAbsent || lockedBusinessName != null) {
+      map['locked_business_name'] = Variable<String>(lockedBusinessName);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  DeviceConfigsCompanion toCompanion(bool nullToAbsent) {
+    return DeviceConfigsCompanion(
+      id: Value(id),
+      lockedBusinessId: lockedBusinessId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lockedBusinessId),
+      lockedBusinessName: lockedBusinessName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lockedBusinessName),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DeviceConfig.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeviceConfig(
+      id: serializer.fromJson<int>(json['id']),
+      lockedBusinessId: serializer.fromJson<String?>(json['lockedBusinessId']),
+      lockedBusinessName: serializer.fromJson<String?>(
+        json['lockedBusinessName'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'lockedBusinessId': serializer.toJson<String?>(lockedBusinessId),
+      'lockedBusinessName': serializer.toJson<String?>(lockedBusinessName),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  DeviceConfig copyWith({
+    int? id,
+    Value<String?> lockedBusinessId = const Value.absent(),
+    Value<String?> lockedBusinessName = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => DeviceConfig(
+    id: id ?? this.id,
+    lockedBusinessId: lockedBusinessId.present
+        ? lockedBusinessId.value
+        : this.lockedBusinessId,
+    lockedBusinessName: lockedBusinessName.present
+        ? lockedBusinessName.value
+        : this.lockedBusinessName,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  DeviceConfig copyWithCompanion(DeviceConfigsCompanion data) {
+    return DeviceConfig(
+      id: data.id.present ? data.id.value : this.id,
+      lockedBusinessId: data.lockedBusinessId.present
+          ? data.lockedBusinessId.value
+          : this.lockedBusinessId,
+      lockedBusinessName: data.lockedBusinessName.present
+          ? data.lockedBusinessName.value
+          : this.lockedBusinessName,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeviceConfig(')
+          ..write('id: $id, ')
+          ..write('lockedBusinessId: $lockedBusinessId, ')
+          ..write('lockedBusinessName: $lockedBusinessName, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    lockedBusinessId,
+    lockedBusinessName,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeviceConfig &&
+          other.id == this.id &&
+          other.lockedBusinessId == this.lockedBusinessId &&
+          other.lockedBusinessName == this.lockedBusinessName &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DeviceConfigsCompanion extends UpdateCompanion<DeviceConfig> {
+  final Value<int> id;
+  final Value<String?> lockedBusinessId;
+  final Value<String?> lockedBusinessName;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const DeviceConfigsCompanion({
+    this.id = const Value.absent(),
+    this.lockedBusinessId = const Value.absent(),
+    this.lockedBusinessName = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  DeviceConfigsCompanion.insert({
+    this.id = const Value.absent(),
+    this.lockedBusinessId = const Value.absent(),
+    this.lockedBusinessName = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) : createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<DeviceConfig> custom({
+    Expression<int>? id,
+    Expression<String>? lockedBusinessId,
+    Expression<String>? lockedBusinessName,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (lockedBusinessId != null) 'locked_business_id': lockedBusinessId,
+      if (lockedBusinessName != null)
+        'locked_business_name': lockedBusinessName,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  DeviceConfigsCompanion copyWith({
+    Value<int>? id,
+    Value<String?>? lockedBusinessId,
+    Value<String?>? lockedBusinessName,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return DeviceConfigsCompanion(
+      id: id ?? this.id,
+      lockedBusinessId: lockedBusinessId ?? this.lockedBusinessId,
+      lockedBusinessName: lockedBusinessName ?? this.lockedBusinessName,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (lockedBusinessId.present) {
+      map['locked_business_id'] = Variable<String>(lockedBusinessId.value);
+    }
+    if (lockedBusinessName.present) {
+      map['locked_business_name'] = Variable<String>(lockedBusinessName.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeviceConfigsCompanion(')
+          ..write('id: $id, ')
+          ..write('lockedBusinessId: $lockedBusinessId, ')
+          ..write('lockedBusinessName: $lockedBusinessName, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $CachedBusinessContextsTable extends CachedBusinessContexts
     with TableInfo<$CachedBusinessContextsTable, CachedBusinessContext> {
   @override
@@ -2768,6 +3142,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $LocalUserProfilesTable localUserProfiles =
       $LocalUserProfilesTable(this);
+  late final $DeviceConfigsTable deviceConfigs = $DeviceConfigsTable(this);
   late final $CachedBusinessContextsTable cachedBusinessContexts =
       $CachedBusinessContextsTable(this);
   late final $CachedItemsTable cachedItems = $CachedItemsTable(this);
@@ -2780,6 +3155,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     localUserProfiles,
+    deviceConfigs,
     cachedBusinessContexts,
     cachedItems,
     pendingSales,
@@ -3086,6 +3462,204 @@ typedef $$LocalUserProfilesTableProcessedTableManager =
         >,
       ),
       LocalUserProfile,
+      PrefetchHooks Function()
+    >;
+typedef $$DeviceConfigsTableCreateCompanionBuilder =
+    DeviceConfigsCompanion Function({
+      Value<int> id,
+      Value<String?> lockedBusinessId,
+      Value<String?> lockedBusinessName,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+    });
+typedef $$DeviceConfigsTableUpdateCompanionBuilder =
+    DeviceConfigsCompanion Function({
+      Value<int> id,
+      Value<String?> lockedBusinessId,
+      Value<String?> lockedBusinessName,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$DeviceConfigsTableFilterComposer
+    extends Composer<_$AppDatabase, $DeviceConfigsTable> {
+  $$DeviceConfigsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lockedBusinessId => $composableBuilder(
+    column: $table.lockedBusinessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lockedBusinessName => $composableBuilder(
+    column: $table.lockedBusinessName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DeviceConfigsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DeviceConfigsTable> {
+  $$DeviceConfigsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lockedBusinessId => $composableBuilder(
+    column: $table.lockedBusinessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lockedBusinessName => $composableBuilder(
+    column: $table.lockedBusinessName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DeviceConfigsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DeviceConfigsTable> {
+  $$DeviceConfigsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get lockedBusinessId => $composableBuilder(
+    column: $table.lockedBusinessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lockedBusinessName => $composableBuilder(
+    column: $table.lockedBusinessName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$DeviceConfigsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DeviceConfigsTable,
+          DeviceConfig,
+          $$DeviceConfigsTableFilterComposer,
+          $$DeviceConfigsTableOrderingComposer,
+          $$DeviceConfigsTableAnnotationComposer,
+          $$DeviceConfigsTableCreateCompanionBuilder,
+          $$DeviceConfigsTableUpdateCompanionBuilder,
+          (
+            DeviceConfig,
+            BaseReferences<_$AppDatabase, $DeviceConfigsTable, DeviceConfig>,
+          ),
+          DeviceConfig,
+          PrefetchHooks Function()
+        > {
+  $$DeviceConfigsTableTableManager(_$AppDatabase db, $DeviceConfigsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DeviceConfigsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DeviceConfigsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DeviceConfigsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String?> lockedBusinessId = const Value.absent(),
+                Value<String?> lockedBusinessName = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DeviceConfigsCompanion(
+                id: id,
+                lockedBusinessId: lockedBusinessId,
+                lockedBusinessName: lockedBusinessName,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String?> lockedBusinessId = const Value.absent(),
+                Value<String?> lockedBusinessName = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+              }) => DeviceConfigsCompanion.insert(
+                id: id,
+                lockedBusinessId: lockedBusinessId,
+                lockedBusinessName: lockedBusinessName,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DeviceConfigsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DeviceConfigsTable,
+      DeviceConfig,
+      $$DeviceConfigsTableFilterComposer,
+      $$DeviceConfigsTableOrderingComposer,
+      $$DeviceConfigsTableAnnotationComposer,
+      $$DeviceConfigsTableCreateCompanionBuilder,
+      $$DeviceConfigsTableUpdateCompanionBuilder,
+      (
+        DeviceConfig,
+        BaseReferences<_$AppDatabase, $DeviceConfigsTable, DeviceConfig>,
+      ),
+      DeviceConfig,
       PrefetchHooks Function()
     >;
 typedef $$CachedBusinessContextsTableCreateCompanionBuilder =
@@ -4642,6 +5216,8 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$LocalUserProfilesTableTableManager get localUserProfiles =>
       $$LocalUserProfilesTableTableManager(_db, _db.localUserProfiles);
+  $$DeviceConfigsTableTableManager get deviceConfigs =>
+      $$DeviceConfigsTableTableManager(_db, _db.deviceConfigs);
   $$CachedBusinessContextsTableTableManager get cachedBusinessContexts =>
       $$CachedBusinessContextsTableTableManager(
         _db,

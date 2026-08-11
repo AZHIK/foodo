@@ -8,14 +8,15 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.permission_codes import PermissionCode
 from app.models.business import (
     Business,
-    BusinessLocation,
     BusinessRole,
     BusinessRolePermission,
+    Store,
+    StoreSetting,
     UserBusinessRole,
 )
 from app.models.user import User, UserCategory
-from app.services.business_locations import validate_location_type
 from app.services.business_service import create_business
+from app.services.store import validate_store_type
 
 
 @pytest_asyncio.fixture
@@ -202,10 +203,42 @@ class TestCreateBusiness:
         assert len(roles) == 0
 
         async with db_session.begin():
-            locations = (await db_session.exec(select(BusinessLocation))).all()
-        assert len(locations) == 0
+            stores = (await db_session.exec(select(Store))).all()
+        assert len(stores) == 0
 
-    async def test_creates_default_primary_location(
+        async with db_session.begin():
+            settings = (await db_session.exec(select(StoreSetting))).all()
+        assert len(settings) == 0
+
+    async def test_forced_failure_mid_creation_rolls_back_business_store_settings(
+        self, db_session: AsyncSession, test_user: User, seeded_templates: None
+    ) -> None:
+        """A failure after the store + settings rows are flushed still rolls
+        back all three (business, store, store_setting) atomically."""
+        from unittest.mock import patch
+
+        with (
+            patch(
+                "app.services.business_service.generate_store_token",
+                side_effect=RuntimeError("token generation failed"),
+            ),
+            pytest.raises(RuntimeError),
+        ):
+            await create_business(
+                db_session,
+                creator_user_id=test_user.id,
+                name="Atomic Biz",
+                business_type="restaurant",
+            )
+
+        async with db_session.begin():
+            assert (await db_session.exec(select(Business))).all() == []
+        async with db_session.begin():
+            assert (await db_session.exec(select(Store))).all() == []
+        async with db_session.begin():
+            assert (await db_session.exec(select(StoreSetting))).all() == []
+
+    async def test_creates_default_primary_store_and_settings(
         self, db_session: AsyncSession, test_user: User, seeded_templates: None
     ) -> None:
         result = await create_business(
@@ -219,25 +252,30 @@ class TestCreateBusiness:
         )
         biz = result.business
 
-        assert result.default_location_id is not None
+        assert result.default_store_id is not None
+        assert result.default_store_setting_id is not None
 
-        locations = (
-            await db_session.exec(
-                select(BusinessLocation).where(BusinessLocation.business_id == biz.id)
-            )
+        stores = (await db_session.exec(select(Store).where(Store.business_id == biz.id))).all()
+        assert len(stores) == 1
+
+        store = stores[0]
+        assert store.is_primary is True
+        assert store.name == "Main Location"
+        assert store.token
+        assert store.country_code == biz.country_code
+        assert store.city == biz.city
+        assert store.timezone == biz.timezone
+
+        settings = (
+            await db_session.exec(select(StoreSetting).where(StoreSetting.store_id == store.id))
         ).all()
-        assert len(locations) == 1
+        assert len(settings) == 1
+        assert settings[0].active is True
+        assert settings[0].store_id == store.id
 
-        loc = locations[0]
-        assert loc.is_primary is True
-        assert loc.name == "Main Location"
-        assert loc.country_code == biz.country_code
-        assert loc.city == biz.city
-        assert loc.timezone == biz.timezone
+        validate_store_type(biz.business_type, store.location_type)
 
-        validate_location_type(biz.business_type, loc.location_type)
-
-    async def test_default_location_type_is_valid_for_business_type(
+    async def test_default_store_type_is_valid_for_business_type(
         self, db_session: AsyncSession, test_user: User, seeded_templates: None
     ) -> None:
         cases: list[tuple[str, Business]] = []
@@ -251,14 +289,25 @@ class TestCreateBusiness:
             cases.append((bt, result.business))
 
         for bt, biz in cases:
-            locations = (
-                await db_session.exec(
-                    select(BusinessLocation).where(BusinessLocation.business_id == biz.id)
-                )
-            ).all()
-            assert len(locations) == 1
-            loc = locations[0]
-            validate_location_type(bt, loc.location_type)
+            stores = (await db_session.exec(select(Store).where(Store.business_id == biz.id))).all()
+            assert len(stores) == 1
+            store = stores[0]
+            validate_store_type(bt, store.location_type)
+
+    async def test_each_business_store_has_unique_token(
+        self, db_session: AsyncSession, test_user: User, seeded_templates: None
+    ) -> None:
+        await create_business(
+            db_session, creator_user_id=test_user.id, name="Token A", business_type="restaurant"
+        )
+        await create_business(
+            db_session, creator_user_id=test_user.id, name="Token B", business_type="restaurant"
+        )
+
+        stores = (await db_session.exec(select(Store))).all()
+        assert len(stores) == 2
+        assert len({s.token for s in stores}) == 2
+        assert all(s.token for s in stores)
 
     async def test_events_fire_with_correct_payloads(
         self, db_session: AsyncSession, test_user: User, seeded_templates: None

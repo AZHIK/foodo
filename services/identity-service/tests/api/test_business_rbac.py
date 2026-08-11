@@ -527,3 +527,117 @@ class TestAssignStaff:
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 400
+
+    async def test_invite_by_unseen_phone_creates_invited_user(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = f"+2557{uuid4().int % 100_000_000:08d}"
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = create_resp.json()["id"]
+
+        resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/staff",
+            json={
+                "business_role_id": role_id,
+                "phone": phone,
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 201
+        assert resp.json()["detail"] == "Staff role assigned"
+
+        user = (await db_session.exec(select(User).where(User.phone == phone))).one()
+        assert user.user_category == UserCategory.BUSINESS_USER
+        assert user.status == UserStatus.INVITED
+        assert user.password_hash is None
+        assert user.is_phone_verified is False
+
+        ubr = (
+            await db_session.exec(
+                select(UserBusinessRole).where(
+                    UserBusinessRole.user_id == user.id,
+                    UserBusinessRole.business_id == biz.id,
+                    UserBusinessRole.business_role_id == UUID(role_id),
+                )
+            )
+        ).one()
+        assert ubr is not None
+
+    async def test_invite_existing_active_user_reuses_no_duplicate(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = f"+2557{uuid4().int % 100_000_000:08d}"
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        create_resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        role_id = create_resp.json()["id"]
+
+        staff = await _make_business_user(db_session, phone=phone)
+
+        resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/staff",
+            json={
+                "business_role_id": role_id,
+                "phone": phone,
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 201
+
+        users = (await db_session.exec(select(User).where(User.phone == phone))).all()
+        assert len(users) == 1
+        assert users[0].id == staff.id
+        assert users[0].status == UserStatus.ACTIVE
+
+        ubr = (
+            await db_session.exec(
+                select(UserBusinessRole).where(
+                    UserBusinessRole.user_id == staff.id,
+                    UserBusinessRole.business_id == biz.id,
+                )
+            )
+        ).all()
+        assert len(ubr) == 1
+
+    async def test_invite_rolls_back_when_assign_fails_after_user_creation(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = f"+2555{uuid4().int % 100_000_000:08d}"
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        other_biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        other_role_resp = await client.post(
+            f"/api/v1/businesses/{other_biz.id}/roles",
+            json={"name": "Cashier"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        other_role_id = other_role_resp.json()["id"]
+
+        resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/staff",
+            json={
+                "business_role_id": other_role_id,
+                "phone": phone,
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 404
+
+        user = (await db_session.exec(select(User).where(User.phone == phone))).one_or_none()
+        assert user is None

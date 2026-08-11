@@ -1,7 +1,10 @@
-"""Schemas for the BusinessLocation model.
+"""Schemas for the Store model.
 
 location_type is validated by the LocationType enum at the schema level.
 Cross-validation against business_type is business logic — out of scope here.
+
+``token`` is a plain unique identifier generated server-side at creation; it
+carries no authentication semantics and is never accepted on create/update.
 """
 
 from __future__ import annotations
@@ -11,15 +14,16 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.business import LocationType
+from app.models.business import BusinessStatus, LocationType
 
 
-class BusinessLocationBase(BaseModel):
-    """Shared fields for business location schemas."""
+class StoreBase(BaseModel):
+    """Shared fields for store schemas."""
 
     business_id: UUID
     name: str
     location_type: LocationType
+    status: BusinessStatus = BusinessStatus.ACTIVE
     country_code: str = "TZ"
     city: str | None = None
     address: str | None = None
@@ -27,19 +31,20 @@ class BusinessLocationBase(BaseModel):
     is_primary: bool = False
 
 
-class BusinessLocationCreate(BusinessLocationBase):
-    """Fields required to create a business location.
+class StoreCreate(StoreBase):
+    """Fields required to create a store.
 
     location_type must be one of: head_office, restaurant_branch, kitchen,
     warehouse, farm, depot. Other values are rejected at the schema level.
     """
 
 
-class BusinessLocationUpdate(BaseModel):
-    """Fields that may be updated on a business location (partial update)."""
+class StoreUpdate(BaseModel):
+    """Fields that may be updated on a store (partial update)."""
 
     name: str | None = None
     location_type: LocationType | None = None
+    status: BusinessStatus | None = None
     country_code: str | None = None
     city: str | None = None
     address: str | None = None
@@ -47,11 +52,12 @@ class BusinessLocationUpdate(BaseModel):
     is_primary: bool | None = None
 
 
-class BusinessLocationRead(BusinessLocationBase):
-    """Full business location representation returned by the API."""
+class StoreRead(StoreBase):
+    """Full store representation returned by the API."""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    token: str
     created_at: datetime
     updated_at: datetime

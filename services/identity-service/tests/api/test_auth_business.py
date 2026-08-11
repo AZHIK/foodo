@@ -3,6 +3,7 @@
 import random
 
 from httpx import AsyncClient
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import (
@@ -165,6 +166,74 @@ class TestOTP:
         )
         assert resp.status_code == 401
 
+    async def test_otp_verify_reuses_invited_staff_user(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="",
+                user_category=UserCategory.BUSINESS_USER,
+                status=UserStatus.INVITED,
+                is_phone_verified=False,
+            )
+            db_session.add(user)
+        invited_id = user.id
+
+        code = await generate_and_store_otp(
+            db_session,
+            user_id=invited_id,
+            purpose=VerificationCodePurpose.LOGIN,
+            delivery_type=VerificationCodeType.SMS,
+        )
+
+        resp = await client.post(
+            "/api/v1/auth/otp/verify",
+            json={"phone": phone, "code": code},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert "access_token" in data
+        assert "refresh_token" in data
+
+        refreshed = (await db_session.exec(select(User).where(User.id == invited_id))).one()
+        await db_session.refresh(refreshed)
+        assert refreshed.status == UserStatus.ACTIVE
+        assert refreshed.is_phone_verified is True
+
+    async def test_otp_verify_brand_new_phone_still_works(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="",
+                user_category=UserCategory.BUSINESS_USER,
+                status=UserStatus.ACTIVE,
+                is_phone_verified=False,
+            )
+            db_session.add(user)
+
+        code = await generate_and_store_otp(
+            db_session,
+            user_id=user.id,
+            purpose=VerificationCodePurpose.LOGIN,
+            delivery_type=VerificationCodeType.SMS,
+        )
+
+        resp = await client.post(
+            "/api/v1/auth/otp/verify",
+            json={"phone": phone, "code": code},
+        )
+        assert resp.status_code == 200, resp.text
+
+        refreshed = (await db_session.exec(select(User).where(User.id == user.id))).one()
+        await db_session.refresh(refreshed)
+        assert refreshed.status == UserStatus.ACTIVE
+        assert refreshed.is_phone_verified is True
+
 
 class TestPasswordLogin:
     async def test_correct_credentials_returns_tokens(
@@ -218,6 +287,27 @@ class TestPasswordLogin:
             json={"phone": "+255712345678", "password": _TEST_PASSWORD},
         )
         assert resp.status_code == 401
+
+    async def test_invited_user_without_password_login_returns_401_not_500(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="",
+                user_category=UserCategory.BUSINESS_USER,
+                status=UserStatus.INVITED,
+                password_hash=None,
+            )
+            db_session.add(user)
+
+        resp = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone, "password": _TEST_PASSWORD},
+        )
+        assert resp.status_code == 401
+        assert "invalid" in resp.json()["detail"].lower()
 
 
 class TestPasswordReset:

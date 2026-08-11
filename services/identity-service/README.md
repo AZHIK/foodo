@@ -34,6 +34,30 @@ docker compose exec api alembic upgrade head
 docker compose exec api alembic revision --autogenerate -m "description"
 ```
 
+## Seed the database
+
+After migrations complete, run the seed scripts in order (each is idempotent):
+
+```bash
+# 1. Seed permissions & default platform roles
+docker compose exec api uv run python scripts/seed_permissions.py
+
+# 2. Seed internal groups, roles, and role_permissions
+docker compose exec api uv run python scripts/seed_internal_rbac.py
+
+# 3. Seed role templates (Owner templates per business type)
+docker compose exec api uv run python scripts/seed_role_templates.py
+```
+
+Or run all seeds at once:
+```bash
+docker compose exec api bash -c '
+  uv run python scripts/seed_permissions.py &&
+  uv run python scripts/seed_internal_rbac.py &&
+  uv run python scripts/seed_role_templates.py
+'
+```
+
 ## Run tests & lint
 
 The `api` service runs a production-minimal image without dev tooling.

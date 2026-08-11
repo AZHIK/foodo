@@ -62,6 +62,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       otpPending: (_) => context.go(AppRoutes.loginOtp),
       settingPin: (_, _, _) => context.go(AppRoutes.setPin),
       pinLockedOut: (_, _) => context.go(AppRoutes.pinUnlock),
+      onboardingRequired: (_) => context.go(AppRoutes.businessOnboarding),
     );
   }
 

@@ -89,7 +89,7 @@ final class AuthNotifierProvider
   }
 }
 
-String _$authNotifierHash() => r'0d9098520fa33ad4ef8fb3c359b1897fdb8fdadd';
+String _$authNotifierHash() => r'215554bd41996cbdfdd5094561a01d1bdf126459';
 
 /// Drives the multi-profile authentication lifecycle.
 ///

@@ -6,8 +6,8 @@ class ProtectedRoleEditRejectedError(DomainError):
     """Raised when a protected role edit is rejected."""
 
 
-class InvalidBusinessLocationTypeError(DomainError):
-    """Raised when a location type is not valid for a business type."""
+class InvalidStoreTypeError(DomainError):
+    """Raised when a store's location type is not valid for its business type."""
 
 
 class InvalidRefreshTokenError(DomainError):

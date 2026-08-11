@@ -6,10 +6,11 @@ import pytest
 import pytest_asyncio
 import redis.asyncio as aioredis
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import get_settings
-from app.core.database import async_session_factory, create_tables, drop_tables
+from app.core.database import async_session_factory, engine
 from app.core.redis_client import close_redis
 from app.main import app
 
@@ -46,19 +47,99 @@ async def _clean_redis() -> AsyncGenerator[None, None]:
     await client.aclose()
 
 
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def _apply_migrations() -> None:
+    """Apply alembic migrations once per test session."""
+    import subprocess
+
+    result = subprocess.run(
+        ["alembic", "upgrade", "head"], cwd="/app", capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"alembic upgrade failed: {result.stderr}")
+
+
 @pytest_asyncio.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Provide an isolated DB session backed by Postgres.
 
-    Creates all tables before the test and drops them afterwards.
-    Each test gets a fresh set of tables, so data never leaks between tests.
-    The session has no pre-existing transaction, so service functions
-    can safely use ``async with session.begin():``.
+    Uses the alembic-managed schema. Truncates all tables before each test
+    to ensure data isolation without re-creating the schema.
     """
-    await create_tables()
+    # Truncate all tables before test
+    async with engine.begin() as conn:
+        await conn.execute(
+            text("""
+            TRUNCATE TABLE
+                user_business_location_roles,
+                user_business_permissions,
+                user_business_roles,
+                business_role_permissions,
+                store_settings,
+                store,
+                business_roles,
+                businesses,
+                organizations,
+                role_template_permissions,
+                role_templates,
+                platform_role_permissions,
+                user_platform_roles,
+                platform_roles,
+                user_roles,
+                user_group,
+                role_permissions,
+                roles,
+                groups,
+                permissions,
+                verification_codes,
+                refresh_tokens,
+                user_sessions,
+                trusted_devices,
+                login_attempts,
+                auth_risk_events,
+                users
+            RESTART IDENTITY CASCADE;
+        """)
+        )
+
     async with async_session_factory() as session:
         yield session
-    await drop_tables()
+
+    # Clean up after test
+    async with engine.begin() as conn:
+        await conn.execute(
+            text("""
+            TRUNCATE TABLE
+                user_business_location_roles,
+                user_business_permissions,
+                user_business_roles,
+                business_role_permissions,
+                store_settings,
+                store,
+                business_roles,
+                businesses,
+                organizations,
+                role_template_permissions,
+                role_templates,
+                platform_role_permissions,
+                user_platform_roles,
+                platform_roles,
+                user_roles,
+                user_group,
+                role_permissions,
+                roles,
+                groups,
+                permissions,
+                verification_codes,
+                refresh_tokens,
+                user_sessions,
+                trusted_devices,
+                login_attempts,
+                auth_risk_events,
+                users
+            RESTART IDENTITY CASCADE;
+        """)
+        )
 
 
 @pytest_asyncio.fixture

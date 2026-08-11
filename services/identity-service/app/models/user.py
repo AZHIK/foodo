@@ -51,4 +51,7 @@ class User(UUIDMixin, TimestampMixin, SoftDeleteMixin, SQLModel, table=True):
         sa_relationship_kwargs={"foreign_keys": "UserBusinessPermission.created_by"},
     )
     user_platform_roles: list["UserPlatformRole"] = Relationship(back_populates="user")
-    businesses: list["Business"] = Relationship(back_populates="owner")
+    businesses: list["Business"] = Relationship(
+        back_populates="owner",
+        sa_relationship_kwargs={"foreign_keys": "Business.owner_user_id"},
+    )

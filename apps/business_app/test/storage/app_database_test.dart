@@ -16,8 +16,8 @@ void main() {
   });
 
   group('schema version', () {
-    test('is 2 (Stage 3 lockout columns)', () {
-      expect(db.schemaVersion, equals(2));
+    test('is 3 (device config table)', () {
+      expect(db.schemaVersion, equals(3));
     });
   });
 

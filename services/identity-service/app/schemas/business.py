@@ -11,7 +11,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.business import BusinessType
+from app.models.business import BusinessStatus, BusinessType
+from app.schemas.validators import NormalizedEmailStr, PhoneStr
 
 
 class BusinessBase(BaseModel):
@@ -22,6 +23,12 @@ class BusinessBase(BaseModel):
     owner_user_id: UUID
     organization_id: UUID | None = None
     tax_id: str | None = None
+    registration_number: str | None = None
+    email: NormalizedEmailStr | None = None
+    phone: PhoneStr | None = None
+    address: str | None = None
+    status: BusinessStatus = BusinessStatus.ACTIVE
+    logo: str | None = None
     country_code: str = "TZ"
     city: str | None = None
     timezone: str = "Africa/Dar_es_Salaam"
@@ -42,6 +49,12 @@ class BusinessCreateRequest(BaseModel):
     business_type: BusinessType
     organization_id: UUID | None = None
     tax_id: str | None = None
+    registration_number: str | None = None
+    email: NormalizedEmailStr | None = None
+    phone: PhoneStr | None = None
+    address: str | None = None
+    status: BusinessStatus = BusinessStatus.ACTIVE
+    logo: str | None = None
     country_code: str = "TZ"
     city: str | None = None
     timezone: str = "Africa/Dar_es_Salaam"
@@ -54,6 +67,12 @@ class BusinessUpdate(BaseModel):
     business_type: BusinessType | None = None
     organization_id: UUID | None = None
     tax_id: str | None = None
+    registration_number: str | None = None
+    email: NormalizedEmailStr | None = None
+    phone: PhoneStr | None = None
+    address: str | None = None
+    status: BusinessStatus | None = None
+    logo: str | None = None
     country_code: str | None = None
     city: str | None = None
     timezone: str | None = None

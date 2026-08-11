@@ -54,6 +54,15 @@ dependencies:
   path_provider: ^2.1.0
   cryptography: ^2.9.0
 
+  # ── Data grid engine (reusable AppDataTable) ─────────────────────
+  trina_grid: ^2.3.0
+
+  # ── Export services: Excel / PDF / file save / share ─────────────
+  excel: ^4.0.6
+  pdf: ^3.12.0
+  printing: ^5.14.3
+  file_saver: ^0.4.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -110,14 +110,13 @@ class AppListTileGroup extends StatelessWidget {
               ),
             ),
           ),
-        Container(
-          margin: margin ?? EdgeInsets.zero,
-          decoration: BoxDecoration(
+        Padding(
+          padding: margin ?? EdgeInsets.zero,
+          child: Material(
             color: colorScheme.surfaceContainerLow,
             borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
+            clipBehavior: Clip.antiAlias,
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               for (int i = 0; i < tiles.length; i++) ...[
@@ -132,7 +131,8 @@ class AppListTileGroup extends StatelessWidget {
             ],
           ),
         ),
-      ],
-    );
+      ),
+    ],
+  );
   }
 }

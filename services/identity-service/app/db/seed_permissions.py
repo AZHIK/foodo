@@ -217,26 +217,26 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
         "Assign business to organization",
         "Assign a business to an organization.",
     ),
-    # Business Locations
+    # Stores
     PermissionSeed(
-        PermissionCode.BUSINESS_LOCATIONS_VIEW,
-        "View business locations",
-        "List and view business locations.",
+        PermissionCode.STORES_VIEW,
+        "View stores",
+        "List and view stores.",
     ),
     PermissionSeed(
-        PermissionCode.BUSINESS_LOCATIONS_CREATE,
-        "Create business locations",
-        "Create a new business location.",
+        PermissionCode.STORES_CREATE,
+        "Create stores",
+        "Create a new store.",
     ),
     PermissionSeed(
-        PermissionCode.BUSINESS_LOCATIONS_UPDATE,
-        "Update business locations",
-        "Update a business location's details.",
+        PermissionCode.STORES_UPDATE,
+        "Update stores",
+        "Update a store's details.",
     ),
     PermissionSeed(
-        PermissionCode.BUSINESS_LOCATIONS_DELETE,
-        "Delete business locations",
-        "Delete a business location.",
+        PermissionCode.STORES_DELETE,
+        "Delete stores",
+        "Delete a store.",
     ),
     # Business Roles (per-business custom roles)
     PermissionSeed(

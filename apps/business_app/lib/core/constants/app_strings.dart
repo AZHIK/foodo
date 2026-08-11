@@ -22,7 +22,7 @@ abstract final class AppStrings {
   static const String loginOtpBack = 'Back';
   static const String profilePickerTitle = 'Choose a profile';
   static const String profilePickerSubtitle =
-      'Which business are you working with today?';
+      'Choose a staff member for this business';
   static const String profilePickerEmpty = 'No profiles yet. Add one to begin.';
 
   // ── PIN / lockout ─────────────────────────────────────────────
@@ -47,6 +47,45 @@ abstract final class AppStrings {
   // ── Set PIN flow ──────────────────────────────────────────────
   static const String pinSetDisplayNameHint = 'Your name (optional)';
   static const String pinSetContinue = 'Continue';
+
+  // ── Business onboarding ───────────────────────────────────────
+  static const String onboardingTitle = 'Set up your business';
+  static const String onboardingSubtitle =
+      'Tell us a little about your business to get started.';
+  static const String onboardingStepOf = 'Step';
+  static const String onboardingContinue = 'Continue';
+  static const String onboardingBack = 'Back';
+  static const String onboardingBusinessTypeStepTitle =
+      'What kind of business is this?';
+  static const String onboardingBusinessTypeStepSubtitle =
+      'Choose the category that best describes your business.';
+  static const String onboardingDetailsStepTitle = 'Business details';
+  static const String onboardingDetailsStepSubtitle =
+      'Your business will appear to customers and partners with these details.';
+  static const String onboardingReviewStepTitle = 'Review and confirm';
+  static const String onboardingReviewStepSubtitle =
+      'Please review your details before creating your business.';
+  static const String onboardingBusinessName = 'Business name';
+  static const String onboardingBusinessNameHint = 'e.g. Mama Ngoja Eatery';
+  static const String onboardingBusinessNameRequired =
+      'Business name is required';
+  static const String onboardingCity = 'City';
+  static const String onboardingCityHint = 'e.g. Dar es Salaam';
+  static const String onboardingCityRequired = 'City is required';
+  static const String onboardingCountry = 'Country';
+  static const String onboardingTaxId = 'Tax ID (optional)';
+  static const String onboardingTaxIdHint = 'TIN / registration number';
+  static const String onboardingBusinessTypeLabel = 'Business type';
+  static const String onboardingBusinessTypeRequired =
+      'Choose a business type to continue';
+  static const String onboardingCreateBusiness = 'Create business';
+  static const String onboardingRetrySession = 'Retry';
+  static const String onboardingCreating = 'Creating your business…';
+  static const String onboardingComplete =
+      'Welcome! Your business is ready to go.';
+  static const String onboardingNotStartedTitle = 'Almost there';
+  static const String onboardingNotStartedMessage =
+      'Finish setting up your business to continue.';
 
   // ── Account settings ──────────────────────────────────────────
   static const String settings = 'Settings';

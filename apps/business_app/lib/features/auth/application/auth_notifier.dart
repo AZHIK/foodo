@@ -36,6 +36,15 @@ class AuthNotifier extends _$AuthNotifier {
 
   // ── Boot ─────────────────────────────────────────────────────────
   /// Loads persisted profiles and any active session during splash.
+  ///
+  /// For an active (unlocked) profile the server is consulted again before
+  /// declaring a session ready: the access token is in-memory only and the
+  /// refresh token (rotating) is exchanged to restore one, then
+  /// `onboarding-status` is re-checked. This is what makes onboarding
+  /// resumable — a self-registered owner who was killed mid-onboarding
+  /// returns to [AuthState.onboardingRequired] and is routed back to the
+  /// onboarding flow, rather than landing in an ambiguous ready state
+  /// based on a stale local flag.
   Future<void> initialize() async {
     final profiles =
         await ref.read(localProfileRepositoryProvider).listProfiles();
@@ -45,13 +54,113 @@ class AuthNotifier extends _$AuthNotifier {
       if (_isLockedOut(active)) {
         state = AuthState.pinLockedOut(active, active.pinLockedUntil!);
       } else {
-        state = AuthState.sessionActive(active, locked: true);
+        state = await _resolveBootSession(active);
       }
     } else if (profiles.isNotEmpty) {
       state = AuthState.profilesAvailable(profiles);
     } else {
       state = const AuthState.unauthenticated();
     }
+  }
+
+  /// Restores a session for [active] and re-checks onboarding status.
+  ///
+  /// If the refresh token can be exchanged and the status query succeeds,
+  /// returns either [AuthState.onboardingRequired] (owner still needs a
+  /// business) or a locked [AuthState.sessionActive] (has a role).
+  ///
+  /// If the session cannot be restored or the status query fails (offline,
+  /// revoked token), it falls back to today's behaviour — the profile
+  /// stays active but the app boots locked so the user unlocks with their
+  /// PIN. Invited staff who work offline are therefore never blocked,
+  /// while the owner path always prefers the live server check whenever it
+  /// is reachable.
+  Future<AuthState> _resolveBootSession(LocalUserProfile active) async {
+    final refreshToken =
+        await ref.read(secureStorageServiceProvider).readRefreshToken(
+              active.userId,
+            );
+    if (refreshToken == null) {
+      return AuthState.sessionActive(active, locked: true);
+    }
+
+    try {
+      final result =
+          await ref.read(identityApiProvider).refreshAccessToken(refreshToken);
+      ref.read(tokenStoreProvider).accessToken = result.accessToken;
+      // Refresh tokens rotate server-side on every exchange; persist the
+      // rotated token so the next boot can restore the session too.
+      await ref
+          .read(secureStorageServiceProvider)
+          .saveRefreshToken(userId: active.userId, token: result.refreshToken);
+
+      final onboardingStatus =
+          await ref.read(identityApiProvider).fetchOnboardingStatus();
+      final incomingBusinessId = onboardingStatus.businessId;
+
+      // Check device lock consistency
+      final deviceConfig =
+          await ref.read(localProfileRepositoryProvider).getDeviceConfig();
+      if (deviceConfig != null &&
+          deviceConfig.lockedBusinessId != null &&
+          incomingBusinessId != null &&
+          incomingBusinessId != deviceConfig.lockedBusinessId) {
+        // Device lock exists but this profile belongs to a different business.
+        // This shouldn't happen with proper locking, but if it does, fall back
+        // to locked session so user can unlock and see the error. Don't leave
+        // an unscoped token behind — it would 403 on the first scoped call.
+        ref.read(tokenStoreProvider).accessToken = null;
+        return AuthState.sessionActive(active, locked: true);
+      }
+
+      if (onboardingStatus.needsOnboarding) {
+        return AuthState.onboardingRequired(active);
+      }
+
+      // The user has a business. The refresh endpoint only ever issues an
+      // unscoped token, so scope it now or every business-scoped call would
+      // 403. (business_id is guaranteed non-null when needs_onboarding is
+      // false; a null here is a server anomaly we defensively survive.)
+      if (incomingBusinessId != null) {
+        await _switchToBusinessContext(
+          businessId: incomingBusinessId,
+          userId: active.userId,
+        );
+      }
+
+      return AuthState.sessionActive(active, locked: true);
+    } catch (_) {
+      // Offline / token failure. The profile stays active so staff can still
+      // unlock with their PIN, but the access token cannot be trusted: clear
+      // it so the app never silently resumes with a stale/unscoped token that
+      // would 403 on the first business-scoped call.
+      ref.read(tokenStoreProvider).accessToken = null;
+      return AuthState.sessionActive(active, locked: true);
+    }
+  }
+
+  /// Scopes the current session to [businessId] and persists the result.
+  ///
+  /// The OTP-verify and refresh endpoints only ever issue unscoped tokens
+  /// (`active_business_id=None`, empty roles/permissions), so before a
+  /// session can make any business-scoped call it must exchange the
+  /// unscoped token for a scoped one via `POST /auth/context/switch`.
+  ///
+  /// On success the scoped access token replaces the unscoped one in
+  /// [TokenStore] and the rotated refresh token is persisted (keyed by
+  /// [userId]), exactly as the refresh path already does.
+  ///
+  /// Throws [Failure] on error — callers decide whether to retry.
+  Future<void> _switchToBusinessContext({
+    required String businessId,
+    required String userId,
+  }) async {
+    final result =
+        await ref.read(identityApiProvider).switchBusinessContext(businessId);
+    ref.read(tokenStoreProvider).accessToken = result.accessToken;
+    await ref
+        .read(secureStorageServiceProvider)
+        .saveRefreshToken(userId: userId, token: result.refreshToken);
   }
 
   // ── First-run OTP login ─────────────────────────────────────────
@@ -94,6 +203,19 @@ class AuthNotifier extends _$AuthNotifier {
   ///
   /// For an existing profile (lockout resolution) the stored display name
   /// is preserved unless a new one is supplied.
+  ///
+  /// The resulting state depends on the server-side onboarding status
+  /// (`GET /users/me/onboarding-status`), which is the source of truth for
+  /// whether this user has a business yet:
+  ///
+  /// - `needs_onboarding=true` (self-registered owner, no roles yet) →
+  ///   [AuthState.onboardingRequired] — authenticated but not fully set up.
+  /// - `needs_onboarding=false` (invited staff, role assigned at invite
+  ///   time) → [AuthState.sessionActive], exactly as before.
+  ///
+  /// Device-level business locking: the first profile added to a device
+  /// locks that device to one business. Subsequent profiles must belong
+  /// to the same business or are rejected.
   Future<Failure?> setPin({
     required String phone,
     required String userId,
@@ -102,6 +224,22 @@ class AuthNotifier extends _$AuthNotifier {
     String? displayName,
   }) async {
     try {
+      // Check device lock before proceeding
+      final deviceConfig =
+          await ref.read(localProfileRepositoryProvider).getDeviceConfig();
+      final onboardingStatus =
+          await ref.read(identityApiProvider).fetchOnboardingStatus();
+      final incomingBusinessId = onboardingStatus.businessId;
+
+      if (deviceConfig != null && deviceConfig.lockedBusinessId != null) {
+        if (incomingBusinessId != deviceConfig.lockedBusinessId) {
+          return Failure.auth(
+            message:
+                'This device belongs to ${deviceConfig.lockedBusinessName} — contact your admin',
+          );
+        }
+      }
+
       final pinHash = await ref.read(pinServiceProvider).hashPin(pin);
 
       final existing =
@@ -119,16 +257,120 @@ class AuthNotifier extends _$AuthNotifier {
           .read(secureStorageServiceProvider)
           .saveRefreshToken(userId: userId, token: refreshToken);
 
-      state = AuthState.sessionActive(
-        await ref.read(localProfileRepositoryProvider).activeProfile(),
-        locked: false,
+      final activeProfile =
+          await ref.read(localProfileRepositoryProvider).activeProfile();
+
+      if (onboardingStatus.needsOnboarding) {
+        // Self-registered owner — no business yet, route to onboarding.
+        state = AuthState.onboardingRequired(activeProfile);
+        return null;
+      }
+
+      // Invited staff — a business already exists. Set the device lock if
+      // not set yet, then obtain a business-scoped token before starting the
+      // session so the first business-scoped call doesn't 403.
+      if (deviceConfig == null || deviceConfig.lockedBusinessId == null) {
+        if (incomingBusinessId != null) {
+          await ref.read(localProfileRepositoryProvider).setDeviceLock(
+                businessId: incomingBusinessId,
+                businessName:
+                    onboardingStatus.businessName ?? 'Unknown Business',
+              );
+        }
+      }
+
+      if (incomingBusinessId == null) {
+        return const Failure.auth(
+          message:
+              'Could not scope this session to a business. Please try again.',
+        );
+      }
+
+       await _switchToBusinessContext(
+        businessId: incomingBusinessId,
+        userId: userId,
       );
+
+      state = AuthState.sessionActive(activeProfile, locked: false);
       return null;
     } on Failure catch (failure) {
+      // If we had already stored an unscoped token (from verifyOtp or
+      // refresh), clear it so the user doesn't silently proceed with a
+      // token that would 403 on the first business-scoped call.
+      ref.read(tokenStoreProvider).accessToken = null;
       return failure;
     } catch (error) {
       return Failure.unknown(error: error);
     }
+  }
+
+  /// Promotes an authenticated-but-not-yet-set-up profile to a fully ready
+  /// session.
+  ///
+  /// Called once business creation succeeds — at that point the server has
+  /// assigned the caller a business role, so `sessionActive` is now the
+  /// correct terminal state. This is what makes onboarding resumable: if
+  /// the app is killed *before* this runs, the boot path re-checks
+  /// onboarding-status on the next launch and routes back to the
+  /// onboarding flow rather than trusting a locally cached flag.
+  ///
+  /// Also sets the device lock if not already set (first profile on device
+  /// for a self-registering owner), and swaps the unscoped OTP token for a
+  /// business-scoped one (`POST /auth/context/switch`) before declaring the
+  /// session active — without a scoped token the first business-scoped call
+  /// would 403.
+  ///
+  /// Returns `null` on success and a [Failure] on error. On failure the
+  /// state stays [AuthState.onboardingRequired], so the caller can retry
+  /// just the scoping step (not re-create the business).
+  Future<Failure?> completeOnboarding() async {
+    final current = state;
+    if (current is! OnboardingRequired) return null;
+
+    final OnboardingStatusResult onboardingStatus;
+    try {
+      onboardingStatus =
+          await ref.read(identityApiProvider).fetchOnboardingStatus();
+    } on Failure catch (failure) {
+      return failure;
+    }
+
+    final businessId = onboardingStatus.businessId;
+    if (onboardingStatus.needsOnboarding || businessId == null) {
+      return const Failure.validation(
+        message: 'Business creation has not completed. Please try again.',
+      );
+    }
+
+    // Set the device lock if not already set (first profile on device for a
+    // self-registering owner).
+    final deviceConfig =
+        await ref.read(localProfileRepositoryProvider).getDeviceConfig();
+    if (deviceConfig == null || deviceConfig.lockedBusinessId == null) {
+      await ref.read(localProfileRepositoryProvider).setDeviceLock(
+            businessId: businessId,
+            businessName: onboardingStatus.businessName ?? 'Unknown Business',
+          );
+    }
+
+    // Obtain a business-scoped access token. The OTP-issued token is
+    // unscoped and the first business-scoped call would otherwise 403.
+    try {
+      await _switchToBusinessContext(
+        businessId: businessId,
+        userId: current.profile.userId,
+      );
+    } on Failure catch (_) {
+      // Clear the unscoped token so a retry doesn't silently use it.
+      ref.read(tokenStoreProvider).accessToken = null;
+       return const Failure.auth(
+         message: 'Business set up, but the session could not be scoped to it. '
+             'Check your connection and retry.',
+      );
+    }
+
+    state = AuthState.sessionActive(current.profile, locked: false);
+    return null;
   }
 
   // ── Existing-profile activation (pick + PIN) ────────────────────
@@ -335,6 +577,9 @@ class AuthNotifier extends _$AuthNotifier {
   ///
   /// Returns `null` on success and a [Failure] otherwise (no active
   /// session, correct-target mismatch, or incorrect PIN).
+  ///
+  /// If this was the last profile on the device, the device lock is also
+  /// cleared so the device can be onboarded for a different business next.
   Future<Failure?> removeFromDevice({required String pin}) async {
     final current = state;
     if (current is! SessionActive) {
@@ -373,6 +618,9 @@ class AuthNotifier extends _$AuthNotifier {
     if (profiles.isNotEmpty) {
       state = AuthState.profilesAvailable(profiles);
     } else {
+      // Last profile removed — clear device lock so device can be
+      // onboarded for a different business next.
+      await ref.read(localProfileRepositoryProvider).clearDeviceLock();
       state = const AuthState.unauthenticated();
     }
     return null;

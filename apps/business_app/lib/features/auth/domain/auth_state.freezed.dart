@@ -55,13 +55,14 @@ extension AuthStatePatterns on AuthState {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( Unauthenticated value)?  unauthenticated,TResult Function( ProfilesAvailable value)?  profilesAvailable,TResult Function( SessionActive value)?  sessionActive,TResult Function( OtpPending value)?  otpPending,TResult Function( SettingPin value)?  settingPin,TResult Function( PinLockedOut value)?  pinLockedOut,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( Unauthenticated value)?  unauthenticated,TResult Function( ProfilesAvailable value)?  profilesAvailable,TResult Function( SessionActive value)?  sessionActive,TResult Function( OnboardingRequired value)?  onboardingRequired,TResult Function( OtpPending value)?  otpPending,TResult Function( SettingPin value)?  settingPin,TResult Function( PinLockedOut value)?  pinLockedOut,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case Unauthenticated() when unauthenticated != null:
 return unauthenticated(_that);case ProfilesAvailable() when profilesAvailable != null:
 return profilesAvailable(_that);case SessionActive() when sessionActive != null:
-return sessionActive(_that);case OtpPending() when otpPending != null:
+return sessionActive(_that);case OnboardingRequired() when onboardingRequired != null:
+return onboardingRequired(_that);case OtpPending() when otpPending != null:
 return otpPending(_that);case SettingPin() when settingPin != null:
 return settingPin(_that);case PinLockedOut() when pinLockedOut != null:
 return pinLockedOut(_that);case _:
@@ -82,13 +83,14 @@ return pinLockedOut(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( Unauthenticated value)  unauthenticated,required TResult Function( ProfilesAvailable value)  profilesAvailable,required TResult Function( SessionActive value)  sessionActive,required TResult Function( OtpPending value)  otpPending,required TResult Function( SettingPin value)  settingPin,required TResult Function( PinLockedOut value)  pinLockedOut,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( Unauthenticated value)  unauthenticated,required TResult Function( ProfilesAvailable value)  profilesAvailable,required TResult Function( SessionActive value)  sessionActive,required TResult Function( OnboardingRequired value)  onboardingRequired,required TResult Function( OtpPending value)  otpPending,required TResult Function( SettingPin value)  settingPin,required TResult Function( PinLockedOut value)  pinLockedOut,}){
 final _that = this;
 switch (_that) {
 case Unauthenticated():
 return unauthenticated(_that);case ProfilesAvailable():
 return profilesAvailable(_that);case SessionActive():
-return sessionActive(_that);case OtpPending():
+return sessionActive(_that);case OnboardingRequired():
+return onboardingRequired(_that);case OtpPending():
 return otpPending(_that);case SettingPin():
 return settingPin(_that);case PinLockedOut():
 return pinLockedOut(_that);}
@@ -105,13 +107,14 @@ return pinLockedOut(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( Unauthenticated value)?  unauthenticated,TResult? Function( ProfilesAvailable value)?  profilesAvailable,TResult? Function( SessionActive value)?  sessionActive,TResult? Function( OtpPending value)?  otpPending,TResult? Function( SettingPin value)?  settingPin,TResult? Function( PinLockedOut value)?  pinLockedOut,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( Unauthenticated value)?  unauthenticated,TResult? Function( ProfilesAvailable value)?  profilesAvailable,TResult? Function( SessionActive value)?  sessionActive,TResult? Function( OnboardingRequired value)?  onboardingRequired,TResult? Function( OtpPending value)?  otpPending,TResult? Function( SettingPin value)?  settingPin,TResult? Function( PinLockedOut value)?  pinLockedOut,}){
 final _that = this;
 switch (_that) {
 case Unauthenticated() when unauthenticated != null:
 return unauthenticated(_that);case ProfilesAvailable() when profilesAvailable != null:
 return profilesAvailable(_that);case SessionActive() when sessionActive != null:
-return sessionActive(_that);case OtpPending() when otpPending != null:
+return sessionActive(_that);case OnboardingRequired() when onboardingRequired != null:
+return onboardingRequired(_that);case OtpPending() when otpPending != null:
 return otpPending(_that);case SettingPin() when settingPin != null:
 return settingPin(_that);case PinLockedOut() when pinLockedOut != null:
 return pinLockedOut(_that);case _:
@@ -131,12 +134,13 @@ return pinLockedOut(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  unauthenticated,TResult Function( List<LocalUserProfile> profiles)?  profilesAvailable,TResult Function( LocalUserProfile profile,  bool locked)?  sessionActive,TResult Function( String phone)?  otpPending,TResult Function( String phone,  String userId,  String refreshToken)?  settingPin,TResult Function( LocalUserProfile profile,  DateTime lockedUntil)?  pinLockedOut,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  unauthenticated,TResult Function( List<LocalUserProfile> profiles)?  profilesAvailable,TResult Function( LocalUserProfile profile,  bool locked)?  sessionActive,TResult Function( LocalUserProfile profile)?  onboardingRequired,TResult Function( String phone)?  otpPending,TResult Function( String phone,  String userId,  String refreshToken)?  settingPin,TResult Function( LocalUserProfile profile,  DateTime lockedUntil)?  pinLockedOut,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case Unauthenticated() when unauthenticated != null:
 return unauthenticated();case ProfilesAvailable() when profilesAvailable != null:
 return profilesAvailable(_that.profiles);case SessionActive() when sessionActive != null:
-return sessionActive(_that.profile,_that.locked);case OtpPending() when otpPending != null:
+return sessionActive(_that.profile,_that.locked);case OnboardingRequired() when onboardingRequired != null:
+return onboardingRequired(_that.profile);case OtpPending() when otpPending != null:
 return otpPending(_that.phone);case SettingPin() when settingPin != null:
 return settingPin(_that.phone,_that.userId,_that.refreshToken);case PinLockedOut() when pinLockedOut != null:
 return pinLockedOut(_that.profile,_that.lockedUntil);case _:
@@ -157,12 +161,13 @@ return pinLockedOut(_that.profile,_that.lockedUntil);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  unauthenticated,required TResult Function( List<LocalUserProfile> profiles)  profilesAvailable,required TResult Function( LocalUserProfile profile,  bool locked)  sessionActive,required TResult Function( String phone)  otpPending,required TResult Function( String phone,  String userId,  String refreshToken)  settingPin,required TResult Function( LocalUserProfile profile,  DateTime lockedUntil)  pinLockedOut,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  unauthenticated,required TResult Function( List<LocalUserProfile> profiles)  profilesAvailable,required TResult Function( LocalUserProfile profile,  bool locked)  sessionActive,required TResult Function( LocalUserProfile profile)  onboardingRequired,required TResult Function( String phone)  otpPending,required TResult Function( String phone,  String userId,  String refreshToken)  settingPin,required TResult Function( LocalUserProfile profile,  DateTime lockedUntil)  pinLockedOut,}) {final _that = this;
 switch (_that) {
 case Unauthenticated():
 return unauthenticated();case ProfilesAvailable():
 return profilesAvailable(_that.profiles);case SessionActive():
-return sessionActive(_that.profile,_that.locked);case OtpPending():
+return sessionActive(_that.profile,_that.locked);case OnboardingRequired():
+return onboardingRequired(_that.profile);case OtpPending():
 return otpPending(_that.phone);case SettingPin():
 return settingPin(_that.phone,_that.userId,_that.refreshToken);case PinLockedOut():
 return pinLockedOut(_that.profile,_that.lockedUntil);}
@@ -179,12 +184,13 @@ return pinLockedOut(_that.profile,_that.lockedUntil);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  unauthenticated,TResult? Function( List<LocalUserProfile> profiles)?  profilesAvailable,TResult? Function( LocalUserProfile profile,  bool locked)?  sessionActive,TResult? Function( String phone)?  otpPending,TResult? Function( String phone,  String userId,  String refreshToken)?  settingPin,TResult? Function( LocalUserProfile profile,  DateTime lockedUntil)?  pinLockedOut,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  unauthenticated,TResult? Function( List<LocalUserProfile> profiles)?  profilesAvailable,TResult? Function( LocalUserProfile profile,  bool locked)?  sessionActive,TResult? Function( LocalUserProfile profile)?  onboardingRequired,TResult? Function( String phone)?  otpPending,TResult? Function( String phone,  String userId,  String refreshToken)?  settingPin,TResult? Function( LocalUserProfile profile,  DateTime lockedUntil)?  pinLockedOut,}) {final _that = this;
 switch (_that) {
 case Unauthenticated() when unauthenticated != null:
 return unauthenticated();case ProfilesAvailable() when profilesAvailable != null:
 return profilesAvailable(_that.profiles);case SessionActive() when sessionActive != null:
-return sessionActive(_that.profile,_that.locked);case OtpPending() when otpPending != null:
+return sessionActive(_that.profile,_that.locked);case OnboardingRequired() when onboardingRequired != null:
+return onboardingRequired(_that.profile);case OtpPending() when otpPending != null:
 return otpPending(_that.phone);case SettingPin() when settingPin != null:
 return settingPin(_that.phone,_that.userId,_that.refreshToken);case PinLockedOut() when pinLockedOut != null:
 return pinLockedOut(_that.profile,_that.lockedUntil);case _:
@@ -361,6 +367,72 @@ class _$SessionActiveCopyWithImpl<$Res>
 freezed == profile ? _self.profile : profile // ignore: cast_nullable_to_non_nullable
 as LocalUserProfile,locked: null == locked ? _self.locked : locked // ignore: cast_nullable_to_non_nullable
 as bool,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class OnboardingRequired extends AuthState {
+  const OnboardingRequired(this.profile): super._();
+  
+
+ final  LocalUserProfile profile;
+
+/// Create a copy of AuthState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$OnboardingRequiredCopyWith<OnboardingRequired> get copyWith => _$OnboardingRequiredCopyWithImpl<OnboardingRequired>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is OnboardingRequired&&const DeepCollectionEquality().equals(other.profile, profile));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(profile));
+
+@override
+String toString() {
+  return 'AuthState.onboardingRequired(profile: $profile)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $OnboardingRequiredCopyWith<$Res> implements $AuthStateCopyWith<$Res> {
+  factory $OnboardingRequiredCopyWith(OnboardingRequired value, $Res Function(OnboardingRequired) _then) = _$OnboardingRequiredCopyWithImpl;
+@useResult
+$Res call({
+ LocalUserProfile profile
+});
+
+
+
+
+}
+/// @nodoc
+class _$OnboardingRequiredCopyWithImpl<$Res>
+    implements $OnboardingRequiredCopyWith<$Res> {
+  _$OnboardingRequiredCopyWithImpl(this._self, this._then);
+
+  final OnboardingRequired _self;
+  final $Res Function(OnboardingRequired) _then;
+
+/// Create a copy of AuthState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? profile = freezed,}) {
+  return _then(OnboardingRequired(
+freezed == profile ? _self.profile : profile // ignore: cast_nullable_to_non_nullable
+as LocalUserProfile,
   ));
 }
 

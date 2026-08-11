@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +11,9 @@ import 'package:foodlink_business/core/storage/app_database.dart';
 import 'package:foodlink_business/core/storage/secure_storage_service.dart';
 import 'package:foodlink_business/features/auth/data/identity_api.dart';
 import 'package:foodlink_business/features/auth/data/local_profile_repository.dart';
+import 'package:foodlink_business/features/business/data/business_api.dart';
+import 'package:foodlink_business/features/business/domain/business_create_request.dart';
+import 'package:foodlink_business/features/business/domain/business_create_response.dart';
 
 /// Shared fakes used across auth unit and widget tests.
 ///
@@ -32,18 +37,79 @@ class FakePinService extends PinService {
   }
 }
 
+/// Builds a JWT-shaped access token whose payload carries the given claims.
+///
+/// `sub` is always required (the real client parses it from the token); for a
+/// business-scoped token pass a non-null [activeBusinessId] plus
+/// [roles]/[permissions]. Tests can decode it back with [decodeJwtPayload].
+String buildScopedToken({
+  required String userId,
+  String? activeBusinessId,
+  List<String> roles = const [],
+  List<String> permissions = const [],
+}) {
+  String enc(Map<String, dynamic> map) =>
+      base64Url.encode(utf8.encode(jsonEncode(map))).replaceAll('=', '');
+
+  final header = enc({'alg': 'RS256', 'typ': 'JWT'});
+  final payload = enc({
+    'sub': userId,
+    'active_business_id': activeBusinessId,
+    'roles': roles,
+    'permissions': permissions,
+  });
+  return '$header.$payload.signature';
+}
+
+/// Decodes the unverified payload of a JWT-shaped token (test helper only).
+Map<String, dynamic> decodeJwtPayload(String token) {
+  final segments = token.split('.');
+  final payload =
+      utf8.decode(base64Url.decode(base64Url.normalize(segments[1])));
+  return jsonDecode(payload) as Map<String, dynamic>;
+}
+
 class FakeIdentityApi implements IdentityApi {
   FakeIdentityApi({
     required this.userId,
     required this.refreshToken,
     required this.validCode,
+    this.needsOnboarding = false,
+    this.businessId,
+    this.businessName,
+    this.needsOnboardingAfterBusinessCreation = false,
+    this.businessIdAfterCreation,
+    this.businessNameAfterCreation,
+    this.switchBusinessContextFailure,
   });
 
   final String userId;
   final String refreshToken;
   final String validCode;
+
+  /// Returned by [fetchOnboardingStatus] for the initial check.
+  /// Defaults to `false` (invited staff) so existing tests that expect
+  /// `setPin` → `SessionActive` continue to pass unchanged.
+  final bool needsOnboarding;
+  final String? businessId;
+  final String? businessName;
+
+  /// Optional: returned by [fetchOnboardingStatus] after business creation
+  /// (i.e., on the second+ call). Useful for tests that simulate completing
+  /// onboarding and then re-checking status.
+  final bool needsOnboardingAfterBusinessCreation;
+  final String? businessIdAfterCreation;
+  final String? businessNameAfterCreation;
+
+  /// When set, [switchBusinessContext] throws this [Failure] instead of
+  /// returning a scoped token (used to exercise the retry paths).
+  Failure? switchBusinessContextFailure;
+
   int requestOtpCalls = 0;
   int verifyOtpCalls = 0;
+  int onboardingStatusCalls = 0;
+  int refreshAccessTokenCalls = 0;
+  int switchBusinessContextCalls = 0;
 
   @override
   Future<void> requestOtp(String phone) async {
@@ -58,8 +124,83 @@ class FakeIdentityApi implements IdentityApi {
     }
     return OtpVerificationResult(
       userId: userId,
-      accessToken: 'header.payload.signature',
+      // The OTP-issued token is unscoped (this is the bug we're fixing):
+      // no active_business_id, no roles/permissions.
+      accessToken: buildScopedToken(userId: userId),
       refreshToken: refreshToken,
+    );
+  }
+
+  @override
+  Future<OnboardingStatusResult> fetchOnboardingStatus() async {
+    onboardingStatusCalls++;
+    // After the first call, optionally return the "after business creation" values.
+    if (onboardingStatusCalls > 1 &&
+        needsOnboardingAfterBusinessCreation != needsOnboarding) {
+      return OnboardingStatusResult(
+        needsOnboarding: needsOnboardingAfterBusinessCreation,
+        businessId: businessIdAfterCreation ?? businessId,
+        businessName: businessNameAfterCreation ?? businessName,
+      );
+    }
+    return OnboardingStatusResult(
+      needsOnboarding: needsOnboarding,
+      businessId: businessId,
+      businessName: businessName,
+    );
+  }
+
+  @override
+  Future<OtpVerificationResult> refreshAccessToken(String refreshToken) async {
+    refreshAccessTokenCalls++;
+    return OtpVerificationResult(
+      userId: userId,
+      // Refresh also returns an unscoped token server-side.
+      accessToken: buildScopedToken(userId: userId),
+      // Refresh tokens rotate server-side; hand back a distinct token so
+      // callers that persist the rotated value are visibly exercised.
+      refreshToken: 'rt_rotated_$refreshToken',
+    );
+  }
+
+  @override
+  Future<OtpVerificationResult> switchBusinessContext(String businessId) async {
+    switchBusinessContextCalls++;
+    final toThrow = switchBusinessContextFailure;
+    if (toThrow != null) throw toThrow;
+    return OtpVerificationResult(
+      userId: userId,
+      // Business-scoped token: carries active_business_id, roles and
+      // permissions, and rotates the refresh token.
+      accessToken: buildScopedToken(
+        userId: userId,
+        activeBusinessId: businessId,
+        roles: const ['owner'],
+        permissions: const ['business.read', 'business.write'],
+      ),
+      refreshToken: 'rt_rotated_$refreshToken',
+    );
+  }
+}
+
+/// Records business-creation calls and lets a test inject a failure.
+class FakeBusinessApi implements BusinessApi {
+  final List<BusinessCreateRequest> createCalls = [];
+
+  /// When set, [createBusiness] throws this [Failure] instead of recording.
+  Failure? failure;
+
+  @override
+  Future<BusinessCreateResult> createBusiness(
+    BusinessCreateRequest request,
+  ) async {
+    final toThrow = failure;
+    if (toThrow != null) throw toThrow;
+    createCalls.add(request);
+    return BusinessCreateResult(
+      id: 'biz_1',
+      name: request.name,
+      ownerRoleName: 'Owner',
     );
   }
 }
@@ -85,7 +226,18 @@ class FakeSecureStorageService extends SecureStorageService {
 }
 
 class FakeLocalProfileRepository implements LocalProfileRepository {
+  FakeLocalProfileRepository() {
+    _deviceConfig = DeviceConfig(
+      id: 1,
+      lockedBusinessId: null,
+      lockedBusinessName: null,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+  }
+
   final Map<String, LocalUserProfile> profiles = {};
+  DeviceConfig? _deviceConfig;
 
   void seedProfile({
     required String userId,
@@ -192,6 +344,34 @@ class FakeLocalProfileRepository implements LocalProfileRepository {
     profiles[userId] = profiles[userId]!.copyWith(
       pinAttemptCount: 0,
       pinLockedUntil: const Value(null),
+    );
+  }
+
+  @override
+  Future<DeviceConfig?> getDeviceConfig() async => _deviceConfig;
+
+  @override
+  Future<void> setDeviceLock({
+    required String businessId,
+    required String businessName,
+  }) async {
+    _deviceConfig = DeviceConfig(
+      id: 1,
+      lockedBusinessId: businessId,
+      lockedBusinessName: businessName,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<void> clearDeviceLock() async {
+    _deviceConfig = DeviceConfig(
+      id: 1,
+      lockedBusinessId: null,
+      lockedBusinessName: null,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
   }
 

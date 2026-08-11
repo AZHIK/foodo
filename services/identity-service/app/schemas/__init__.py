@@ -15,7 +15,8 @@ Available modules (one file per model or logical group):
     user                — User CRUD (+ UserPhoneChangeRequest, UserStatusUpdate)
     organization        — Organization CRUD
     business            — Business CRUD
-    business_location   — BusinessLocation CRUD
+    store               — Store CRUD
+    store_setting       — StoreSetting CRUD (1:1 with store; no standalone POST)
     permission          — PermissionRead (seed-only, no Create/Update)
     rbac                — Group, Role, RolePermission, UserGroup, UserRole,
                           PlatformRole, UserPlatformRole

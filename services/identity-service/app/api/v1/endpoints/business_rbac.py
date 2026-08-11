@@ -23,7 +23,7 @@ from app.models.business import (
     UserBusinessLocationRole,
     UserBusinessRole,
 )
-from app.models.user import User, UserCategory
+from app.models.user import User, UserCategory, UserStatus
 from app.schemas.business_rbac import (
     AddRolePermissionRequest,
     AssignStaffRequest,
@@ -309,6 +309,19 @@ async def assign_staff_role(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Either 'user_id' or 'phone' must be provided",
             )
+
+        if target_user is None and body.phone is not None:
+            target_user = User(
+                phone=body.phone,
+                full_name="",
+                user_category=UserCategory.BUSINESS_USER,
+                status=UserStatus.INVITED,
+                password_hash=None,
+                is_phone_verified=False,
+            )
+            db.add(target_user)
+            await db.flush()
+            await db.refresh(target_user)
 
         if target_user is None:
             raise HTTPException(

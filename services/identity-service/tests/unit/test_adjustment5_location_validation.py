@@ -1,14 +1,11 @@
 from uuid import UUID
 
 import pytest
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
-from app.core.exceptions import InvalidBusinessLocationTypeError
-from app.models import Business, BusinessType, LocationType
-from app.services.business_locations import (
-    create_business_location,
-    update_business_location_type,
-)
+from app.core.exceptions import InvalidStoreTypeError
+from app.models import Business, BusinessType, LocationType, StoreSetting
+from app.services.store import create_store, update_store_type
 
 OWNER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
@@ -34,12 +31,12 @@ def restaurant(session: Session) -> Business:
     return business
 
 
-def test_creating_farm_location_under_restaurant_is_rejected(
+def test_creating_farm_store_under_restaurant_is_rejected(
     session: Session,
     restaurant: Business,
 ) -> None:
-    with pytest.raises(InvalidBusinessLocationTypeError):
-        create_business_location(
+    with pytest.raises(InvalidStoreTypeError):
+        create_store(
             session,
             business=restaurant,
             name="Invalid Farm",
@@ -51,32 +48,70 @@ def test_creating_restaurant_branch_under_restaurant_succeeds(
     session: Session,
     restaurant: Business,
 ) -> None:
-    location = create_business_location(
+    store = create_store(
         session,
         business=restaurant,
         name="Mikocheni Branch",
         location_type=LocationType.RESTAURANT_BRANCH,
     )
 
-    assert location.business_id == restaurant.id
-    assert location.location_type == LocationType.RESTAURANT_BRANCH
+    assert store.business_id == restaurant.id
+    assert store.location_type == LocationType.RESTAURANT_BRANCH
 
 
-def test_updating_existing_location_to_invalid_type_is_rejected(
+def test_creating_store_also_creates_default_settings_row(
     session: Session,
     restaurant: Business,
 ) -> None:
-    location = create_business_location(
+    store = create_store(
+        session,
+        business=restaurant,
+        name="With Settings",
+        location_type=LocationType.KITCHEN,
+    )
+
+    setting = (
+        session.exec(select(StoreSetting).where(StoreSetting.store_id == store.id))
+    ).one_or_none()
+    assert setting is not None
+    assert setting.active is True
+
+
+def test_store_has_unique_token(
+    session: Session,
+    restaurant: Business,
+) -> None:
+    first = create_store(
+        session,
+        business=restaurant,
+        name="Token One",
+        location_type=LocationType.KITCHEN,
+    )
+    second = create_store(
+        session,
+        business=restaurant,
+        name="Token Two",
+        location_type=LocationType.KITCHEN,
+    )
+    assert first.token
+    assert first.token != second.token
+
+
+def test_updating_existing_store_to_invalid_type_is_rejected(
+    session: Session,
+    restaurant: Business,
+) -> None:
+    store = create_store(
         session,
         business=restaurant,
         name="Main Kitchen",
         location_type=LocationType.KITCHEN,
     )
 
-    with pytest.raises(InvalidBusinessLocationTypeError):
-        update_business_location_type(
+    with pytest.raises(InvalidStoreTypeError):
+        update_store_type(
             session,
             business=restaurant,
-            location_id=location.id,
+            store_id=store.id,
             location_type=LocationType.FARM,
         )

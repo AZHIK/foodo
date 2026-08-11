@@ -35,6 +35,16 @@ abstract class LocalProfileRepository {
   Future<void> lockProfile(String userId, {required DateTime lockedUntil});
   Future<void> resetPinAttempts(String userId);
   Future<void> clearLockout(String userId);
+
+  // ── Device config ────────────────────────────────────────────────
+  /// Returns the current device config (single-row table).
+  Future<DeviceConfig?> getDeviceConfig();
+
+  /// Sets the device lock to the given business.
+  Future<void> setDeviceLock({required String businessId, required String businessName});
+
+  /// Clears the device lock (when the last profile is removed).
+  Future<void> clearDeviceLock();
 }
 
 class DriftLocalProfileRepository implements LocalProfileRepository {
@@ -150,6 +160,44 @@ class DriftLocalProfileRepository implements LocalProfileRepository {
       const LocalUserProfilesCompanion(
         pinAttemptCount: Value(0),
         pinLockedUntil: Value(null),
+      ),
+    );
+  }
+
+  // ── Device config ────────────────────────────────────────────────
+
+  @override
+  Future<DeviceConfig?> getDeviceConfig() async {
+    final query = _db.select(_db.deviceConfigs);
+    return query.getSingleOrNull();
+  }
+
+  @override
+  Future<void> setDeviceLock({
+    required String businessId,
+    required String businessName,
+  }) async {
+    final now = DateTime.now();
+    await _db.into(_db.deviceConfigs).insertOnConflictUpdate(
+      DeviceConfigsCompanion(
+        id: const Value(1),
+        lockedBusinessId: Value(businessId),
+        lockedBusinessName: Value(businessName),
+        createdAt: Value(now),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  @override
+  Future<void> clearDeviceLock() async {
+    final now = DateTime.now();
+    await _db.into(_db.deviceConfigs).insertOnConflictUpdate(
+      DeviceConfigsCompanion(
+        id: const Value(1),
+        lockedBusinessId: const Value.absent(),
+        lockedBusinessName: const Value.absent(),
+        updatedAt: Value(now),
       ),
     );
   }
