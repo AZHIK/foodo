@@ -7,11 +7,7 @@ import 'app_card.dart';
 
 /// Stock-level semantics consumed by [ProductCard] to pick the right
 /// status colour and label.
-enum ProductStockStatus {
-  inStock,
-  lowStock,
-  outOfStock,
-}
+enum ProductStockStatus { inStock, lowStock, outOfStock }
 
 /// Layout variant for [ProductCard].
 ///
@@ -19,10 +15,7 @@ enum ProductStockStatus {
 ///   stacked below.  Used in the POS item-picker grid.
 /// - [listTile] → compact horizontal row: image on the left, meta on
 ///   the right.  Used in Inventory list view.
-enum ProductCardVariant {
-  gridTile,
-  listTile,
-}
+enum ProductCardVariant { gridTile, listTile }
 
 /// Reusable card that represents a single inventory item / sellable
 /// product across both POS and Inventory screens.
@@ -141,25 +134,23 @@ class ProductCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                const SizedBox(height: AppDimensions.spaceSM),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _formatPrice(priceSenti),
-                        style: AppTextStyles.titleMedium.copyWith(
-                          color: cs.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    _stockBadge(
-                      size: StatusBadgeSize.compact,
-                      showNumericLevel: true,
-                    ),
-                  ],
+                const SizedBox(height: AppDimensions.spaceXS),
+                Text(
+                  _formatPrice(priceSenti),
+                  style: AppTextStyles.titleMedium.copyWith(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: AppDimensions.spaceXS),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _stockBadge(
+                    size: StatusBadgeSize.compact,
+                    showNumericLevel: true,
+                  ),
                 ),
               ],
             ),
@@ -241,8 +232,8 @@ class ProductCard extends StatelessWidget {
   // ── Shared internals ─────────────────────────────────────────────
 
   Widget _imageTile(ColorScheme cs, {double? radius}) {
-    final bg = cs.primaryContainer.withValues(alpha: 0.35);
-    final fg = cs.onPrimaryContainer.withValues(alpha: 0.75);
+    final bg = cs.surfaceContainerHighest.withValues(alpha: 0.62);
+    final fg = cs.onSurface.withValues(alpha: 0.5);
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -269,27 +260,23 @@ class ProductCard extends StatelessWidget {
   }) {
     final (variant, label) = switch (stockStatus) {
       ProductStockStatus.inStock => (
-          StatusBadgeVariant.success,
-          showNumericLevel && stockLevel != null
-              ? '$stockLevel in stock'
-              : 'In stock',
-        ),
+        StatusBadgeVariant.success,
+        showNumericLevel && stockLevel != null
+            ? '$stockLevel in stock'
+            : 'In stock',
+      ),
       ProductStockStatus.lowStock => (
-          StatusBadgeVariant.warning,
-          showNumericLevel && stockLevel != null
-              ? 'Low · $stockLevel'
-              : 'Low stock',
-        ),
+        StatusBadgeVariant.warning,
+        showNumericLevel && stockLevel != null
+            ? 'Low · $stockLevel'
+            : 'Low stock',
+      ),
       ProductStockStatus.outOfStock => (
-          StatusBadgeVariant.danger,
-          'Out of stock',
-        ),
+        StatusBadgeVariant.danger,
+        'Out of stock',
+      ),
     };
-    return StatusBadge(
-      label: label,
-      variant: variant,
-      size: size,
-    );
+    return StatusBadge(label: label, variant: variant, size: size);
   }
 
   static String _formatPrice(int senti) {

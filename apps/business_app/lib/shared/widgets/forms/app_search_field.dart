@@ -105,11 +105,14 @@ class _AppSearchFieldState extends State<AppSearchField> {
     final cs = Theme.of(context).colorScheme;
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-      borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.6)),
+      borderSide: BorderSide(
+        color: cs.outlineVariant.withValues(alpha: 0.9),
+        width: 0.8,
+      ),
     );
     final focusedBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-      borderSide: BorderSide(color: cs.primary, width: 1.5),
+      borderSide: BorderSide(color: cs.primary, width: 1.2),
     );
 
     return TextField(
@@ -124,8 +127,8 @@ class _AppSearchFieldState extends State<AppSearchField> {
         hintStyle: AppTextStyles.bodyLarge.copyWith(
           color: cs.onSurface.withValues(alpha: 0.45),
         ),
-        filled: true,
-        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+        filled: false,
+        fillColor: null,
         prefixIcon: Icon(
           Icons.search_rounded,
           color: cs.onSurface.withValues(alpha: 0.6),

@@ -28,6 +28,7 @@ export 'forms/app_text_field.dart';
 export 'forms/app_number_field.dart';
 export 'forms/app_dropdown_field.dart';
 export 'forms/app_search_field.dart';
+export 'forms/filter_pill_bar.dart';
 export 'forms/money_field.dart';
 
 // ── buttons/ ───────────────────────────────────────────────────────

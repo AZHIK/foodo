@@ -13,6 +13,8 @@ class AppRoutes {
   static const String businessOnboarding = '/business-onboarding';
   static const String dashboard = '/dashboard';
   static const String pos = '/pos';
+  static const String posSales = '/pos/sales';
+  static const String posSaleDetail = '/pos/sales/:id';
   static const String inventory = '/inventory';
   static const String inventoryNew = '/inventory/new';
   static const String inventoryDetail = '/inventory/:id';

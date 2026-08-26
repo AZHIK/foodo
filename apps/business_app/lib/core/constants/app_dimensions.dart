@@ -7,21 +7,21 @@ abstract final class AppDimensions {
   AppDimensions._();
 
   // ── Spacing scale ─────────────────────────────────────────────
-  static const double spaceXXS = 2;
-  static const double spaceXS = 4;
-  static const double spaceSM = 8;
-  static const double spaceMD = 16;
-  static const double spaceLG = 24;
-  static const double spaceXL = 32;
-  static const double spaceXXL = 48;
-  static const double spaceXXXL = 64;
+  static const double spaceXXS = 4;
+  static const double spaceXS = 8;
+  static const double spaceSM = 12;
+  static const double spaceMD = 20;
+  static const double spaceLG = 28;
+  static const double spaceXL = 40;
+  static const double spaceXXL = 56;
+  static const double spaceXXXL = 80;
 
   // ── Corner radii ──────────────────────────────────────────────
-  static const double radiusXS = 4;
-  static const double radiusSM = 8;
-  static const double radiusMD = 12;
-  static const double radiusLG = 16;
-  static const double radiusXL = 24;
+  static const double radiusXS = 6;
+  static const double radiusSM = 10;
+  static const double radiusMD = 16;
+  static const double radiusLG = 24;
+  static const double radiusXL = 32;
   static const double radiusFull = 999;
 
   // ── Adaptive breakpoints (matching flutter_adaptive_scaffold) ─

@@ -5,10 +5,9 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../app_responsive_layout.dart';
+import '../forms/app_search_field.dart';
 import '../cards/app_card.dart';
 import '../feedback/empty_state.dart';
-import '../buttons/app_secondary_button.dart';
-import '../forms/app_search_field.dart';
 import 'export_service.dart';
 
 class AppDataColumn<T> {
@@ -53,6 +52,7 @@ class AppDataTable<T> extends StatefulWidget {
     this.rowOnTap,
     this.rowOnLongPress,
     this.exportFilenamePrefix = 'export',
+
     /// When true, the table sizes itself to its content instead of expanding
     /// to fill available space. Required when the table is placed inside
     /// another scrollable (e.g. a [SingleChildScrollView]).
@@ -211,7 +211,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
     }
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -237,7 +237,8 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
                   ? AppEmptyState(
                       icon: widget.emptyStateIcon,
                       title: widget.emptyStateTitle,
-                      subtitle: widget.emptyStateSubtitle ??
+                      subtitle:
+                          widget.emptyStateSubtitle ??
                           (_searchQuery.isNotEmpty
                               ? 'No results for "$_searchQuery".'
                               : null),
@@ -245,15 +246,16 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
                       compact: true,
                     )
                   : isNarrow
-                      ? _buildCardList()
-                      : _buildDesktopTable()
+                  ? _buildCardList()
+                  : _buildDesktopTable()
             else
               Expanded(
                 child: _sortedFiltered.isEmpty
                     ? AppEmptyState(
                         icon: widget.emptyStateIcon,
                         title: widget.emptyStateTitle,
-                        subtitle: widget.emptyStateSubtitle ??
+                        subtitle:
+                            widget.emptyStateSubtitle ??
                             (_searchQuery.isNotEmpty
                                 ? 'No results for "$_searchQuery".'
                                 : null),
@@ -261,8 +263,8 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
                         compact: true,
                       )
                     : isNarrow
-                        ? _buildCardList()
-                        : _buildDesktopTable(),
+                    ? _buildCardList()
+                    : _buildDesktopTable(),
               ),
             if (widget.showPagination && _sortedFiltered.isNotEmpty)
               _buildPagination(),
@@ -313,7 +315,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
         label: Text(
           c.label,
           style: AppTextStyles.labelLarge.copyWith(
-            color: cs.onSurface,
+            color: cs.onSurface.withValues(alpha: 0.72),
             fontWeight: FontWeight.w700,
           ),
           maxLines: 1,
@@ -333,7 +335,9 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
               ? c.cellBuilder!(context, row, val)
               : Text(
                   _formatValue(val),
-                  style: AppTextStyles.bodyMedium.copyWith(color: cs.onSurface),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: cs.onSurface.withValues(alpha: 0.84),
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -347,12 +351,13 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
         index: rowIdx,
         cells: cells,
         color: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return cs.primary.withValues(alpha: 0.08);
+          if (states.contains(WidgetState.hovered)) {
+            return cs.surfaceContainerHighest.withValues(alpha: 0.38);
           }
-          return rowIdx.isEven
-              ? cs.surface
-              : cs.surfaceContainerLowest.withValues(alpha: 0.5);
+          if (states.contains(WidgetState.selected)) {
+            return cs.surfaceContainerHighest.withValues(alpha: 0.58);
+          }
+          return cs.surface;
         }),
         onSelectChanged: widget.rowOnTap == null
             ? null
@@ -361,13 +366,13 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
     }).toList();
     return LayoutBuilder(
       builder: (context, constraints) {
-        final tableWidth = (constraints.maxWidth - AppDimensions.spaceSM * 2).clamp(
-          0.0,
-          double.infinity,
-        );
+        final tableWidth = (constraints.maxWidth - AppDimensions.spaceMD * 2)
+            .clamp(0.0, double.infinity);
         return SingleChildScrollView(
           scrollDirection: Axis.vertical,
-          padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spaceSM),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.spaceMD,
+          ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: ConstrainedBox(
@@ -377,25 +382,37 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: cs.outlineVariant),
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                  color: cs.surface,
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.75),
+                    width: 0.8,
+                  ),
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+                  boxShadow: [
+                    BoxShadow(
+                      color: cs.shadow.withValues(alpha: 0.04),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: Theme(
                   data: Theme.of(context).copyWith(
                     dividerTheme: DividerThemeData(
-                      color: cs.outlineVariant.withValues(alpha: 0.5),
+                      color: cs.outlineVariant.withValues(alpha: 0.75),
                       thickness: 0.5,
                       space: 0,
                     ),
                     dataTableTheme: DataTableThemeData(
                       headingRowColor: WidgetStatePropertyAll(
-                        cs.surfaceContainerHighest,
+                        cs.surfaceContainerLow.withValues(alpha: 0.65),
                       ),
-                      dataRowMaxHeight: 56,
-                      headingRowHeight: 52,
-                      columnSpacing: AppDimensions.spaceMD,
-                      horizontalMargin: AppDimensions.spaceMD,
+                      dataRowMinHeight: 54,
+                      dataRowMaxHeight: 62,
+                      headingRowHeight: 50,
+                      columnSpacing: AppDimensions.spaceLG,
+                      horizontalMargin: AppDimensions.spaceLG,
                     ),
                   ),
                   child: DataTable(
@@ -426,16 +443,13 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
         : secondaryCols.take(4).toList();
     return ListView.separated(
       shrinkWrap: widget.shrinkWrap,
-      physics: widget.shrinkWrap
-          ? const NeverScrollableScrollPhysics()
-          : null,
+      physics: widget.shrinkWrap ? const NeverScrollableScrollPhysics() : null,
       padding: const EdgeInsets.symmetric(
         horizontal: AppDimensions.spaceMD,
         vertical: AppDimensions.spaceSM,
       ),
       itemCount: _paged.length,
-      separatorBuilder: (_, _) =>
-          const SizedBox(height: AppDimensions.spaceSM),
+      separatorBuilder: (_, _) => const SizedBox(height: AppDimensions.spaceSM),
       itemBuilder: (ctx, i) {
         final row = _paged[i];
         return AppCard.elevated(
@@ -504,7 +518,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
     );
   }
 
-Widget _buildPagination() {
+  Widget _buildPagination() {
     final cs = Theme.of(context).colorScheme;
     final total = _totalRows;
     final totalPages = _totalPages;
@@ -522,7 +536,13 @@ Widget _buildPagination() {
             vertical: AppDimensions.spaceSM,
           ),
           decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: cs.outlineVariant)),
+            color: cs.surface,
+            border: Border(
+              top: BorderSide(
+                color: cs.outlineVariant.withValues(alpha: 0.75),
+                width: 0.5,
+              ),
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -558,8 +578,8 @@ Widget _buildPagination() {
                   IconButton(
                     onPressed: canPrev
                         ? () => setState(() {
-                              _currentPage--;
-                            })
+                            _currentPage--;
+                          })
                         : null,
                     icon: const Icon(Icons.chevron_left),
                     visualDensity: VisualDensity.compact,
@@ -578,8 +598,8 @@ Widget _buildPagination() {
                   IconButton(
                     onPressed: canNext
                         ? () => setState(() {
-                              _currentPage++;
-                            })
+                            _currentPage++;
+                          })
                         : null,
                     icon: const Icon(Icons.chevron_right),
                     visualDensity: VisualDensity.compact,
@@ -689,7 +709,11 @@ class _ExportMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return PopupMenuButton<ExportFormat>(
+      color: cs.surface,
+      surfaceTintColor: Colors.transparent,
+      elevation: 4,
       onSelected: onSelected,
       itemBuilder: (ctx) => [
         const PopupMenuItem(
@@ -713,10 +737,34 @@ class _ExportMenu extends StatelessWidget {
           ),
         ),
       ],
-      child: const AppSecondaryButton(
-        label: 'Export',
-        icon: Icons.download_outlined,
-        expanded: false,
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spaceMD),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.9),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.download_outlined,
+              size: 18,
+              color: cs.onSurface.withValues(alpha: 0.72),
+            ),
+            const SizedBox(width: AppDimensions.spaceXS),
+            Text(
+              'Export',
+              style: AppTextStyles.labelLarge.copyWith(
+                color: cs.onSurface.withValues(alpha: 0.82),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

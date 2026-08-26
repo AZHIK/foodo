@@ -5,7 +5,9 @@ import 'package:foodlink_business/shared/widgets/cards/product_card.dart';
 
 void main() {
   group('ProductCard', () {
-    testWidgets('gridTile variant renders image, name, price, stock badge', (tester) async {
+    testWidgets('gridTile variant renders image, name, price, stock badge', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -38,7 +40,7 @@ void main() {
           home: Scaffold(
             body: SizedBox(
               width: 400,
-              height: 100,
+              height: 120,
               child: ProductCard(
                 variant: ProductCardVariant.listTile,
                 name: 'Ugali',
@@ -58,7 +60,9 @@ void main() {
       expect(find.textContaining('68'), findsOneWidget);
     });
 
-    testWidgets('low stock status shows amber warning badge color', (tester) async {
+    testWidgets('low stock status shows amber warning badge color', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -81,7 +85,9 @@ void main() {
       expect(find.text('Low · 2'), findsOneWidget);
     });
 
-    testWidgets('out-of-stock status shows "Out of stock" badge text', (tester) async {
+    testWidgets('out-of-stock status shows "Out of stock" badge text', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -102,7 +108,9 @@ void main() {
       expect(find.text('Out of stock'), findsOneWidget);
     });
 
-    testWidgets('in-stock status shows green / "In stock" label', (tester) async {
+    testWidgets('in-stock status shows green / "In stock" label', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -124,7 +132,9 @@ void main() {
       expect(find.text('36 in stock'), findsOneWidget);
     });
 
-    testWidgets('price formatting handles large values with commas', (tester) async {
+    testWidgets('price formatting handles large values with commas', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(

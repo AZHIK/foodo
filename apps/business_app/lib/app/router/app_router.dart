@@ -18,6 +18,9 @@ import '../../features/business/presentation/screens/business_onboarding_screen.
 import '../../features/inventory/presentation/screens/inventory_list_screen.dart';
 import '../../features/inventory/presentation/screens/item_form_screen.dart';
 import '../../features/inventory/presentation/screens/item_detail_screen.dart';
+import '../../features/pos/presentation/screens/pos_screen.dart';
+import '../../features/pos/presentation/screens/sales_list_screen.dart';
+import '../../features/pos/presentation/screens/sale_detail_screen.dart';
 import '../../shared/widgets/cards/app_card.dart';
 import '../../shared/widgets/app_empty_state.dart';
 
@@ -27,8 +30,10 @@ GoRouter createAppRouter() {
     initialLocation: AppRoutes.splash,
     refreshListenable: _RouterRefresh(),
     redirect: (context, state) {
-      final authState = ProviderScope.containerOf(context, listen: false)
-          .read(authProvider);
+      final authState = ProviderScope.containerOf(
+        context,
+        listen: false,
+      ).read(authProvider);
       final location = state.matchedLocation;
 
       if (location == AppRoutes.splash) {
@@ -54,11 +59,11 @@ GoRouter createAppRouter() {
           sessionActive: (_, locked) =>
               locked ? AppRoutes.pinUnlock : AppRoutes.dashboard,
           profilesAvailable: (_) {
-            final pendingProfileId = ProviderScope.containerOf(context, listen: false)
-                .read(authProvider.notifier)
-                .pendingProfileId;
-            if (pendingProfileId != null &&
-                location == AppRoutes.pinUnlock) {
+            final pendingProfileId = ProviderScope.containerOf(
+              context,
+              listen: false,
+            ).read(authProvider.notifier).pendingProfileId;
+            if (pendingProfileId != null && location == AppRoutes.pinUnlock) {
               return null;
             }
             return AppRoutes.profilePicker;
@@ -74,12 +79,24 @@ GoRouter createAppRouter() {
     },
     routes: [
       GoRoute(path: AppRoutes.splash, builder: (_, _) => const SplashScreen()),
-      GoRoute(path: AppRoutes.profilePicker, builder: (_, _) => const ProfilePickerScreen()),
-      GoRoute(path: AppRoutes.loginOtp, builder: (_, _) => const OtpLoginScreen()),
+      GoRoute(
+        path: AppRoutes.profilePicker,
+        builder: (_, _) => const ProfilePickerScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.loginOtp,
+        builder: (_, _) => const OtpLoginScreen(),
+      ),
       GoRoute(path: AppRoutes.setPin, builder: (_, _) => const SetPinScreen()),
-      GoRoute(path: AppRoutes.pinUnlock, builder: (_, _) => const PinUnlockScreen()),
-      GoRoute(path: AppRoutes.businessOnboarding, builder: (_, _) => const BusinessOnboardingScreen()),
-      
+      GoRoute(
+        path: AppRoutes.pinUnlock,
+        builder: (_, _) => const PinUnlockScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.businessOnboarding,
+        builder: (_, _) => const BusinessOnboardingScreen(),
+      ),
+
       // Main Application Shell Route
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child),
@@ -93,10 +110,22 @@ GoRouter createAppRouter() {
           ),
           GoRoute(
             path: AppRoutes.pos,
-            builder: (_, _) => const _PlaceholderScreen(
-              title: 'POS',
-              icon: Icons.point_of_sale_outlined,
-            ),
+            builder: (_, _) => const PosScreen(),
+            routes: [
+              GoRoute(
+                path: 'sales',
+                builder: (_, _) => const SalesListScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) {
+                      final saleId = state.pathParameters['id'] ?? '';
+                      return SaleDetailScreen(saleId: saleId);
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
           GoRoute(
             path: AppRoutes.inventory,
@@ -150,20 +179,21 @@ GoRouter createAppRouter() {
 
 final GoRouter appRouter = createAppRouter();
 
-bool _isAuthRoute(String location) => location == AppRoutes.loginOtp ||
+bool _isAuthRoute(String location) =>
+    location == AppRoutes.loginOtp ||
     location == AppRoutes.setPin ||
     location == AppRoutes.pinUnlock ||
     location == AppRoutes.businessOnboarding;
 
 bool _isAuthenticated(AuthState state) => state.when(
-      unauthenticated: () => false,
-      profilesAvailable: (_) => true,
-      sessionActive: (_, _) => true,
-      otpPending: (_) => true,
-      settingPin: (_, _, _) => true,
-      pinLockedOut: (_, _) => true,
-      onboardingRequired: (_) => true,
-    );
+  unauthenticated: () => false,
+  profilesAvailable: (_) => true,
+  sessionActive: (_, _) => true,
+  otpPending: (_) => true,
+  settingPin: (_, _, _) => true,
+  pinLockedOut: (_, _) => true,
+  onboardingRequired: (_) => true,
+);
 
 class _RouterRefresh extends ChangeNotifier {}
 
@@ -187,11 +217,17 @@ class _PlaceholderScreen extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.construction_outlined, size: 18, color: colorScheme.primary),
+            Icon(
+              Icons.construction_outlined,
+              size: 18,
+              color: colorScheme.primary,
+            ),
             const SizedBox(width: AppDimensions.spaceSM),
             Text(
               'Coming Soon',
-              style: AppTextStyles.labelLarge.copyWith(color: colorScheme.primary),
+              style: AppTextStyles.labelLarge.copyWith(
+                color: colorScheme.primary,
+              ),
             ),
           ],
         ),

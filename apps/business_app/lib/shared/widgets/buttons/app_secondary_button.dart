@@ -29,15 +29,21 @@ class AppSecondaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final fgColor = isDestructive ? colorScheme.error : null;
-    final borderColor =
-        isDestructive ? colorScheme.error : colorScheme.outline;
+    final fgColor = isDestructive
+        ? colorScheme.error
+        : colorScheme.onSurface.withValues(alpha: 0.82);
+    final borderColor = isDestructive
+        ? colorScheme.error
+        : colorScheme.outlineVariant;
 
     Widget button = OutlinedButton(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
         foregroundColor: fgColor,
-        side: BorderSide(color: borderColor),
+        side: BorderSide(
+          color: borderColor.withValues(alpha: 0.95),
+          width: 0.8,
+        ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
         ),
@@ -54,8 +60,6 @@ class AppSecondaryButton extends StatelessWidget {
           : Text(label),
     );
 
-    return expanded
-        ? SizedBox(width: double.infinity, child: button)
-        : button;
+    return expanded ? SizedBox(width: double.infinity, child: button) : button;
   }
 }

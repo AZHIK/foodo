@@ -25,10 +25,7 @@ import '../widgets/stock_operations_sheets.dart';
 /// All data reads [fakeInventoryProvider] / [fakeMovementsProvider]; stock
 /// operations mutate them via [StockOperations].
 class ItemDetailScreen extends ConsumerWidget {
-  const ItemDetailScreen({
-    required this.itemId,
-    super.key,
-  });
+  const ItemDetailScreen({required this.itemId, super.key});
 
   final String itemId;
 
@@ -65,10 +62,8 @@ class ItemDetailScreen extends ConsumerWidget {
         label: 'Date & Time',
         isPrimary: true,
         valueExtractor: (m) => m.createdAt.toIso8601String(),
-        cellBuilder: (context, m, _) => Text(
-          _formatDateTime(m.createdAt),
-          style: AppTextStyles.bodyMedium,
-        ),
+        cellBuilder: (context, m, _) =>
+            Text(_formatDateTime(m.createdAt), style: AppTextStyles.bodyMedium),
       ),
       AppDataColumn<FakeMovement>(
         key: 'type',
@@ -111,9 +106,8 @@ class ItemDetailScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit Item',
-            onPressed: () => context.go(
-              '${AppRoutes.inventory}/${item.id}/edit',
-            ),
+            onPressed: () =>
+                context.go('${AppRoutes.inventory}/${item.id}/edit'),
           ),
           const SizedBox(width: AppDimensions.spaceSM),
         ],
@@ -145,9 +139,9 @@ class ItemDetailScreen extends ConsumerWidget {
                             Text(
                               'SKU: ${item.sku} • Category: ${item.category}',
                               style: AppTextStyles.bodyMedium.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ],
@@ -172,7 +166,12 @@ class ItemDetailScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: AppDimensions.spaceMD),
-                  const Divider(),
+                  Divider(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outlineVariant.withValues(alpha: 0.75),
+                    height: AppDimensions.spaceLG,
+                  ),
                   const SizedBox(height: AppDimensions.spaceMD),
                   LayoutBuilder(
                     builder: (context, constraints) {
@@ -246,8 +245,11 @@ class ItemDetailScreen extends ConsumerWidget {
                         label: 'Transfer Stock',
                         icon: Icons.swap_horiz,
                         expanded: false,
-                        onPressed: () =>
-                            StockOperations.showTransferStock(context, ref, item),
+                        onPressed: () => StockOperations.showTransferStock(
+                          context,
+                          ref,
+                          item,
+                        ),
                       ),
                     ],
                   ),
@@ -291,10 +293,10 @@ class ItemDetailScreen extends ConsumerWidget {
   }
 
   static String _itemTypeLabel(String type) => switch (type) {
-        'prepared_item' => 'Prepared Item',
-        'raw_ingredient' => 'Raw Ingredient',
-        'resellable' => 'Resellable Item',
-        'variant_parent' => 'Variant Parent',
-        _ => type,
-      };
+    'prepared_item' => 'Prepared Item',
+    'raw_ingredient' => 'Raw Ingredient',
+    'resellable' => 'Resellable Item',
+    'variant_parent' => 'Variant Parent',
+    _ => type,
+  };
 }

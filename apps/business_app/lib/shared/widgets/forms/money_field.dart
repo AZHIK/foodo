@@ -43,11 +43,11 @@ class MoneyField extends StatefulWidget {
     this.validator,
     this.enabled = true,
     this.prefixIcon = Icons.monetization_on_outlined,
-  })  : assert(
-          minSenti == null || allowNegative || minSenti >= 0,
-          'minSenti cannot be negative when allowNegative is false',
-        ),
-        assert(allowZero || initialSenti != 0, 'initialSenti must be non-zero');
+  }) : assert(
+         minSenti == null || allowNegative || minSenti >= 0,
+         'minSenti cannot be negative when allowNegative is false',
+       ),
+       assert(allowZero || initialSenti != 0, 'initialSenti must be non-zero');
 
   final String? label;
   final String? hint;
@@ -80,7 +80,7 @@ class MoneyField extends StatefulWidget {
       }
       buf.write(digits[i]);
     }
-    return '$sign TZS $buf';
+    return sign.isEmpty ? 'TZS $buf' : '$sign TZS $buf';
   }
 
   /// Parses a user-entered string back to senti.
@@ -118,8 +118,7 @@ class _MoneyFieldState extends State<MoneyField> {
       if (oldWidget.focusNode == null) _focusNode.dispose();
       _focusNode = widget.focusNode ?? FocusNode();
     }
-    if (oldWidget.initialSenti != widget.initialSenti &&
-        !_focusNode.hasFocus) {
+    if (oldWidget.initialSenti != widget.initialSenti && !_focusNode.hasFocus) {
       _senti = _clamp(widget.initialSenti);
       _syncText(silent: true);
     }
@@ -184,21 +183,28 @@ class _MoneyFieldState extends State<MoneyField> {
     final cs = Theme.of(context).colorScheme;
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-      borderSide: BorderSide(color: cs.outline),
+      borderSide: BorderSide(
+        color: cs.outlineVariant.withValues(alpha: 0.9),
+        width: 0.8,
+      ),
     );
     final enabledBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-      borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.7)),
+      borderSide: BorderSide(
+        color: cs.outlineVariant.withValues(alpha: 0.9),
+        width: 0.8,
+      ),
     );
     final focusedBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-      borderSide: BorderSide(color: cs.primary, width: 1.5),
+      borderSide: BorderSide(color: cs.primary, width: 1.2),
     );
 
     return FormField<int>(
       initialValue: _senti,
-      validator:
-          widget.validator == null ? null : (_) => widget.validator!(_senti),
+      validator: widget.validator == null
+          ? null
+          : (_) => widget.validator!(_senti),
       builder: (state) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -231,12 +237,12 @@ class _MoneyFieldState extends State<MoneyField> {
               enabledBorder: enabledBorder,
               focusedBorder: focusedBorder,
               errorBorder: border.copyWith(
-                borderSide: BorderSide(color: cs.error),
+                borderSide: BorderSide(color: cs.error, width: 1),
               ),
               errorText: state.errorText,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: AppDimensions.spaceMD,
-                vertical: AppDimensions.spaceMD,
+                vertical: AppDimensions.spaceSM,
               ),
             ),
             onChanged: _onInputChanged,

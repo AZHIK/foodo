@@ -44,11 +44,11 @@ class AppNumberField extends StatefulWidget {
     this.enabled = true,
     this.prefixIcon,
     this.formatValue,
-  })  : assert(step > 0, 'step must be positive'),
-        assert(
-          min == null || allowNegative || min >= 0,
-          'min cannot be negative when allowNegative is false',
-        );
+  }) : assert(step > 0, 'step must be positive'),
+       assert(
+         min == null || allowNegative || min >= 0,
+         'min cannot be negative when allowNegative is false',
+       );
 
   final String? label;
   final String? hint;
@@ -179,22 +179,29 @@ class _AppNumberFieldState extends State<AppNumberField> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final stepperColor =
-        widget.enabled ? cs.primary : cs.onSurface.withValues(alpha: 0.38);
+    final stepperColor = widget.enabled
+        ? cs.primary
+        : cs.onSurface.withValues(alpha: 0.38);
 
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-      borderSide: BorderSide(color: cs.outline),
+      borderSide: BorderSide(
+        color: cs.outlineVariant.withValues(alpha: 0.9),
+        width: 0.8,
+      ),
     );
 
     final enabledBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-      borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.7)),
+      borderSide: BorderSide(
+        color: cs.outlineVariant.withValues(alpha: 0.9),
+        width: 0.8,
+      ),
     );
 
     final focusedBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-      borderSide: BorderSide(color: cs.primary, width: 1.5),
+      borderSide: BorderSide(color: cs.primary, width: 1.2),
     );
 
     return FormField<int>(
@@ -237,15 +244,17 @@ class _AppNumberFieldState extends State<AppNumberField> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _stepperButton(
-                      onPressed:
-                          widget.enabled ? () => _step(-widget.step) : null,
+                      onPressed: widget.enabled
+                          ? () => _step(-widget.step)
+                          : null,
                       color: stepperColor,
                       icon: Icons.remove,
                     ),
                     const SizedBox(width: AppDimensions.spaceXXS),
                     _stepperButton(
-                      onPressed:
-                          widget.enabled ? () => _step(widget.step) : null,
+                      onPressed: widget.enabled
+                          ? () => _step(widget.step)
+                          : null,
                       color: stepperColor,
                       icon: Icons.add,
                     ),
@@ -257,11 +266,11 @@ class _AppNumberFieldState extends State<AppNumberField> {
               focusedBorder: focusedBorder,
               disabledBorder: enabledBorder,
               errorBorder: border.copyWith(
-                borderSide: BorderSide(color: cs.error),
+                borderSide: BorderSide(color: cs.error, width: 1),
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: AppDimensions.spaceMD,
-                vertical: AppDimensions.spaceMD,
+                vertical: AppDimensions.spaceSM,
               ),
             ),
             onChanged: _parseInput,
@@ -297,14 +306,10 @@ class _AppNumberFieldState extends State<AppNumberField> {
         child: Container(
           padding: const EdgeInsets.all(AppDimensions.spaceXS),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: onPressed != null ? 0.10 : 0.04),
+            color: color.withValues(alpha: onPressed != null ? 0.08 : 0.04),
             borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
           ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: color,
-          ),
+          child: Icon(icon, size: 18, color: color),
         ),
       ),
     );

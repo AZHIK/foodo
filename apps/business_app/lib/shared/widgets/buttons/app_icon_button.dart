@@ -41,24 +41,33 @@ class AppIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final (bg, fg, side) = switch (variant) {
-      AppIconButtonVariant.plain => (null, isDestructive ? cs.error : null, null),
+      AppIconButtonVariant.plain => (
+        null,
+        isDestructive ? cs.error : cs.onSurface.withValues(alpha: 0.7),
+        null,
+      ),
       AppIconButtonVariant.tonal => (
-          isDestructive
-              ? cs.errorContainer.withValues(alpha: 0.5)
-              : cs.secondaryContainer,
-          isDestructive ? cs.onErrorContainer : cs.onSecondaryContainer,
-          null,
-        ),
+        isDestructive
+            ? cs.error.withValues(alpha: 0.08)
+            : cs.primary.withValues(alpha: 0.08),
+        isDestructive ? cs.error : cs.primary,
+        null,
+      ),
       AppIconButtonVariant.filled => (
-          isDestructive ? cs.error : cs.primary,
-          isDestructive ? cs.onError : cs.onPrimary,
-          null,
-        ),
+        isDestructive ? cs.error : cs.primary,
+        isDestructive ? cs.onError : cs.onPrimary,
+        null,
+      ),
       AppIconButtonVariant.outlined => (
-          Colors.transparent,
-          isDestructive ? cs.error : cs.onSurfaceVariant,
-          BorderSide(color: cs.outlineVariant),
+        Colors.transparent,
+        isDestructive ? cs.error : cs.onSurface.withValues(alpha: 0.7),
+        BorderSide(
+          color: (isDestructive ? cs.error : cs.outlineVariant).withValues(
+            alpha: isDestructive ? 0.55 : 0.95,
+          ),
+          width: 0.8,
         ),
+      ),
     };
 
     return SizedBox(

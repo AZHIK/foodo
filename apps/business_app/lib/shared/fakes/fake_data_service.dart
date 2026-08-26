@@ -25,8 +25,9 @@ class FakeDataService {
   // ── Inventory ───────────────────────────────────────────────────
 
   /// ~25 inventory items with varied categories, prices, stock levels.
-  late final List<FakeInventoryItem> inventoryItems =
-      List.unmodifiable(_buildInventory());
+  late final List<FakeInventoryItem> inventoryItems = List.unmodifiable(
+    _buildInventory(),
+  );
 
   // ── Sales ───────────────────────────────────────────────────────
 
@@ -114,36 +115,49 @@ class FakeDataService {
       for (var l = 0; l < lineCount; l++) {
         final item = inv[(i * 3 + l * 7) % inv.length];
         final qty = 1 + _rand.nextInt(4);
-        lines.add(FakeSaleLine(
-          itemId: item.id,
-          itemName: item.name,
-          quantity: qty,
-          unitPriceSenti: item.priceSenti,
-          subtotalSenti: item.priceSenti * qty,
-        ));
+        lines.add(
+          FakeSaleLine(
+            itemId: item.id,
+            itemName: item.name,
+            quantity: qty,
+            unitPriceSenti: item.priceSenti,
+            subtotalSenti: item.priceSenti * qty,
+          ),
+        );
       }
-      final totalSenti = lines.fold<int>(0, (a, b) => a + b.subtotalSenti);
-      out.add(FakeSale(
-        id: 'sale_fake_${(i + 1).toString().padLeft(4, '0')}',
-        receiptNumber: 'REC-${2026}${(100000 + i * 719).toString()}',
-        status: status,
-        paymentMethod: method,
-        lines: lines,
-        totalSenti: totalSenti,
-        tenderedSenti: status == FakeSaleStatus.voided ? 0 : totalSenti,
-        staffName: const [
-          'Amina Juma',
-          'Kelvin Mwangi',
-          'Sarah Kombo',
-        ][i % 3],
-        customerName: i.isEven ? 'Walk-in' : null,
-        notes: i == 5 ? 'Customer requested extra sauce' : null,
-        isTimeSuspect: isTimeSuspect,
-        createdAt: at,
-        closedAt: status == FakeSaleStatus.pending ? null : at,
-        createdAtOffsetMs: 0,
-        closedAtOffsetMs: 0,
-      ));
+      final subtotalSenti = lines.fold<int>(0, (a, b) => a + b.subtotalSenti);
+      final discountSenti = i % 5 == 0 ? 50000 : 0;
+      final taxableSenti = (subtotalSenti - discountSenti)
+          .clamp(0, 1 << 62)
+          .toInt();
+      final taxSenti = (taxableSenti * 0.18).round();
+      final totalSenti = taxableSenti + taxSenti;
+      out.add(
+        FakeSale(
+          id: 'sale_fake_${(i + 1).toString().padLeft(4, '0')}',
+          receiptNumber: 'REC-${2026}${(100000 + i * 719).toString()}',
+          status: status,
+          paymentMethod: method,
+          lines: lines,
+          subtotalSenti: subtotalSenti,
+          discountSenti: discountSenti,
+          taxSenti: taxSenti,
+          totalSenti: totalSenti,
+          tenderedSenti: status == FakeSaleStatus.voided ? 0 : totalSenti,
+          staffName: const [
+            'Amina Juma',
+            'Kelvin Mwangi',
+            'Sarah Kombo',
+          ][i % 3],
+          customerName: i.isEven ? 'Walk-in' : null,
+          notes: i == 5 ? 'Customer requested extra sauce' : null,
+          isTimeSuspect: isTimeSuspect,
+          createdAt: at,
+          closedAt: at,
+          createdAtOffsetMs: 0,
+          closedAtOffsetMs: 0,
+        ),
+      );
     }
     // Ensure at least one voided and one time-suspect are present even if
     // the randomizer picked other things (defensive, for stable tests).
@@ -209,8 +223,7 @@ class FakeInventoryItem {
   final bool isActive;
 
   bool get isOutOfStock => stockLevel <= 0;
-  bool get isLowStock =>
-      stockLevel > 0 && stockLevel <= reorderThreshold;
+  bool get isLowStock => stockLevel > 0 && stockLevel <= reorderThreshold;
 
   FakeInventoryItem copyWith({
     String? id,
@@ -275,7 +288,7 @@ class FakeMovement {
 /// Riverpod [StateNotifier] for mutating fake inventory state in-memory.
 class FakeInventoryNotifier extends StateNotifier<List<FakeInventoryItem>> {
   FakeInventoryNotifier(FakeDataService dataService)
-      : super(dataService.inventoryItems) {
+    : super(dataService.inventoryItems) {
     _initMovements();
   }
 
@@ -373,34 +386,35 @@ class FakeInventoryNotifier extends StateNotifier<List<FakeInventoryItem>> {
     adjustStock(itemId, -quantity, 'Waste: $reason');
   }
 
-  void transferStock(String itemId, String source, String destination, int quantity) {
+  void transferStock(
+    String itemId,
+    String source,
+    String destination,
+    int quantity,
+  ) {
     adjustStock(itemId, -quantity, 'Transfer: $source → $destination');
   }
 }
 
 final fakeInventoryProvider =
-    StateNotifierProvider<FakeInventoryNotifier, List<FakeInventoryItem>>((ref) {
-  final service = FakeDataService();
-  return FakeInventoryNotifier(service);
-});
+    StateNotifierProvider<FakeInventoryNotifier, List<FakeInventoryItem>>((
+      ref,
+    ) {
+      final service = FakeDataService();
+      return FakeInventoryNotifier(service);
+    });
 
-final fakeMovementsProvider = Provider.family<List<FakeMovement>, String>((ref, itemId) {
+final fakeMovementsProvider = Provider.family<List<FakeMovement>, String>((
+  ref,
+  itemId,
+) {
   final notifier = ref.watch(fakeInventoryProvider.notifier);
   return notifier.getMovements(itemId);
 });
 
-enum FakeSaleStatus {
-  pending,
-  paid,
-  voided,
-  refunded,
-}
+enum FakeSaleStatus { completed, voided, refunded }
 
-enum FakePaymentMethod {
-  cash,
-  card,
-  mobileMoney,
-}
+enum FakePaymentMethod { cash, mobileMoney, card, other }
 
 class FakeSaleLine {
   const FakeSaleLine({
@@ -409,6 +423,7 @@ class FakeSaleLine {
     required this.quantity,
     required this.unitPriceSenti,
     required this.subtotalSenti,
+    this.discountSenti = 0,
   });
 
   final String itemId;
@@ -416,6 +431,7 @@ class FakeSaleLine {
   final int quantity;
   final int unitPriceSenti;
   final int subtotalSenti;
+  final int discountSenti;
 }
 
 class FakeSale {
@@ -425,6 +441,9 @@ class FakeSale {
     required this.status,
     required this.paymentMethod,
     required this.lines,
+    required this.subtotalSenti,
+    required this.discountSenti,
+    required this.taxSenti,
     required this.totalSenti,
     required this.tenderedSenti,
     required this.staffName,
@@ -435,6 +454,7 @@ class FakeSale {
     required this.closedAt,
     required this.createdAtOffsetMs,
     required this.closedAtOffsetMs,
+    this.voidRefundReason,
   });
 
   final String id;
@@ -442,6 +462,9 @@ class FakeSale {
   final FakeSaleStatus status;
   final FakePaymentMethod paymentMethod;
   final List<FakeSaleLine> lines;
+  final int subtotalSenti;
+  final int discountSenti;
+  final int taxSenti;
   final int totalSenti;
   final int tenderedSenti;
   final String staffName;
@@ -452,29 +475,105 @@ class FakeSale {
   final DateTime? closedAt;
   final int createdAtOffsetMs;
   final int? closedAtOffsetMs;
+  final String? voidRefundReason;
 
   FakeSale copyWith({
     FakeSaleStatus? status,
     bool? isTimeSuspect,
-  }) =>
-      FakeSale(
-        id: id,
-        receiptNumber: receiptNumber,
-        status: status ?? this.status,
-        paymentMethod: paymentMethod,
-        lines: lines,
-        totalSenti: totalSenti,
-        tenderedSenti: tenderedSenti,
-        staffName: staffName,
-        customerName: customerName,
-        notes: notes,
-        isTimeSuspect: isTimeSuspect ?? this.isTimeSuspect,
-        createdAt: createdAt,
-        closedAt: closedAt,
-        createdAtOffsetMs: createdAtOffsetMs,
-        closedAtOffsetMs: closedAtOffsetMs,
-      );
+    String? voidRefundReason,
+  }) => FakeSale(
+    id: id,
+    receiptNumber: receiptNumber,
+    status: status ?? this.status,
+    paymentMethod: paymentMethod,
+    lines: lines,
+    subtotalSenti: subtotalSenti,
+    discountSenti: discountSenti,
+    taxSenti: taxSenti,
+    totalSenti: totalSenti,
+    tenderedSenti: tenderedSenti,
+    staffName: staffName,
+    customerName: customerName,
+    notes: notes,
+    isTimeSuspect: isTimeSuspect ?? this.isTimeSuspect,
+    createdAt: createdAt,
+    closedAt: closedAt,
+    createdAtOffsetMs: createdAtOffsetMs,
+    closedAtOffsetMs: closedAtOffsetMs,
+    voidRefundReason: voidRefundReason ?? this.voidRefundReason,
+  );
 }
+
+/// Riverpod [StateNotifier] for mutating fake POS sales state in-memory.
+class FakeSalesNotifier extends StateNotifier<List<FakeSale>> {
+  FakeSalesNotifier(FakeDataService dataService) : super(dataService.sales);
+
+  void loadSales(List<FakeSale> sales) {
+    state = sales;
+  }
+
+  FakeSale completeSale({
+    required List<FakeSaleLine> lines,
+    required int subtotalSenti,
+    required int discountSenti,
+    required int taxSenti,
+    required int totalSenti,
+    required FakePaymentMethod paymentMethod,
+  }) {
+    final now = DateTime.now();
+    final sale = FakeSale(
+      id: 'sale_fake_${now.microsecondsSinceEpoch}',
+      receiptNumber: 'REC-${now.year}${now.millisecondsSinceEpoch}',
+      status: FakeSaleStatus.completed,
+      paymentMethod: paymentMethod,
+      lines: List.unmodifiable(lines),
+      subtotalSenti: subtotalSenti,
+      discountSenti: discountSenti,
+      taxSenti: taxSenti,
+      totalSenti: totalSenti,
+      tenderedSenti: totalSenti,
+      staffName: 'Store Admin',
+      customerName: 'Walk-in',
+      notes: null,
+      isTimeSuspect: false,
+      createdAt: now,
+      closedAt: now,
+      createdAtOffsetMs: 0,
+      closedAtOffsetMs: 0,
+    );
+    state = [sale, ...state];
+    return sale;
+  }
+
+  void voidSale(String saleId, String reason) {
+    state = [
+      for (final sale in state)
+        if (sale.id == saleId && sale.status == FakeSaleStatus.completed)
+          sale.copyWith(status: FakeSaleStatus.voided, voidRefundReason: reason)
+        else
+          sale,
+    ];
+  }
+
+  void refundSale(String saleId, String reason) {
+    state = [
+      for (final sale in state)
+        if (sale.id == saleId && sale.status == FakeSaleStatus.completed)
+          sale.copyWith(
+            status: FakeSaleStatus.refunded,
+            voidRefundReason: reason,
+          )
+        else
+          sale,
+    ];
+  }
+}
+
+final fakeSalesProvider =
+    StateNotifierProvider<FakeSalesNotifier, List<FakeSale>>((ref) {
+      final service = FakeDataService();
+      return FakeSalesNotifier(service);
+    });
 
 class _ItemDef {
   const _ItemDef(

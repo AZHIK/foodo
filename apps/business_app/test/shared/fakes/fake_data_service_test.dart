@@ -54,7 +54,11 @@ void main() {
     test('sale totals match sum of line subtotals', () {
       for (final sale in svc.sales) {
         final sum = sale.lines.fold<int>(0, (a, l) => a + l.subtotalSenti);
-        expect(sum, equals(sale.totalSenti));
+        expect(sum, equals(sale.subtotalSenti));
+        expect(
+          sale.totalSenti,
+          equals(sale.subtotalSenti - sale.discountSenti + sale.taxSenti),
+        );
       }
     });
 

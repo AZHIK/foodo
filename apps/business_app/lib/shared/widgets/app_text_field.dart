@@ -102,7 +102,8 @@ class AppTextField extends StatelessWidget {
         labelText: label,
         hintText: hint,
         prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
-        suffixIcon: suffixWidget ?? (suffixIcon != null ? Icon(suffixIcon) : null),
+        suffixIcon:
+            suffixWidget ?? (suffixIcon != null ? Icon(suffixIcon) : null),
         counterText: counterText,
         errorText: errorText,
         helperText: helperText,
@@ -137,7 +138,10 @@ class AppReadOnlyField extends StatelessWidget {
       readOnly: true,
       onTap: onTap,
       suffixWidget: onTap != null
-          ? Icon(Icons.chevron_right, color: colorScheme.onSurface.withValues(alpha: 0.4))
+          ? Icon(
+              Icons.chevron_right,
+              color: colorScheme.onSurface.withValues(alpha: 0.4),
+            )
           : null,
     );
   }

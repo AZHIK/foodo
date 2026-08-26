@@ -172,9 +172,8 @@ class _AdjustStockFormState extends ConsumerState<_AdjustStockForm> {
             allowNegative: true,
             allowZero: true,
             onChanged: (val) => _delta = val,
-            validator: (val) => (val == null || val == 0)
-                ? 'Delta must not be zero'
-                : null,
+            validator: (val) =>
+                (val == null || val == 0) ? 'Delta must not be zero' : null,
           ),
           const SizedBox(height: AppDimensions.spaceMD),
           AppTextField(
@@ -279,9 +278,7 @@ class _TransferStockFormState extends ConsumerState<_TransferStockForm> {
     if (_source == _destination) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Source and destination locations must be different',
-          ),
+          content: Text('Source and destination locations must be different'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -289,12 +286,7 @@ class _TransferStockFormState extends ConsumerState<_TransferStockForm> {
     }
     ref
         .read(fakeInventoryProvider.notifier)
-        .transferStock(
-          widget.item.id,
-          _source,
-          _destination,
-          _quantity,
-        );
+        .transferStock(widget.item.id, _source, _destination, _quantity);
     Navigator.of(context).pop();
   }
 

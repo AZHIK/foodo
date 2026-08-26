@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_dimensions.dart';
@@ -21,7 +22,9 @@ abstract final class AppTheme {
 
   // ── Shared shape ─────────────────────────────────────────────
   static final _defaultRadius = BorderRadius.circular(AppDimensions.radiusMD);
-  static final _cardShape = RoundedRectangleBorder(borderRadius: _defaultRadius);
+  static final _cardShape = RoundedRectangleBorder(
+    borderRadius: _defaultRadius,
+  );
 
   static ThemeData _buildTheme({required Brightness brightness}) {
     final isDark = brightness == Brightness.dark;
@@ -30,21 +33,27 @@ abstract final class AppTheme {
       brightness: brightness,
       primary: isDark ? AppColors.darkPrimary : AppColors.lightPrimary,
       onPrimary: isDark ? AppColors.darkOnPrimary : AppColors.lightOnPrimary,
-      primaryContainer:
-          isDark ? AppColors.darkPrimaryContainer : AppColors.lightPrimaryContainer,
-      onPrimaryContainer:
-          isDark ? AppColors.darkOnPrimaryContainer : AppColors.lightOnPrimaryContainer,
+      primaryContainer: isDark
+          ? AppColors.darkPrimaryContainer
+          : AppColors.lightPrimaryContainer,
+      onPrimaryContainer: isDark
+          ? AppColors.darkOnPrimaryContainer
+          : AppColors.lightOnPrimaryContainer,
       secondary: isDark ? AppColors.darkSecondary : AppColors.lightSecondary,
-      onSecondary: isDark ? AppColors.darkOnSecondary : AppColors.lightOnSecondary,
-      secondaryContainer:
-          isDark ? AppColors.darkSecondaryContainer : AppColors.lightSecondaryContainer,
+      onSecondary: isDark
+          ? AppColors.darkOnSecondary
+          : AppColors.lightOnSecondary,
+      secondaryContainer: isDark
+          ? AppColors.darkSecondaryContainer
+          : AppColors.lightSecondaryContainer,
       onSecondaryContainer: isDark
           ? AppColors.darkOnSecondaryContainer
           : AppColors.lightOnSecondaryContainer,
       tertiary: isDark ? AppColors.darkTertiary : AppColors.lightTertiary,
       onTertiary: isDark ? AppColors.darkOnTertiary : AppColors.lightOnTertiary,
-      tertiaryContainer:
-          isDark ? AppColors.darkTertiaryContainer : AppColors.lightTertiaryContainer,
+      tertiaryContainer: isDark
+          ? AppColors.darkTertiaryContainer
+          : AppColors.lightTertiaryContainer,
       onTertiaryContainer: isDark
           ? AppColors.darkOnTertiaryContainer
           : AppColors.lightOnTertiaryContainer,
@@ -53,30 +62,49 @@ abstract final class AppTheme {
       surface: isDark ? AppColors.darkSurface : AppColors.lightSurface,
       onSurface: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface,
       outline: isDark ? AppColors.darkOutline : AppColors.lightOutline,
+      outlineVariant: isDark
+          ? AppColors.darkOutlineVariant
+          : AppColors.lightOutlineVariant,
+      shadow: isDark ? AppColors.darkShadow : AppColors.lightShadow,
+      inverseSurface: isDark
+          ? AppColors.darkInverseSurface
+          : AppColors.lightInverseSurface,
+      onInverseSurface: isDark
+          ? AppColors.darkOnInverseSurface
+          : AppColors.lightOnInverseSurface,
       surfaceContainerHighest: isDark
-          ? const Color(0xFF302F2F) // subtle elevation surface for dark
-          : const Color(0xFFF0EDEC),
+          ? AppColors.darkSurfaceContainerHighest
+          : AppColors.lightSurfaceContainerHighest,
       surfaceContainerLow: isDark
-          ? const Color(0xFF242323)
-          : const Color(0xFFF7F5F4),
+          ? AppColors.darkSurfaceContainerLow
+          : AppColors.lightSurfaceContainerLow,
+      surfaceContainerLowest: isDark
+          ? AppColors.darkSurfaceContainerLowest
+          : AppColors.lightSurfaceContainerLowest,
     );
 
-    final textTheme = TextTheme(
-      displayLarge: AppTextStyles.displayLarge.copyWith(color: colorScheme.onSurface),
-      displayMedium: AppTextStyles.displayMedium.copyWith(color: colorScheme.onSurface),
-      displaySmall: AppTextStyles.displaySmall.copyWith(color: colorScheme.onSurface),
-      headlineLarge: AppTextStyles.headlineLarge.copyWith(color: colorScheme.onSurface),
-      headlineMedium: AppTextStyles.headlineMedium.copyWith(color: colorScheme.onSurface),
-      headlineSmall: AppTextStyles.headlineSmall.copyWith(color: colorScheme.onSurface),
-      titleLarge: AppTextStyles.titleLarge.copyWith(color: colorScheme.onSurface),
-      titleMedium: AppTextStyles.titleMedium.copyWith(color: colorScheme.onSurface),
-      titleSmall: AppTextStyles.titleSmall.copyWith(color: colorScheme.onSurface),
-      bodyLarge: AppTextStyles.bodyLarge.copyWith(color: colorScheme.onSurface),
-      bodyMedium: AppTextStyles.bodyMedium.copyWith(color: colorScheme.onSurface),
-      bodySmall: AppTextStyles.bodySmall.copyWith(color: colorScheme.onSurface),
-      labelLarge: AppTextStyles.labelLarge.copyWith(color: colorScheme.onSurface),
-      labelMedium: AppTextStyles.labelMedium.copyWith(color: colorScheme.onSurface),
-      labelSmall: AppTextStyles.labelSmall.copyWith(color: colorScheme.onSurface),
+    const baseTextTheme = TextTheme(
+      displayLarge: AppTextStyles.displayLarge,
+      displayMedium: AppTextStyles.displayMedium,
+      displaySmall: AppTextStyles.displaySmall,
+      headlineLarge: AppTextStyles.headlineLarge,
+      headlineMedium: AppTextStyles.headlineMedium,
+      headlineSmall: AppTextStyles.headlineSmall,
+      titleLarge: AppTextStyles.titleLarge,
+      titleMedium: AppTextStyles.titleMedium,
+      titleSmall: AppTextStyles.titleSmall,
+      bodyLarge: AppTextStyles.bodyLarge,
+      bodyMedium: AppTextStyles.bodyMedium,
+      bodySmall: AppTextStyles.bodySmall,
+      labelLarge: AppTextStyles.labelLarge,
+      labelMedium: AppTextStyles.labelMedium,
+      labelSmall: AppTextStyles.labelSmall,
+    );
+
+    final textTheme = baseTextTheme.apply(
+      fontFamily: GoogleFonts.inter().fontFamily,
+      bodyColor: colorScheme.onSurface,
+      displayColor: colorScheme.onSurface,
     );
 
     return ThemeData(
@@ -84,13 +112,18 @@ abstract final class AppTheme {
       brightness: brightness,
       colorScheme: colorScheme,
       textTheme: textTheme,
+      scaffoldBackgroundColor: isDark
+          ? AppColors.darkBackground
+          : AppColors.lightBackground,
+      canvasColor: colorScheme.surface,
 
       // ── AppBar ─────────────────────────────────────────────────
       appBarTheme: AppBarTheme(
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
         elevation: 0,
-        scrolledUnderElevation: 1,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: AppTextStyles.titleLarge.copyWith(
           color: colorScheme.onSurface,
@@ -103,7 +136,7 @@ abstract final class AppTheme {
       cardTheme: CardThemeData(
         elevation: 0,
         shape: _cardShape,
-        color: colorScheme.surfaceContainerLow,
+        color: colorScheme.surface,
         surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
@@ -111,31 +144,44 @@ abstract final class AppTheme {
 
       // ── Input fields ───────────────────────────────────────────
       inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: colorScheme.surfaceContainerHighest,
+        filled: false,
+        fillColor: null,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppDimensions.spaceMD,
-          vertical: AppDimensions.spaceMD,
+          vertical: AppDimensions.spaceSM,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.9),
+            width: 0.8,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.9),
+            width: 0.8,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+          borderSide: BorderSide(color: colorScheme.primary, width: 1.2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-          borderSide: BorderSide(color: colorScheme.error, width: 1.5),
+          borderSide: BorderSide(color: colorScheme.error, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-          borderSide: BorderSide(color: colorScheme.error, width: 2),
+          borderSide: BorderSide(color: colorScheme.error, width: 1.2),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+          borderSide: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.55),
+            width: 0.8,
+          ),
         ),
         labelStyle: AppTextStyles.bodyMedium.copyWith(
           color: colorScheme.onSurface.withValues(alpha: 0.6),
@@ -147,22 +193,36 @@ abstract final class AppTheme {
         hintStyle: AppTextStyles.bodyMedium.copyWith(
           color: colorScheme.onSurface.withValues(alpha: 0.38),
         ),
-        errorStyle: AppTextStyles.labelSmall.copyWith(color: colorScheme.error),
-        prefixIconColor: colorScheme.onSurface.withValues(alpha: 0.6),
-        suffixIconColor: colorScheme.onSurface.withValues(alpha: 0.6),
+        helperStyle: AppTextStyles.bodySmall.copyWith(
+          color: colorScheme.onSurface.withValues(alpha: 0.52),
+        ),
+        errorStyle: AppTextStyles.bodySmall.copyWith(color: colorScheme.error),
+        prefixIconColor: colorScheme.onSurface.withValues(alpha: 0.48),
+        suffixIconColor: colorScheme.onSurface.withValues(alpha: 0.48),
       ),
 
       // ── Filled button ──────────────────────────────────────────
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(0, 52),
+          minimumSize: const Size(0, 48),
+          elevation: 0,
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
+          disabledBackgroundColor: colorScheme.onSurface.withValues(
+            alpha: 0.08,
+          ),
+          disabledForegroundColor: colorScheme.onSurface.withValues(
+            alpha: 0.38,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
           ),
-          textStyle: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700),
+          textStyle: AppTextStyles.labelLarge.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
           padding: const EdgeInsets.symmetric(
             horizontal: AppDimensions.spaceLG,
-            vertical: AppDimensions.spaceMD,
+            vertical: AppDimensions.spaceSM,
           ),
         ),
       ),
@@ -170,15 +230,21 @@ abstract final class AppTheme {
       // ── Outlined button ────────────────────────────────────────
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(0, 52),
+          minimumSize: const Size(0, 48),
+          foregroundColor: colorScheme.onSurface.withValues(alpha: 0.82),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
           ),
-          side: BorderSide(color: colorScheme.outline),
-          textStyle: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w600),
+          side: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.95),
+            width: 0.8,
+          ),
+          textStyle: AppTextStyles.labelLarge.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
           padding: const EdgeInsets.symmetric(
             horizontal: AppDimensions.spaceLG,
-            vertical: AppDimensions.spaceMD,
+            vertical: AppDimensions.spaceSM,
           ),
         ),
       ),
@@ -186,7 +252,9 @@ abstract final class AppTheme {
       // ── Text button ────────────────────────────────────────────
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          textStyle: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w600),
+          textStyle: AppTextStyles.labelLarge.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
           padding: const EdgeInsets.symmetric(
             horizontal: AppDimensions.spaceMD,
             vertical: AppDimensions.spaceSM,
@@ -199,7 +267,7 @@ abstract final class AppTheme {
 
       // ── Divider ────────────────────────────────────────────────
       dividerTheme: DividerThemeData(
-        color: colorScheme.outline.withValues(alpha: 0.2),
+        color: colorScheme.outline.withValues(alpha: 0.12),
         thickness: 1,
         space: AppDimensions.spaceMD,
       ),
@@ -228,8 +296,10 @@ abstract final class AppTheme {
         selectedItemColor: colorScheme.primary,
         unselectedItemColor: colorScheme.onSurface.withValues(alpha: 0.5),
         type: BottomNavigationBarType.fixed,
-        elevation: 8,
-        selectedLabelStyle: AppTextStyles.labelSmall.copyWith(fontWeight: FontWeight.w700),
+        elevation: 0,
+        selectedLabelStyle: AppTextStyles.labelSmall.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
         unselectedLabelStyle: AppTextStyles.labelSmall,
       ),
 
@@ -237,8 +307,10 @@ abstract final class AppTheme {
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: colorScheme.surface,
         selectedIconTheme: IconThemeData(color: colorScheme.primary, size: 24),
-        unselectedIconTheme:
-            IconThemeData(color: colorScheme.onSurface.withValues(alpha: 0.5), size: 24),
+        unselectedIconTheme: IconThemeData(
+          color: colorScheme.onSurface.withValues(alpha: 0.5),
+          size: 24,
+        ),
         selectedLabelTextStyle: AppTextStyles.labelSmall.copyWith(
           color: colorScheme.primary,
           fontWeight: FontWeight.w700,
@@ -246,7 +318,7 @@ abstract final class AppTheme {
         unselectedLabelTextStyle: AppTextStyles.labelSmall.copyWith(
           color: colorScheme.onSurface.withValues(alpha: 0.5),
         ),
-        indicatorColor: colorScheme.primaryContainer,
+        indicatorColor: colorScheme.primary.withValues(alpha: 0.1),
         minWidth: AppDimensions.navRailWidth,
       ),
 
@@ -256,7 +328,9 @@ abstract final class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
         ),
-        contentTextStyle: AppTextStyles.bodyMedium.copyWith(color: Colors.white),
+        contentTextStyle: AppTextStyles.bodyMedium.copyWith(
+          color: Colors.white,
+        ),
       ),
 
       // ── Dialog ─────────────────────────────────────────────────
@@ -283,7 +357,9 @@ abstract final class AppTheme {
           horizontal: AppDimensions.spaceMD,
           vertical: AppDimensions.spaceXS,
         ),
-        labelStyle: AppTextStyles.labelSmall.copyWith(fontWeight: FontWeight.w600),
+        labelStyle: AppTextStyles.labelSmall.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
       ),
 
       // ── Page transitions ───────────────────────────────────────

@@ -99,9 +99,7 @@ class InventoryListScreen extends ConsumerWidget {
         valueExtractor: (item) => item.priceSenti,
         cellBuilder: (context, item, _) => Text(
           MoneyField.formatDisplay(item.priceSenti),
-          style: AppTextStyles.bodyMedium.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+          style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
       AppDataColumn<FakeInventoryItem>(
@@ -146,7 +144,8 @@ class InventoryListScreen extends ConsumerWidget {
           showPagination: true,
           emptyStateIcon: Icons.inventory_2_outlined,
           emptyStateTitle: 'No Inventory Items',
-          emptyStateSubtitle: 'Tap "+ Add Item" to create your first stock item.',
+          emptyStateSubtitle:
+              'Tap "+ Add Item" to create your first stock item.',
           rowOnTap: (item) => context.go('${AppRoutes.inventory}/${item.id}'),
         ),
       ),

@@ -38,107 +38,115 @@ class AppDropdownField<T> extends FormField<T> {
     bool isExpanded = true,
     super.validator,
   }) : super(
-          initialValue: value,
-          builder: (state) {
-            final cs = Theme.of(state.context).colorScheme;
-            final labelFor = labelBuilder ?? (T o) => o.toString();
+         initialValue: value,
+         builder: (state) {
+           final cs = Theme.of(state.context).colorScheme;
+           final labelFor = labelBuilder ?? (T o) => o.toString();
 
-            final border = OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-              borderSide: BorderSide(color: cs.outline),
-            );
+           final border = OutlineInputBorder(
+             borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+             borderSide: BorderSide(
+               color: cs.outlineVariant.withValues(alpha: 0.9),
+               width: 0.8,
+             ),
+           );
 
-            final enabledBorder = OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-              borderSide:
-                  BorderSide(color: cs.outline.withValues(alpha: 0.7)),
-            );
+           final enabledBorder = OutlineInputBorder(
+             borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+             borderSide: BorderSide(
+               color: cs.outlineVariant.withValues(alpha: 0.9),
+               width: 0.8,
+             ),
+           );
 
-            final focusedBorder = OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-              borderSide: BorderSide(color: cs.primary, width: 1.5),
-            );
+           final focusedBorder = OutlineInputBorder(
+             borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+             borderSide: BorderSide(color: cs.primary, width: 1.2),
+           );
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: label,
-                    hintText: hint,
-                    prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
-                    border: border,
-                    enabledBorder:
-                        enabled ? enabledBorder : enabledBorder.copyWith(
-                          borderSide: BorderSide(
-                            color: cs.onSurface.withValues(alpha: 0.12),
-                          ),
-                        ),
-                    focusedBorder: focusedBorder,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: AppDimensions.spaceMD,
-                      vertical: AppDimensions.spaceMD,
-                    ),
-                    errorText: state.errorText,
-                  ),
-                  isEmpty: state.value == null,
-                  isFocused: false,
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<T>(
-                      value: state.value,
-                      isDense: true,
-                      isExpanded: isExpanded,
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        color: enabled
-                            ? cs.onSurface
-                            : cs.onSurface.withValues(alpha: 0.38),
-                      ),
-                      icon: Icon(
-                        Icons.arrow_drop_down_rounded,
-                        color: enabled
-                            ? cs.onSurface.withValues(alpha: 0.6)
-                            : cs.onSurface.withValues(alpha: 0.38),
-                      ),
-                      items: options
-                          .map((o) => DropdownMenuItem<T>(
-                                value: o,
-                                child: Row(
-                                  children: [
-                                    if (leadingBuilder != null) ...[
-                                      leadingBuilder(o),
-                                      const SizedBox(
-                                        width: AppDimensions.spaceSM,
-                                      ),
-                                    ],
-                                    Expanded(
-                                      child: Text(
-                                        labelFor(o),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ))
-                          .toList(),
-                      selectedItemBuilder: (ctx) => options
-                          .map((o) => Text(
-                                labelFor(o),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ))
-                          .toList(),
-                      onChanged: enabled
-                          ? (v) {
-                              state.didChange(v);
-                              onChanged(v);
-                            }
-                          : null,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
+           return Column(
+             crossAxisAlignment: CrossAxisAlignment.start,
+             mainAxisSize: MainAxisSize.min,
+             children: [
+               InputDecorator(
+                 decoration: InputDecoration(
+                   labelText: label,
+                   hintText: hint,
+                   prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
+                   border: border,
+                   enabledBorder: enabled
+                       ? enabledBorder
+                       : enabledBorder.copyWith(
+                           borderSide: BorderSide(
+                             color: cs.onSurface.withValues(alpha: 0.12),
+                           ),
+                         ),
+                   focusedBorder: focusedBorder,
+                   contentPadding: const EdgeInsets.symmetric(
+                     horizontal: AppDimensions.spaceMD,
+                     vertical: AppDimensions.spaceSM,
+                   ),
+                   errorText: state.errorText,
+                 ),
+                 isEmpty: state.value == null,
+                 isFocused: false,
+                 child: DropdownButtonHideUnderline(
+                   child: DropdownButton<T>(
+                     value: state.value,
+                     isDense: true,
+                     isExpanded: isExpanded,
+                     style: AppTextStyles.bodyLarge.copyWith(
+                       color: enabled
+                           ? cs.onSurface.withValues(alpha: 0.86)
+                           : cs.onSurface.withValues(alpha: 0.38),
+                     ),
+                     icon: Icon(
+                       Icons.arrow_drop_down_rounded,
+                       color: enabled
+                           ? cs.onSurface.withValues(alpha: 0.6)
+                           : cs.onSurface.withValues(alpha: 0.38),
+                     ),
+                     items: options
+                         .map(
+                           (o) => DropdownMenuItem<T>(
+                             value: o,
+                             child: Row(
+                               children: [
+                                 if (leadingBuilder != null) ...[
+                                   leadingBuilder(o),
+                                   const SizedBox(width: AppDimensions.spaceSM),
+                                 ],
+                                 Expanded(
+                                   child: Text(
+                                     labelFor(o),
+                                     overflow: TextOverflow.ellipsis,
+                                   ),
+                                 ),
+                               ],
+                             ),
+                           ),
+                         )
+                         .toList(),
+                     selectedItemBuilder: (ctx) => options
+                         .map(
+                           (o) => Text(
+                             labelFor(o),
+                             overflow: TextOverflow.ellipsis,
+                             maxLines: 1,
+                           ),
+                         )
+                         .toList(),
+                     onChanged: enabled
+                         ? (v) {
+                             state.didChange(v);
+                             onChanged(v);
+                           }
+                         : null,
+                   ),
+                 ),
+               ),
+             ],
+           );
+         },
+       );
 }

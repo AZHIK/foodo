@@ -86,17 +86,17 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(_buildTestApp(size: size, customItems: sampleItems));
+    await tester.pumpWidget(
+      _buildTestApp(size: size, customItems: sampleItems),
+    );
     await tester.pumpAndSettle();
   }
 
   group('InventoryListScreen', () {
-    testWidgets('renders fake items and export button on desktop width',
-        (tester) async {
-      await pumpAt(
-        tester,
-        const Size(AppDimensions.breakpointDesktop, 900),
-      );
+    testWidgets('renders fake items and export button on desktop width', (
+      tester,
+    ) async {
+      await pumpAt(tester, const Size(AppDimensions.breakpointDesktop, 900));
 
       expect(find.text('Inventory Management'), findsOneWidget);
       expect(find.text('Ugali Extra'), findsOneWidget);
@@ -106,12 +106,10 @@ void main() {
       expect(find.text('Add Item'), findsOneWidget);
     });
 
-    testWidgets('shows low stock and out of stock badges correctly',
-        (tester) async {
-      await pumpAt(
-        tester,
-        const Size(AppDimensions.breakpointDesktop, 900),
-      );
+    testWidgets('shows low stock and out of stock badges correctly', (
+      tester,
+    ) async {
+      await pumpAt(tester, const Size(AppDimensions.breakpointDesktop, 900));
 
       expect(find.text('Out of Stock'), findsOneWidget);
       expect(find.text('4 pcs (Low)'), findsOneWidget);
@@ -119,10 +117,7 @@ void main() {
     });
 
     testWidgets('search filters the list of items', (tester) async {
-      await pumpAt(
-        tester,
-        const Size(AppDimensions.breakpointDesktop, 900),
-      );
+      await pumpAt(tester, const Size(AppDimensions.breakpointDesktop, 900));
 
       await tester.enterText(find.byType(TextField).first, 'Soda');
       await tester.pump(const Duration(milliseconds: 300));
@@ -133,10 +128,7 @@ void main() {
     });
 
     testWidgets('sorting by selling price reorders the rows', (tester) async {
-      await pumpAt(
-        tester,
-        const Size(AppDimensions.breakpointDesktop, 900),
-      );
+      await pumpAt(tester, const Size(AppDimensions.breakpointDesktop, 900));
 
       // Tap the "Selling Price" column header once → ascending sort.
       await tester.tap(find.text('Selling Price'));
@@ -150,9 +142,10 @@ void main() {
       expect(sodaY, lessThan(ugaliY));
     });
 
-    testWidgets('falls back to card list pattern on phone width',
-        (tester) async {
-      await pumpAt(tester, const Size(390, 800));
+    testWidgets('falls back to card list pattern on phone width', (
+      tester,
+    ) async {
+      await pumpAt(tester, const Size(390, 1000));
 
       final cards = find.descendant(
         of: find.byType(AppDataTable<FakeInventoryItem>),

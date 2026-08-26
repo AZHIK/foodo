@@ -47,8 +47,8 @@ class AppFab extends StatelessWidget {
     final useExtended =
         !forceCompact && width >= AppDimensions.breakpointTablet;
 
-    final bg = isDestructive ? cs.error : cs.primaryContainer;
-    final fg = isDestructive ? cs.onError : cs.onPrimaryContainer;
+    final bg = isDestructive ? cs.error : cs.primary;
+    final fg = isDestructive ? cs.onError : cs.onPrimary;
 
     if (useExtended) {
       return FloatingActionButton.extended(
@@ -56,7 +56,10 @@ class AppFab extends StatelessWidget {
         onPressed: onPressed,
         backgroundColor: bg,
         foregroundColor: fg,
-        elevation: 3,
+        elevation: 1,
+        hoverElevation: 2,
+        focusElevation: 2,
+        highlightElevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
         ),
@@ -69,7 +72,10 @@ class AppFab extends StatelessWidget {
       onPressed: onPressed,
       backgroundColor: bg,
       foregroundColor: fg,
-      elevation: 3,
+      elevation: 1,
+      hoverElevation: 2,
+      focusElevation: 2,
+      highlightElevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
       ),

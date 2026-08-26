@@ -1,0 +1,690 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:restaurant_pos/main.dart';
+import 'package:restaurant_pos/models/session.dart';
+import 'package:restaurant_pos/models/staff_member.dart';
+import 'package:restaurant_pos/providers/session_provider.dart';
+import 'package:restaurant_pos/providers/settings_provider.dart';
+import 'package:restaurant_pos/providers/staff_provider.dart';
+import 'package:restaurant_pos/providers/store_locations_provider.dart';
+import 'package:restaurant_pos/router/app_router.dart';
+import 'package:restaurant_pos/screens/auth/onboarding_screen.dart';
+import 'package:restaurant_pos/screens/auth/otp_login_screen.dart';
+import 'package:restaurant_pos/screens/auth/pin_unlock_screen.dart';
+import 'package:restaurant_pos/screens/auth/set_pin_screen.dart';
+import 'package:restaurant_pos/widgets/auth/auth_aside.dart';
+
+const _widths = <double>[360, 400, 768, 1024, 1440, 1920];
+
+/// Pumps the app with [session] as the starting state and navigates to [route].
+///
+/// Overriding the notifier rather than driving the UI into position keeps each
+/// test about one thing — the alternative is every lockout test having to sign
+/// in and fail three PINs first.
+Future<ProviderContainer> pumpSession(
+  WidgetTester tester, {
+  required Size size,
+  SessionState? session,
+  String? route,
+}) async {
+  tester.view.physicalSize = size * tester.view.devicePixelRatio;
+  addTearDown(tester.view.reset);
+
+  final container = ProviderContainer();
+  addTearDown(container.dispose);
+
+  if (session != null) {
+    container.read(sessionProvider.notifier).state = session;
+  }
+
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: const RestaurantPosApp(),
+    ),
+  );
+  await tester.pumpAndSettle();
+
+  if (route != null) {
+    container.read(goRouterProvider).go(route);
+    await tester.pumpAndSettle();
+  }
+  return container;
+}
+
+String _locationOf(ProviderContainer container) => container
+    .read(goRouterProvider)
+    .routerDelegate
+    .currentConfiguration
+    .uri
+    .path;
+
+void main() {
+  group('Session routing', () {
+    test('entryRoute names one destination per state', () {
+      const fresh = SessionState();
+      expect(fresh.entryRoute, '/auth/login');
+
+      const withProfiles = SessionState(savedProfileIds: ['stf-01']);
+      expect(withProfiles.entryRoute, '/auth/profiles');
+
+      const noPin = SessionState(isLoggedIn: true);
+      expect(noPin.entryRoute, '/auth/set-pin');
+
+      const locked = SessionState(isLoggedIn: true, pin: '246813');
+      expect(locked.entryRoute, '/auth/unlock');
+
+      const needsOnboarding = SessionState(
+        isLoggedIn: true,
+        pin: '246813',
+        isUnlocked: true,
+      );
+      expect(needsOnboarding.entryRoute, '/auth/onboarding');
+
+      expect(SessionNotifier.seed.entryRoute, '/dashboard');
+    });
+
+    testWidgets('the splash holds until its brand moment finishes', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1440, 900) * tester.view.devicePixelRatio;
+      addTearDown(tester.view.reset);
+
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const RestaurantPosApp(),
+        ),
+      );
+
+      // One frame in: still on the splash, and the session has not bootstrapped.
+      await tester.pump();
+      expect(container.read(sessionProvider).bootstrapped, isFalse);
+      expect(_locationOf(container), AppRoute.splashPath);
+
+      await tester.pumpAndSettle();
+      expect(container.read(sessionProvider).bootstrapped, isTrue);
+      expect(_locationOf(container), AppRoute.dashboardPath);
+    });
+
+    testWidgets('a locked session is bounced off a protected route', (
+      tester,
+    ) async {
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: const SessionState(
+          savedProfileIds: ['stf-01'],
+          activeStaffId: 'stf-01',
+          isLoggedIn: true,
+          pin: '246813',
+          hasCompletedOnboarding: true,
+          bootstrapped: true,
+        ),
+        route: AppRoute.inventoryPath,
+      );
+
+      expect(_locationOf(container), AppRoute.unlockPath);
+    });
+
+    testWidgets('a signed-out device with profiles lands on the picker', (
+      tester,
+    ) async {
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: const SessionState(
+          savedProfileIds: ['stf-01', 'stf-02'],
+          bootstrapped: true,
+        ),
+        route: AppRoute.dashboardPath,
+      );
+
+      expect(_locationOf(container), AppRoute.profilesPath);
+    });
+
+    testWidgets('a fresh device with no profiles lands on login', (
+      tester,
+    ) async {
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: const SessionState(bootstrapped: true),
+        route: AppRoute.salesPath,
+      );
+
+      expect(_locationOf(container), AppRoute.loginPath);
+    });
+
+    testWidgets('an unlocked session reaches the shell untouched', (
+      tester,
+    ) async {
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        route: AppRoute.inventoryPath,
+      );
+
+      expect(_locationOf(container), AppRoute.inventoryPath);
+    });
+
+    testWidgets('locking the till puts the guard back up', (tester) async {
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        route: AppRoute.dashboardPath,
+      );
+      expect(_locationOf(container), AppRoute.dashboardPath);
+
+      container.read(sessionProvider.notifier).lock();
+      await tester.pumpAndSettle();
+
+      expect(_locationOf(container), AppRoute.unlockPath);
+    });
+  });
+
+  group('Auth screens', () {
+    const routes = <String>[
+      AppRoute.splashPath,
+      AppRoute.profilesPath,
+      AppRoute.loginPath,
+      AppRoute.setPinPath,
+      AppRoute.unlockPath,
+      AppRoute.onboardingPath,
+    ];
+
+    testWidgets('no overflow at any target width', (tester) async {
+      for (final route in routes) {
+        for (final width in _widths) {
+          await pumpSession(
+            tester,
+            size: Size(width, 900),
+            session: SessionNotifier.seed.copyWith(bootstrapped: true),
+            route: route,
+          );
+          expect(
+            tester.takeException(),
+            isNull,
+            reason: '$route broke at ${width}px',
+          );
+        }
+      }
+    });
+
+    testWidgets('no overflow in a short window', (tester) async {
+      // A half-height laptop window is where a full-height brand panel would
+      // clip rather than scroll, and no width sweep at 900px would catch it.
+      for (final route in routes) {
+        for (final height in const [480.0, 600.0]) {
+          await pumpSession(
+            tester,
+            size: Size(1440, height),
+            session: SessionNotifier.seed.copyWith(bootstrapped: true),
+            route: route,
+          );
+          expect(
+            tester.takeException(),
+            isNull,
+            reason: '$route broke at 1440x${height}px',
+          );
+        }
+      }
+    });
+
+    testWidgets('the brand panel appears only once there is room for it', (
+      tester,
+    ) async {
+      // Just under the desktop breakpoint: the card has the screen to itself.
+      await pumpSession(
+        tester,
+        size: const Size(1023, 900),
+        session: const SessionState(bootstrapped: true),
+        route: AppRoute.loginPath,
+      );
+      expect(find.byType(AuthAside), findsNothing);
+
+      // Just over it: the panel comes in beside the card.
+      await pumpSession(
+        tester,
+        size: const Size(1025, 900),
+        session: const SessionState(bootstrapped: true),
+        route: AppRoute.loginPath,
+      );
+      expect(find.byType(AuthAside), findsOneWidget);
+    });
+
+    testWidgets('onboarding shows the step list rather than the pitch', (
+      tester,
+    ) async {
+      await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: SessionNotifier.seed.copyWith(
+          hasCompletedOnboarding: false,
+          bootstrapped: true,
+        ),
+        route: AppRoute.onboardingPath,
+      );
+
+      expect(find.byType(AuthAside), findsOneWidget);
+      // Every step is named in the aside, so the flow's length is visible from
+      // the first screen rather than discovered one Continue at a time.
+      expect(find.text('Your business'), findsOneWidget);
+      expect(find.text('Your team'), findsOneWidget);
+    });
+  });
+
+  group('Profile picker', () {
+    testWidgets('picking a profile arms the unlock screen for that person', (
+      tester,
+    ) async {
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: const SessionState(
+          savedProfileIds: ['stf-01', 'stf-02'],
+          bootstrapped: true,
+        ),
+        route: AppRoute.profilesPath,
+      );
+
+      await tester.tap(find.text('Marco Ferreira'));
+      await tester.pumpAndSettle();
+
+      final session = container.read(sessionProvider);
+      expect(session.activeStaffId, 'stf-02');
+      expect(session.isUnlocked, isFalse);
+      expect(_locationOf(container), AppRoute.unlockPath);
+      expect(container.read(sessionStaffProvider)?.name, 'Marco Ferreira');
+    });
+  });
+
+  group('OTP login', () {
+    testWidgets('a short number is refused before any code is sent', (
+      tester,
+    ) async {
+      await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: const SessionState(bootstrapped: true),
+        route: AppRoute.loginPath,
+      );
+
+      await tester.tap(find.byKey(OtpLoginKeys.sendCode));
+      await tester.pumpAndSettle();
+      expect(find.text('Enter your phone number'), findsOneWidget);
+
+      await tester.enterText(find.byKey(OtpLoginKeys.phone), '123');
+      await tester.tap(find.byKey(OtpLoginKeys.sendCode));
+      await tester.pumpAndSettle();
+      expect(find.text('That number looks too short'), findsOneWidget);
+
+      // Still on the phone step — the boxes only exist once a code is sent.
+      expect(find.byKey(OtpLoginKeys.digit(0)), findsNothing);
+    });
+
+    testWidgets('a valid number opens the code step with a live cooldown', (
+      tester,
+    ) async {
+      await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: const SessionState(bootstrapped: true),
+        route: AppRoute.loginPath,
+      );
+
+      await tester.enterText(find.byKey(OtpLoginKeys.phone), '81234567890');
+      await tester.tap(find.byKey(OtpLoginKeys.sendCode));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(OtpLoginKeys.digit(0)), findsOneWidget);
+      expect(find.byKey(OtpLoginKeys.digit(5)), findsOneWidget);
+      expect(find.text('Resend code in 30s'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Resend code in 29s'), findsOneWidget);
+
+      // Wind the cooldown out so no timer outlives the test.
+      await tester.pump(const Duration(seconds: 30));
+      expect(find.byKey(OtpLoginKeys.resend), findsOneWidget);
+    });
+
+    testWidgets('a code other than the demo one is rejected', (tester) async {
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: const SessionState(bootstrapped: true),
+        route: AppRoute.loginPath,
+      );
+
+      await tester.enterText(find.byKey(OtpLoginKeys.phone), '81234567890');
+      await tester.tap(find.byKey(OtpLoginKeys.sendCode));
+      await tester.pumpAndSettle();
+
+      for (var i = 0; i < 6; i++) {
+        await tester.enterText(find.byKey(OtpLoginKeys.digit(i)), '0');
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('That code is not right. Check your messages.'),
+        findsOneWidget,
+      );
+      expect(container.read(sessionProvider).isLoggedIn, isFalse);
+
+      await tester.pump(const Duration(seconds: 31));
+    });
+
+    testWidgets('the demo code signs in and hands off to the guard', (
+      tester,
+    ) async {
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: const SessionState(bootstrapped: true),
+        route: AppRoute.loginPath,
+      );
+
+      await tester.enterText(find.byKey(OtpLoginKeys.phone), '81234567890');
+      await tester.tap(find.byKey(OtpLoginKeys.sendCode));
+      await tester.pumpAndSettle();
+
+      final code = OtpLoginScreen.demoCode;
+      for (var i = 0; i < code.length; i++) {
+        await tester.enterText(find.byKey(OtpLoginKeys.digit(i)), code[i]);
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+
+      final session = container.read(sessionProvider);
+      expect(session.isLoggedIn, isTrue);
+      // No PIN on this device yet, so Set PIN is the next step — not the
+      // Dashboard.
+      expect(session.hasPin, isFalse);
+      expect(_locationOf(container), AppRoute.setPinPath);
+
+      await tester.pump(const Duration(seconds: 31));
+    });
+  });
+
+  group('Set PIN', () {
+    Future<void> enter(WidgetTester tester, String digits) async {
+      for (final digit in digits.split('')) {
+        await tester.tap(find.widgetWithText(InkWell, digit).first);
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a mismatch clears both passes and says so', (tester) async {
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: const SessionState(isLoggedIn: true, bootstrapped: true),
+        route: AppRoute.setPinPath,
+      );
+
+      await enter(tester, '111111');
+      await enter(tester, '222222');
+
+      expect(find.byKey(SetPinKeys.error), findsOneWidget);
+      expect(container.read(sessionProvider).hasPin, isFalse);
+      // Back to the first pass, not stuck on the confirmation.
+      expect(find.text('Create your PIN'), findsOneWidget);
+    });
+
+    testWidgets('a matching pair saves the PIN and moves on', (tester) async {
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: const SessionState(isLoggedIn: true, bootstrapped: true),
+        route: AppRoute.setPinPath,
+      );
+
+      await enter(tester, '135790');
+      expect(find.text('Confirm your PIN'), findsOneWidget);
+
+      await enter(tester, '135790');
+      await tester.pumpAndSettle();
+
+      final session = container.read(sessionProvider);
+      expect(session.pin, '135790');
+      expect(session.isUnlocked, isTrue);
+      // Onboarding has not run on this fresh account, so that is what follows.
+      expect(_locationOf(container), AppRoute.onboardingPath);
+    });
+  });
+
+  group('PIN unlock', () {
+    Future<void> enter(WidgetTester tester, String digits) async {
+      for (final digit in digits.split('')) {
+        await tester.tap(find.widgetWithText(InkWell, digit).first);
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+    }
+
+    SessionState lockedSession() => SessionNotifier.seed.copyWith(
+      isUnlocked: false,
+      bootstrapped: true,
+    );
+
+    testWidgets('the right PIN unlocks and lands on the dashboard', (
+      tester,
+    ) async {
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: lockedSession(),
+        route: AppRoute.unlockPath,
+      );
+
+      await enter(tester, '246813');
+      await tester.pumpAndSettle();
+
+      expect(container.read(sessionProvider).isUnlocked, isTrue);
+      expect(_locationOf(container), AppRoute.dashboardPath);
+    });
+
+    testWidgets('three wrong PINs lock the terminal out with a countdown', (
+      tester,
+    ) async {
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: lockedSession(),
+        route: AppRoute.unlockPath,
+      );
+
+      await enter(tester, '000000');
+      expect(find.byKey(PinUnlockKeys.error), findsOneWidget);
+      expect(container.read(sessionProvider).failedAttempts, 1);
+
+      await enter(tester, '000000');
+      await enter(tester, '000000');
+      await tester.pumpAndSettle();
+
+      final session = container.read(sessionProvider);
+      expect(session.failedAttempts, SessionState.maxAttempts);
+      expect(session.isLockedOutAt(DateTime.now()), isTrue);
+
+      // The keypad is gone, the lockout panel is up, and the OTP way out
+      // survives the lockout.
+      expect(find.byKey(PinUnlockKeys.lockout), findsOneWidget);
+      expect(find.byKey(PinUnlockKeys.dots), findsNothing);
+      expect(find.text('Too many attempts'), findsOneWidget);
+      expect(find.byKey(PinUnlockKeys.otpFallback), findsOneWidget);
+
+      // The counter is genuinely ticking rather than a static label.
+      expect(find.text('30'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('29'), findsOneWidget);
+
+      // And it releases itself without another key press.
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pumpAndSettle();
+
+      expect(container.read(sessionProvider).failedAttempts, 0);
+      expect(find.byKey(PinUnlockKeys.lockout), findsNothing);
+      expect(find.byKey(PinUnlockKeys.dots), findsOneWidget);
+    });
+
+    testWidgets('a locked-out entry cannot be submitted', (tester) async {
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: lockedSession().copyWith(
+          failedAttempts: SessionState.maxAttempts,
+          lockedUntil: DateTime.now().add(const Duration(seconds: 30)),
+        ),
+        route: AppRoute.unlockPath,
+      );
+
+      // Even the correct PIN is refused while the lockout stands.
+      expect(
+        container.read(sessionProvider.notifier).submitPin('246813'),
+        isFalse,
+      );
+      expect(container.read(sessionProvider).isUnlocked, isFalse);
+
+      await tester.pump(const Duration(seconds: 31));
+      await tester.pumpAndSettle();
+    });
+  });
+
+  group('Business onboarding', () {
+    testWidgets('the steps write to the providers Settings already uses', (
+      tester,
+    ) async {
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: SessionNotifier.seed.copyWith(
+          hasCompletedOnboarding: false,
+          bootstrapped: true,
+        ),
+        route: AppRoute.onboardingPath,
+      );
+
+      // Step 1 — business identity.
+      await tester.enterText(
+        find.byKey(OnboardingKeys.businessName),
+        'The Brass Olive',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(OnboardingKeys.next));
+      await tester.pumpAndSettle();
+
+      expect(container.read(businessProfileProvider).name, 'The Brass Olive');
+      expect(container.read(storeNameProvider), 'The Brass Olive');
+
+      // Step 2 — the business's first location, into the same list Store
+      // Management edits.
+      await tester.enterText(
+        find.byKey(OnboardingKeys.locationName),
+        'Harbour Yard',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(OnboardingKeys.next));
+      await tester.pumpAndSettle();
+
+      expect(container.read(currentStoreProvider)?.name, 'Harbour Yard');
+
+      // Step 3 — preferences, into the same Store Settings the POS reads.
+      await tester.enterText(find.byKey(OnboardingKeys.taxRate), '11');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(OnboardingKeys.next));
+      await tester.pumpAndSettle();
+
+      expect(container.read(taxRateProvider), closeTo(0.11, 0.0001));
+      // Not finished yet — the team step comes after preferences.
+      expect(container.read(sessionProvider).hasCompletedOnboarding, isFalse);
+
+      // Step 4 — a teammate, filed as a pending invite on the Staff list.
+      final before = container.read(staffMembersProvider).length;
+      await tester.enterText(
+        find.byKey(OnboardingKeys.teammateName(0)),
+        'Nadia Okafor',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(OnboardingKeys.next));
+      await tester.pumpAndSettle();
+
+      final staff = container.read(staffMembersProvider);
+      expect(staff, hasLength(before + 1));
+      final invited = staff.firstWhere((m) => m.name == 'Nadia Okafor');
+      expect(invited.status, StaffStatus.pendingInvite);
+
+      expect(container.read(sessionProvider).hasCompletedOnboarding, isTrue);
+
+      // The payoff: the dashboard, showing the name just entered.
+      expect(_locationOf(container), AppRoute.dashboardPath);
+      expect(find.text('The Brass Olive'), findsWidgets);
+    });
+
+    testWidgets('the team step can be skipped without inviting anyone', (
+      tester,
+    ) async {
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: SessionNotifier.seed.copyWith(
+          hasCompletedOnboarding: false,
+          bootstrapped: true,
+        ),
+        route: AppRoute.onboardingPath,
+      );
+
+      final before = container.read(staffMembersProvider).length;
+
+      // Straight through: every step but the team one is pre-filled from the
+      // seeded providers, so Continue is live from the start.
+      for (var step = 0; step < 4; step++) {
+        await tester.tap(find.byKey(OnboardingKeys.next));
+        await tester.pumpAndSettle();
+      }
+
+      expect(container.read(staffMembersProvider), hasLength(before));
+      expect(container.read(sessionProvider).hasCompletedOnboarding, isTrue);
+      expect(_locationOf(container), AppRoute.dashboardPath);
+    });
+
+    testWidgets('continue is inert until the step is valid', (tester) async {
+      await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: SessionNotifier.seed.copyWith(
+          hasCompletedOnboarding: false,
+          bootstrapped: true,
+        ),
+        route: AppRoute.onboardingPath,
+      );
+
+      // Step 1 is pre-filled from the existing profile, so clearing it is what
+      // makes it invalid.
+      await tester.enterText(find.byKey(OnboardingKeys.businessName), '');
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<FilledButton>(find.byKey(OnboardingKeys.next)).onPressed,
+        isNull,
+      );
+
+      await tester.enterText(find.byKey(OnboardingKeys.businessName), 'Olive');
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<FilledButton>(find.byKey(OnboardingKeys.next)).onPressed,
+        isNotNull,
+      );
+      // Back is hidden on the first step.
+      expect(find.byKey(OnboardingKeys.back), findsNothing);
+    });
+  });
+}

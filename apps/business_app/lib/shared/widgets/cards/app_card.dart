@@ -5,9 +5,9 @@ import '../../../core/constants/app_text_styles.dart';
 
 /// Unified card widget with three visual variants.
 ///
-/// - [AppCard.flat] — no elevation, coloured surface with low contrast
-/// - [AppCard.elevated] — slight elevation + surface tint
-/// - [AppCard.outlined] — border only, no elevation
+/// - [AppCard.flat] — white surface with a minimal ambient shadow
+/// - [AppCard.elevated] — white surface with a softer, deeper shadow
+/// - [AppCard.outlined] — white surface with a hairline neutral border
 ///
 /// All variants use [AppDimensions.radiusMD] / [AppDimensions.radiusLG]
 /// and delegate colour tokens to the ambient [CardTheme].
@@ -78,51 +78,78 @@ class AppCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final r = radius ?? AppDimensions.radiusMD;
+    final borderRadius = BorderRadius.circular(r);
 
-    final (bg, elevation, border) = switch (variant) {
+    final (bg, border, shadows) = switch (variant) {
       AppCardVariant.flat => (
-          color ?? colorScheme.surfaceContainerLow,
-          0.0,
-          BorderSide.none,
+        color ?? colorScheme.surface,
+        Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+          width: 0.8,
         ),
+        _softShadow(colorScheme, opacity: 0.05, blur: 18, offsetY: 6),
+      ),
       AppCardVariant.elevated => (
-          color ?? colorScheme.surfaceContainerLow,
-          1.0,
-          BorderSide.none,
+        color ?? colorScheme.surface,
+        Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.65),
+          width: 0.8,
         ),
+        _softShadow(colorScheme, opacity: 0.08, blur: 28, offsetY: 10),
+      ),
       AppCardVariant.outlined => (
-          color ?? Colors.transparent,
-          0.0,
-          BorderSide(color: colorScheme.outline.withValues(alpha: 0.3)),
+        color ?? colorScheme.surface,
+        Border.all(
+          color: colorScheme.outline.withValues(alpha: 0.55),
+          width: 0.8,
         ),
+        _softShadow(colorScheme, opacity: 0.035, blur: 14, offsetY: 4),
+      ),
     };
 
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(r),
-      side: border,
-    );
-
-    return Card(
+    return Container(
       margin: margin ?? EdgeInsets.zero,
-      elevation: elevation,
-      color: bg,
-      surfaceTintColor: Colors.transparent,
-      shape: shape,
-      clipBehavior: clipBehavior,
-      child: onTap != null || onLongPress != null
-          ? InkWell(
-              onTap: onTap,
-              onLongPress: onLongPress,
-              borderRadius: BorderRadius.circular(r),
-              child: _content,
-            )
-          : _content,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: borderRadius,
+        border: border,
+        boxShadow: shadows,
+      ),
+      child: ClipRRect(
+        borderRadius: borderRadius,
+        clipBehavior: clipBehavior,
+        child: Material(
+          color: Colors.transparent,
+          child: onTap != null || onLongPress != null
+              ? InkWell(
+                  onTap: onTap,
+                  onLongPress: onLongPress,
+                  borderRadius: borderRadius,
+                  child: _content,
+                )
+              : _content,
+        ),
+      ),
     );
   }
 
-  Widget get _content => padding != null
-      ? Padding(padding: padding!, child: child)
-      : child;
+  Widget get _content =>
+      padding != null ? Padding(padding: padding!, child: child) : child;
+
+  static List<BoxShadow> _softShadow(
+    ColorScheme colorScheme, {
+    required double opacity,
+    required double blur,
+    required double offsetY,
+  }) {
+    return [
+      BoxShadow(
+        color: colorScheme.shadow.withValues(alpha: opacity),
+        blurRadius: blur,
+        offset: Offset(0, offsetY),
+      ),
+    ];
+  }
 }
 
 enum AppCardVariant { flat, elevated, outlined }
@@ -156,8 +183,7 @@ class AppInfoContainer extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: padding ??
-          const EdgeInsets.all(AppDimensions.spaceMD),
+      padding: padding ?? const EdgeInsets.all(AppDimensions.spaceMD),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(radius),

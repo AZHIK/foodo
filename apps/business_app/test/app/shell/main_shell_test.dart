@@ -86,26 +86,63 @@ void main() {
       expect(find.text('Dashboard Screen'), findsOneWidget);
     });
 
-    testWidgets('renders navigation rail on desktop breakpoint', (tester) async {
-      const desktopSize = Size(1200, 900);
-      tester.view.physicalSize = desktopSize;
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets(
+      'collapses the sidebar to an icon rail on the tablet breakpoint (600-899px)',
+      (tester) async {
+        const tabletSize = Size(760, 900);
+        tester.view.physicalSize = tabletSize;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(_buildTestShell(size: desktopSize));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(_buildTestShell(size: tabletSize));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Inventory Screen'), findsOneWidget);
-      // Desktop gets a navigation rail, not a bottom bar.
-      expect(find.byType(NavigationRail), findsOneWidget);
-      expect(find.byType(NavigationBar), findsNothing);
+        expect(find.text('Inventory Screen'), findsOneWidget);
+        // Tablet uses the same custom sidebar as desktop, just collapsed to
+        // an icon-only rail — not AdaptiveScaffold's NavigationRail, and
+        // not a structurally different widget tree from desktop's (that's
+        // what made resizing across 900px unstable before).
+        expect(find.byType(NavigationRail), findsNothing);
+        expect(find.byType(NavigationBar), findsNothing);
+        // Collapsed: labels are hidden, only icon + tooltip remain.
+        expect(find.text('Dashboard'), findsNothing);
+        expect(find.text('End Shift'), findsNothing);
+        expect(find.byTooltip('POS'), findsOneWidget);
 
-      // Tap POS destination in rail
-      await tester.tap(find.text('POS').last);
-      await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('POS'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('POS Screen'), findsOneWidget);
-    });
+        expect(find.text('POS Screen'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'expands the sidebar with labels on the desktop breakpoint (>=900px)',
+      (tester) async {
+        const desktopSize = Size(1200, 900);
+        tester.view.physicalSize = desktopSize;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(_buildTestShell(size: desktopSize));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Inventory Screen'), findsOneWidget);
+        expect(find.byType(NavigationRail), findsNothing);
+        expect(find.byType(NavigationBar), findsNothing);
+        // Expanded: profile card (name) and pinned "End Shift" row, both
+        // with visible labels this time.
+        expect(find.text('FoodLink Business'), findsOneWidget);
+        expect(find.text('End Shift'), findsOneWidget);
+
+        // Tap POS destination in the sidebar.
+        await tester.tap(find.text('POS').last);
+        await tester.pumpAndSettle();
+
+        expect(find.text('POS Screen'), findsOneWidget);
+      },
+    );
   });
 }

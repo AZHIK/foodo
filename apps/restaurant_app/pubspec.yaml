@@ -1,0 +1,48 @@
+name: restaurant_pos
+description: "A responsive Restaurant POS UI built with Flutter, Riverpod and go_router."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.6.1
+  go_router: ^17.5.0
+  intl: ^0.20.3
+  pdf: ^3.12.0
+  excel: ^4.0.6
+  path_provider: ^2.1.6
+  share_plus: ^13.3.0
+  file_selector: ^1.1.0
+  xdg_directories: ^1.1.0
+  image_picker: ^1.2.3
+  fl_chart: ^1.2.0
+  google_fonts: ^6.1.0
+  uuid: ^4.0.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Declared as an asset as well as a font family. The `fonts:` entry below
+  # registers Inter with Flutter's text engine, but the PDF exporter has to
+  # read the raw bytes through `rootBundle`, and only an `assets:` entry
+  # guarantees the file is addressable that way.
+  assets:
+    - assets/fonts/Inter.ttf
+
+  fonts:
+    # Inter is shipped as a variable font: Flutter interpolates the `wght`
+    # axis, so a single asset covers every FontWeight we use.
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf

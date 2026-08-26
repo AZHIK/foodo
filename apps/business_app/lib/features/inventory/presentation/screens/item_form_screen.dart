@@ -36,11 +36,7 @@ enum ItemFormMode { add, edit }
 /// .addItem], edit via [FakeInventoryNotifier.updateItem]) — the real API
 /// integration will swap the provider underneath without touching this screen.
 class ItemFormScreen extends ConsumerStatefulWidget {
-  const ItemFormScreen({
-    required this.mode,
-    this.itemId,
-    super.key,
-  });
+  const ItemFormScreen({required this.mode, this.itemId, super.key});
 
   final ItemFormMode mode;
   final String? itemId;
@@ -271,8 +267,7 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                           initialSenti: _priceSenti,
                           allowZero: true,
                           onChanged: (senti) => _priceSenti = senti,
-                          validator: (senti) =>
-                              (senti == null || senti <= 0)
+                          validator: (senti) => (senti == null || senti <= 0)
                               ? 'Selling price must be greater than zero'
                               : null,
                         ),
@@ -331,7 +326,12 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                       onChanged: (val) =>
                           setState(() => _allowNegativeStock = val),
                     ),
-                    const Divider(),
+                    Divider(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outlineVariant.withValues(alpha: 0.75),
+                      height: AppDimensions.spaceLG,
+                    ),
                     SwitchListTile.adaptive(
                       title: const Text('Active Status'),
                       subtitle: const Text(
@@ -345,7 +345,9 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
               ),
               const SizedBox(height: AppDimensions.spaceLG),
               AppPrimaryButton(
-                label: widget.mode == ItemFormMode.add ? 'Save Item' : 'Update Item',
+                label: widget.mode == ItemFormMode.add
+                    ? 'Save Item'
+                    : 'Update Item',
                 icon: Icons.check,
                 onPressed: _submit,
               ),
@@ -382,22 +384,22 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
   }
 
   static String _unitLabel(String unit) => switch (unit) {
-        'pcs' => 'Pieces (pcs)',
-        'kg' => 'Kilograms (kg)',
-        'g' => 'Grams (g)',
-        'l' => 'Liters (l)',
-        'ml' => 'Milliliters (ml)',
-        'box' => 'Box (box)',
-        _ => unit,
-      };
+    'pcs' => 'Pieces (pcs)',
+    'kg' => 'Kilograms (kg)',
+    'g' => 'Grams (g)',
+    'l' => 'Liters (l)',
+    'ml' => 'Milliliters (ml)',
+    'box' => 'Box (box)',
+    _ => unit,
+  };
 
   static String _itemTypeLabel(String type) => switch (type) {
-        'prepared_item' => 'Prepared Item',
-        'raw_ingredient' => 'Raw Ingredient',
-        'resellable' => 'Resellable Item',
-        'variant_parent' => 'Variant Parent',
-        _ => type,
-      };
+    'prepared_item' => 'Prepared Item',
+    'raw_ingredient' => 'Raw Ingredient',
+    'resellable' => 'Resellable Item',
+    'variant_parent' => 'Variant Parent',
+    _ => type,
+  };
 }
 
 /// Outlined card wrapper with a section heading, used to group form fields.

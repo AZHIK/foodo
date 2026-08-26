@@ -58,7 +58,6 @@ class InfoCard extends StatelessWidget {
       label,
       style: AppTextStyles.labelMedium.copyWith(
         color: cs.onSurface.withValues(alpha: 0.55),
-        letterSpacing: 0.3,
       ),
     );
     final valueText = Text(
@@ -82,55 +81,52 @@ class InfoCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppDimensions.spaceMD),
       child: switch (variant) {
         InfoCardVariant.row => Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (leading != null) ...[
-                leading!,
-                const SizedBox(width: AppDimensions.spaceMD),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    labelText,
-                    const SizedBox(height: AppDimensions.spaceXXS),
-                    valueText,
-                    if (descText != null) ...[
-                      const SizedBox(height: AppDimensions.spaceXS),
-                      descText,
-                    ],
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (leading != null) ...[
+              leading!,
+              const SizedBox(width: AppDimensions.spaceMD),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  labelText,
+                  const SizedBox(height: AppDimensions.spaceXXS),
+                  valueText,
+                  if (descText != null) ...[
+                    const SizedBox(height: AppDimensions.spaceXS),
+                    descText,
                   ],
-                ),
+                ],
               ),
-              if (trailing != null) ...[
-                const SizedBox(width: AppDimensions.spaceSM),
-                trailing!,
-              ],
+            ),
+            if (trailing != null) ...[
+              const SizedBox(width: AppDimensions.spaceSM),
+              trailing!,
             ],
-          ),
+          ],
+        ),
         InfoCardVariant.stack => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (leading != null) ...[
-                leading!,
-                const SizedBox(height: AppDimensions.spaceSM),
-              ],
-              labelText,
-              const SizedBox(height: AppDimensions.spaceXXS),
-              valueText,
-              if (descText != null) ...[
-                const SizedBox(height: AppDimensions.spaceXS),
-                descText,
-              ],
-              if (trailing != null) ...[
-                const SizedBox(height: AppDimensions.spaceSM),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: trailing,
-                ),
-              ],
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (leading != null) ...[
+              leading!,
+              const SizedBox(height: AppDimensions.spaceSM),
             ],
-          ),
+            labelText,
+            const SizedBox(height: AppDimensions.spaceXXS),
+            valueText,
+            if (descText != null) ...[
+              const SizedBox(height: AppDimensions.spaceXS),
+              descText,
+            ],
+            if (trailing != null) ...[
+              const SizedBox(height: AppDimensions.spaceSM),
+              Align(alignment: Alignment.centerRight, child: trailing),
+            ],
+          ],
+        ),
       },
     );
   }
