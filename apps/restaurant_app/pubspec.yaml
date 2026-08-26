@@ -25,10 +25,28 @@ dependencies:
   fl_chart: ^1.2.0
   google_fonts: ^6.1.0
   uuid: ^4.0.0
+  drift: ^2.34.3
+  drift_flutter: ^0.3.1
+  sqlite3: ^3.5.2
+  flutter_secure_storage: ^11.0.0
+  connectivity_plus: ^7.3.1
+  workmanager: ^0.10.9
+  decimal: ^1.4.1
+  crypto: ^3.0.3
+  path: ^1.9.0
+  dio: ^5.4.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  drift_dev: ^2.34.3
+  build_runner: ^2.5.0
+
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc
 
 flutter:
   uses-material-design: true

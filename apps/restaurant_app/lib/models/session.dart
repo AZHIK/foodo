@@ -97,6 +97,8 @@ class SessionState {
   /// decision testable without pumping a widget.
   String get entryRoute {
     if (!isLoggedIn) {
+      // If there are saved profiles, go to profile selection.
+      // Otherwise, go to login for a fresh device (full onboarding flow).
       return hasSavedProfiles ? _profilesPath : _loginPath;
     }
     if (!hasPin) return _setPinPath;

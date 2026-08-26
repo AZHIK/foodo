@@ -8,6 +8,7 @@ import '../../models/business_role.dart';
 import '../../models/order.dart';
 import '../../models/store_location.dart';
 import '../../models/store_settings.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/roles_provider.dart';
 import '../../providers/session_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -204,7 +205,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     setState(() => _step--);
   }
 
-  void _next() {
+  Future<void> _next() async {
     if (!_canContinue) return;
 
     // Each step commits as it is left, so backing up shows what was saved
@@ -238,7 +239,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             );
       case 3:
         _sendInvites();
-        _finish();
+        await _finish();
         return;
     }
 
@@ -285,12 +286,32 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     notifier.upsert(location);
   }
 
-  void _finish() {
-    ref.read(sessionProvider.notifier).completeOnboarding();
-    // Straight to the Dashboard, where the name and logo just entered are
-    // already in the nav rail and the greeting — the payoff for having filled
-    // this in.
-    context.go(ref.read(sessionProvider).entryRoute);
+  Future<void> _finish() async {
+    try {
+      // Create the business with the form data and lock device to it.
+      await ref.read(authProvider.notifier).createBusinessAndOnboard(
+            name: _businessName.text.trim(),
+            address: _address.text.trim(),
+            phone: _phone.text.trim(),
+            city: _address.text.isNotEmpty ? _address.text.split(',').last.trim() : null,
+            countryCode: 'TZ', // Hardcoded per the .env default
+            timezone: 'Africa/Dar_es_Salaam',
+          );
+
+      // Mark onboarding complete in the session.
+      ref.read(sessionProvider.notifier).completeOnboarding();
+
+      if (!mounted) return;
+      // Straight to the Dashboard, where the name and logo just entered are
+      // already in the nav rail and the greeting — the payoff for having filled
+      // this in.
+      context.go(ref.read(sessionProvider).entryRoute);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Onboarding failed: $e')),
+      );
+    }
   }
 
   @override

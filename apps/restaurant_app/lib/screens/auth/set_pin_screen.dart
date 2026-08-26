@@ -78,7 +78,7 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
     });
   }
 
-  void _advance() {
+  Future<void> _advance() async {
     if (!_confirming) {
       // A beat before the second pass, so the last dot is seen filling rather
       // than the screen appearing to change on its own.
@@ -100,7 +100,19 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
     }
 
     setState(() => _saved = true);
-    ref.read(sessionProvider.notifier).setPin(_first);
+
+    try {
+      // Save PIN to the database via the auth provider.
+      await ref.read(sessionProvider.notifier).setPin(_first);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saved = false;
+        _error = 'Failed to save PIN: $e';
+        _shakeToken++;
+      });
+      return;
+    }
 
     Future<void>.delayed(const Duration(milliseconds: 420), () {
       if (!mounted) return;

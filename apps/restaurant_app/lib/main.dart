@@ -1,13 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'database/app_database.dart';
+import 'database/database_connection.dart';
+import 'database/encryption_key_service.dart';
+import 'providers/database_providers.dart';
 import 'providers/settings_provider.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 import 'utils/formatters.dart';
 
-void main() {
-  runApp(const ProviderScope(child: RestaurantPosApp()));
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 1. Resolve or generate the encryption key.
+  final keyService = EncryptionKeyService();
+  final encryptionKey = await keyService.getOrCreateKey();
+
+  // 2. Create and open the database.
+  final database = AppDatabase(driftDatabaseConnection(encryptionKey));
+
+  // 3. Run the app with the database injected into providers.
+  runApp(
+    ProviderScope(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(database),
+      ],
+      child: const RestaurantPosApp(),
+    ),
+  );
 }
 
 class RestaurantPosApp extends ConsumerWidget {

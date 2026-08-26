@@ -65,6 +65,7 @@ class InventoryItem {
     this.image,
     this.trackStock = true,
     this.isArchived = false,
+    this.catalogItemId,
   });
 
   final String id;
@@ -105,6 +106,10 @@ class InventoryItem {
   /// meant to be reordered or put on new tickets.
   final bool isArchived;
 
+  /// Link to the cached inventory item (for sync layer).
+  /// Optional: populated when this item is linked to the catalog.
+  final String? catalogItemId;
+
   /// An untracked item is never "low": there is no count to be low against, so
   /// it reports as in stock rather than dragging the low-stock metric down.
   StockStatus get status => !trackStock
@@ -134,9 +139,11 @@ class InventoryItem {
     ItemImage? image,
     bool? trackStock,
     bool? isArchived,
+    String? catalogItemId,
     // `image: null` cannot mean "remove it" when null already means "leave it
     // alone", so clearing needs its own flag.
     bool clearImage = false,
+    bool clearCatalogItemId = false,
   }) {
     return InventoryItem(
       id: id,
@@ -154,6 +161,9 @@ class InventoryItem {
       image: clearImage ? null : (image ?? this.image),
       trackStock: trackStock ?? this.trackStock,
       isArchived: isArchived ?? this.isArchived,
+      catalogItemId: clearCatalogItemId
+          ? null
+          : (catalogItemId ?? this.catalogItemId),
     );
   }
 

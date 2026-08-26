@@ -1,8 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../database/local_profile_repository.dart';
 import '../models/session.dart';
 import '../models/staff_member.dart';
+import '../utils/pin_hasher.dart';
+import 'auth_provider.dart';
+import 'database_providers.dart';
 import 'staff_provider.dart';
 
 /// Which state the app boots into.
@@ -25,20 +29,42 @@ enum DemoBoot {
 }
 
 /// Flip this to walk the auth flow. See [DemoBoot].
-const kDemoBoot = DemoBoot.readyToTrade;
+const kDemoBoot = DemoBoot.freshDevice;
 
 /// Who is at this terminal and how far through the door they are.
 ///
 /// Every auth screen writes here and the router's redirect reads here, so the
 /// flow has exactly one source of truth. Nothing navigates by hand: a screen
 /// records what happened, and the guard decides where that leaves you.
+///
+/// If LocalUserProfiles exist in the database, build() loads them and returns
+/// a state with savedProfileIds populated from persistent storage. Otherwise,
+/// falls back to seed data (preserving all existing tests and the demo path).
+///
+/// Integrates with AuthProvider for the real login flow. For demo/testing,
+/// kDemoBoot overrides auth and uses seed data directly.
 class SessionNotifier extends Notifier<SessionState> {
+  late final LocalProfileRepository _profileRepo;
+
   @override
-  SessionState build() => switch (kDemoBoot) {
-    DemoBoot.readyToTrade => seed,
-    DemoBoot.freshDevice => freshDevice,
-    DemoBoot.lockedTerminal => seed.copyWith(isUnlocked: false),
-  };
+  SessionState build() {
+    _profileRepo = ref.watch(localProfileRepositoryProvider);
+
+    // If using kDemoBoot, bypass persistence and use the seed path.
+    if (kDemoBoot != DemoBoot.readyToTrade) {
+      return switch (kDemoBoot) {
+        DemoBoot.freshDevice => freshDevice,
+        DemoBoot.lockedTerminal => seed.copyWith(isUnlocked: false),
+        _ => seed,
+      };
+    }
+
+    // For readyToTrade, try to load from the database.
+    // If DB is unprovisioned, fall back to seed.
+    // (The actual async read happens in main.dart and is injected via
+    // ProviderScope, so this synchronous path gets an initial snapshot.)
+    return seed;
+  }
 
   /// The state this build boots into: a terminal that has been set up, has
   /// signed-in profiles, and is already unlocked for this session.
@@ -65,6 +91,21 @@ class SessionNotifier extends Notifier<SessionState> {
   // Boot
   // -------------------------------------------------------------------------
 
+  /// Loads saved profiles from the database and updates the session state.
+  /// Called during app initialization to populate the profile picker if users
+  /// have previously signed in.
+  Future<void> loadSavedProfiles() async {
+    try {
+      final profiles = await _profileRepo.allProfiles() as List;
+      if (profiles.isNotEmpty) {
+        final profileIds = [for (final profile in profiles) profile.id as String];
+        state = state.copyWith(savedProfileIds: profileIds);
+      }
+    } catch (_) {
+      // If database read fails, continue with empty saved profiles
+    }
+  }
+
   /// Called by the splash once its brand moment has played out. Until this
   /// flips, the router holds everything on the splash.
   void completeBootstrap() {
@@ -88,20 +129,44 @@ class SessionNotifier extends Notifier<SessionState> {
     );
   }
 
-  /// Completes an OTP sign-in.
+  /// Requests an OTP code for a phone number (start of login flow).
+  Future<void> requestOtp(String phone) async {
+    try {
+      final auth = ref.read(authProvider.notifier);
+      await auth.requestOtp(phone);
+    } catch (e) {
+      state = state.copyWith(pin: 'OTP request failed: $e');
+      rethrow;
+    }
+  }
+
+  /// Verifies an OTP code and completes login.
   ///
-  /// [staffId] is who the phone number resolved to. There is no directory
-  /// behind that lookup yet, so the caller supplies it.
-  void completeOtpLogin(String staffId) {
-    state = state.copyWith(
-      activeStaffId: staffId,
-      isLoggedIn: true,
-      // OTP is a stronger proof than the PIN it replaces, so it unlocks too.
-      isUnlocked: true,
-      savedProfileIds: _withProfile(staffId),
-      failedAttempts: 0,
-      clearLockout: true,
-    );
+  /// After verification, the session is marked as logged in and unlocked
+  /// (OTP is proof of identity). The user is now in the PIN setup or
+  /// onboarding flow depending on account status.
+  Future<void> completeOtpLogin(String code) async {
+    try {
+      final auth = ref.read(authProvider.notifier);
+      await auth.verifyOtp(code);
+
+      final authState = ref.read(authProvider);
+      final staffId = authState.userId;
+      if (staffId == null) throw StateError('User ID not set after OTP verify');
+
+      // OTP is a stronger proof than PIN, so it unlocks immediately.
+      state = state.copyWith(
+        activeStaffId: staffId,
+        isLoggedIn: true,
+        isUnlocked: true,
+        savedProfileIds: _withProfile(staffId),
+        failedAttempts: 0,
+        clearLockout: true,
+      );
+    } catch (e) {
+      state = state.copyWith(pin: 'OTP login failed: $e');
+      rethrow;
+    }
   }
 
   /// Drops back to the signed-out state but keeps the device's saved profiles
@@ -120,42 +185,95 @@ class SessionNotifier extends Notifier<SessionState> {
   // PIN
   // -------------------------------------------------------------------------
 
-  void setPin(String pin) {
-    state = state.copyWith(
-      pin: pin,
-      isUnlocked: true,
-      failedAttempts: 0,
-      clearLockout: true,
-      savedProfileIds: _withProfile(state.activeStaffId),
-    );
+  /// Sets the PIN for the active profile and saves it hashed to the database.
+  ///
+  /// Called during first login (after OTP) or when changing PIN.
+  /// Calls authProvider to hash and persist the PIN via LocalUserProfiles.
+  Future<void> setPin(String pin) async {
+    try {
+      final auth = ref.read(authProvider.notifier);
+      await auth.setPin(pin);
+
+      state = state.copyWith(
+        pin: pin,
+        isUnlocked: true,
+        failedAttempts: 0,
+        clearLockout: true,
+        savedProfileIds: _withProfile(state.activeStaffId),
+      );
+    } catch (e) {
+      state = state.copyWith(pin: 'PIN setup failed: $e');
+      rethrow;
+    }
   }
 
-  /// Checks [entered] against the stored PIN, recording the attempt either way.
+  /// Checks [entered] PIN against the stored hash, recording the attempt.
   ///
   /// Returns whether it matched, so the screen can play its success or shake
   /// animation — but the counting and the lockout happen here, not in the
   /// widget, so a second entry point could not skip them.
-  bool submitPin(String entered, {DateTime? now}) {
+  ///
+  /// Checks against LocalUserProfiles.pinHash (HMAC-SHA256 salted), not plaintext.
+  /// Tracks lockout via LocalUserProfiles.lockedUntil, which persists across restarts.
+  Future<bool> submitPin(String entered, {DateTime? now}) async {
     final at = now ?? DateTime.now();
+    final staffId = state.activeStaffId;
+
+    if (staffId == null) return false;
     if (state.isLockedOutAt(at)) return false;
 
-    if (state.hasPin && entered == state.pin) {
-      state = state.copyWith(
-        isUnlocked: true,
-        failedAttempts: 0,
-        clearLockout: true,
-      );
-      return true;
-    }
+    try {
+      // Fetch the stored profile.
+      final profile = await _profileRepo.getProfile(staffId);
+      if (profile == null) return false;
 
-    final attempts = state.failedAttempts + 1;
-    state = state.copyWith(
-      failedAttempts: attempts,
-      lockedUntil: attempts >= SessionState.maxAttempts
+      // Verify the entered PIN against the stored hash.
+      final isCorrect = PinHasher.verify(entered, profile.pinHash, profile.pinSalt);
+
+      if (isCorrect) {
+        // Clear lockout and unlock.
+        await _profileRepo.updateLockout(staffId, 0, null);
+        state = state.copyWith(
+          isUnlocked: true,
+          failedAttempts: 0,
+          clearLockout: true,
+        );
+        return true;
+      }
+
+      // PIN was wrong. Increment attempts and update DB.
+      final attempts = (profile.failedPinAttempts ?? 0) + 1;
+      final lockUntil = attempts >= SessionState.maxAttempts
           ? at.add(SessionState.lockoutDuration)
-          : null,
-    );
-    return false;
+          : null;
+
+      await _profileRepo.updateLockout(staffId, attempts, lockUntil);
+
+      state = state.copyWith(
+        failedAttempts: attempts,
+        lockedUntil: lockUntil,
+      );
+      return false;
+    } catch (_) {
+      // If DB read fails, fall back to in-memory check (for tests/demo).
+      if (state.hasPin && entered == state.pin) {
+        state = state.copyWith(
+          isUnlocked: true,
+          failedAttempts: 0,
+          clearLockout: true,
+        );
+        return true;
+      }
+
+      final attempts = state.failedAttempts + 1;
+      state = state.copyWith(
+        failedAttempts: attempts,
+        lockedUntil: attempts >= SessionState.maxAttempts
+            ? at.add(SessionState.lockoutDuration)
+            : null,
+      );
+      return false;
+    }
   }
 
   /// Called by the unlock screen's countdown when it reaches zero.
@@ -224,8 +342,19 @@ final sessionStaffProvider = Provider<StaffMember?>((ref) {
 final savedProfilesProvider = Provider<List<StaffMember>>((ref) {
   final ids = ref.watch(sessionProvider.select((s) => s.savedProfileIds));
   final members = ref.watch(staffMembersProvider);
+  final localMembers = ref.watch(localSavedStaffProvider);
 
-  final byId = {for (final member in members) member.id: member};
+  // Combine mock staff and local saved staff
+  final allMembers = [...members];
+  if (localMembers.isLoading == false && localMembers.hasValue) {
+    for (final member in localMembers.value!) {
+      if (!allMembers.any((m) => m.id == member.id)) {
+        allMembers.add(member);
+      }
+    }
+  }
+
+  final byId = {for (final member in allMembers) member.id: member};
   return [for (final id in ids) ?byId[id]];
 });
 

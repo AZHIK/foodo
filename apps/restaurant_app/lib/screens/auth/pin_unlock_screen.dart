@@ -108,8 +108,8 @@ class _PinUnlockScreenState extends ConsumerState<PinUnlockScreen> {
     setState(() => _entered = _entered.substring(0, _entered.length - 1));
   }
 
-  void _submit() {
-    final ok = ref.read(sessionProvider.notifier).submitPin(_entered);
+  Future<void> _submit() async {
+    final ok = await ref.read(sessionProvider.notifier).submitPin(_entered);
 
     if (ok) {
       setState(() => _success = true);

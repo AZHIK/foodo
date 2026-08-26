@@ -38,18 +38,21 @@ docker compose exec api alembic revision --autogenerate -m "description"
 
 After migrations complete, run the seed scripts in order (each is idempotent):
 
+### Seed commands
+
+Run individually in order:
 ```bash
 # 1. Seed permissions & default platform roles
 docker compose exec api uv run python scripts/seed_permissions.py
 
-# 2. Seed internal groups, roles, and role_permissions
+# 2. Seed internal RBAC groups and roles
 docker compose exec api uv run python scripts/seed_internal_rbac.py
 
-# 3. Seed role templates (Owner templates per business type)
+# 3. Seed business role templates
 docker compose exec api uv run python scripts/seed_role_templates.py
 ```
 
-Or run all seeds at once:
+Or run all at once:
 ```bash
 docker compose exec api bash -c '
   uv run python scripts/seed_permissions.py &&
@@ -57,6 +60,43 @@ docker compose exec api bash -c '
   uv run python scripts/seed_role_templates.py
 '
 ```
+
+### What gets seeded
+
+**Step 1: Permissions & Platform Roles**
+- All `Permission` records from the `PermissionCode` enum across all domains:
+  - Business operations: POS, inventory, procurement, AI forecasting
+  - User & role management: users, business roles, role templates
+  - Organization & store management
+  - Auth & security: sessions, tokens, trusted devices
+- 3 default **platform roles**: driver, consumer, admin (with their standard permission sets)
+
+**Step 2: Internal RBAC Groups and Roles**
+- Internal platform staff roles and groups for administrative operations
+- Super Admin (full platform access)
+- Admin groups for managing organizations, businesses, role templates, and internal users
+
+**Step 3: Business Role Templates**
+Pre-built **role templates** (Owner + non-owner roles) for each business type:
+
+**Owner Templates** (auto-cloned when a new business is created):
+- `restaurant_owner` — POS, inventory, procurement, AI forecasting, staff management
+- `supplier_owner` — inventory, procurement, supplier pricing
+- `farmer_owner` — inventory, farmer supply commitments
+- `distributor_owner` — inventory, procurement, distribution
+- `platform_operator_owner` — full platform + all business operation permissions
+
+**Non-Owner Templates** (optional staff roles that can be assigned per business):
+- **Restaurant**: Manager, Cashier, Kitchen Staff, Stock Controller
+- **Supplier/Distributor**: Sales Admin, Warehouse Staff
+- **Farmer**: Farm Coordinator
+
+### Business role assignment flow
+
+When a new business is registered, the identity service:
+1. Clones the **owner template** matching that business type into a `BusinessRole` (protected, cannot be deleted)
+2. Assigns the business owner to that cloned owner role
+3. Optionally instantiates non-owner role templates for that business as custom `BusinessRole` rows
 
 ## Run tests & lint
 

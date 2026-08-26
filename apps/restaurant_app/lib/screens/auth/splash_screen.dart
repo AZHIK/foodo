@@ -34,9 +34,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: _brandMoment,
-  )..addStatusListener((status) {
+  )..addStatusListener((status) async {
     if (status == AnimationStatus.completed && mounted) {
-      ref.read(sessionProvider.notifier).completeBootstrap();
+      // Load saved profiles from database before completing bootstrap.
+      // This ensures the profile picker is shown if users have previously signed in.
+      await ref.read(sessionProvider.notifier).loadSavedProfiles();
+      if (mounted) {
+        ref.read(sessionProvider.notifier).completeBootstrap();
+      }
     }
   });
 

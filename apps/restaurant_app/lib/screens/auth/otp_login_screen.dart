@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../providers/session_provider.dart';
-import '../../providers/staff_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
@@ -95,14 +94,30 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
   // Phone step
   // -------------------------------------------------------------------------
 
-  void _sendCode() {
+  bool _isValidTanzanianPhone(String digits) {
+    if (digits.length != 9) return false;
+    // Accept both 06 and 07 prefixes (Tanzanian mobile operators)
+    if (!digits.startsWith('6') && !digits.startsWith('7')) return false;
+    return true;
+  }
+
+  Future<void> _sendCode() async {
     final digits = _phone.text.replaceAll(RegExp(r'\D'), '');
     if (digits.isEmpty) {
       setState(() => _phoneError = 'Enter your phone number');
       return;
     }
-    if (digits.length < 8) {
-      setState(() => _phoneError = 'That number looks too short');
+    if (!_isValidTanzanianPhone(digits)) {
+      setState(() => _phoneError = 'Enter a valid Tanzanian phone number (6 or 7XXXXXXXX)');
+      return;
+    }
+
+    try {
+      // Request OTP from the auth provider.
+      await ref.read(sessionProvider.notifier).requestOtp('+255$digits');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _phoneError = 'Failed to send code: $e');
       return;
     }
 
@@ -178,7 +193,11 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
     await Future<void>.delayed(_verifyDelay);
     if (!mounted) return;
 
-    if (entered != OtpLoginScreen.demoCode) {
+    try {
+      // Verify OTP code via the auth provider.
+      await ref.read(sessionProvider.notifier).completeOtpLogin(entered);
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
         _verifying = false;
         _codeError = 'That code is not right. Check your messages.';
@@ -190,13 +209,6 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
       _digitFocus.first.requestFocus();
       return;
     }
-
-    // No directory maps a phone number to a person yet, so the sign-in resolves
-    // to whoever the session already had in hand, falling back to the owner.
-    final staff = ref.read(sessionStaffProvider) ?? ref.read(currentUserProvider);
-    if (staff == null) return;
-
-    ref.read(sessionProvider.notifier).completeOtpLogin(staff.id);
 
     if (!mounted) return;
     // Where this lands — Set PIN for a first-time device, Dashboard for a
@@ -230,7 +242,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
 
   String _formattedPhone() {
     final text = _phone.text.trim();
-    return text.isEmpty ? 'your phone' : '+62 $text';
+    return text.isEmpty ? 'your phone' : '+255 $text';
   }
 
   Widget _buildPhoneStep(BuildContext context) {
@@ -250,11 +262,21 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
             keyboardType: TextInputType.phone,
             inputFormatters: [
               FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(14),
+              LengthLimitingTextInputFormatter(9),
             ],
+            onChanged: (value) {
+              final digits = value.replaceAll(RegExp(r'\D'), '');
+              if (digits.isEmpty) {
+                setState(() => _phoneError = null);
+              } else if (!_isValidTanzanianPhone(digits)) {
+                setState(() => _phoneError = 'Enter a valid Tanzanian phone number (6 or 7XXXXXXXX)');
+              } else {
+                setState(() => _phoneError = null);
+              }
+            },
             onSubmitted: (_) => _sendCode(),
             decoration: InputDecoration(
-              hintText: '812 3456 7890',
+              hintText: '6XXXXXXXX or 7XXXXXXXX',
               errorText: _phoneError,
               // A fixed dial code rather than a country picker: this build
               // serves one market, and a picker with one entry is a control
@@ -265,7 +287,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
                   right: Insets.sm,
                 ),
                 child: Text(
-                  '+62',
+                  '+255',
                   style: context.text.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: context.colors.onSurfaceVariant,

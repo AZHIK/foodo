@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/mock_activity.dart';
 import '../data/mock_staff.dart';
+import '../database/local_profile_repository.dart';
 import '../models/activity_entry.dart';
 import '../models/staff_member.dart';
 import '../models/table_query.dart';
+import 'database_providers.dart';
 import 'roles_provider.dart';
 import 'table_query_provider.dart';
 
@@ -141,6 +143,30 @@ final currentUserProvider = Provider<StaffMember?>((ref) {
 final currentUserNameProvider = Provider<String>(
   (ref) => ref.watch(currentUserProvider)?.name ?? 'System',
 );
+
+/// Staff members loaded from the local database (saved profiles).
+/// Used by the profile picker to display saved users who have previously signed in.
+final localSavedStaffProvider = FutureProvider<List<StaffMember>>((ref) async {
+  try {
+    final profileRepo = ref.watch(localProfileRepositoryProvider);
+    final profiles = await profileRepo.allProfiles() as List;
+
+    return [
+      for (final profile in profiles)
+        StaffMember(
+          id: profile.id as String,
+          name: profile.displayName as String,
+          email: '',
+          phone: '',
+          roleId: '',
+          status: StaffStatus.active,
+          joinedAt: profile.createdAt as DateTime,
+        ),
+    ];
+  } catch (_) {
+    return [];
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Search / sort / pagination
