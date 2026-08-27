@@ -29,6 +29,8 @@ class BusinessBase(BaseModel):
     address: str | None = None
     status: BusinessStatus = BusinessStatus.ACTIVE
     logo: str | None = None
+    license_document_url: str | None = None
+    cuisine_type: str | None = None
     country_code: str = "TZ"
     city: str | None = None
     timezone: str = "Africa/Dar_es_Salaam"
@@ -55,6 +57,8 @@ class BusinessCreateRequest(BaseModel):
     address: str | None = None
     status: BusinessStatus = BusinessStatus.ACTIVE
     logo: str | None = None
+    license_document_url: str | None = None
+    cuisine_type: str | None = None
     country_code: str = "TZ"
     city: str | None = None
     timezone: str = "Africa/Dar_es_Salaam"
@@ -73,6 +77,8 @@ class BusinessUpdate(BaseModel):
     address: str | None = None
     status: BusinessStatus | None = None
     logo: str | None = None
+    license_document_url: str | None = None
+    cuisine_type: str | None = None
     country_code: str | None = None
     city: str | None = None
     timezone: str | None = None

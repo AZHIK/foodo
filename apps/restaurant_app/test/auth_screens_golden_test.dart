@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,11 +8,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:restaurant_pos/main.dart';
 import 'package:restaurant_pos/models/session.dart';
+import 'package:restaurant_pos/providers/auth_provider.dart';
 import 'package:restaurant_pos/providers/session_provider.dart';
 import 'package:restaurant_pos/providers/settings_provider.dart';
 import 'package:restaurant_pos/router/app_router.dart';
 import 'package:restaurant_pos/screens/auth/onboarding_screen.dart';
 import 'package:restaurant_pos/screens/auth/otp_login_screen.dart';
+
+import 'test_helpers/fake_identity_backend.dart';
 
 /// Renders the auth and onboarding screens so their layout can be reviewed as
 /// images rather than inferred from widget assertions.
@@ -50,12 +54,13 @@ void main() {
     required String route,
     SessionState? session,
     ThemeMode mode = ThemeMode.light,
+    List<Override> overrides = const [],
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final container = ProviderContainer();
+    final container = ProviderContainer(overrides: overrides);
     addTearDown(container.dispose);
     container.read(themeModeProvider.notifier).set(mode);
     if (session != null) {
@@ -130,7 +135,7 @@ void main() {
     /// Drives the phone step so the OTP boxes are on screen, with a few digits
     /// filled — an empty row would not show the filled-box treatment.
     Future<void> reachCodeStep(WidgetTester tester) async {
-      await tester.enterText(find.byKey(OtpLoginKeys.phone), '81234567890');
+      await tester.enterText(find.byKey(OtpLoginKeys.phone), '712345678');
       await tester.tap(find.byKey(OtpLoginKeys.sendCode));
       await tester.pumpAndSettle();
 
@@ -141,12 +146,19 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    List<Override> fakeBackend() => [
+      identityServiceDioProvider.overrideWithValue(
+        Dio()..httpClientAdapter = FakeIdentityAdapter(FakeIdentityBackendState()),
+      ),
+    ];
+
     testWidgets('desktop light', (tester) async {
       await pumpAuth(
         tester,
         const Size(1440, 900),
         route: AppRoute.loginPath,
         session: fresh,
+        overrides: fakeBackend(),
       );
       await reachCodeStep(tester);
       await shoot(tester, 'code_desktop_light');
@@ -159,6 +171,7 @@ void main() {
         const Size(390, 844),
         route: AppRoute.loginPath,
         session: fresh,
+        overrides: fakeBackend(),
       );
       await reachCodeStep(tester);
       await shoot(tester, 'code_mobile');

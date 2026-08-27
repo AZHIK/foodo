@@ -83,16 +83,17 @@ class Business(UUIDMixin, TimestampMixin, SoftDeleteMixin, SQLModel, table=True)
     """The registered legal entity that owns stores.
 
     Holds the company-level identity and contact details. ``status`` uses the
-    shared ``BusinessStatus`` enum; ``logo`` is a URL/path placeholder column
-    only (no upload mechanism). Soft-delete is a real FK to users via
-    ``deleted_by`` (same-database discipline: users live here too).
+    shared ``BusinessStatus`` enum; ``logo`` and ``license_document_url`` are
+    URL/path placeholder columns only (no upload mechanism). Soft-delete is a
+    real FK to users via ``deleted_by`` (same-database discipline: users live
+    here too). ``owner_user_id`` is unique — one business per owner.
     """
 
     __tablename__ = "businesses"
 
     name: str = Field(max_length=255)
     business_type: BusinessType = Field(sa_type=String)
-    owner_user_id: UUID = Field(foreign_key="users.id")
+    owner_user_id: UUID = Field(foreign_key="users.id", unique=True)
     organization_id: UUID | None = Field(
         default=None, foreign_key="organizations.id", nullable=True
     )
@@ -103,6 +104,11 @@ class Business(UUIDMixin, TimestampMixin, SoftDeleteMixin, SQLModel, table=True)
     address: str | None = Field(default=None, max_length=500)
     status: BusinessStatus = Field(default=BusinessStatus.ACTIVE, sa_type=String)
     logo: str | None = Field(default=None, max_length=500)
+    # Reference/URL to a business license or registration document. Text
+    # only — there is no file-upload/object-storage pipeline yet, same
+    # placeholder-only pattern as `logo`.
+    license_document_url: str | None = Field(default=None, max_length=500)
+    cuisine_type: str | None = Field(default=None, max_length=100)
     deleted_by: UUID | None = Field(default=None, foreign_key="users.id", nullable=True)
     country_code: str = Field(default="TZ", max_length=2)
     city: str | None = Field(default=None, max_length=100)

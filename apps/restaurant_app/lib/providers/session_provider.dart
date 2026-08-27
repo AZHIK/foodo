@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../auth/token_storage.dart';
 import '../database/local_profile_repository.dart';
 import '../models/session.dart';
 import '../models/staff_member.dart';
@@ -9,71 +10,41 @@ import 'auth_provider.dart';
 import 'database_providers.dart';
 import 'staff_provider.dart';
 
-/// Which state the app boots into.
-///
-/// Once onboarding is done the auth flow is unreachable from a running app —
-/// the guard sends you straight past it — so this is how the screens get shown
-/// at all. It exists because this build is a UI mock whose auth screens are
-/// part of what is being reviewed; a real build reads the equivalent off
-/// storage and this enum goes away with it.
-enum DemoBoot {
-  /// A terminal already set up and unlocked. Opens on the Dashboard.
-  readyToTrade,
-
-  /// A device nobody has signed in on. Opens on phone entry and walks the
-  /// whole flow — OTP, set PIN, onboarding.
-  freshDevice,
-
-  /// Set up, signed in, but locked. Opens on the PIN pad.
-  lockedTerminal,
-}
-
-/// Flip this to walk the auth flow. See [DemoBoot].
-const kDemoBoot = DemoBoot.freshDevice;
-
 /// Who is at this terminal and how far through the door they are.
 ///
 /// Every auth screen writes here and the router's redirect reads here, so the
 /// flow has exactly one source of truth. Nothing navigates by hand: a screen
 /// records what happened, and the guard decides where that leaves you.
 ///
-/// If LocalUserProfiles exist in the database, build() loads them and returns
-/// a state with savedProfileIds populated from persistent storage. Otherwise,
-/// falls back to seed data (preserving all existing tests and the demo path).
-///
-/// Integrates with AuthProvider for the real login flow. For demo/testing,
-/// kDemoBoot overrides auth and uses seed data directly.
+/// `build()` returns a fresh-device state synchronously (Riverpod's `build()`
+/// cannot itself be async) and immediately kicks off [_restoreFromStorage],
+/// which reads the real secure-storage token and local DB and corrects the
+/// state once that resolves — the same fire-and-update pattern
+/// `AuthNotifier._checkStoredSession` already uses. A device with nothing
+/// stored yet is genuinely a fresh device, so there is nothing to correct.
 class SessionNotifier extends Notifier<SessionState> {
   late final LocalProfileRepository _profileRepo;
+  late final TokenStorage _tokenStorage;
 
   @override
   SessionState build() {
     _profileRepo = ref.watch(localProfileRepositoryProvider);
-
-    // If using kDemoBoot, bypass persistence and use the seed path.
-    if (kDemoBoot != DemoBoot.readyToTrade) {
-      return switch (kDemoBoot) {
-        DemoBoot.freshDevice => freshDevice,
-        DemoBoot.lockedTerminal => seed.copyWith(isUnlocked: false),
-        _ => seed,
-      };
-    }
-
-    // For readyToTrade, try to load from the database.
-    // If DB is unprovisioned, fall back to seed.
-    // (The actual async read happens in main.dart and is injected via
-    // ProviderScope, so this synchronous path gets an initial snapshot.)
-    return seed;
+    _tokenStorage = TokenStorage();
+    _restoreFromStorage();
+    return freshDevice;
   }
 
-  /// The state this build boots into: a terminal that has been set up, has
-  /// signed-in profiles, and is already unlocked for this session.
-  ///
-  /// A locked terminal would be the more realistic cold start, but it would
-  /// also put a PIN pad in front of every existing screen and every existing
-  /// test on launch. Shipping "already unlocked" keeps the app openable while
-  /// leaving the whole auth flow reachable — set [kDemoBoot] to
-  /// [DemoBoot.freshDevice] or [DemoBoot.lockedTerminal] to walk it.
+  /// A device nobody has signed in on. Used by the "sign in differently" paths
+  /// and as the synchronous state `build()` returns before storage has been
+  /// read.
+  static const freshDevice = SessionState();
+
+  /// A terminal already set up, signed in and unlocked. `build()` no longer
+  /// uses this itself — it reads real storage — but tests still `copyWith`
+  /// off it as a convenient fully-onboarded base state (`pumpSession`
+  /// overrides `sessionProvider`'s state directly, after `build()` has
+  /// already run, so this has no effect on what a real app instance boots
+  /// into).
   static const seed = SessionState(
     savedProfileIds: ['stf-01', 'stf-02', 'stf-03'],
     activeStaffId: 'stf-01',
@@ -83,9 +54,36 @@ class SessionNotifier extends Notifier<SessionState> {
     hasCompletedOnboarding: true,
   );
 
-  /// A device nobody has signed in on. Used by the "sign in differently" paths
-  /// and useful for driving the first-run flow by hand.
-  static const freshDevice = SessionState();
+  /// Reconciles the in-memory state with what this device actually has
+  /// stored: a valid access token means signed in, a `DeviceConfig` row means
+  /// onboarding is done, and a saved PIN hash means Set PIN is behind us.
+  ///
+  /// `pin` is set to the stored *hash*, not the PIN itself — `hasPin` only
+  /// needs a non-empty value to gate routing correctly, and `submitPin`'s
+  /// real verification path checks the hash via `_profileRepo.getProfile`
+  /// regardless, so nothing here ever holds a plaintext PIN.
+  Future<void> _restoreFromStorage() async {
+    try {
+      final tokenSet = await _tokenStorage.getTokenSet();
+      if (tokenSet == null || tokenSet.isExpired) return;
+
+      final device = await _profileRepo.currentDevice();
+      final profile = await _profileRepo.getProfile(tokenSet.userId);
+
+      state = state.copyWith(
+        activeStaffId: tokenSet.userId,
+        isLoggedIn: true,
+        // A locked terminal is the correct real-world default on a cold
+        // start, unlike the old always-unlocked demo seed.
+        isUnlocked: false,
+        hasCompletedOnboarding: device != null,
+        pin: profile?.pinHash as String?,
+      );
+    } catch (_) {
+      // Nothing readable (first launch, storage cleared, DB unavailable) —
+      // stay on the fresh-device state.
+    }
+  }
 
   // -------------------------------------------------------------------------
   // Boot

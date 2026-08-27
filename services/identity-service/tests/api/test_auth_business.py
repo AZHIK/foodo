@@ -74,6 +74,46 @@ class TestRegister:
         )
         assert resp.status_code == 409
 
+    async def test_duplicate_email_returns_409(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        email = f"{_valid_phone().strip('+')}@example.com"
+        await client.post(
+            "/api/v1/auth/register",
+            json={
+                "phone": _valid_phone(),
+                "full_name": "User One",
+                "email": email,
+                "password": _TEST_PASSWORD,
+            },
+        )
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "phone": _valid_phone(),
+                "full_name": "User Two",
+                "email": email,
+                "password": _TEST_PASSWORD,
+            },
+        )
+        assert resp.status_code == 409
+
+    async def test_new_account_is_not_phone_verified(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        await client.post(
+            "/api/v1/auth/register",
+            json={
+                "phone": phone,
+                "full_name": "New User",
+                "password": _TEST_PASSWORD,
+            },
+        )
+        result = await db_session.exec(select(User).where(User.phone == phone))
+        user = result.one()
+        assert user.is_phone_verified is False
+
 
 class TestOTP:
     async def test_otp_verify_with_correct_code_returns_tokens(

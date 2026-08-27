@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.core.permission_codes import PermissionCode
+from app.schemas.validators import PhoneStr
 
 # ── BusinessRole ──────────────────────────────────────────────────────────
 
@@ -93,7 +94,7 @@ class AssignStaffRequest(BaseModel):
     """
 
     business_role_id: UUID
-    phone: str | None = None
+    phone: PhoneStr | None = None
     user_id: UUID | None = None
 
 

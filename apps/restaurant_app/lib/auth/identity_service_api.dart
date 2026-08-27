@@ -60,6 +60,28 @@ class IdentityServiceApi {
     }
   }
 
+  /// PATCH /users/me - Set the caller's own name/email (requires bearer token).
+  Future<UpdateProfileOutput> updateProfile({
+    required UpdateProfileInput input,
+    required String bearerToken,
+  }) async {
+    try {
+      final response = await _dio.patch(
+        '/users/me',
+        data: input.toJson(),
+        options: Options(
+          headers: {'Authorization': 'Bearer $bearerToken'},
+        ),
+      );
+      return UpdateProfileOutput.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw AuthException(
+        'Profile update failed: ${e.message}',
+        e.response?.statusCode,
+      );
+    }
+  }
+
   /// POST /auth/refresh - Refresh access token using refresh token.
   /// Note: the backend rotates the refresh token; the returned refresh_token is new.
   Future<TokenResponse> refreshAccessToken(String refreshToken) async {

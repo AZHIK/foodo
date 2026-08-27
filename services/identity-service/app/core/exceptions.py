@@ -10,6 +10,10 @@ class InvalidStoreTypeError(DomainError):
     """Raised when a store's location type is not valid for its business type."""
 
 
+class BusinessAlreadyExistsError(DomainError):
+    """Raised when a user who already owns a business tries to create another one."""
+
+
 class InvalidRefreshTokenError(DomainError):
     """Raised when a refresh token cannot be used."""
 

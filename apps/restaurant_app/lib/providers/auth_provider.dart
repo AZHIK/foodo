@@ -57,6 +57,13 @@ class AuthContext {
     this.error,
   });
 
+  /// True when the account has no name on file yet — set by the phone-first
+  /// (OTP-only) signup path, which never asks for one. The UI routes to
+  /// CompleteProfileScreen before continuing when this is true.
+  bool get needsProfile => onboardingStatus?.needsProfile ?? false;
+
+  String? get fullName => onboardingStatus?.fullName;
+
   AuthContext copyWith({
     AuthState? state,
     String? phone,
@@ -89,7 +96,7 @@ class AuthNotifier extends Notifier<AuthContext> {
 
   @override
   AuthContext build() {
-    _api = IdentityServiceApi(dio: ref.watch(_dioClientProvider));
+    _api = IdentityServiceApi(dio: ref.watch(identityServiceDioProvider));
     _tokenStorage = TokenStorage();
     _profileRepo = ref.watch(localProfileRepositoryProvider);
 
@@ -193,6 +200,37 @@ class AuthNotifier extends Notifier<AuthContext> {
     }
   }
 
+  /// Records the caller's own name/email — the first thing a phone-first
+  /// (OTP-only) signup does, since /auth/otp/verify never collects one.
+  Future<void> completeProfile({
+    required String fullName,
+    String? email,
+  }) async {
+    try {
+      final accessToken = state.accessToken;
+      if (accessToken == null) throw StateError('No access token');
+
+      final output = await _api.updateProfile(
+        input: UpdateProfileInput(fullName: fullName, email: email),
+        bearerToken: accessToken,
+      );
+
+      final status = state.onboardingStatus;
+      state = state.copyWith(
+        onboardingStatus: OnboardingStatusOutput(
+          needsOnboarding: status?.needsOnboarding ?? true,
+          businessId: status?.businessId,
+          businessName: status?.businessName,
+          fullName: output.fullName,
+          email: output.email,
+        ),
+      );
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      rethrow;
+    }
+  }
+
   /// Create a business and lock the device to it (owner onboarding path).
   Future<void> createBusinessAndOnboard({
     required String name,
@@ -201,6 +239,10 @@ class AuthNotifier extends Notifier<AuthContext> {
     String? city,
     String? countryCode,
     String? timezone,
+    String? taxId,
+    String? registrationNumber,
+    String? cuisineType,
+    String? licenseDocumentUrl,
   }) async {
     try {
       state = state.copyWith(state: AuthState.creatingBusiness);
@@ -216,6 +258,10 @@ class AuthNotifier extends Notifier<AuthContext> {
         city: city,
         countryCode: countryCode ?? 'TZ',
         timezone: timezone ?? 'Africa/Dar_es_Salaam',
+        taxId: taxId,
+        registrationNumber: registrationNumber,
+        cuisineType: cuisineType,
+        licenseDocumentUrl: licenseDocumentUrl,
       );
 
       final businessOutput = await _api.createBusiness(
@@ -311,10 +357,11 @@ class AuthNotifier extends Notifier<AuthContext> {
       final now = DateTime.now();
 
       // Create or update the profile.
+      final name = state.fullName;
       await _profileRepo.upsertProfile(
         LocalUserProfilesCompanion(
           id: Value(userId),
-          displayName: Value('Staff Member'), // Known gap: no /users/me on backend
+          displayName: Value(name != null && name.isNotEmpty ? name : 'Staff Member'),
           pinHash: Value(pinHash),
           pinSalt: Value(salt),
           roleLabel: Value(state.onboardingStatus?.businessName),
@@ -339,7 +386,10 @@ final authProvider = NotifierProvider<AuthNotifier, AuthContext>(
 );
 
 /// Provides the Dio client for auth API calls (no bearer token yet).
-final _dioClientProvider = Provider<Dio>((ref) {
+///
+/// Public (not `_dioClientProvider`) so tests can override it with a fake
+/// `HttpClientAdapter` instead of hitting a live backend.
+final identityServiceDioProvider = Provider<Dio>((ref) {
   const baseUrl = 'http://localhost:8009/api/v1';
 
   final dio = Dio(BaseOptions(

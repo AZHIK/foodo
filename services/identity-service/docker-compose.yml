@@ -21,6 +21,9 @@ services:
     environment:
       - DB_URL=postgresql+asyncpg://foodlink:foodlink@postgres:5432/foodlink_auth
       - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./keys/private.pem:/run/secrets/jwt_private.pem:ro
+      - ./keys/public.pem:/run/secrets/jwt_public.pem:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -66,6 +69,8 @@ services:
       - REDIS_URL=redis://redis:6379/0
     volumes:
       - .:/app
+      - ./keys/private.pem:/run/secrets/jwt_private.pem:ro
+      - ./keys/public.pem:/run/secrets/jwt_public.pem:ro
     depends_on:
       postgres:
         condition: service_healthy

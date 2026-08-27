@@ -37,6 +37,13 @@ class BusinessUserRegisterRequest(BaseModel):
     password: BusinessPassword | None = None
 
 
+class UpdateProfileRequest(BaseModel):
+    """Self-service update of the caller's own name/email (PATCH /users/me)."""
+
+    full_name: str
+    email: NormalizedEmailStr | None = None
+
+
 class RequestOTPRequest(BaseModel):
     """Request an OTP code sent to the user's phone."""
 

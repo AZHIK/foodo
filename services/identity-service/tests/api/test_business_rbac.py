@@ -111,8 +111,12 @@ class TestCreateBusinessRole:
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         owner = await _make_business_user(db_session)
+        # owner_user_id is unique per business now, so biz2 needs its own
+        # owner — the token below still authenticates as `owner` scoped to
+        # biz2, which is what the permission check actually looks at.
+        other_owner = await _make_business_user(db_session)
         biz1 = await _make_business(db_session, owner)
-        biz2 = await _make_business(db_session, owner)
+        biz2 = await _make_business(db_session, other_owner)
         token = _owner_token(owner, biz1.id)
 
         await client.post(
@@ -616,10 +620,11 @@ class TestAssignStaff:
     async def test_invite_rolls_back_when_assign_fails_after_user_creation(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
-        phone = f"+2555{uuid4().int % 100_000_000:08d}"
+        phone = f"+2557{uuid4().int % 100_000_000:08d}"
         owner = await _make_business_user(db_session)
+        other_owner = await _make_business_user(db_session)
         biz = await _make_business(db_session, owner)
-        other_biz = await _make_business(db_session, owner)
+        other_biz = await _make_business(db_session, other_owner)
         token = _owner_token(owner, biz.id)
 
         other_role_resp = await client.post(

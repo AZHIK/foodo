@@ -4,7 +4,7 @@ Self-service (authenticated) endpoints that act on the caller's own
 account, as opposed to admin/management endpoints.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -12,6 +12,7 @@ from app.core.database import get_async_session
 from app.deps.auth import get_current_user
 from app.models.business import UserBusinessRole
 from app.models.user import User
+from app.schemas.auth import UpdateProfileRequest
 
 router = APIRouter(prefix="/api/v1/users", tags=["User Self-Service"])
 
@@ -31,6 +32,10 @@ async def get_onboarding_status(
     also includes ``business_id`` and ``business_name`` from the user's
     single business role assignment (enforced by the one-business-per-user
     constraint).
+
+    Also carries ``full_name``/``email`` so a phone-first (OTP-only) signup
+    — which never goes through /auth/register — can tell whether the caller
+    still needs to fill in their name via PATCH /users/me.
     """
     from app.models.business import Business
 
@@ -41,11 +46,45 @@ async def get_onboarding_status(
         .limit(1)
     )
     first = result.one_or_none()
+    base: dict[str, str | bool | None] = {
+        "full_name": user.full_name,
+        "email": user.email,
+    }
     if first is None:
-        return {"needs_onboarding": True, "business_id": None, "business_name": None}
+        return base | {"needs_onboarding": True, "business_id": None, "business_name": None}
     ubr, business_name = first
-    return {
+    return base | {
         "needs_onboarding": False,
         "business_id": str(ubr.business_id),
         "business_name": business_name,
     }
+
+
+@router.patch("/me")
+async def update_profile(
+    body: UpdateProfileRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session),
+) -> dict[str, str | None]:
+    """Update the caller's own full name/email.
+
+    The only way a phone-first (OTP-only) signup can record its name, since
+    that path never goes through /auth/register.
+    """
+    if body.email:
+        result = await db.exec(
+            select(User).where(User.email == body.email, User.id != user.id)
+        )
+        if result.one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already registered",
+            )
+
+    user.full_name = body.full_name
+    user.email = body.email
+    db.add(user)
+    await db.flush()
+    await db.commit()
+
+    return {"full_name": user.full_name, "email": user.email}

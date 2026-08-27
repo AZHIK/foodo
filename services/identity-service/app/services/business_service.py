@@ -6,6 +6,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.events import publish_event
+from app.core.exceptions import BusinessAlreadyExistsError
 from app.models.business import (
     Business,
     BusinessRole,
@@ -52,11 +53,26 @@ async def create_business(
     address: str | None = None,
     status: str = "active",
     logo: str | None = None,
+    license_document_url: str | None = None,
+    cuisine_type: str | None = None,
     country_code: str = "TZ",
     city: str | None = None,
     timezone: str = "Africa/Dar_es_Salaam",
 ) -> CreateBusinessResult:
     async with db.begin():
+        existing = (
+            await db.exec(
+                select(Business).where(
+                    Business.owner_user_id == creator_user_id,
+                    Business.is_deleted == False,  # noqa: E712
+                )
+            )
+        ).one_or_none()
+        if existing is not None:
+            raise BusinessAlreadyExistsError(
+                f"User {creator_user_id} already owns business {existing.id}"
+            )
+
         business = Business(
             name=name,
             business_type=business_type,
@@ -69,6 +85,8 @@ async def create_business(
             address=address,
             status=status,
             logo=logo,
+            license_document_url=license_document_url,
+            cuisine_type=cuisine_type,
             country_code=country_code,
             city=city,
             timezone=timezone,

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../models/session.dart';
 import '../providers/session_provider.dart';
+import '../screens/auth/complete_profile_screen.dart';
 import '../screens/auth/onboarding_screen.dart';
 import '../screens/auth/otp_login_screen.dart';
 import '../screens/auth/pin_unlock_screen.dart';
@@ -52,6 +53,9 @@ abstract final class AppRoute {
 
   static const loginPath = '$authPrefix/login';
   static const loginName = 'authLogin';
+
+  static const completeProfilePath = '$authPrefix/complete-profile';
+  static const completeProfileName = 'authCompleteProfile';
 
   static const setPinPath = '$authPrefix/set-pin';
   static const setPinName = 'authSetPin';
@@ -240,6 +244,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoute.loginPath,
         name: AppRoute.loginName,
         builder: (context, state) => const OtpLoginScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.completeProfilePath,
+        name: AppRoute.completeProfileName,
+        builder: (context, state) => const CompleteProfileScreen(),
       ),
       GoRoute(
         path: AppRoute.setPinPath,

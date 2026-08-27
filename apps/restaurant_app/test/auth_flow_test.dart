@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:restaurant_pos/main.dart';
 import 'package:restaurant_pos/models/session.dart';
 import 'package:restaurant_pos/models/staff_member.dart';
+import 'package:restaurant_pos/providers/auth_provider.dart';
 import 'package:restaurant_pos/providers/session_provider.dart';
 import 'package:restaurant_pos/providers/settings_provider.dart';
 import 'package:restaurant_pos/providers/staff_provider.dart';
@@ -14,7 +16,10 @@ import 'package:restaurant_pos/screens/auth/onboarding_screen.dart';
 import 'package:restaurant_pos/screens/auth/otp_login_screen.dart';
 import 'package:restaurant_pos/screens/auth/pin_unlock_screen.dart';
 import 'package:restaurant_pos/screens/auth/set_pin_screen.dart';
+import 'package:restaurant_pos/utils/phone_validation.dart';
 import 'package:restaurant_pos/widgets/auth/auth_aside.dart';
+
+import 'test_helpers/fake_identity_backend.dart';
 
 const _widths = <double>[360, 400, 768, 1024, 1440, 1920];
 
@@ -28,11 +33,12 @@ Future<ProviderContainer> pumpSession(
   required Size size,
   SessionState? session,
   String? route,
+  List<Override> overrides = const [],
 }) async {
   tester.view.physicalSize = size * tester.view.devicePixelRatio;
   addTearDown(tester.view.reset);
 
-  final container = ProviderContainer();
+  final container = ProviderContainer(overrides: overrides);
   addTearDown(container.dispose);
 
   if (session != null) {
@@ -305,6 +311,16 @@ void main() {
   });
 
   group('OTP login', () {
+    /// The identity-service backend is real in the running app — these
+    /// widget tests stand in a fake [HttpClientAdapter] (see
+    /// `test_helpers/fake_identity_backend.dart`) instead of hitting a live
+    /// server, by overriding [identityServiceDioProvider].
+    List<Override> fakeBackend(FakeIdentityBackendState state) => [
+      identityServiceDioProvider.overrideWithValue(
+        Dio()..httpClientAdapter = FakeIdentityAdapter(state),
+      ),
+    ];
+
     testWidgets('a short number is refused before any code is sent', (
       tester,
     ) async {
@@ -313,6 +329,7 @@ void main() {
         size: const Size(1440, 900),
         session: const SessionState(bootstrapped: true),
         route: AppRoute.loginPath,
+        overrides: fakeBackend(FakeIdentityBackendState()),
       );
 
       await tester.tap(find.byKey(OtpLoginKeys.sendCode));
@@ -322,7 +339,7 @@ void main() {
       await tester.enterText(find.byKey(OtpLoginKeys.phone), '123');
       await tester.tap(find.byKey(OtpLoginKeys.sendCode));
       await tester.pumpAndSettle();
-      expect(find.text('That number looks too short'), findsOneWidget);
+      expect(find.text(tanzanianPhoneHint), findsOneWidget);
 
       // Still on the phone step — the boxes only exist once a code is sent.
       expect(find.byKey(OtpLoginKeys.digit(0)), findsNothing);
@@ -336,9 +353,10 @@ void main() {
         size: const Size(1440, 900),
         session: const SessionState(bootstrapped: true),
         route: AppRoute.loginPath,
+        overrides: fakeBackend(FakeIdentityBackendState()),
       );
 
-      await tester.enterText(find.byKey(OtpLoginKeys.phone), '81234567890');
+      await tester.enterText(find.byKey(OtpLoginKeys.phone), '712345678');
       await tester.tap(find.byKey(OtpLoginKeys.sendCode));
       await tester.pumpAndSettle();
 
@@ -354,15 +372,18 @@ void main() {
       expect(find.byKey(OtpLoginKeys.resend), findsOneWidget);
     });
 
-    testWidgets('a code other than the demo one is rejected', (tester) async {
+    testWidgets('a code other than the correct one is rejected', (
+      tester,
+    ) async {
       final container = await pumpSession(
         tester,
         size: const Size(1440, 900),
         session: const SessionState(bootstrapped: true),
         route: AppRoute.loginPath,
+        overrides: fakeBackend(FakeIdentityBackendState()),
       );
 
-      await tester.enterText(find.byKey(OtpLoginKeys.phone), '81234567890');
+      await tester.enterText(find.byKey(OtpLoginKeys.phone), '712345678');
       await tester.tap(find.byKey(OtpLoginKeys.sendCode));
       await tester.pumpAndSettle();
 
@@ -381,7 +402,7 @@ void main() {
       await tester.pump(const Duration(seconds: 31));
     });
 
-    testWidgets('the demo code signs in and hands off to the guard', (
+    testWidgets('the correct code signs in and hands off to the guard', (
       tester,
     ) async {
       final container = await pumpSession(
@@ -389,15 +410,15 @@ void main() {
         size: const Size(1440, 900),
         session: const SessionState(bootstrapped: true),
         route: AppRoute.loginPath,
+        overrides: fakeBackend(FakeIdentityBackendState()),
       );
 
-      await tester.enterText(find.byKey(OtpLoginKeys.phone), '81234567890');
+      await tester.enterText(find.byKey(OtpLoginKeys.phone), '712345678');
       await tester.tap(find.byKey(OtpLoginKeys.sendCode));
       await tester.pumpAndSettle();
 
-      final code = OtpLoginScreen.demoCode;
-      for (var i = 0; i < code.length; i++) {
-        await tester.enterText(find.byKey(OtpLoginKeys.digit(i)), code[i]);
+      for (var i = 0; i < fakeOtpCode.length; i++) {
+        await tester.enterText(find.byKey(OtpLoginKeys.digit(i)), fakeOtpCode[i]);
         await tester.pump();
       }
       await tester.pumpAndSettle();
@@ -405,9 +426,37 @@ void main() {
       final session = container.read(sessionProvider);
       expect(session.isLoggedIn, isTrue);
       // No PIN on this device yet, so Set PIN is the next step — not the
-      // Dashboard.
+      // Dashboard. (The fake backend returns a non-empty full_name, so the
+      // complete-profile step is skipped — that path has its own test group.)
       expect(session.hasPin, isFalse);
       expect(_locationOf(container), AppRoute.setPinPath);
+
+      await tester.pump(const Duration(seconds: 31));
+    });
+
+    testWidgets('a brand-new account with no name is sent to complete their profile', (
+      tester,
+    ) async {
+      final state = FakeIdentityBackendState()..fullName = '';
+      final container = await pumpSession(
+        tester,
+        size: const Size(1440, 900),
+        session: const SessionState(bootstrapped: true),
+        route: AppRoute.loginPath,
+        overrides: fakeBackend(state),
+      );
+
+      await tester.enterText(find.byKey(OtpLoginKeys.phone), '712345678');
+      await tester.tap(find.byKey(OtpLoginKeys.sendCode));
+      await tester.pumpAndSettle();
+
+      for (var i = 0; i < fakeOtpCode.length; i++) {
+        await tester.enterText(find.byKey(OtpLoginKeys.digit(i)), fakeOtpCode[i]);
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+
+      expect(_locationOf(container), AppRoute.completeProfilePath);
 
       await tester.pump(const Duration(seconds: 31));
     });

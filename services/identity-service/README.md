@@ -7,6 +7,9 @@ OTP flows, session management, and role-based access control.
 ## Quick start
 
 ```bash
+# 0. Install uv (one-time, if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
 # 1. Copy environment config
 cp .env.example .env
 
@@ -16,13 +19,25 @@ uv run python scripts/generate_keys.py
 # 3. Start everything (Postgres + Redis + API)
 docker compose up --build
 
-# 4. Verify health
+# 4. Run migrations, then seed the database (see sections below) —
+#    the app does NOT do this automatically on startup.
+
+# 5. Verify health
 curl http://localhost:8009/health
 curl http://localhost:8009/health/ready
 
-# 5. (Optional) pgAdmin + dev tools at http://localhost:5050
+# 6. (Optional) pgAdmin + dev tools at http://localhost:5050
 docker compose --profile dev up
 ```
+
+> The `keys/` directory (RSA keypair for RS256 JWT signing) must exist locally
+> before `docker compose up --build` — the Dockerfile copies it into the
+> runtime image and will fail to build without it. Step 2 creates it.
+
+> Migrations and seeding are manual, deliberate steps — the app never runs
+> them on startup. Until you run them, endpoints that depend on permissions,
+> role templates, or internal RBAC groups will fail with missing-table or
+> empty-lookup errors; `/health` will still report healthy.
 
 ## Run migrations
 

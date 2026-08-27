@@ -57,18 +57,58 @@ class OnboardingStatusOutput {
   final bool needsOnboarding;
   final String? businessId;
   final String? businessName;
+  final String fullName;
+  final String? email;
 
   OnboardingStatusOutput({
     required this.needsOnboarding,
     this.businessId,
     this.businessName,
+    this.fullName = '',
+    this.email,
   });
+
+  /// True when the account was created through the phone-first (OTP-only)
+  /// path, which never asks for a name — /auth/register is the only path
+  /// that populates it up front.
+  bool get needsProfile => fullName.trim().isEmpty;
 
   factory OnboardingStatusOutput.fromJson(Map<String, dynamic> json) {
     return OnboardingStatusOutput(
       needsOnboarding: json['needs_onboarding'] as bool? ?? false,
       businessId: json['business_id'] as String?,
       businessName: json['business_name'] as String?,
+      fullName: json['full_name'] as String? ?? '',
+      email: json['email'] as String?,
+    );
+  }
+}
+
+/// Request body for PATCH /users/me.
+class UpdateProfileInput {
+  final String fullName;
+  final String? email;
+
+  UpdateProfileInput({required this.fullName, this.email});
+
+  Map<String, dynamic> toJson() {
+    final map = <String, dynamic>{'full_name': fullName};
+    if (email != null) map['email'] = email;
+    return map;
+  }
+}
+
+/// Response from PATCH /users/me.
+class UpdateProfileOutput {
+  final String fullName;
+  final String? email;
+
+  UpdateProfileOutput({required this.fullName, this.email});
+
+  factory UpdateProfileOutput.fromJson(Map<String, dynamic> json) {
+    return UpdateProfileOutput(
+      fullName: json['full_name'] as String? ?? '',
+      email: json['email'] as String?,
     );
   }
 }
@@ -101,6 +141,10 @@ class BusinessCreateInput {
   final String? city;
   final String? countryCode;
   final String? timezone;
+  final String? taxId;
+  final String? registrationNumber;
+  final String? cuisineType;
+  final String? licenseDocumentUrl;
 
   BusinessCreateInput({
     required this.name,
@@ -111,6 +155,10 @@ class BusinessCreateInput {
     this.city,
     this.countryCode,
     this.timezone,
+    this.taxId,
+    this.registrationNumber,
+    this.cuisineType,
+    this.licenseDocumentUrl,
   });
 
   Map<String, dynamic> toJson() {
@@ -124,6 +172,14 @@ class BusinessCreateInput {
     if (city != null) map['city'] = city;
     if (countryCode != null) map['country_code'] = countryCode;
     if (timezone != null) map['timezone'] = timezone;
+    if (taxId != null && taxId!.isNotEmpty) map['tax_id'] = taxId;
+    if (registrationNumber != null && registrationNumber!.isNotEmpty) {
+      map['registration_number'] = registrationNumber;
+    }
+    if (cuisineType != null && cuisineType!.isNotEmpty) map['cuisine_type'] = cuisineType;
+    if (licenseDocumentUrl != null && licenseDocumentUrl!.isNotEmpty) {
+      map['license_document_url'] = licenseDocumentUrl;
+    }
     return map;
   }
 }

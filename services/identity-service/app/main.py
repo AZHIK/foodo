@@ -22,13 +22,6 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     configure_telemetry()
     try:
-        from app.core.database import async_session_factory
-        from app.db.seed_permissions import seed_permissions
-        from app.db.seed_role_templates import seed_role_templates
-
-        async with async_session_factory() as session:
-            await session.run_sync(seed_permissions)  # type: ignore[arg-type]
-            await session.run_sync(seed_role_templates)  # type: ignore[arg-type]
         yield
     finally:
         await close_redis()

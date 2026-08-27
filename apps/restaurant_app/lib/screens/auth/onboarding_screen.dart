@@ -16,7 +16,10 @@ import '../../providers/staff_provider.dart';
 import '../../providers/store_locations_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
+import '../../utils/email_validation.dart';
 import '../../utils/formatters.dart';
+import '../../utils/phone_validation.dart';
+import '../../auth/identity_service_api.dart' show AuthException;
 import '../../widgets/auth/auth_aside.dart';
 import '../../widgets/auth/auth_scaffold.dart';
 import '../../widgets/auth/step_bar.dart';
@@ -27,11 +30,15 @@ import '../../widgets/labeled_form_field.dart';
 abstract final class OnboardingKeys {
   static const businessName = Key('onboarding.businessName');
   static const businessType = Key('onboarding.businessType');
+  static const cuisineType = Key('onboarding.cuisineType');
+  static const licenseDocumentUrl = Key('onboarding.licenseDocumentUrl');
   static const locationName = Key('onboarding.locationName');
   static const address = Key('onboarding.address');
   static const phone = Key('onboarding.phone');
   static const currency = Key('onboarding.currency');
   static const taxRate = Key('onboarding.taxRate');
+  static const taxId = Key('onboarding.taxId');
+  static const registrationNumber = Key('onboarding.registrationNumber');
   static const orderType = Key('onboarding.orderType');
   static const back = Key('onboarding.back');
   static const next = Key('onboarding.next');
@@ -109,6 +116,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   // Step 1
   final _businessName = TextEditingController();
   BusinessType _businessType = BusinessType.restaurant;
+  final _cuisineType = TextEditingController();
+  final _licenseDocumentUrl = TextEditingController();
   String? _logoName;
   Uint8List? _logoBytes;
 
@@ -119,6 +128,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   // Step 3
   final _taxRate = TextEditingController(text: '8.25');
+  final _taxId = TextEditingController();
+  final _registrationNumber = TextEditingController();
   Currency _currency = Currency.usd;
   OrderType _orderType = OrderType.dineIn;
 
@@ -135,6 +146,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final profile = ref.read(businessProfileProvider);
     _businessName.text = profile.name;
     _businessType = profile.type;
+    _taxId.text = profile.taxId;
     _logoBytes = profile.logoBytes;
     _logoName = profile.logoName;
 
@@ -157,10 +169,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   void dispose() {
     for (final controller in [
       _businessName,
+      _cuisineType,
+      _licenseDocumentUrl,
       _locationName,
       _address,
       _phone,
       _taxRate,
+      _taxId,
+      _registrationNumber,
     ]) {
       controller.dispose();
     }
@@ -186,7 +202,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   /// only acceptable when the missing field is obvious.
   bool get _canContinue => switch (_step) {
     0 => _businessName.text.trim().isNotEmpty,
-    1 => _locationName.text.trim().isNotEmpty,
+    1 =>
+      _locationName.text.trim().isNotEmpty &&
+          _address.text.trim().isNotEmpty &&
+          _phoneIsValidOrEmpty,
     2 => _parsedRate != null,
     // The team step never blocks: an owner opening alone on a Tuesday has
     // nobody to invite yet, and hiring is not a setup task.
@@ -198,6 +217,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final parsed = double.tryParse(_taxRate.text.trim());
     if (parsed == null || parsed < 0 || parsed > 100) return null;
     return parsed / 100;
+  }
+
+  bool get _phoneIsValidOrEmpty {
+    final digits = _phone.text.replaceAll(RegExp(r'\D'), '');
+    return digits.isEmpty || isValidTanzanianPhone(digits);
   }
 
   void _back() {
@@ -236,6 +260,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     taxRate: _parsedRate,
                     defaultOrderType: _orderType,
                   ),
+            );
+        ref
+            .read(businessProfileProvider.notifier)
+            .save(
+              ref.read(businessProfileProvider).copyWith(taxId: _taxId.text.trim()),
             );
       case 3:
         _sendInvites();
@@ -289,13 +318,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Future<void> _finish() async {
     try {
       // Create the business with the form data and lock device to it.
+      final phoneDigits = _phone.text.trim();
       await ref.read(authProvider.notifier).createBusinessAndOnboard(
             name: _businessName.text.trim(),
             address: _address.text.trim(),
-            phone: _phone.text.trim(),
+            phone: phoneDigits.isEmpty ? '' : '+255$phoneDigits',
             city: _address.text.isNotEmpty ? _address.text.split(',').last.trim() : null,
             countryCode: 'TZ', // Hardcoded per the .env default
             timezone: 'Africa/Dar_es_Salaam',
+            taxId: _taxId.text.trim(),
+            registrationNumber: _registrationNumber.text.trim(),
+            cuisineType: _cuisineType.text.trim(),
+            licenseDocumentUrl: _licenseDocumentUrl.text.trim(),
           );
 
       // Mark onboarding complete in the session.
@@ -308,9 +342,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       context.go(ref.read(sessionProvider).entryRoute);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Onboarding failed: $e')),
-      );
+      final message = e is AuthException && e.statusCode == 409
+          ? 'You already have a business registered to this account.'
+          : 'Something went wrong finishing setup — please try again.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -466,6 +501,28 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             },
           ),
         ),
+        const SizedBox(height: Insets.lg),
+        LabeledFormField(
+          label: 'Cuisine type',
+          helper: 'Optional — shown to customers browsing the menu',
+          child: TextField(
+            key: OnboardingKeys.cuisineType,
+            controller: _cuisineType,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(hintText: 'Italian, Swahili, Grill…'),
+          ),
+        ),
+        const SizedBox(height: Insets.lg),
+        LabeledFormField(
+          label: 'License / registration document',
+          helper: 'Optional — paste a link to where it\'s hosted',
+          child: TextField(
+            key: OnboardingKeys.licenseDocumentUrl,
+            controller: _licenseDocumentUrl,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(hintText: 'https://…'),
+          ),
+        ),
       ],
     );
   }
@@ -492,12 +549,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         const SizedBox(height: Insets.lg),
         LabeledFormField(
           label: 'Address',
+          isRequired: true,
           child: TextField(
             key: OnboardingKeys.address,
             controller: _address,
             maxLines: 2,
             minLines: 2,
             textCapitalization: TextCapitalization.words,
+            onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               hintText: '84 Riverside Walk, San Francisco',
               border: OutlineInputBorder(
@@ -517,7 +576,26 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             key: OnboardingKeys.phone,
             controller: _phone,
             keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(hintText: '+1 415 555 0100'),
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(9),
+            ],
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: '6XXXXXXXX or 7XXXXXXXX',
+              errorText: _phoneIsValidOrEmpty ? null : tanzanianPhoneHint,
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: Insets.lg, right: Insets.sm),
+                child: Text(
+                  '+255',
+                  style: context.text.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              prefixIconConstraints: const BoxConstraints(minWidth: 0),
+            ),
           ),
         ),
       ],
@@ -574,6 +652,26 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   : 'Enter a rate between 0 and 100',
             ),
             onChanged: (_) => setState(() {}),
+          ),
+        ),
+        const SizedBox(height: Insets.lg),
+        LabeledFormField(
+          label: 'Tax ID',
+          helper: 'Optional — VAT/GST registration number, printed on receipts',
+          child: TextField(
+            key: OnboardingKeys.taxId,
+            controller: _taxId,
+            decoration: const InputDecoration(hintText: 'TIN-123456789'),
+          ),
+        ),
+        const SizedBox(height: Insets.lg),
+        LabeledFormField(
+          label: 'Business registration / license number',
+          helper: 'Optional',
+          child: TextField(
+            key: OnboardingKeys.registrationNumber,
+            controller: _registrationNumber,
+            decoration: const InputDecoration(hintText: 'BRN-000000'),
           ),
         ),
         const SizedBox(height: Insets.lg),
@@ -738,7 +836,14 @@ class _TeammateRow extends StatelessWidget {
                 key: OnboardingKeys.teammateEmail(index),
                 controller: member.email,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(hintText: 'marco@venue.com'),
+                decoration: InputDecoration(
+                  hintText: 'marco@venue.com',
+                  errorText:
+                      member.email.text.trim().isEmpty ||
+                          isValidEmailFormat(member.email.text)
+                      ? null
+                      : 'Enter a valid email address',
+                ),
                 onChanged: (_) => onChanged(),
               ),
             ),

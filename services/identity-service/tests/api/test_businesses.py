@@ -111,6 +111,66 @@ class TestCreateBusinessApi:
         assert data["business"]["city"] == "Dar es Salaam"
         assert data["business"]["business_type"] == "supplier"
 
+    async def test_creates_business_with_license_and_cuisine(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        await _seed_templates(db_session)
+        user = await _create_test_user(db_session)
+        token = _business_user_token(subject=str(user.id))
+
+        resp = await client.post(
+            "/api/v1/businesses",
+            json={
+                "name": "Cuisine Biz",
+                "business_type": "restaurant",
+                "cuisine_type": "Italian",
+                "license_document_url": "https://example.com/license.pdf",
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 201, resp.text
+        data = resp.json()
+        assert data["business"]["cuisine_type"] == "Italian"
+        assert data["business"]["license_document_url"] == "https://example.com/license.pdf"
+
+    async def test_second_business_for_same_owner_returns_409(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        await _seed_templates(db_session)
+        user = await _create_test_user(db_session)
+        token = _business_user_token(subject=str(user.id))
+
+        first = await client.post(
+            "/api/v1/businesses",
+            json={"name": "First Biz", "business_type": "restaurant"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert first.status_code == 201, first.text
+
+        second = await client.post(
+            "/api/v1/businesses",
+            json={"name": "Second Biz", "business_type": "restaurant"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert second.status_code == 409
+
+    async def test_missing_role_templates_returns_clean_500(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        # Deliberately not calling _seed_templates: no RoleTemplate rows
+        # exist for "restaurant", so create_business() hits the
+        # missing-template ValueError path.
+        user = await _create_test_user(db_session)
+        token = _business_user_token(subject=str(user.id))
+
+        resp = await client.post(
+            "/api/v1/businesses",
+            json={"name": "Unconfigured Biz", "business_type": "restaurant"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 500
+        assert resp.json()["detail"] == "Business setup is not fully configured. Contact support."
+
 
 class TestGetBusinessApi:
     async def test_creator_can_read_business_after_context_switch(

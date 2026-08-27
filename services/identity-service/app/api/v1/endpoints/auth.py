@@ -137,6 +137,14 @@ async def register(
             detail="Phone number already registered",
         )
 
+    if body.email:
+        email_result = await db.exec(select(User).where(User.email == body.email))
+        if email_result.one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already registered",
+            )
+
     password_hash = hash_password(body.password) if body.password else None
 
     # NOTE: This endpoint defaults to business_user. If driver/consumer
@@ -150,7 +158,10 @@ async def register(
         user_category=UserCategory.BUSINESS_USER,
         status=UserStatus.ACTIVE,
         password_hash=password_hash,
-        is_phone_verified=bool(body.password is None),
+        # No OTP has been checked at this point regardless of whether a
+        # password was supplied — phone verification only happens for real
+        # via /auth/otp/verify, so this must never start out True.
+        is_phone_verified=False,
     )
     db.add(user)
     await db.flush()

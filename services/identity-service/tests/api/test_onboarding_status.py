@@ -73,6 +73,8 @@ class TestOnboardingStatus:
             "needs_onboarding": True,
             "business_id": None,
             "business_name": None,
+            "full_name": user.full_name,
+            "email": user.email,
         }
 
     async def test_needs_onboarding_false_after_role_assigned(
@@ -99,6 +101,8 @@ class TestOnboardingStatus:
             "needs_onboarding": False,
             "business_id": str(biz.id),
             "business_name": biz.name,
+            "full_name": staff.full_name,
+            "email": staff.email,
         }
 
     async def test_needs_onboarding_false_after_invite_end_to_end(
@@ -135,4 +139,50 @@ class TestOnboardingStatus:
             "needs_onboarding": False,
             "business_id": str(biz.id),
             "business_name": biz.name,
+            "full_name": invited.full_name,
+            "email": invited.email,
         }
+
+
+class TestUpdateProfile:
+    async def test_updates_full_name_and_email(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        user = await _make_user(db_session)
+        resp = await client.patch(
+            "/api/v1/users/me",
+            json={"full_name": "Jane Doe", "email": "jane@example.com"},
+            headers={"Authorization": f"Bearer {_token(user)}"},
+        )
+        assert resp.status_code == 200
+        assert resp.json() == {"full_name": "Jane Doe", "email": "jane@example.com"}
+
+        status_resp = await client.get(
+            "/api/v1/users/me/onboarding-status",
+            headers={"Authorization": f"Bearer {_token(user)}"},
+        )
+        assert status_resp.json()["full_name"] == "Jane Doe"
+        assert status_resp.json()["email"] == "jane@example.com"
+
+    async def test_duplicate_email_returns_409(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        taken = await _make_user(db_session)
+        taken.email = "taken@example.com"
+        db_session.add(taken)
+        await db_session.commit()
+
+        user = await _make_user(db_session)
+        resp = await client.patch(
+            "/api/v1/users/me",
+            json={"full_name": "Someone", "email": "taken@example.com"},
+            headers={"Authorization": f"Bearer {_token(user)}"},
+        )
+        assert resp.status_code == 409
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient) -> None:
+        resp = await client.patch(
+            "/api/v1/users/me",
+            json={"full_name": "Someone"},
+        )
+        assert resp.status_code == 401

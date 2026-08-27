@@ -5,10 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../providers/auth_provider.dart';
 import '../../providers/session_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
+import '../../utils/phone_validation.dart';
 import '../../widgets/auth/auth_scaffold.dart';
 import '../../widgets/auth/otp_input.dart';
 import '../../widgets/labeled_form_field.dart';
@@ -22,31 +24,16 @@ abstract final class OtpLoginKeys {
   static Key digit(int index) => Key('otpLogin.digit.$index');
 }
 
-/// Sign in by phone number and a six-digit code.
-///
-/// UI only: no SMS is sent. One code is accepted and everything else is
-/// rejected, which is the right way round for a mock — the error state is what
-/// has to be demonstrable, and a screen that accepts anything never shows it.
-/// The code is printed on the screen for the same reason.
-///
-/// The believable delay after the sixth digit is deliberate; a login that
-/// returns instantly reads as one that did not check.
+/// Sign in by phone number and a six-digit code sent by SMS.
 class OtpLoginScreen extends ConsumerStatefulWidget {
   const OtpLoginScreen({super.key});
-
-  /// The only code this mock accepts. Shown on screen — see the class doc.
-  ///
-  /// Public so the hint under the boxes and the tests both read the one
-  /// constant; a demo whose printed code and accepted code can drift is worse
-  /// than one with no hint at all.
-  static const demoCode = '123456';
 
   @override
   ConsumerState<OtpLoginScreen> createState() => _OtpLoginScreenState();
 }
 
 class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
-  static const _codeLength = OtpLoginScreen.demoCode.length;
+  static const _codeLength = 6;
   static const _resendCooldown = Duration(seconds: 30);
   static const _verifyDelay = Duration(milliseconds: 800);
 
@@ -94,21 +81,14 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
   // Phone step
   // -------------------------------------------------------------------------
 
-  bool _isValidTanzanianPhone(String digits) {
-    if (digits.length != 9) return false;
-    // Accept both 06 and 07 prefixes (Tanzanian mobile operators)
-    if (!digits.startsWith('6') && !digits.startsWith('7')) return false;
-    return true;
-  }
-
   Future<void> _sendCode() async {
     final digits = _phone.text.replaceAll(RegExp(r'\D'), '');
     if (digits.isEmpty) {
       setState(() => _phoneError = 'Enter your phone number');
       return;
     }
-    if (!_isValidTanzanianPhone(digits)) {
-      setState(() => _phoneError = 'Enter a valid Tanzanian phone number (6 or 7XXXXXXXX)');
+    if (!isValidTanzanianPhone(digits)) {
+      setState(() => _phoneError = tanzanianPhoneHint);
       return;
     }
 
@@ -211,9 +191,14 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
     }
 
     if (!mounted) return;
-    // Where this lands — Set PIN for a first-time device, Dashboard for a
-    // returning one — is the guard's decision, read off the session it just
-    // wrote to.
+    // A brand-new (phone-first, OTP-only) account has no name on file yet —
+    // collect it before anything else. Otherwise where this lands — Set PIN
+    // for a first-time device, Dashboard for a returning one — is the
+    // guard's decision, read off the session it just wrote to.
+    if (ref.read(authProvider).needsProfile) {
+      context.go(AppRoute.completeProfilePath);
+      return;
+    }
     context.go(ref.read(sessionProvider).entryRoute);
   }
 
@@ -268,8 +253,8 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
               final digits = value.replaceAll(RegExp(r'\D'), '');
               if (digits.isEmpty) {
                 setState(() => _phoneError = null);
-              } else if (!_isValidTanzanianPhone(digits)) {
-                setState(() => _phoneError = 'Enter a valid Tanzanian phone number (6 or 7XXXXXXXX)');
+              } else if (!isValidTanzanianPhone(digits)) {
+                setState(() => _phoneError = tanzanianPhoneHint);
               } else {
                 setState(() => _phoneError = null);
               }
@@ -406,7 +391,7 @@ class _CodeHint extends StatelessWidget {
                 ),
                 const SizedBox(width: Insets.sm - 2),
                 Text(
-                  'Demo code: ${OtpLoginScreen.demoCode}',
+                  'We texted you a 6-digit code',
                   style: context.text.bodySmall?.copyWith(
                     color: context.colors.onSurfaceVariant,
                   ),

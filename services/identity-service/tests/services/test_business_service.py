@@ -31,6 +31,21 @@ async def test_user(db_session: AsyncSession) -> User:
     return user
 
 
+async def _make_user(db_session: AsyncSession) -> User:
+    """A second (or third...) distinct owner, for tests that need more than
+    one business — owner_user_id is now unique, so a single test_user can no
+    longer own two of them.
+    """
+    user = User(
+        phone=f"+2557{uuid4().hex[:9]}",
+        full_name="Business Creator",
+        user_category=UserCategory.BUSINESS_USER,
+    )
+    async with db_session.begin():
+        db_session.add(user)
+    return user
+
+
 @pytest_asyncio.fixture
 async def seeded_templates(db_session: AsyncSession) -> None:
     """Seed all role templates into the test DB."""
@@ -123,6 +138,7 @@ class TestCreateBusiness:
     async def test_supplier_gets_different_roles_than_restaurant(
         self, db_session: AsyncSession, test_user: User, seeded_templates: None
     ) -> None:
+        other_owner = await _make_user(db_session)
         rest_result = await create_business(
             db_session,
             creator_user_id=test_user.id,
@@ -131,7 +147,7 @@ class TestCreateBusiness:
         )
         supp_result = await create_business(
             db_session,
-            creator_user_id=test_user.id,
+            creator_user_id=other_owner.id,
             name="S",
             business_type="supplier",
         )
@@ -210,6 +226,26 @@ class TestCreateBusiness:
             settings = (await db_session.exec(select(StoreSetting))).all()
         assert len(settings) == 0
 
+    async def test_second_business_for_same_owner_is_rejected(
+        self, db_session: AsyncSession, test_user: User, seeded_templates: None
+    ) -> None:
+        from app.core.exceptions import BusinessAlreadyExistsError
+
+        await create_business(
+            db_session,
+            creator_user_id=test_user.id,
+            name="First Biz",
+            business_type="restaurant",
+        )
+
+        with pytest.raises(BusinessAlreadyExistsError):
+            await create_business(
+                db_session,
+                creator_user_id=test_user.id,
+                name="Second Biz",
+                business_type="restaurant",
+            )
+
     async def test_forced_failure_mid_creation_rolls_back_business_store_settings(
         self, db_session: AsyncSession, test_user: User, seeded_templates: None
     ) -> None:
@@ -280,9 +316,10 @@ class TestCreateBusiness:
     ) -> None:
         cases: list[tuple[str, Business]] = []
         for bt in ("restaurant", "supplier", "farmer", "distributor", "platform_operator"):
+            owner = await _make_user(db_session)
             result = await create_business(
                 db_session,
-                creator_user_id=test_user.id,
+                creator_user_id=owner.id,
                 name=f"Type Test {bt}",
                 business_type=bt,
             )
@@ -297,11 +334,12 @@ class TestCreateBusiness:
     async def test_each_business_store_has_unique_token(
         self, db_session: AsyncSession, test_user: User, seeded_templates: None
     ) -> None:
+        other_owner = await _make_user(db_session)
         await create_business(
             db_session, creator_user_id=test_user.id, name="Token A", business_type="restaurant"
         )
         await create_business(
-            db_session, creator_user_id=test_user.id, name="Token B", business_type="restaurant"
+            db_session, creator_user_id=other_owner.id, name="Token B", business_type="restaurant"
         )
 
         stores = (await db_session.exec(select(Store))).all()

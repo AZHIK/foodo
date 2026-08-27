@@ -1,10 +1,12 @@
 from uuid import UUID
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.database import get_async_session
+from app.core.exceptions import BusinessAlreadyExistsError
 from app.core.permission_codes import PermissionCode
 from app.deps.auth import get_current_user_id
 from app.deps.permissions import require_business_permission
@@ -12,6 +14,8 @@ from app.models.business import Business, BusinessRole
 from app.schemas.business import BusinessCreateRequest, BusinessCreateResponse, BusinessRead
 from app.schemas.business_rbac import BusinessRoleRead
 from app.services.business_service import create_business
+
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/businesses", tags=["Businesses"])
 
@@ -22,23 +26,37 @@ async def create_business_endpoint(
     db: AsyncSession = Depends(get_async_session),
     creator_user_id: str = Depends(get_current_user_id),
 ) -> BusinessCreateResponse:
-    result = await create_business(
-        db,
-        creator_user_id=UUID(creator_user_id),
-        name=body.name,
-        business_type=body.business_type.value,
-        organization_id=body.organization_id,
-        tax_id=body.tax_id,
-        registration_number=body.registration_number,
-        email=body.email,
-        phone=body.phone,
-        address=body.address,
-        status=body.status.value,
-        logo=body.logo,
-        country_code=body.country_code,
-        city=body.city,
-        timezone=body.timezone,
-    )
+    try:
+        result = await create_business(
+            db,
+            creator_user_id=UUID(creator_user_id),
+            name=body.name,
+            business_type=body.business_type.value,
+            organization_id=body.organization_id,
+            tax_id=body.tax_id,
+            registration_number=body.registration_number,
+            email=body.email,
+            phone=body.phone,
+            address=body.address,
+            status=body.status.value,
+            logo=body.logo,
+            license_document_url=body.license_document_url,
+            cuisine_type=body.cuisine_type,
+            country_code=body.country_code,
+            city=body.city,
+            timezone=body.timezone,
+        )
+    except BusinessAlreadyExistsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You already own a business",
+        ) from exc
+    except ValueError as exc:
+        logger.error("business_creation_misconfigured", error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Business setup is not fully configured. Contact support.",
+        ) from exc
     business = result.business
 
     roles = (
