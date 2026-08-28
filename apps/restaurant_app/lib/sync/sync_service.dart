@@ -34,10 +34,9 @@ class SyncService {
   bool get isSyncing => _inFlight != null;
 
   SyncService({
-    required AppDatabase db,
+    required this._db,
     required PosSyncApi api,
-  })  : _db = db,
-        _api = api;
+  })  : _api = api;
 
   /// Returns pending sales in sync order (created first).
   Future<List> queryPendingSales() {

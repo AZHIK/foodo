@@ -22,10 +22,9 @@ class CatalogSyncService {
   String? lastSyncError;
 
   CatalogSyncService({
-    required AppDatabase db,
+    required this._db,
     required InventoryCatalogApi api,
-  })  : _db = db,
-        _api = api;
+  })  : _api = api;
 
   /// Pulls the full catalog for a business location and upserts into cache.
   ///

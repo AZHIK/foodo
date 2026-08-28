@@ -15,12 +15,10 @@ class HttpSyncApi extends PosSyncApi {
   final String _bearerToken;
 
   HttpSyncApi({
-    required Dio dio,
+    required this._dio,
     required String businessId,
-    required String bearerToken,
-  })  : _dio = dio,
-        _businessId = businessId,
-        _bearerToken = bearerToken;
+    required this._bearerToken,
+  })  : _businessId = businessId;
 
   @override
   Future<SyncBatchResult> syncSales(List<PendingSaleDto> batch) async {

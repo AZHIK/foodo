@@ -15,12 +15,10 @@ class HttpInventoryCatalogApi extends InventoryCatalogApi {
   final String _bearerToken;
 
   HttpInventoryCatalogApi({
-    required Dio dio,
+    required this._dio,
     required String businessId,
-    required String bearerToken,
-  })  : _dio = dio,
-        _businessId = businessId,
-        _bearerToken = bearerToken;
+    required this._bearerToken,
+  })  : _businessId = businessId;
 
   @override
   Future<List<CatalogItemDto>> fetchItems({
