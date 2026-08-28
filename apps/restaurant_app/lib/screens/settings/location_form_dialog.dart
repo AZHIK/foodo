@@ -135,7 +135,7 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final staff = ref.watch(staffMembersProvider);
+    final staff = ref.watch(staffMembersProvider).valueOrNull ?? const [];
     final isCurrent = widget.existing?.isCurrent ?? false;
 
     return ResponsiveFormDialog(

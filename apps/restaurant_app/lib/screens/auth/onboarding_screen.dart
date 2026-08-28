@@ -46,6 +46,7 @@ abstract final class OnboardingKeys {
 
   static Key teammateName(int index) => Key('onboarding.teammate.$index.name');
   static Key teammateEmail(int index) => Key('onboarding.teammate.$index.email');
+  static Key teammatePhone(int index) => Key('onboarding.teammate.$index.phone');
   static Key removeTeammate(int index) =>
       Key('onboarding.teammate.$index.remove');
 }
@@ -81,15 +82,18 @@ class _Teammate {
 
   final TextEditingController name = TextEditingController();
   final TextEditingController email = TextEditingController();
+  final TextEditingController phone = TextEditingController();
   String? roleId;
 
-  /// A row with a name is worth sending. Email is optional here — chasing a
-  /// missing address is a better problem than blocking setup over one.
-  bool get isComplete => name.text.trim().isNotEmpty;
+  /// A row is only sendable once it has both a name and a phone number —
+  /// the real invite endpoint identifies who to invite by phone (or an
+  /// existing user id), never by email alone.
+  bool get isComplete => name.text.trim().isNotEmpty && phone.text.trim().isNotEmpty;
 
   void dispose() {
     name.dispose();
     email.dispose();
+    phone.dispose();
   }
 }
 
@@ -188,8 +192,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   /// The role a new row starts on. Whichever role the business already treats
   /// as front-of-house, falling back to the first one defined.
+  ///
+  /// Roles are business-scoped, so this is only ever non-null once the
+  /// business has actually been created (see `_createBusiness`) — until
+  /// then the wizard hasn't reached a business context yet.
   String? get _defaultRoleId {
-    final roles = ref.read(rolesProvider);
+    final roles = ref.read(rolesProvider).valueOrNull ?? const <BusinessRole>[];
     if (roles.isEmpty) return null;
     for (final role in roles) {
       if (role.hasPosAccess) return role.id;
@@ -266,30 +274,87 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             .save(
               ref.read(businessProfileProvider).copyWith(taxId: _taxId.text.trim()),
             );
+        // The business (and its roles) has to exist before the team step
+        // can offer real role choices — created here, at the boundary,
+        // rather than at the very end of the wizard.
+        if (!await _createBusiness()) return;
       case 3:
-        _sendInvites();
-        await _finish();
+        await _sendInvitesAndFinish();
         return;
     }
 
     setState(() => _step++);
   }
 
-  /// Files each filled-in row as a real pending invite, through the same
-  /// notifier the Staff screen's invite dialog uses — so the new names are
-  /// already on the Staff list, marked pending, by the time onboarding closes.
-  void _sendInvites() {
-    final notifier = ref.read(staffMembersProvider.notifier);
+  /// Creates the business for real and locks the device to it. Roles are
+  /// auto-seeded server-side from role templates as part of creation, so
+  /// this also loads them before returning — the team step that follows
+  /// needs them for its role picker.
+  Future<bool> _createBusiness() async {
+    try {
+      final phoneDigits = _phone.text.trim();
+      await ref.read(authProvider.notifier).createBusinessAndOnboard(
+            name: _businessName.text.trim(),
+            address: _address.text.trim(),
+            phone: phoneDigits.isEmpty ? '' : '+255$phoneDigits',
+            city: _address.text.isNotEmpty ? _address.text.split(',').last.trim() : null,
+            countryCode: 'TZ', // Hardcoded per the .env default
+            timezone: 'Africa/Dar_es_Salaam',
+            taxId: _taxId.text.trim(),
+            registrationNumber: _registrationNumber.text.trim(),
+            cuisineType: _cuisineType.text.trim(),
+            licenseDocumentUrl: _licenseDocumentUrl.text.trim(),
+          );
 
+      await ref.read(rolesProvider.future);
+      if (_team.isNotEmpty) {
+        _team.first.roleId ??= _defaultRoleId;
+      }
+      return true;
+    } catch (e) {
+      if (!mounted) return false;
+      final message = e is AuthException && e.statusCode == 409
+          ? 'You already have a business registered to this account.'
+          : 'Something went wrong finishing setup — please try again.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      return false;
+    }
+  }
+
+  /// Sends one real invite per filled-in row, through the same notifier the
+  /// Staff screen's invite dialog uses. A failed invite doesn't block
+  /// finishing — the business already exists by this point, and a missed
+  /// invite is recoverable from the real Staff screen afterward.
+  Future<void> _sendInvitesAndFinish() async {
+    final failed = <String>[];
     for (final member in _team) {
       if (!member.isComplete) continue;
-      notifier.invite(
-        name: member.name.text,
-        email: member.email.text,
-        phone: '',
-        roleId: member.roleId ?? _defaultRoleId ?? '',
+      try {
+        await ref.read(staffMembersProvider.notifier).assignRole(
+              phone: '+255${member.phone.text.trim()}',
+              roleId: member.roleId ?? _defaultRoleId ?? '',
+            );
+      } catch (_) {
+        failed.add(member.name.text.trim());
+      }
+    }
+
+    ref.read(sessionProvider.notifier).completeOnboarding();
+    if (!mounted) return;
+
+    if (failed.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Set up, but couldn't invite ${failed.join(', ')} — try again from Staff.",
+          ),
+        ),
       );
     }
+    // Straight to the Dashboard, where the name and logo just entered are
+    // already in the nav rail and the greeting — the payoff for having filled
+    // this in.
+    context.go(ref.read(sessionProvider).entryRoute);
   }
 
   /// Writes the business's first site into the same list Store Management
@@ -313,40 +378,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             );
 
     notifier.upsert(location);
-  }
-
-  Future<void> _finish() async {
-    try {
-      // Create the business with the form data and lock device to it.
-      final phoneDigits = _phone.text.trim();
-      await ref.read(authProvider.notifier).createBusinessAndOnboard(
-            name: _businessName.text.trim(),
-            address: _address.text.trim(),
-            phone: phoneDigits.isEmpty ? '' : '+255$phoneDigits',
-            city: _address.text.isNotEmpty ? _address.text.split(',').last.trim() : null,
-            countryCode: 'TZ', // Hardcoded per the .env default
-            timezone: 'Africa/Dar_es_Salaam',
-            taxId: _taxId.text.trim(),
-            registrationNumber: _registrationNumber.text.trim(),
-            cuisineType: _cuisineType.text.trim(),
-            licenseDocumentUrl: _licenseDocumentUrl.text.trim(),
-          );
-
-      // Mark onboarding complete in the session.
-      ref.read(sessionProvider.notifier).completeOnboarding();
-
-      if (!mounted) return;
-      // Straight to the Dashboard, where the name and logo just entered are
-      // already in the nav rail and the greeting — the payoff for having filled
-      // this in.
-      context.go(ref.read(sessionProvider).entryRoute);
-    } catch (e) {
-      if (!mounted) return;
-      final message = e is AuthException && e.statusCode == 409
-          ? 'You already have a business registered to this account.'
-          : 'Something went wrong finishing setup — please try again.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-    }
   }
 
   @override
@@ -714,7 +745,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   // ---------------------------------------------------------------------
 
   Widget _buildTeam() {
-    final roles = ref.watch(rolesProvider);
+    final roles = ref.watch(rolesProvider).valueOrNull ?? const <BusinessRole>[];
 
     return Column(
       key: const ValueKey(3),
@@ -846,6 +877,39 @@ class _TeammateRow extends StatelessWidget {
                 ),
                 onChanged: (_) => onChanged(),
               ),
+            ),
+          ),
+          const SizedBox(height: Insets.lg),
+          LabeledFormField(
+            label: 'Phone',
+            isRequired: true,
+            helper: 'Their invite is sent to this number',
+            child: TextField(
+              key: OnboardingKeys.teammatePhone(index),
+              controller: member.phone,
+              keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(9),
+              ],
+              decoration: InputDecoration(
+                hintText: '6XXXXXXXX or 7XXXXXXXX',
+                errorText: member.phone.text.isEmpty || isValidTanzanianPhone(member.phone.text)
+                    ? null
+                    : tanzanianPhoneHint,
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.only(left: Insets.lg, right: Insets.sm),
+                  child: Text(
+                    '+255',
+                    style: context.text.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                prefixIconConstraints: const BoxConstraints(minWidth: 0),
+              ),
+              onChanged: (_) => onChanged(),
             ),
           ),
           const SizedBox(height: Insets.lg),

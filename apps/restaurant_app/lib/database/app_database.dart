@@ -53,10 +53,14 @@
 /// MIGRATION STRATEGY
 /// ─────────────────────────────────────────────────────────────────────────
 ///
-/// This is `schemaVersion` 1, so `onCreate` handles everything. The
-/// `onUpgrade` skeleton is present (not omitted) so future schema changes
-/// have a place to attach, but nothing is needed here since there is no
-/// prior version to migrate from.
+/// v1 was the first version, so its `onCreate` handled everything.
+///
+/// v2 is additive-only: offline RBAC (`CachedPermissions`), an advisory
+/// stock-level cache (`CachedStockLevels`), void/refund and expense/income
+/// outboxes (`PendingVoidsRefunds`, `ExpenseEntries`, `OtherIncomeEntries`),
+/// an audit trail outbox (`LocalAuditLog`), and one new nullable column on
+/// `LocalUserProfiles` (`lastRevocationCheckAt`). No existing table is
+/// dropped, renamed, or has a column removed.
 library;
 
 import 'package:decimal/decimal.dart';
@@ -67,6 +71,12 @@ import 'tables/device_config.dart';
 import 'tables/pending_sales.dart';
 import 'tables/pending_sale_line_items.dart';
 import 'tables/cached_items.dart';
+import 'tables/cached_permissions.dart';
+import 'tables/cached_stock_levels.dart';
+import 'tables/pending_voids_refunds.dart';
+import 'tables/expense_entries.dart';
+import 'tables/other_income_entries.dart';
+import 'tables/local_audit_log.dart';
 
 part 'app_database.g.dart';
 
@@ -77,20 +87,36 @@ part 'app_database.g.dart';
   PendingSales,
   PendingSaleLineItems,
   CachedItems,
+  CachedPermissions,
+  CachedStockLevels,
+  PendingVoidsRefunds,
+  ExpenseEntries,
+  OtherIncomeEntries,
+  LocalAuditLog,
 ])
 class AppDatabase extends _$AppDatabase {
   /// Creates an instance using the provided connection.
   AppDatabase(super.connection);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) => m.createAll(),
     onUpgrade: (m, from, to) async {
-      // v1 is the first version; no migration path is needed yet.
-      // Future schema changes attach migrations here.
+      if (from < 2) {
+        await m.addColumn(
+          localUserProfiles,
+          localUserProfiles.lastRevocationCheckAt,
+        );
+        await m.createTable(cachedPermissions);
+        await m.createTable(cachedStockLevels);
+        await m.createTable(pendingVoidsRefunds);
+        await m.createTable(expenseEntries);
+        await m.createTable(otherIncomeEntries);
+        await m.createTable(localAuditLog);
+      }
     },
     beforeOpen: (details) async {
       // Enforce foreign key constraints.

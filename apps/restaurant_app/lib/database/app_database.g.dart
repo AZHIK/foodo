@@ -119,6 +119,17 @@ class $LocalUserProfilesTable extends LocalUserProfiles
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _lastRevocationCheckAtMeta =
+      const VerificationMeta('lastRevocationCheckAt');
+  @override
+  late final GeneratedColumn<DateTime> lastRevocationCheckAt =
+      GeneratedColumn<DateTime>(
+        'last_revocation_check_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -131,6 +142,7 @@ class $LocalUserProfilesTable extends LocalUserProfiles
     lockedUntil,
     createdAt,
     updatedAt,
+    lastRevocationCheckAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -225,6 +237,15 @@ class $LocalUserProfilesTable extends LocalUserProfiles
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('last_revocation_check_at')) {
+      context.handle(
+        _lastRevocationCheckAtMeta,
+        lastRevocationCheckAt.isAcceptableOrUnknown(
+          data['last_revocation_check_at']!,
+          _lastRevocationCheckAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -274,6 +295,10 @@ class $LocalUserProfilesTable extends LocalUserProfiles
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      lastRevocationCheckAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_revocation_check_at'],
+      ),
     );
   }
 
@@ -314,6 +339,11 @@ class LocalUserProfile extends DataClass
 
   /// Row last-updated timestamp.
   final DateTime updatedAt;
+
+  /// When this profile's server-side role/existence was last confirmed via
+  /// a revocation check (active-profile-only on reconnect, all-profiles on
+  /// Profile Picker open). Null means never checked since local creation.
+  final DateTime? lastRevocationCheckAt;
   const LocalUserProfile({
     required this.id,
     required this.displayName,
@@ -325,6 +355,7 @@ class LocalUserProfile extends DataClass
     this.lockedUntil,
     required this.createdAt,
     required this.updatedAt,
+    this.lastRevocationCheckAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -345,6 +376,11 @@ class LocalUserProfile extends DataClass
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || lastRevocationCheckAt != null) {
+      map['last_revocation_check_at'] = Variable<DateTime>(
+        lastRevocationCheckAt,
+      );
+    }
     return map;
   }
 
@@ -366,6 +402,9 @@ class LocalUserProfile extends DataClass
           : Value(lockedUntil),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      lastRevocationCheckAt: lastRevocationCheckAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastRevocationCheckAt),
     );
   }
 
@@ -385,6 +424,9 @@ class LocalUserProfile extends DataClass
       lockedUntil: serializer.fromJson<DateTime?>(json['lockedUntil']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      lastRevocationCheckAt: serializer.fromJson<DateTime?>(
+        json['lastRevocationCheckAt'],
+      ),
     );
   }
   @override
@@ -401,6 +443,9 @@ class LocalUserProfile extends DataClass
       'lockedUntil': serializer.toJson<DateTime?>(lockedUntil),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'lastRevocationCheckAt': serializer.toJson<DateTime?>(
+        lastRevocationCheckAt,
+      ),
     };
   }
 
@@ -415,6 +460,7 @@ class LocalUserProfile extends DataClass
     Value<DateTime?> lockedUntil = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
+    Value<DateTime?> lastRevocationCheckAt = const Value.absent(),
   }) => LocalUserProfile(
     id: id ?? this.id,
     displayName: displayName ?? this.displayName,
@@ -428,6 +474,9 @@ class LocalUserProfile extends DataClass
     lockedUntil: lockedUntil.present ? lockedUntil.value : this.lockedUntil,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    lastRevocationCheckAt: lastRevocationCheckAt.present
+        ? lastRevocationCheckAt.value
+        : this.lastRevocationCheckAt,
   );
   LocalUserProfile copyWithCompanion(LocalUserProfilesCompanion data) {
     return LocalUserProfile(
@@ -449,6 +498,9 @@ class LocalUserProfile extends DataClass
           : this.lockedUntil,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      lastRevocationCheckAt: data.lastRevocationCheckAt.present
+          ? data.lastRevocationCheckAt.value
+          : this.lastRevocationCheckAt,
     );
   }
 
@@ -464,7 +516,8 @@ class LocalUserProfile extends DataClass
           ..write('failedPinAttempts: $failedPinAttempts, ')
           ..write('lockedUntil: $lockedUntil, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('lastRevocationCheckAt: $lastRevocationCheckAt')
           ..write(')'))
         .toString();
   }
@@ -481,6 +534,7 @@ class LocalUserProfile extends DataClass
     lockedUntil,
     createdAt,
     updatedAt,
+    lastRevocationCheckAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -495,7 +549,8 @@ class LocalUserProfile extends DataClass
           other.failedPinAttempts == this.failedPinAttempts &&
           other.lockedUntil == this.lockedUntil &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.lastRevocationCheckAt == this.lastRevocationCheckAt);
 }
 
 class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
@@ -509,6 +564,7 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
   final Value<DateTime?> lockedUntil;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<DateTime?> lastRevocationCheckAt;
   final Value<int> rowid;
   const LocalUserProfilesCompanion({
     this.id = const Value.absent(),
@@ -521,6 +577,7 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
     this.lockedUntil = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.lastRevocationCheckAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalUserProfilesCompanion.insert({
@@ -534,6 +591,7 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
     this.lockedUntil = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
+    this.lastRevocationCheckAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        displayName = Value(displayName),
@@ -552,6 +610,7 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
     Expression<DateTime>? lockedUntil,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<DateTime>? lastRevocationCheckAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -565,6 +624,8 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
       if (lockedUntil != null) 'locked_until': lockedUntil,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (lastRevocationCheckAt != null)
+        'last_revocation_check_at': lastRevocationCheckAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -580,6 +641,7 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
     Value<DateTime?>? lockedUntil,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<DateTime?>? lastRevocationCheckAt,
     Value<int>? rowid,
   }) {
     return LocalUserProfilesCompanion(
@@ -593,6 +655,8 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
       lockedUntil: lockedUntil ?? this.lockedUntil,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      lastRevocationCheckAt:
+          lastRevocationCheckAt ?? this.lastRevocationCheckAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -630,6 +694,11 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (lastRevocationCheckAt.present) {
+      map['last_revocation_check_at'] = Variable<DateTime>(
+        lastRevocationCheckAt.value,
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -649,6 +718,7 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
           ..write('lockedUntil: $lockedUntil, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('lastRevocationCheckAt: $lastRevocationCheckAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3553,6 +3623,4280 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
   }
 }
 
+class $CachedPermissionsTable extends CachedPermissions
+    with TableInfo<$CachedPermissionsTable, CachedPermission> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedPermissionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES local_user_profiles (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessNameMeta = const VerificationMeta(
+    'businessName',
+  );
+  @override
+  late final GeneratedColumn<String> businessName = GeneratedColumn<String>(
+    'business_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessLocationIdMeta =
+      const VerificationMeta('businessLocationId');
+  @override
+  late final GeneratedColumn<String> businessLocationId =
+      GeneratedColumn<String>(
+        'business_location_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _roleNameMeta = const VerificationMeta(
+    'roleName',
+  );
+  @override
+  late final GeneratedColumn<String> roleName = GeneratedColumn<String>(
+    'role_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _permissionCodesMeta = const VerificationMeta(
+    'permissionCodes',
+  );
+  @override
+  late final GeneratedColumn<String> permissionCodes = GeneratedColumn<String>(
+    'permission_codes',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    userId,
+    businessId,
+    businessName,
+    businessLocationId,
+    roleName,
+    permissionCodes,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_permissions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedPermission> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('business_name')) {
+      context.handle(
+        _businessNameMeta,
+        businessName.isAcceptableOrUnknown(
+          data['business_name']!,
+          _businessNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_businessNameMeta);
+    }
+    if (data.containsKey('business_location_id')) {
+      context.handle(
+        _businessLocationIdMeta,
+        businessLocationId.isAcceptableOrUnknown(
+          data['business_location_id']!,
+          _businessLocationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_businessLocationIdMeta);
+    }
+    if (data.containsKey('role_name')) {
+      context.handle(
+        _roleNameMeta,
+        roleName.isAcceptableOrUnknown(data['role_name']!, _roleNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleNameMeta);
+    }
+    if (data.containsKey('permission_codes')) {
+      context.handle(
+        _permissionCodesMeta,
+        permissionCodes.isAcceptableOrUnknown(
+          data['permission_codes']!,
+          _permissionCodesMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_permissionCodesMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {userId};
+  @override
+  CachedPermission map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedPermission(
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      businessName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_name'],
+      )!,
+      businessLocationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_location_id'],
+      )!,
+      roleName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role_name'],
+      )!,
+      permissionCodes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}permission_codes'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedPermissionsTable createAlias(String alias) {
+    return $CachedPermissionsTable(attachedDatabase, alias);
+  }
+}
+
+class CachedPermission extends DataClass
+    implements Insertable<CachedPermission> {
+  /// Staff member's UUID; also the foreign key to `LocalUserProfiles.id`.
+  final String userId;
+
+  /// Business this permission set applies to.
+  final String businessId;
+
+  /// Cached business name for offline display.
+  final String businessName;
+
+  /// Business location this permission set applies to.
+  final String businessLocationId;
+
+  /// Cached display-only role name.
+  final String roleName;
+
+  /// JSON-encoded list of permission codes granted to this role.
+  final String permissionCodes;
+
+  /// When this permission set was last refreshed from the server.
+  final DateTime cachedAt;
+  const CachedPermission({
+    required this.userId,
+    required this.businessId,
+    required this.businessName,
+    required this.businessLocationId,
+    required this.roleName,
+    required this.permissionCodes,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['user_id'] = Variable<String>(userId);
+    map['business_id'] = Variable<String>(businessId);
+    map['business_name'] = Variable<String>(businessName);
+    map['business_location_id'] = Variable<String>(businessLocationId);
+    map['role_name'] = Variable<String>(roleName);
+    map['permission_codes'] = Variable<String>(permissionCodes);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  CachedPermissionsCompanion toCompanion(bool nullToAbsent) {
+    return CachedPermissionsCompanion(
+      userId: Value(userId),
+      businessId: Value(businessId),
+      businessName: Value(businessName),
+      businessLocationId: Value(businessLocationId),
+      roleName: Value(roleName),
+      permissionCodes: Value(permissionCodes),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory CachedPermission.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedPermission(
+      userId: serializer.fromJson<String>(json['userId']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      businessName: serializer.fromJson<String>(json['businessName']),
+      businessLocationId: serializer.fromJson<String>(
+        json['businessLocationId'],
+      ),
+      roleName: serializer.fromJson<String>(json['roleName']),
+      permissionCodes: serializer.fromJson<String>(json['permissionCodes']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'userId': serializer.toJson<String>(userId),
+      'businessId': serializer.toJson<String>(businessId),
+      'businessName': serializer.toJson<String>(businessName),
+      'businessLocationId': serializer.toJson<String>(businessLocationId),
+      'roleName': serializer.toJson<String>(roleName),
+      'permissionCodes': serializer.toJson<String>(permissionCodes),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  CachedPermission copyWith({
+    String? userId,
+    String? businessId,
+    String? businessName,
+    String? businessLocationId,
+    String? roleName,
+    String? permissionCodes,
+    DateTime? cachedAt,
+  }) => CachedPermission(
+    userId: userId ?? this.userId,
+    businessId: businessId ?? this.businessId,
+    businessName: businessName ?? this.businessName,
+    businessLocationId: businessLocationId ?? this.businessLocationId,
+    roleName: roleName ?? this.roleName,
+    permissionCodes: permissionCodes ?? this.permissionCodes,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  CachedPermission copyWithCompanion(CachedPermissionsCompanion data) {
+    return CachedPermission(
+      userId: data.userId.present ? data.userId.value : this.userId,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      businessName: data.businessName.present
+          ? data.businessName.value
+          : this.businessName,
+      businessLocationId: data.businessLocationId.present
+          ? data.businessLocationId.value
+          : this.businessLocationId,
+      roleName: data.roleName.present ? data.roleName.value : this.roleName,
+      permissionCodes: data.permissionCodes.present
+          ? data.permissionCodes.value
+          : this.permissionCodes,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedPermission(')
+          ..write('userId: $userId, ')
+          ..write('businessId: $businessId, ')
+          ..write('businessName: $businessName, ')
+          ..write('businessLocationId: $businessLocationId, ')
+          ..write('roleName: $roleName, ')
+          ..write('permissionCodes: $permissionCodes, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    userId,
+    businessId,
+    businessName,
+    businessLocationId,
+    roleName,
+    permissionCodes,
+    cachedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedPermission &&
+          other.userId == this.userId &&
+          other.businessId == this.businessId &&
+          other.businessName == this.businessName &&
+          other.businessLocationId == this.businessLocationId &&
+          other.roleName == this.roleName &&
+          other.permissionCodes == this.permissionCodes &&
+          other.cachedAt == this.cachedAt);
+}
+
+class CachedPermissionsCompanion extends UpdateCompanion<CachedPermission> {
+  final Value<String> userId;
+  final Value<String> businessId;
+  final Value<String> businessName;
+  final Value<String> businessLocationId;
+  final Value<String> roleName;
+  final Value<String> permissionCodes;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const CachedPermissionsCompanion({
+    this.userId = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.businessName = const Value.absent(),
+    this.businessLocationId = const Value.absent(),
+    this.roleName = const Value.absent(),
+    this.permissionCodes = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedPermissionsCompanion.insert({
+    required String userId,
+    required String businessId,
+    required String businessName,
+    required String businessLocationId,
+    required String roleName,
+    required String permissionCodes,
+    required DateTime cachedAt,
+    this.rowid = const Value.absent(),
+  }) : userId = Value(userId),
+       businessId = Value(businessId),
+       businessName = Value(businessName),
+       businessLocationId = Value(businessLocationId),
+       roleName = Value(roleName),
+       permissionCodes = Value(permissionCodes),
+       cachedAt = Value(cachedAt);
+  static Insertable<CachedPermission> custom({
+    Expression<String>? userId,
+    Expression<String>? businessId,
+    Expression<String>? businessName,
+    Expression<String>? businessLocationId,
+    Expression<String>? roleName,
+    Expression<String>? permissionCodes,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (userId != null) 'user_id': userId,
+      if (businessId != null) 'business_id': businessId,
+      if (businessName != null) 'business_name': businessName,
+      if (businessLocationId != null)
+        'business_location_id': businessLocationId,
+      if (roleName != null) 'role_name': roleName,
+      if (permissionCodes != null) 'permission_codes': permissionCodes,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedPermissionsCompanion copyWith({
+    Value<String>? userId,
+    Value<String>? businessId,
+    Value<String>? businessName,
+    Value<String>? businessLocationId,
+    Value<String>? roleName,
+    Value<String>? permissionCodes,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedPermissionsCompanion(
+      userId: userId ?? this.userId,
+      businessId: businessId ?? this.businessId,
+      businessName: businessName ?? this.businessName,
+      businessLocationId: businessLocationId ?? this.businessLocationId,
+      roleName: roleName ?? this.roleName,
+      permissionCodes: permissionCodes ?? this.permissionCodes,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (businessName.present) {
+      map['business_name'] = Variable<String>(businessName.value);
+    }
+    if (businessLocationId.present) {
+      map['business_location_id'] = Variable<String>(businessLocationId.value);
+    }
+    if (roleName.present) {
+      map['role_name'] = Variable<String>(roleName.value);
+    }
+    if (permissionCodes.present) {
+      map['permission_codes'] = Variable<String>(permissionCodes.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedPermissionsCompanion(')
+          ..write('userId: $userId, ')
+          ..write('businessId: $businessId, ')
+          ..write('businessName: $businessName, ')
+          ..write('businessLocationId: $businessLocationId, ')
+          ..write('roleName: $roleName, ')
+          ..write('permissionCodes: $permissionCodes, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CachedStockLevelsTable extends CachedStockLevels
+    with TableInfo<$CachedStockLevelsTable, CachedStockLevel> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedStockLevelsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
+  @override
+  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
+    'item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessLocationIdMeta =
+      const VerificationMeta('businessLocationId');
+  @override
+  late final GeneratedColumn<String> businessLocationId =
+      GeneratedColumn<String>(
+        'business_location_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<Decimal, String> currentQuantity =
+      GeneratedColumn<String>(
+        'current_quantity',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<Decimal>(
+        $CachedStockLevelsTable.$convertercurrentQuantity,
+      );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    itemId,
+    businessLocationId,
+    currentQuantity,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_stock_levels';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedStockLevel> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('item_id')) {
+      context.handle(
+        _itemIdMeta,
+        itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_itemIdMeta);
+    }
+    if (data.containsKey('business_location_id')) {
+      context.handle(
+        _businessLocationIdMeta,
+        businessLocationId.isAcceptableOrUnknown(
+          data['business_location_id']!,
+          _businessLocationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_businessLocationIdMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {itemId, businessLocationId};
+  @override
+  CachedStockLevel map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedStockLevel(
+      itemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}item_id'],
+      )!,
+      businessLocationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_location_id'],
+      )!,
+      currentQuantity: $CachedStockLevelsTable.$convertercurrentQuantity
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}current_quantity'],
+            )!,
+          ),
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedStockLevelsTable createAlias(String alias) {
+    return $CachedStockLevelsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<Decimal, String> $convertercurrentQuantity =
+      const DecimalConverter();
+}
+
+class CachedStockLevel extends DataClass
+    implements Insertable<CachedStockLevel> {
+  /// Item UUID from the inventory catalog.
+  /// Soft-references `CachedItems.id` without an FK constraint
+  /// (see `CachedItems` for rationale).
+  final String itemId;
+
+  /// Business location this stock level applies to.
+  final String businessLocationId;
+
+  /// Current on-hand quantity, as last reported by the server.
+  final Decimal currentQuantity;
+
+  /// When this stock level was last refreshed from the server.
+  final DateTime cachedAt;
+  const CachedStockLevel({
+    required this.itemId,
+    required this.businessLocationId,
+    required this.currentQuantity,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['item_id'] = Variable<String>(itemId);
+    map['business_location_id'] = Variable<String>(businessLocationId);
+    {
+      map['current_quantity'] = Variable<String>(
+        $CachedStockLevelsTable.$convertercurrentQuantity.toSql(
+          currentQuantity,
+        ),
+      );
+    }
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  CachedStockLevelsCompanion toCompanion(bool nullToAbsent) {
+    return CachedStockLevelsCompanion(
+      itemId: Value(itemId),
+      businessLocationId: Value(businessLocationId),
+      currentQuantity: Value(currentQuantity),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory CachedStockLevel.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedStockLevel(
+      itemId: serializer.fromJson<String>(json['itemId']),
+      businessLocationId: serializer.fromJson<String>(
+        json['businessLocationId'],
+      ),
+      currentQuantity: serializer.fromJson<Decimal>(json['currentQuantity']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'itemId': serializer.toJson<String>(itemId),
+      'businessLocationId': serializer.toJson<String>(businessLocationId),
+      'currentQuantity': serializer.toJson<Decimal>(currentQuantity),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  CachedStockLevel copyWith({
+    String? itemId,
+    String? businessLocationId,
+    Decimal? currentQuantity,
+    DateTime? cachedAt,
+  }) => CachedStockLevel(
+    itemId: itemId ?? this.itemId,
+    businessLocationId: businessLocationId ?? this.businessLocationId,
+    currentQuantity: currentQuantity ?? this.currentQuantity,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  CachedStockLevel copyWithCompanion(CachedStockLevelsCompanion data) {
+    return CachedStockLevel(
+      itemId: data.itemId.present ? data.itemId.value : this.itemId,
+      businessLocationId: data.businessLocationId.present
+          ? data.businessLocationId.value
+          : this.businessLocationId,
+      currentQuantity: data.currentQuantity.present
+          ? data.currentQuantity.value
+          : this.currentQuantity,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedStockLevel(')
+          ..write('itemId: $itemId, ')
+          ..write('businessLocationId: $businessLocationId, ')
+          ..write('currentQuantity: $currentQuantity, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(itemId, businessLocationId, currentQuantity, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedStockLevel &&
+          other.itemId == this.itemId &&
+          other.businessLocationId == this.businessLocationId &&
+          other.currentQuantity == this.currentQuantity &&
+          other.cachedAt == this.cachedAt);
+}
+
+class CachedStockLevelsCompanion extends UpdateCompanion<CachedStockLevel> {
+  final Value<String> itemId;
+  final Value<String> businessLocationId;
+  final Value<Decimal> currentQuantity;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const CachedStockLevelsCompanion({
+    this.itemId = const Value.absent(),
+    this.businessLocationId = const Value.absent(),
+    this.currentQuantity = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedStockLevelsCompanion.insert({
+    required String itemId,
+    required String businessLocationId,
+    required Decimal currentQuantity,
+    required DateTime cachedAt,
+    this.rowid = const Value.absent(),
+  }) : itemId = Value(itemId),
+       businessLocationId = Value(businessLocationId),
+       currentQuantity = Value(currentQuantity),
+       cachedAt = Value(cachedAt);
+  static Insertable<CachedStockLevel> custom({
+    Expression<String>? itemId,
+    Expression<String>? businessLocationId,
+    Expression<String>? currentQuantity,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (itemId != null) 'item_id': itemId,
+      if (businessLocationId != null)
+        'business_location_id': businessLocationId,
+      if (currentQuantity != null) 'current_quantity': currentQuantity,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedStockLevelsCompanion copyWith({
+    Value<String>? itemId,
+    Value<String>? businessLocationId,
+    Value<Decimal>? currentQuantity,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedStockLevelsCompanion(
+      itemId: itemId ?? this.itemId,
+      businessLocationId: businessLocationId ?? this.businessLocationId,
+      currentQuantity: currentQuantity ?? this.currentQuantity,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (itemId.present) {
+      map['item_id'] = Variable<String>(itemId.value);
+    }
+    if (businessLocationId.present) {
+      map['business_location_id'] = Variable<String>(businessLocationId.value);
+    }
+    if (currentQuantity.present) {
+      map['current_quantity'] = Variable<String>(
+        $CachedStockLevelsTable.$convertercurrentQuantity.toSql(
+          currentQuantity.value,
+        ),
+      );
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedStockLevelsCompanion(')
+          ..write('itemId: $itemId, ')
+          ..write('businessLocationId: $businessLocationId, ')
+          ..write('currentQuantity: $currentQuantity, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PendingVoidsRefundsTable extends PendingVoidsRefunds
+    with TableInfo<$PendingVoidsRefundsTable, PendingVoidsRefund> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PendingVoidsRefundsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _clientActionIdMeta = const VerificationMeta(
+    'clientActionId',
+  );
+  @override
+  late final GeneratedColumn<String> clientActionId = GeneratedColumn<String>(
+    'client_action_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _saleIdMeta = const VerificationMeta('saleId');
+  @override
+  late final GeneratedColumn<String> saleId = GeneratedColumn<String>(
+    'sale_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES pending_sales (client_sale_id)',
+    ),
+  );
+  static const VerificationMeta _newStatusMeta = const VerificationMeta(
+    'newStatus',
+  );
+  @override
+  late final GeneratedColumn<String> newStatus = GeneratedColumn<String>(
+    'new_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actorUserIdMeta = const VerificationMeta(
+    'actorUserId',
+  );
+  @override
+  late final GeneratedColumn<String> actorUserId = GeneratedColumn<String>(
+    'actor_user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _occurredAtMeta = const VerificationMeta(
+    'occurredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> occurredAt = GeneratedColumn<DateTime>(
+    'occurred_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<String> syncStatus = GeneratedColumn<String>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncAttemptCountMeta = const VerificationMeta(
+    'syncAttemptCount',
+  );
+  @override
+  late final GeneratedColumn<int> syncAttemptCount = GeneratedColumn<int>(
+    'sync_attempt_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastAttemptAtMeta = const VerificationMeta(
+    'lastAttemptAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastAttemptAt =
+      GeneratedColumn<DateTime>(
+        'last_attempt_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    clientActionId,
+    saleId,
+    newStatus,
+    reason,
+    actorUserId,
+    occurredAt,
+    syncStatus,
+    syncError,
+    syncAttemptCount,
+    lastAttemptAt,
+    syncedAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pending_voids_refunds';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PendingVoidsRefund> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('client_action_id')) {
+      context.handle(
+        _clientActionIdMeta,
+        clientActionId.isAcceptableOrUnknown(
+          data['client_action_id']!,
+          _clientActionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_clientActionIdMeta);
+    }
+    if (data.containsKey('sale_id')) {
+      context.handle(
+        _saleIdMeta,
+        saleId.isAcceptableOrUnknown(data['sale_id']!, _saleIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_saleIdMeta);
+    }
+    if (data.containsKey('new_status')) {
+      context.handle(
+        _newStatusMeta,
+        newStatus.isAcceptableOrUnknown(data['new_status']!, _newStatusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_newStatusMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonMeta);
+    }
+    if (data.containsKey('actor_user_id')) {
+      context.handle(
+        _actorUserIdMeta,
+        actorUserId.isAcceptableOrUnknown(
+          data['actor_user_id']!,
+          _actorUserIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_actorUserIdMeta);
+    }
+    if (data.containsKey('occurred_at')) {
+      context.handle(
+        _occurredAtMeta,
+        occurredAt.isAcceptableOrUnknown(data['occurred_at']!, _occurredAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_occurredAtMeta);
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
+    if (data.containsKey('sync_attempt_count')) {
+      context.handle(
+        _syncAttemptCountMeta,
+        syncAttemptCount.isAcceptableOrUnknown(
+          data['sync_attempt_count']!,
+          _syncAttemptCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_attempt_at')) {
+      context.handle(
+        _lastAttemptAtMeta,
+        lastAttemptAt.isAcceptableOrUnknown(
+          data['last_attempt_at']!,
+          _lastAttemptAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PendingVoidsRefund map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PendingVoidsRefund(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      clientActionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}client_action_id'],
+      )!,
+      saleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sale_id'],
+      )!,
+      newStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}new_status'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      )!,
+      actorUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actor_user_id'],
+      )!,
+      occurredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}occurred_at'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
+      syncAttemptCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_attempt_count'],
+      )!,
+      lastAttemptAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_attempt_at'],
+      ),
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PendingVoidsRefundsTable createAlias(String alias) {
+    return $PendingVoidsRefundsTable(attachedDatabase, alias);
+  }
+}
+
+class PendingVoidsRefund extends DataClass
+    implements Insertable<PendingVoidsRefund> {
+  /// Local row ID (autoincrement).
+  final int id;
+
+  /// Client-side idempotency key (UUID v4, unique).
+  final String clientActionId;
+
+  /// The already-synced sale this action applies to.
+  final String saleId;
+
+  /// Requested new status: `voided` or `refunded`.
+  final String newStatus;
+
+  /// Reason for the void/refund.
+  final String reason;
+
+  /// Staff member who performed the action.
+  /// Soft-references `LocalUserProfiles.id` without an FK constraint: a
+  /// profile that is later remotely revoked and deleted should not block
+  /// or cascade-delete a historical void/refund record.
+  final String actorUserId;
+
+  /// When the void/refund occurred (device time, UTC).
+  final DateTime occurredAt;
+
+  /// Local sync state: `pending`, `syncing`, `failed`, `synced`.
+  final String syncStatus;
+
+  /// Error message from the last sync attempt, if any.
+  final String? syncError;
+
+  /// Number of times this action has been attempted.
+  final int syncAttemptCount;
+
+  /// Timestamp of the last sync attempt.
+  final DateTime? lastAttemptAt;
+
+  /// When the action was successfully synced to the backend.
+  final DateTime? syncedAt;
+
+  /// Local row creation timestamp.
+  final DateTime createdAt;
+  const PendingVoidsRefund({
+    required this.id,
+    required this.clientActionId,
+    required this.saleId,
+    required this.newStatus,
+    required this.reason,
+    required this.actorUserId,
+    required this.occurredAt,
+    required this.syncStatus,
+    this.syncError,
+    required this.syncAttemptCount,
+    this.lastAttemptAt,
+    this.syncedAt,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['client_action_id'] = Variable<String>(clientActionId);
+    map['sale_id'] = Variable<String>(saleId);
+    map['new_status'] = Variable<String>(newStatus);
+    map['reason'] = Variable<String>(reason);
+    map['actor_user_id'] = Variable<String>(actorUserId);
+    map['occurred_at'] = Variable<DateTime>(occurredAt);
+    map['sync_status'] = Variable<String>(syncStatus);
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    map['sync_attempt_count'] = Variable<int>(syncAttemptCount);
+    if (!nullToAbsent || lastAttemptAt != null) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt);
+    }
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  PendingVoidsRefundsCompanion toCompanion(bool nullToAbsent) {
+    return PendingVoidsRefundsCompanion(
+      id: Value(id),
+      clientActionId: Value(clientActionId),
+      saleId: Value(saleId),
+      newStatus: Value(newStatus),
+      reason: Value(reason),
+      actorUserId: Value(actorUserId),
+      occurredAt: Value(occurredAt),
+      syncStatus: Value(syncStatus),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+      syncAttemptCount: Value(syncAttemptCount),
+      lastAttemptAt: lastAttemptAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory PendingVoidsRefund.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PendingVoidsRefund(
+      id: serializer.fromJson<int>(json['id']),
+      clientActionId: serializer.fromJson<String>(json['clientActionId']),
+      saleId: serializer.fromJson<String>(json['saleId']),
+      newStatus: serializer.fromJson<String>(json['newStatus']),
+      reason: serializer.fromJson<String>(json['reason']),
+      actorUserId: serializer.fromJson<String>(json['actorUserId']),
+      occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
+      syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+      syncAttemptCount: serializer.fromJson<int>(json['syncAttemptCount']),
+      lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'clientActionId': serializer.toJson<String>(clientActionId),
+      'saleId': serializer.toJson<String>(saleId),
+      'newStatus': serializer.toJson<String>(newStatus),
+      'reason': serializer.toJson<String>(reason),
+      'actorUserId': serializer.toJson<String>(actorUserId),
+      'occurredAt': serializer.toJson<DateTime>(occurredAt),
+      'syncStatus': serializer.toJson<String>(syncStatus),
+      'syncError': serializer.toJson<String?>(syncError),
+      'syncAttemptCount': serializer.toJson<int>(syncAttemptCount),
+      'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  PendingVoidsRefund copyWith({
+    int? id,
+    String? clientActionId,
+    String? saleId,
+    String? newStatus,
+    String? reason,
+    String? actorUserId,
+    DateTime? occurredAt,
+    String? syncStatus,
+    Value<String?> syncError = const Value.absent(),
+    int? syncAttemptCount,
+    Value<DateTime?> lastAttemptAt = const Value.absent(),
+    Value<DateTime?> syncedAt = const Value.absent(),
+    DateTime? createdAt,
+  }) => PendingVoidsRefund(
+    id: id ?? this.id,
+    clientActionId: clientActionId ?? this.clientActionId,
+    saleId: saleId ?? this.saleId,
+    newStatus: newStatus ?? this.newStatus,
+    reason: reason ?? this.reason,
+    actorUserId: actorUserId ?? this.actorUserId,
+    occurredAt: occurredAt ?? this.occurredAt,
+    syncStatus: syncStatus ?? this.syncStatus,
+    syncError: syncError.present ? syncError.value : this.syncError,
+    syncAttemptCount: syncAttemptCount ?? this.syncAttemptCount,
+    lastAttemptAt: lastAttemptAt.present
+        ? lastAttemptAt.value
+        : this.lastAttemptAt,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  PendingVoidsRefund copyWithCompanion(PendingVoidsRefundsCompanion data) {
+    return PendingVoidsRefund(
+      id: data.id.present ? data.id.value : this.id,
+      clientActionId: data.clientActionId.present
+          ? data.clientActionId.value
+          : this.clientActionId,
+      saleId: data.saleId.present ? data.saleId.value : this.saleId,
+      newStatus: data.newStatus.present ? data.newStatus.value : this.newStatus,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      actorUserId: data.actorUserId.present
+          ? data.actorUserId.value
+          : this.actorUserId,
+      occurredAt: data.occurredAt.present
+          ? data.occurredAt.value
+          : this.occurredAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+      syncAttemptCount: data.syncAttemptCount.present
+          ? data.syncAttemptCount.value
+          : this.syncAttemptCount,
+      lastAttemptAt: data.lastAttemptAt.present
+          ? data.lastAttemptAt.value
+          : this.lastAttemptAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingVoidsRefund(')
+          ..write('id: $id, ')
+          ..write('clientActionId: $clientActionId, ')
+          ..write('saleId: $saleId, ')
+          ..write('newStatus: $newStatus, ')
+          ..write('reason: $reason, ')
+          ..write('actorUserId: $actorUserId, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncAttemptCount: $syncAttemptCount, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    clientActionId,
+    saleId,
+    newStatus,
+    reason,
+    actorUserId,
+    occurredAt,
+    syncStatus,
+    syncError,
+    syncAttemptCount,
+    lastAttemptAt,
+    syncedAt,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PendingVoidsRefund &&
+          other.id == this.id &&
+          other.clientActionId == this.clientActionId &&
+          other.saleId == this.saleId &&
+          other.newStatus == this.newStatus &&
+          other.reason == this.reason &&
+          other.actorUserId == this.actorUserId &&
+          other.occurredAt == this.occurredAt &&
+          other.syncStatus == this.syncStatus &&
+          other.syncError == this.syncError &&
+          other.syncAttemptCount == this.syncAttemptCount &&
+          other.lastAttemptAt == this.lastAttemptAt &&
+          other.syncedAt == this.syncedAt &&
+          other.createdAt == this.createdAt);
+}
+
+class PendingVoidsRefundsCompanion extends UpdateCompanion<PendingVoidsRefund> {
+  final Value<int> id;
+  final Value<String> clientActionId;
+  final Value<String> saleId;
+  final Value<String> newStatus;
+  final Value<String> reason;
+  final Value<String> actorUserId;
+  final Value<DateTime> occurredAt;
+  final Value<String> syncStatus;
+  final Value<String?> syncError;
+  final Value<int> syncAttemptCount;
+  final Value<DateTime?> lastAttemptAt;
+  final Value<DateTime?> syncedAt;
+  final Value<DateTime> createdAt;
+  const PendingVoidsRefundsCompanion({
+    this.id = const Value.absent(),
+    this.clientActionId = const Value.absent(),
+    this.saleId = const Value.absent(),
+    this.newStatus = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.actorUserId = const Value.absent(),
+    this.occurredAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncAttemptCount = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  PendingVoidsRefundsCompanion.insert({
+    this.id = const Value.absent(),
+    required String clientActionId,
+    required String saleId,
+    required String newStatus,
+    required String reason,
+    required String actorUserId,
+    required DateTime occurredAt,
+    this.syncStatus = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncAttemptCount = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    required DateTime createdAt,
+  }) : clientActionId = Value(clientActionId),
+       saleId = Value(saleId),
+       newStatus = Value(newStatus),
+       reason = Value(reason),
+       actorUserId = Value(actorUserId),
+       occurredAt = Value(occurredAt),
+       createdAt = Value(createdAt);
+  static Insertable<PendingVoidsRefund> custom({
+    Expression<int>? id,
+    Expression<String>? clientActionId,
+    Expression<String>? saleId,
+    Expression<String>? newStatus,
+    Expression<String>? reason,
+    Expression<String>? actorUserId,
+    Expression<DateTime>? occurredAt,
+    Expression<String>? syncStatus,
+    Expression<String>? syncError,
+    Expression<int>? syncAttemptCount,
+    Expression<DateTime>? lastAttemptAt,
+    Expression<DateTime>? syncedAt,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (clientActionId != null) 'client_action_id': clientActionId,
+      if (saleId != null) 'sale_id': saleId,
+      if (newStatus != null) 'new_status': newStatus,
+      if (reason != null) 'reason': reason,
+      if (actorUserId != null) 'actor_user_id': actorUserId,
+      if (occurredAt != null) 'occurred_at': occurredAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (syncError != null) 'sync_error': syncError,
+      if (syncAttemptCount != null) 'sync_attempt_count': syncAttemptCount,
+      if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  PendingVoidsRefundsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? clientActionId,
+    Value<String>? saleId,
+    Value<String>? newStatus,
+    Value<String>? reason,
+    Value<String>? actorUserId,
+    Value<DateTime>? occurredAt,
+    Value<String>? syncStatus,
+    Value<String?>? syncError,
+    Value<int>? syncAttemptCount,
+    Value<DateTime?>? lastAttemptAt,
+    Value<DateTime?>? syncedAt,
+    Value<DateTime>? createdAt,
+  }) {
+    return PendingVoidsRefundsCompanion(
+      id: id ?? this.id,
+      clientActionId: clientActionId ?? this.clientActionId,
+      saleId: saleId ?? this.saleId,
+      newStatus: newStatus ?? this.newStatus,
+      reason: reason ?? this.reason,
+      actorUserId: actorUserId ?? this.actorUserId,
+      occurredAt: occurredAt ?? this.occurredAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      syncError: syncError ?? this.syncError,
+      syncAttemptCount: syncAttemptCount ?? this.syncAttemptCount,
+      lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
+      syncedAt: syncedAt ?? this.syncedAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (clientActionId.present) {
+      map['client_action_id'] = Variable<String>(clientActionId.value);
+    }
+    if (saleId.present) {
+      map['sale_id'] = Variable<String>(saleId.value);
+    }
+    if (newStatus.present) {
+      map['new_status'] = Variable<String>(newStatus.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (actorUserId.present) {
+      map['actor_user_id'] = Variable<String>(actorUserId.value);
+    }
+    if (occurredAt.present) {
+      map['occurred_at'] = Variable<DateTime>(occurredAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<String>(syncStatus.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (syncAttemptCount.present) {
+      map['sync_attempt_count'] = Variable<int>(syncAttemptCount.value);
+    }
+    if (lastAttemptAt.present) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingVoidsRefundsCompanion(')
+          ..write('id: $id, ')
+          ..write('clientActionId: $clientActionId, ')
+          ..write('saleId: $saleId, ')
+          ..write('newStatus: $newStatus, ')
+          ..write('reason: $reason, ')
+          ..write('actorUserId: $actorUserId, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncAttemptCount: $syncAttemptCount, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ExpenseEntriesTable extends ExpenseEntries
+    with TableInfo<$ExpenseEntriesTable, ExpenseEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ExpenseEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _expenseIdMeta = const VerificationMeta(
+    'expenseId',
+  );
+  @override
+  late final GeneratedColumn<String> expenseId = GeneratedColumn<String>(
+    'expense_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessLocationIdMeta =
+      const VerificationMeta('businessLocationId');
+  @override
+  late final GeneratedColumn<String> businessLocationId =
+      GeneratedColumn<String>(
+        'business_location_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Decimal, String> amount =
+      GeneratedColumn<String>(
+        'amount',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<Decimal>($ExpenseEntriesTable.$converteramount);
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _occurredAtMeta = const VerificationMeta(
+    'occurredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> occurredAt = GeneratedColumn<DateTime>(
+    'occurred_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actorUserIdMeta = const VerificationMeta(
+    'actorUserId',
+  );
+  @override
+  late final GeneratedColumn<String> actorUserId = GeneratedColumn<String>(
+    'actor_user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<String> syncStatus = GeneratedColumn<String>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncAttemptCountMeta = const VerificationMeta(
+    'syncAttemptCount',
+  );
+  @override
+  late final GeneratedColumn<int> syncAttemptCount = GeneratedColumn<int>(
+    'sync_attempt_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastAttemptAtMeta = const VerificationMeta(
+    'lastAttemptAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastAttemptAt =
+      GeneratedColumn<DateTime>(
+        'last_attempt_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    expenseId,
+    businessId,
+    businessLocationId,
+    category,
+    amount,
+    description,
+    occurredAt,
+    actorUserId,
+    syncStatus,
+    syncError,
+    syncAttemptCount,
+    lastAttemptAt,
+    syncedAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'expense_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ExpenseEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('expense_id')) {
+      context.handle(
+        _expenseIdMeta,
+        expenseId.isAcceptableOrUnknown(data['expense_id']!, _expenseIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_expenseIdMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('business_location_id')) {
+      context.handle(
+        _businessLocationIdMeta,
+        businessLocationId.isAcceptableOrUnknown(
+          data['business_location_id']!,
+          _businessLocationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_businessLocationIdMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('occurred_at')) {
+      context.handle(
+        _occurredAtMeta,
+        occurredAt.isAcceptableOrUnknown(data['occurred_at']!, _occurredAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_occurredAtMeta);
+    }
+    if (data.containsKey('actor_user_id')) {
+      context.handle(
+        _actorUserIdMeta,
+        actorUserId.isAcceptableOrUnknown(
+          data['actor_user_id']!,
+          _actorUserIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_actorUserIdMeta);
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
+    if (data.containsKey('sync_attempt_count')) {
+      context.handle(
+        _syncAttemptCountMeta,
+        syncAttemptCount.isAcceptableOrUnknown(
+          data['sync_attempt_count']!,
+          _syncAttemptCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_attempt_at')) {
+      context.handle(
+        _lastAttemptAtMeta,
+        lastAttemptAt.isAcceptableOrUnknown(
+          data['last_attempt_at']!,
+          _lastAttemptAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ExpenseEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ExpenseEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      expenseId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}expense_id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      businessLocationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_location_id'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      amount: $ExpenseEntriesTable.$converteramount.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}amount'],
+        )!,
+      ),
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      occurredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}occurred_at'],
+      )!,
+      actorUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actor_user_id'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
+      syncAttemptCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_attempt_count'],
+      )!,
+      lastAttemptAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_attempt_at'],
+      ),
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ExpenseEntriesTable createAlias(String alias) {
+    return $ExpenseEntriesTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<Decimal, String> $converteramount =
+      const DecimalConverter();
+}
+
+class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
+  /// Local row ID (autoincrement).
+  final int id;
+
+  /// Client-side idempotency key (UUID v4, unique).
+  final String expenseId;
+
+  /// Business this expense belongs to.
+  final String businessId;
+
+  /// Business location this expense belongs to.
+  final String businessLocationId;
+
+  /// Expense category. Controlled list, not free text, so reporting
+  /// stays meaningful: rent|utilities|salaries|repairs|supplies|other.
+  final String category;
+
+  /// Expense amount.
+  final Decimal amount;
+
+  /// Optional free-text description.
+  final String? description;
+
+  /// When the expense occurred (device time, UTC).
+  final DateTime occurredAt;
+
+  /// Staff member who recorded the expense.
+  /// Soft-references `LocalUserProfiles.id` without an FK constraint: a
+  /// profile that is later remotely revoked and deleted should not block
+  /// or cascade-delete a historical expense record.
+  final String actorUserId;
+
+  /// Local sync state: `pending`, `syncing`, `failed`, `synced`.
+  final String syncStatus;
+
+  /// Error message from the last sync attempt, if any.
+  final String? syncError;
+
+  /// Number of times this entry has been attempted.
+  final int syncAttemptCount;
+
+  /// Timestamp of the last sync attempt.
+  final DateTime? lastAttemptAt;
+
+  /// When the entry was successfully synced to the backend.
+  final DateTime? syncedAt;
+
+  /// Local row creation timestamp.
+  final DateTime createdAt;
+  const ExpenseEntry({
+    required this.id,
+    required this.expenseId,
+    required this.businessId,
+    required this.businessLocationId,
+    required this.category,
+    required this.amount,
+    this.description,
+    required this.occurredAt,
+    required this.actorUserId,
+    required this.syncStatus,
+    this.syncError,
+    required this.syncAttemptCount,
+    this.lastAttemptAt,
+    this.syncedAt,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['expense_id'] = Variable<String>(expenseId);
+    map['business_id'] = Variable<String>(businessId);
+    map['business_location_id'] = Variable<String>(businessLocationId);
+    map['category'] = Variable<String>(category);
+    {
+      map['amount'] = Variable<String>(
+        $ExpenseEntriesTable.$converteramount.toSql(amount),
+      );
+    }
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['occurred_at'] = Variable<DateTime>(occurredAt);
+    map['actor_user_id'] = Variable<String>(actorUserId);
+    map['sync_status'] = Variable<String>(syncStatus);
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    map['sync_attempt_count'] = Variable<int>(syncAttemptCount);
+    if (!nullToAbsent || lastAttemptAt != null) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt);
+    }
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  ExpenseEntriesCompanion toCompanion(bool nullToAbsent) {
+    return ExpenseEntriesCompanion(
+      id: Value(id),
+      expenseId: Value(expenseId),
+      businessId: Value(businessId),
+      businessLocationId: Value(businessLocationId),
+      category: Value(category),
+      amount: Value(amount),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      occurredAt: Value(occurredAt),
+      actorUserId: Value(actorUserId),
+      syncStatus: Value(syncStatus),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+      syncAttemptCount: Value(syncAttemptCount),
+      lastAttemptAt: lastAttemptAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory ExpenseEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ExpenseEntry(
+      id: serializer.fromJson<int>(json['id']),
+      expenseId: serializer.fromJson<String>(json['expenseId']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      businessLocationId: serializer.fromJson<String>(
+        json['businessLocationId'],
+      ),
+      category: serializer.fromJson<String>(json['category']),
+      amount: serializer.fromJson<Decimal>(json['amount']),
+      description: serializer.fromJson<String?>(json['description']),
+      occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
+      actorUserId: serializer.fromJson<String>(json['actorUserId']),
+      syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+      syncAttemptCount: serializer.fromJson<int>(json['syncAttemptCount']),
+      lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'expenseId': serializer.toJson<String>(expenseId),
+      'businessId': serializer.toJson<String>(businessId),
+      'businessLocationId': serializer.toJson<String>(businessLocationId),
+      'category': serializer.toJson<String>(category),
+      'amount': serializer.toJson<Decimal>(amount),
+      'description': serializer.toJson<String?>(description),
+      'occurredAt': serializer.toJson<DateTime>(occurredAt),
+      'actorUserId': serializer.toJson<String>(actorUserId),
+      'syncStatus': serializer.toJson<String>(syncStatus),
+      'syncError': serializer.toJson<String?>(syncError),
+      'syncAttemptCount': serializer.toJson<int>(syncAttemptCount),
+      'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  ExpenseEntry copyWith({
+    int? id,
+    String? expenseId,
+    String? businessId,
+    String? businessLocationId,
+    String? category,
+    Decimal? amount,
+    Value<String?> description = const Value.absent(),
+    DateTime? occurredAt,
+    String? actorUserId,
+    String? syncStatus,
+    Value<String?> syncError = const Value.absent(),
+    int? syncAttemptCount,
+    Value<DateTime?> lastAttemptAt = const Value.absent(),
+    Value<DateTime?> syncedAt = const Value.absent(),
+    DateTime? createdAt,
+  }) => ExpenseEntry(
+    id: id ?? this.id,
+    expenseId: expenseId ?? this.expenseId,
+    businessId: businessId ?? this.businessId,
+    businessLocationId: businessLocationId ?? this.businessLocationId,
+    category: category ?? this.category,
+    amount: amount ?? this.amount,
+    description: description.present ? description.value : this.description,
+    occurredAt: occurredAt ?? this.occurredAt,
+    actorUserId: actorUserId ?? this.actorUserId,
+    syncStatus: syncStatus ?? this.syncStatus,
+    syncError: syncError.present ? syncError.value : this.syncError,
+    syncAttemptCount: syncAttemptCount ?? this.syncAttemptCount,
+    lastAttemptAt: lastAttemptAt.present
+        ? lastAttemptAt.value
+        : this.lastAttemptAt,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  ExpenseEntry copyWithCompanion(ExpenseEntriesCompanion data) {
+    return ExpenseEntry(
+      id: data.id.present ? data.id.value : this.id,
+      expenseId: data.expenseId.present ? data.expenseId.value : this.expenseId,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      businessLocationId: data.businessLocationId.present
+          ? data.businessLocationId.value
+          : this.businessLocationId,
+      category: data.category.present ? data.category.value : this.category,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      occurredAt: data.occurredAt.present
+          ? data.occurredAt.value
+          : this.occurredAt,
+      actorUserId: data.actorUserId.present
+          ? data.actorUserId.value
+          : this.actorUserId,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+      syncAttemptCount: data.syncAttemptCount.present
+          ? data.syncAttemptCount.value
+          : this.syncAttemptCount,
+      lastAttemptAt: data.lastAttemptAt.present
+          ? data.lastAttemptAt.value
+          : this.lastAttemptAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExpenseEntry(')
+          ..write('id: $id, ')
+          ..write('expenseId: $expenseId, ')
+          ..write('businessId: $businessId, ')
+          ..write('businessLocationId: $businessLocationId, ')
+          ..write('category: $category, ')
+          ..write('amount: $amount, ')
+          ..write('description: $description, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('actorUserId: $actorUserId, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncAttemptCount: $syncAttemptCount, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    expenseId,
+    businessId,
+    businessLocationId,
+    category,
+    amount,
+    description,
+    occurredAt,
+    actorUserId,
+    syncStatus,
+    syncError,
+    syncAttemptCount,
+    lastAttemptAt,
+    syncedAt,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ExpenseEntry &&
+          other.id == this.id &&
+          other.expenseId == this.expenseId &&
+          other.businessId == this.businessId &&
+          other.businessLocationId == this.businessLocationId &&
+          other.category == this.category &&
+          other.amount == this.amount &&
+          other.description == this.description &&
+          other.occurredAt == this.occurredAt &&
+          other.actorUserId == this.actorUserId &&
+          other.syncStatus == this.syncStatus &&
+          other.syncError == this.syncError &&
+          other.syncAttemptCount == this.syncAttemptCount &&
+          other.lastAttemptAt == this.lastAttemptAt &&
+          other.syncedAt == this.syncedAt &&
+          other.createdAt == this.createdAt);
+}
+
+class ExpenseEntriesCompanion extends UpdateCompanion<ExpenseEntry> {
+  final Value<int> id;
+  final Value<String> expenseId;
+  final Value<String> businessId;
+  final Value<String> businessLocationId;
+  final Value<String> category;
+  final Value<Decimal> amount;
+  final Value<String?> description;
+  final Value<DateTime> occurredAt;
+  final Value<String> actorUserId;
+  final Value<String> syncStatus;
+  final Value<String?> syncError;
+  final Value<int> syncAttemptCount;
+  final Value<DateTime?> lastAttemptAt;
+  final Value<DateTime?> syncedAt;
+  final Value<DateTime> createdAt;
+  const ExpenseEntriesCompanion({
+    this.id = const Value.absent(),
+    this.expenseId = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.businessLocationId = const Value.absent(),
+    this.category = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.description = const Value.absent(),
+    this.occurredAt = const Value.absent(),
+    this.actorUserId = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncAttemptCount = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  ExpenseEntriesCompanion.insert({
+    this.id = const Value.absent(),
+    required String expenseId,
+    required String businessId,
+    required String businessLocationId,
+    required String category,
+    required Decimal amount,
+    this.description = const Value.absent(),
+    required DateTime occurredAt,
+    required String actorUserId,
+    this.syncStatus = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncAttemptCount = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    required DateTime createdAt,
+  }) : expenseId = Value(expenseId),
+       businessId = Value(businessId),
+       businessLocationId = Value(businessLocationId),
+       category = Value(category),
+       amount = Value(amount),
+       occurredAt = Value(occurredAt),
+       actorUserId = Value(actorUserId),
+       createdAt = Value(createdAt);
+  static Insertable<ExpenseEntry> custom({
+    Expression<int>? id,
+    Expression<String>? expenseId,
+    Expression<String>? businessId,
+    Expression<String>? businessLocationId,
+    Expression<String>? category,
+    Expression<String>? amount,
+    Expression<String>? description,
+    Expression<DateTime>? occurredAt,
+    Expression<String>? actorUserId,
+    Expression<String>? syncStatus,
+    Expression<String>? syncError,
+    Expression<int>? syncAttemptCount,
+    Expression<DateTime>? lastAttemptAt,
+    Expression<DateTime>? syncedAt,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (expenseId != null) 'expense_id': expenseId,
+      if (businessId != null) 'business_id': businessId,
+      if (businessLocationId != null)
+        'business_location_id': businessLocationId,
+      if (category != null) 'category': category,
+      if (amount != null) 'amount': amount,
+      if (description != null) 'description': description,
+      if (occurredAt != null) 'occurred_at': occurredAt,
+      if (actorUserId != null) 'actor_user_id': actorUserId,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (syncError != null) 'sync_error': syncError,
+      if (syncAttemptCount != null) 'sync_attempt_count': syncAttemptCount,
+      if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  ExpenseEntriesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? expenseId,
+    Value<String>? businessId,
+    Value<String>? businessLocationId,
+    Value<String>? category,
+    Value<Decimal>? amount,
+    Value<String?>? description,
+    Value<DateTime>? occurredAt,
+    Value<String>? actorUserId,
+    Value<String>? syncStatus,
+    Value<String?>? syncError,
+    Value<int>? syncAttemptCount,
+    Value<DateTime?>? lastAttemptAt,
+    Value<DateTime?>? syncedAt,
+    Value<DateTime>? createdAt,
+  }) {
+    return ExpenseEntriesCompanion(
+      id: id ?? this.id,
+      expenseId: expenseId ?? this.expenseId,
+      businessId: businessId ?? this.businessId,
+      businessLocationId: businessLocationId ?? this.businessLocationId,
+      category: category ?? this.category,
+      amount: amount ?? this.amount,
+      description: description ?? this.description,
+      occurredAt: occurredAt ?? this.occurredAt,
+      actorUserId: actorUserId ?? this.actorUserId,
+      syncStatus: syncStatus ?? this.syncStatus,
+      syncError: syncError ?? this.syncError,
+      syncAttemptCount: syncAttemptCount ?? this.syncAttemptCount,
+      lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
+      syncedAt: syncedAt ?? this.syncedAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (expenseId.present) {
+      map['expense_id'] = Variable<String>(expenseId.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (businessLocationId.present) {
+      map['business_location_id'] = Variable<String>(businessLocationId.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<String>(
+        $ExpenseEntriesTable.$converteramount.toSql(amount.value),
+      );
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (occurredAt.present) {
+      map['occurred_at'] = Variable<DateTime>(occurredAt.value);
+    }
+    if (actorUserId.present) {
+      map['actor_user_id'] = Variable<String>(actorUserId.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<String>(syncStatus.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (syncAttemptCount.present) {
+      map['sync_attempt_count'] = Variable<int>(syncAttemptCount.value);
+    }
+    if (lastAttemptAt.present) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExpenseEntriesCompanion(')
+          ..write('id: $id, ')
+          ..write('expenseId: $expenseId, ')
+          ..write('businessId: $businessId, ')
+          ..write('businessLocationId: $businessLocationId, ')
+          ..write('category: $category, ')
+          ..write('amount: $amount, ')
+          ..write('description: $description, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('actorUserId: $actorUserId, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncAttemptCount: $syncAttemptCount, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $OtherIncomeEntriesTable extends OtherIncomeEntries
+    with TableInfo<$OtherIncomeEntriesTable, OtherIncomeEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OtherIncomeEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _incomeIdMeta = const VerificationMeta(
+    'incomeId',
+  );
+  @override
+  late final GeneratedColumn<String> incomeId = GeneratedColumn<String>(
+    'income_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessLocationIdMeta =
+      const VerificationMeta('businessLocationId');
+  @override
+  late final GeneratedColumn<String> businessLocationId =
+      GeneratedColumn<String>(
+        'business_location_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Decimal, String> amount =
+      GeneratedColumn<String>(
+        'amount',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<Decimal>($OtherIncomeEntriesTable.$converteramount);
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _occurredAtMeta = const VerificationMeta(
+    'occurredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> occurredAt = GeneratedColumn<DateTime>(
+    'occurred_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actorUserIdMeta = const VerificationMeta(
+    'actorUserId',
+  );
+  @override
+  late final GeneratedColumn<String> actorUserId = GeneratedColumn<String>(
+    'actor_user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<String> syncStatus = GeneratedColumn<String>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncAttemptCountMeta = const VerificationMeta(
+    'syncAttemptCount',
+  );
+  @override
+  late final GeneratedColumn<int> syncAttemptCount = GeneratedColumn<int>(
+    'sync_attempt_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastAttemptAtMeta = const VerificationMeta(
+    'lastAttemptAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastAttemptAt =
+      GeneratedColumn<DateTime>(
+        'last_attempt_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    incomeId,
+    businessId,
+    businessLocationId,
+    category,
+    amount,
+    description,
+    occurredAt,
+    actorUserId,
+    syncStatus,
+    syncError,
+    syncAttemptCount,
+    lastAttemptAt,
+    syncedAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'other_income_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OtherIncomeEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('income_id')) {
+      context.handle(
+        _incomeIdMeta,
+        incomeId.isAcceptableOrUnknown(data['income_id']!, _incomeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_incomeIdMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('business_location_id')) {
+      context.handle(
+        _businessLocationIdMeta,
+        businessLocationId.isAcceptableOrUnknown(
+          data['business_location_id']!,
+          _businessLocationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_businessLocationIdMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('occurred_at')) {
+      context.handle(
+        _occurredAtMeta,
+        occurredAt.isAcceptableOrUnknown(data['occurred_at']!, _occurredAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_occurredAtMeta);
+    }
+    if (data.containsKey('actor_user_id')) {
+      context.handle(
+        _actorUserIdMeta,
+        actorUserId.isAcceptableOrUnknown(
+          data['actor_user_id']!,
+          _actorUserIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_actorUserIdMeta);
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
+    if (data.containsKey('sync_attempt_count')) {
+      context.handle(
+        _syncAttemptCountMeta,
+        syncAttemptCount.isAcceptableOrUnknown(
+          data['sync_attempt_count']!,
+          _syncAttemptCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_attempt_at')) {
+      context.handle(
+        _lastAttemptAtMeta,
+        lastAttemptAt.isAcceptableOrUnknown(
+          data['last_attempt_at']!,
+          _lastAttemptAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OtherIncomeEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OtherIncomeEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      incomeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}income_id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      businessLocationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_location_id'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      amount: $OtherIncomeEntriesTable.$converteramount.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}amount'],
+        )!,
+      ),
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      occurredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}occurred_at'],
+      )!,
+      actorUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actor_user_id'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
+      syncAttemptCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_attempt_count'],
+      )!,
+      lastAttemptAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_attempt_at'],
+      ),
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $OtherIncomeEntriesTable createAlias(String alias) {
+    return $OtherIncomeEntriesTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<Decimal, String> $converteramount =
+      const DecimalConverter();
+}
+
+class OtherIncomeEntry extends DataClass
+    implements Insertable<OtherIncomeEntry> {
+  /// Local row ID (autoincrement).
+  final int id;
+
+  /// Client-side idempotency key (UUID v4, unique).
+  final String incomeId;
+
+  /// Business this income belongs to.
+  final String businessId;
+
+  /// Business location this income belongs to.
+  final String businessLocationId;
+
+  /// Income category. Controlled list, not free text, same reasoning as
+  /// `ExpenseEntries.category`: equipment_rental|catering_deposit|other.
+  final String category;
+
+  /// Income amount.
+  final Decimal amount;
+
+  /// Optional free-text description.
+  final String? description;
+
+  /// When the income occurred (device time, UTC).
+  final DateTime occurredAt;
+
+  /// Staff member who recorded the income.
+  /// Soft-references `LocalUserProfiles.id` without an FK constraint, same
+  /// rationale as `ExpenseEntries.actorUserId`.
+  final String actorUserId;
+
+  /// Local sync state: `pending`, `syncing`, `failed`, `synced`.
+  final String syncStatus;
+
+  /// Error message from the last sync attempt, if any.
+  final String? syncError;
+
+  /// Number of times this entry has been attempted.
+  final int syncAttemptCount;
+
+  /// Timestamp of the last sync attempt.
+  final DateTime? lastAttemptAt;
+
+  /// When the entry was successfully synced to the backend.
+  final DateTime? syncedAt;
+
+  /// Local row creation timestamp.
+  final DateTime createdAt;
+  const OtherIncomeEntry({
+    required this.id,
+    required this.incomeId,
+    required this.businessId,
+    required this.businessLocationId,
+    required this.category,
+    required this.amount,
+    this.description,
+    required this.occurredAt,
+    required this.actorUserId,
+    required this.syncStatus,
+    this.syncError,
+    required this.syncAttemptCount,
+    this.lastAttemptAt,
+    this.syncedAt,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['income_id'] = Variable<String>(incomeId);
+    map['business_id'] = Variable<String>(businessId);
+    map['business_location_id'] = Variable<String>(businessLocationId);
+    map['category'] = Variable<String>(category);
+    {
+      map['amount'] = Variable<String>(
+        $OtherIncomeEntriesTable.$converteramount.toSql(amount),
+      );
+    }
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['occurred_at'] = Variable<DateTime>(occurredAt);
+    map['actor_user_id'] = Variable<String>(actorUserId);
+    map['sync_status'] = Variable<String>(syncStatus);
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    map['sync_attempt_count'] = Variable<int>(syncAttemptCount);
+    if (!nullToAbsent || lastAttemptAt != null) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt);
+    }
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  OtherIncomeEntriesCompanion toCompanion(bool nullToAbsent) {
+    return OtherIncomeEntriesCompanion(
+      id: Value(id),
+      incomeId: Value(incomeId),
+      businessId: Value(businessId),
+      businessLocationId: Value(businessLocationId),
+      category: Value(category),
+      amount: Value(amount),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      occurredAt: Value(occurredAt),
+      actorUserId: Value(actorUserId),
+      syncStatus: Value(syncStatus),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+      syncAttemptCount: Value(syncAttemptCount),
+      lastAttemptAt: lastAttemptAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory OtherIncomeEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OtherIncomeEntry(
+      id: serializer.fromJson<int>(json['id']),
+      incomeId: serializer.fromJson<String>(json['incomeId']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      businessLocationId: serializer.fromJson<String>(
+        json['businessLocationId'],
+      ),
+      category: serializer.fromJson<String>(json['category']),
+      amount: serializer.fromJson<Decimal>(json['amount']),
+      description: serializer.fromJson<String?>(json['description']),
+      occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
+      actorUserId: serializer.fromJson<String>(json['actorUserId']),
+      syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+      syncAttemptCount: serializer.fromJson<int>(json['syncAttemptCount']),
+      lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'incomeId': serializer.toJson<String>(incomeId),
+      'businessId': serializer.toJson<String>(businessId),
+      'businessLocationId': serializer.toJson<String>(businessLocationId),
+      'category': serializer.toJson<String>(category),
+      'amount': serializer.toJson<Decimal>(amount),
+      'description': serializer.toJson<String?>(description),
+      'occurredAt': serializer.toJson<DateTime>(occurredAt),
+      'actorUserId': serializer.toJson<String>(actorUserId),
+      'syncStatus': serializer.toJson<String>(syncStatus),
+      'syncError': serializer.toJson<String?>(syncError),
+      'syncAttemptCount': serializer.toJson<int>(syncAttemptCount),
+      'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  OtherIncomeEntry copyWith({
+    int? id,
+    String? incomeId,
+    String? businessId,
+    String? businessLocationId,
+    String? category,
+    Decimal? amount,
+    Value<String?> description = const Value.absent(),
+    DateTime? occurredAt,
+    String? actorUserId,
+    String? syncStatus,
+    Value<String?> syncError = const Value.absent(),
+    int? syncAttemptCount,
+    Value<DateTime?> lastAttemptAt = const Value.absent(),
+    Value<DateTime?> syncedAt = const Value.absent(),
+    DateTime? createdAt,
+  }) => OtherIncomeEntry(
+    id: id ?? this.id,
+    incomeId: incomeId ?? this.incomeId,
+    businessId: businessId ?? this.businessId,
+    businessLocationId: businessLocationId ?? this.businessLocationId,
+    category: category ?? this.category,
+    amount: amount ?? this.amount,
+    description: description.present ? description.value : this.description,
+    occurredAt: occurredAt ?? this.occurredAt,
+    actorUserId: actorUserId ?? this.actorUserId,
+    syncStatus: syncStatus ?? this.syncStatus,
+    syncError: syncError.present ? syncError.value : this.syncError,
+    syncAttemptCount: syncAttemptCount ?? this.syncAttemptCount,
+    lastAttemptAt: lastAttemptAt.present
+        ? lastAttemptAt.value
+        : this.lastAttemptAt,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  OtherIncomeEntry copyWithCompanion(OtherIncomeEntriesCompanion data) {
+    return OtherIncomeEntry(
+      id: data.id.present ? data.id.value : this.id,
+      incomeId: data.incomeId.present ? data.incomeId.value : this.incomeId,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      businessLocationId: data.businessLocationId.present
+          ? data.businessLocationId.value
+          : this.businessLocationId,
+      category: data.category.present ? data.category.value : this.category,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      occurredAt: data.occurredAt.present
+          ? data.occurredAt.value
+          : this.occurredAt,
+      actorUserId: data.actorUserId.present
+          ? data.actorUserId.value
+          : this.actorUserId,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+      syncAttemptCount: data.syncAttemptCount.present
+          ? data.syncAttemptCount.value
+          : this.syncAttemptCount,
+      lastAttemptAt: data.lastAttemptAt.present
+          ? data.lastAttemptAt.value
+          : this.lastAttemptAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OtherIncomeEntry(')
+          ..write('id: $id, ')
+          ..write('incomeId: $incomeId, ')
+          ..write('businessId: $businessId, ')
+          ..write('businessLocationId: $businessLocationId, ')
+          ..write('category: $category, ')
+          ..write('amount: $amount, ')
+          ..write('description: $description, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('actorUserId: $actorUserId, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncAttemptCount: $syncAttemptCount, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    incomeId,
+    businessId,
+    businessLocationId,
+    category,
+    amount,
+    description,
+    occurredAt,
+    actorUserId,
+    syncStatus,
+    syncError,
+    syncAttemptCount,
+    lastAttemptAt,
+    syncedAt,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OtherIncomeEntry &&
+          other.id == this.id &&
+          other.incomeId == this.incomeId &&
+          other.businessId == this.businessId &&
+          other.businessLocationId == this.businessLocationId &&
+          other.category == this.category &&
+          other.amount == this.amount &&
+          other.description == this.description &&
+          other.occurredAt == this.occurredAt &&
+          other.actorUserId == this.actorUserId &&
+          other.syncStatus == this.syncStatus &&
+          other.syncError == this.syncError &&
+          other.syncAttemptCount == this.syncAttemptCount &&
+          other.lastAttemptAt == this.lastAttemptAt &&
+          other.syncedAt == this.syncedAt &&
+          other.createdAt == this.createdAt);
+}
+
+class OtherIncomeEntriesCompanion extends UpdateCompanion<OtherIncomeEntry> {
+  final Value<int> id;
+  final Value<String> incomeId;
+  final Value<String> businessId;
+  final Value<String> businessLocationId;
+  final Value<String> category;
+  final Value<Decimal> amount;
+  final Value<String?> description;
+  final Value<DateTime> occurredAt;
+  final Value<String> actorUserId;
+  final Value<String> syncStatus;
+  final Value<String?> syncError;
+  final Value<int> syncAttemptCount;
+  final Value<DateTime?> lastAttemptAt;
+  final Value<DateTime?> syncedAt;
+  final Value<DateTime> createdAt;
+  const OtherIncomeEntriesCompanion({
+    this.id = const Value.absent(),
+    this.incomeId = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.businessLocationId = const Value.absent(),
+    this.category = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.description = const Value.absent(),
+    this.occurredAt = const Value.absent(),
+    this.actorUserId = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncAttemptCount = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  OtherIncomeEntriesCompanion.insert({
+    this.id = const Value.absent(),
+    required String incomeId,
+    required String businessId,
+    required String businessLocationId,
+    required String category,
+    required Decimal amount,
+    this.description = const Value.absent(),
+    required DateTime occurredAt,
+    required String actorUserId,
+    this.syncStatus = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncAttemptCount = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    required DateTime createdAt,
+  }) : incomeId = Value(incomeId),
+       businessId = Value(businessId),
+       businessLocationId = Value(businessLocationId),
+       category = Value(category),
+       amount = Value(amount),
+       occurredAt = Value(occurredAt),
+       actorUserId = Value(actorUserId),
+       createdAt = Value(createdAt);
+  static Insertable<OtherIncomeEntry> custom({
+    Expression<int>? id,
+    Expression<String>? incomeId,
+    Expression<String>? businessId,
+    Expression<String>? businessLocationId,
+    Expression<String>? category,
+    Expression<String>? amount,
+    Expression<String>? description,
+    Expression<DateTime>? occurredAt,
+    Expression<String>? actorUserId,
+    Expression<String>? syncStatus,
+    Expression<String>? syncError,
+    Expression<int>? syncAttemptCount,
+    Expression<DateTime>? lastAttemptAt,
+    Expression<DateTime>? syncedAt,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (incomeId != null) 'income_id': incomeId,
+      if (businessId != null) 'business_id': businessId,
+      if (businessLocationId != null)
+        'business_location_id': businessLocationId,
+      if (category != null) 'category': category,
+      if (amount != null) 'amount': amount,
+      if (description != null) 'description': description,
+      if (occurredAt != null) 'occurred_at': occurredAt,
+      if (actorUserId != null) 'actor_user_id': actorUserId,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (syncError != null) 'sync_error': syncError,
+      if (syncAttemptCount != null) 'sync_attempt_count': syncAttemptCount,
+      if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  OtherIncomeEntriesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? incomeId,
+    Value<String>? businessId,
+    Value<String>? businessLocationId,
+    Value<String>? category,
+    Value<Decimal>? amount,
+    Value<String?>? description,
+    Value<DateTime>? occurredAt,
+    Value<String>? actorUserId,
+    Value<String>? syncStatus,
+    Value<String?>? syncError,
+    Value<int>? syncAttemptCount,
+    Value<DateTime?>? lastAttemptAt,
+    Value<DateTime?>? syncedAt,
+    Value<DateTime>? createdAt,
+  }) {
+    return OtherIncomeEntriesCompanion(
+      id: id ?? this.id,
+      incomeId: incomeId ?? this.incomeId,
+      businessId: businessId ?? this.businessId,
+      businessLocationId: businessLocationId ?? this.businessLocationId,
+      category: category ?? this.category,
+      amount: amount ?? this.amount,
+      description: description ?? this.description,
+      occurredAt: occurredAt ?? this.occurredAt,
+      actorUserId: actorUserId ?? this.actorUserId,
+      syncStatus: syncStatus ?? this.syncStatus,
+      syncError: syncError ?? this.syncError,
+      syncAttemptCount: syncAttemptCount ?? this.syncAttemptCount,
+      lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
+      syncedAt: syncedAt ?? this.syncedAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (incomeId.present) {
+      map['income_id'] = Variable<String>(incomeId.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (businessLocationId.present) {
+      map['business_location_id'] = Variable<String>(businessLocationId.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<String>(
+        $OtherIncomeEntriesTable.$converteramount.toSql(amount.value),
+      );
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (occurredAt.present) {
+      map['occurred_at'] = Variable<DateTime>(occurredAt.value);
+    }
+    if (actorUserId.present) {
+      map['actor_user_id'] = Variable<String>(actorUserId.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<String>(syncStatus.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (syncAttemptCount.present) {
+      map['sync_attempt_count'] = Variable<int>(syncAttemptCount.value);
+    }
+    if (lastAttemptAt.present) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OtherIncomeEntriesCompanion(')
+          ..write('id: $id, ')
+          ..write('incomeId: $incomeId, ')
+          ..write('businessId: $businessId, ')
+          ..write('businessLocationId: $businessLocationId, ')
+          ..write('category: $category, ')
+          ..write('amount: $amount, ')
+          ..write('description: $description, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('actorUserId: $actorUserId, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncAttemptCount: $syncAttemptCount, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalAuditLogTable extends LocalAuditLog
+    with TableInfo<$LocalAuditLogTable, LocalAuditLogData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalAuditLogTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _actorUserIdMeta = const VerificationMeta(
+    'actorUserId',
+  );
+  @override
+  late final GeneratedColumn<String> actorUserId = GeneratedColumn<String>(
+    'actor_user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actionMeta = const VerificationMeta('action');
+  @override
+  late final GeneratedColumn<String> action = GeneratedColumn<String>(
+    'action',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _resourceTypeMeta = const VerificationMeta(
+    'resourceType',
+  );
+  @override
+  late final GeneratedColumn<String> resourceType = GeneratedColumn<String>(
+    'resource_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _resourceIdMeta = const VerificationMeta(
+    'resourceId',
+  );
+  @override
+  late final GeneratedColumn<String> resourceId = GeneratedColumn<String>(
+    'resource_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _detailsJsonMeta = const VerificationMeta(
+    'detailsJson',
+  );
+  @override
+  late final GeneratedColumn<String> detailsJson = GeneratedColumn<String>(
+    'details_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _occurredAtMeta = const VerificationMeta(
+    'occurredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> occurredAt = GeneratedColumn<DateTime>(
+    'occurred_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<String> syncStatus = GeneratedColumn<String>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncAttemptCountMeta = const VerificationMeta(
+    'syncAttemptCount',
+  );
+  @override
+  late final GeneratedColumn<int> syncAttemptCount = GeneratedColumn<int>(
+    'sync_attempt_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastAttemptAtMeta = const VerificationMeta(
+    'lastAttemptAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastAttemptAt =
+      GeneratedColumn<DateTime>(
+        'last_attempt_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    actorUserId,
+    action,
+    resourceType,
+    resourceId,
+    detailsJson,
+    occurredAt,
+    syncStatus,
+    syncError,
+    syncAttemptCount,
+    lastAttemptAt,
+    syncedAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_audit_log';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalAuditLogData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('actor_user_id')) {
+      context.handle(
+        _actorUserIdMeta,
+        actorUserId.isAcceptableOrUnknown(
+          data['actor_user_id']!,
+          _actorUserIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_actorUserIdMeta);
+    }
+    if (data.containsKey('action')) {
+      context.handle(
+        _actionMeta,
+        action.isAcceptableOrUnknown(data['action']!, _actionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_actionMeta);
+    }
+    if (data.containsKey('resource_type')) {
+      context.handle(
+        _resourceTypeMeta,
+        resourceType.isAcceptableOrUnknown(
+          data['resource_type']!,
+          _resourceTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('resource_id')) {
+      context.handle(
+        _resourceIdMeta,
+        resourceId.isAcceptableOrUnknown(data['resource_id']!, _resourceIdMeta),
+      );
+    }
+    if (data.containsKey('details_json')) {
+      context.handle(
+        _detailsJsonMeta,
+        detailsJson.isAcceptableOrUnknown(
+          data['details_json']!,
+          _detailsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('occurred_at')) {
+      context.handle(
+        _occurredAtMeta,
+        occurredAt.isAcceptableOrUnknown(data['occurred_at']!, _occurredAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_occurredAtMeta);
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
+    if (data.containsKey('sync_attempt_count')) {
+      context.handle(
+        _syncAttemptCountMeta,
+        syncAttemptCount.isAcceptableOrUnknown(
+          data['sync_attempt_count']!,
+          _syncAttemptCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_attempt_at')) {
+      context.handle(
+        _lastAttemptAtMeta,
+        lastAttemptAt.isAcceptableOrUnknown(
+          data['last_attempt_at']!,
+          _lastAttemptAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalAuditLogData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalAuditLogData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      actorUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actor_user_id'],
+      )!,
+      action: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}action'],
+      )!,
+      resourceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resource_type'],
+      ),
+      resourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resource_id'],
+      ),
+      detailsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}details_json'],
+      ),
+      occurredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}occurred_at'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
+      syncAttemptCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_attempt_count'],
+      )!,
+      lastAttemptAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_attempt_at'],
+      ),
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalAuditLogTable createAlias(String alias) {
+    return $LocalAuditLogTable(attachedDatabase, alias);
+  }
+}
+
+class LocalAuditLogData extends DataClass
+    implements Insertable<LocalAuditLogData> {
+  /// Local row ID (autoincrement).
+  final int id;
+
+  /// Staff member (or system) responsible for the action.
+  /// Soft-references `LocalUserProfiles.id` without an FK constraint: a
+  /// profile that is later remotely revoked and deleted should not block
+  /// or cascade-delete a historical audit entry.
+  final String actorUserId;
+
+  /// Event identifier, e.g. `pin.unlock_failed`, `sale.completed`,
+  /// `expense.recorded`, `profile.remotely_revoked`.
+  final String action;
+
+  /// Optional type of the resource this event concerns.
+  final String? resourceType;
+
+  /// Optional ID of the resource this event concerns.
+  final String? resourceId;
+
+  /// Optional JSON-encoded event details.
+  final String? detailsJson;
+
+  /// When the event occurred (device time, UTC).
+  final DateTime occurredAt;
+
+  /// Local sync state: `pending`, `syncing`, `failed`, `synced`.
+  final String syncStatus;
+
+  /// Error message from the last sync attempt, if any.
+  final String? syncError;
+
+  /// Number of times this entry has been attempted.
+  final int syncAttemptCount;
+
+  /// Timestamp of the last sync attempt.
+  final DateTime? lastAttemptAt;
+
+  /// When the entry was successfully synced to the backend.
+  final DateTime? syncedAt;
+
+  /// Local row creation timestamp.
+  final DateTime createdAt;
+  const LocalAuditLogData({
+    required this.id,
+    required this.actorUserId,
+    required this.action,
+    this.resourceType,
+    this.resourceId,
+    this.detailsJson,
+    required this.occurredAt,
+    required this.syncStatus,
+    this.syncError,
+    required this.syncAttemptCount,
+    this.lastAttemptAt,
+    this.syncedAt,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['actor_user_id'] = Variable<String>(actorUserId);
+    map['action'] = Variable<String>(action);
+    if (!nullToAbsent || resourceType != null) {
+      map['resource_type'] = Variable<String>(resourceType);
+    }
+    if (!nullToAbsent || resourceId != null) {
+      map['resource_id'] = Variable<String>(resourceId);
+    }
+    if (!nullToAbsent || detailsJson != null) {
+      map['details_json'] = Variable<String>(detailsJson);
+    }
+    map['occurred_at'] = Variable<DateTime>(occurredAt);
+    map['sync_status'] = Variable<String>(syncStatus);
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    map['sync_attempt_count'] = Variable<int>(syncAttemptCount);
+    if (!nullToAbsent || lastAttemptAt != null) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt);
+    }
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  LocalAuditLogCompanion toCompanion(bool nullToAbsent) {
+    return LocalAuditLogCompanion(
+      id: Value(id),
+      actorUserId: Value(actorUserId),
+      action: Value(action),
+      resourceType: resourceType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resourceType),
+      resourceId: resourceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resourceId),
+      detailsJson: detailsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(detailsJson),
+      occurredAt: Value(occurredAt),
+      syncStatus: Value(syncStatus),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+      syncAttemptCount: Value(syncAttemptCount),
+      lastAttemptAt: lastAttemptAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory LocalAuditLogData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalAuditLogData(
+      id: serializer.fromJson<int>(json['id']),
+      actorUserId: serializer.fromJson<String>(json['actorUserId']),
+      action: serializer.fromJson<String>(json['action']),
+      resourceType: serializer.fromJson<String?>(json['resourceType']),
+      resourceId: serializer.fromJson<String?>(json['resourceId']),
+      detailsJson: serializer.fromJson<String?>(json['detailsJson']),
+      occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
+      syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+      syncAttemptCount: serializer.fromJson<int>(json['syncAttemptCount']),
+      lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'actorUserId': serializer.toJson<String>(actorUserId),
+      'action': serializer.toJson<String>(action),
+      'resourceType': serializer.toJson<String?>(resourceType),
+      'resourceId': serializer.toJson<String?>(resourceId),
+      'detailsJson': serializer.toJson<String?>(detailsJson),
+      'occurredAt': serializer.toJson<DateTime>(occurredAt),
+      'syncStatus': serializer.toJson<String>(syncStatus),
+      'syncError': serializer.toJson<String?>(syncError),
+      'syncAttemptCount': serializer.toJson<int>(syncAttemptCount),
+      'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  LocalAuditLogData copyWith({
+    int? id,
+    String? actorUserId,
+    String? action,
+    Value<String?> resourceType = const Value.absent(),
+    Value<String?> resourceId = const Value.absent(),
+    Value<String?> detailsJson = const Value.absent(),
+    DateTime? occurredAt,
+    String? syncStatus,
+    Value<String?> syncError = const Value.absent(),
+    int? syncAttemptCount,
+    Value<DateTime?> lastAttemptAt = const Value.absent(),
+    Value<DateTime?> syncedAt = const Value.absent(),
+    DateTime? createdAt,
+  }) => LocalAuditLogData(
+    id: id ?? this.id,
+    actorUserId: actorUserId ?? this.actorUserId,
+    action: action ?? this.action,
+    resourceType: resourceType.present ? resourceType.value : this.resourceType,
+    resourceId: resourceId.present ? resourceId.value : this.resourceId,
+    detailsJson: detailsJson.present ? detailsJson.value : this.detailsJson,
+    occurredAt: occurredAt ?? this.occurredAt,
+    syncStatus: syncStatus ?? this.syncStatus,
+    syncError: syncError.present ? syncError.value : this.syncError,
+    syncAttemptCount: syncAttemptCount ?? this.syncAttemptCount,
+    lastAttemptAt: lastAttemptAt.present
+        ? lastAttemptAt.value
+        : this.lastAttemptAt,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  LocalAuditLogData copyWithCompanion(LocalAuditLogCompanion data) {
+    return LocalAuditLogData(
+      id: data.id.present ? data.id.value : this.id,
+      actorUserId: data.actorUserId.present
+          ? data.actorUserId.value
+          : this.actorUserId,
+      action: data.action.present ? data.action.value : this.action,
+      resourceType: data.resourceType.present
+          ? data.resourceType.value
+          : this.resourceType,
+      resourceId: data.resourceId.present
+          ? data.resourceId.value
+          : this.resourceId,
+      detailsJson: data.detailsJson.present
+          ? data.detailsJson.value
+          : this.detailsJson,
+      occurredAt: data.occurredAt.present
+          ? data.occurredAt.value
+          : this.occurredAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+      syncAttemptCount: data.syncAttemptCount.present
+          ? data.syncAttemptCount.value
+          : this.syncAttemptCount,
+      lastAttemptAt: data.lastAttemptAt.present
+          ? data.lastAttemptAt.value
+          : this.lastAttemptAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalAuditLogData(')
+          ..write('id: $id, ')
+          ..write('actorUserId: $actorUserId, ')
+          ..write('action: $action, ')
+          ..write('resourceType: $resourceType, ')
+          ..write('resourceId: $resourceId, ')
+          ..write('detailsJson: $detailsJson, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncAttemptCount: $syncAttemptCount, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    actorUserId,
+    action,
+    resourceType,
+    resourceId,
+    detailsJson,
+    occurredAt,
+    syncStatus,
+    syncError,
+    syncAttemptCount,
+    lastAttemptAt,
+    syncedAt,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalAuditLogData &&
+          other.id == this.id &&
+          other.actorUserId == this.actorUserId &&
+          other.action == this.action &&
+          other.resourceType == this.resourceType &&
+          other.resourceId == this.resourceId &&
+          other.detailsJson == this.detailsJson &&
+          other.occurredAt == this.occurredAt &&
+          other.syncStatus == this.syncStatus &&
+          other.syncError == this.syncError &&
+          other.syncAttemptCount == this.syncAttemptCount &&
+          other.lastAttemptAt == this.lastAttemptAt &&
+          other.syncedAt == this.syncedAt &&
+          other.createdAt == this.createdAt);
+}
+
+class LocalAuditLogCompanion extends UpdateCompanion<LocalAuditLogData> {
+  final Value<int> id;
+  final Value<String> actorUserId;
+  final Value<String> action;
+  final Value<String?> resourceType;
+  final Value<String?> resourceId;
+  final Value<String?> detailsJson;
+  final Value<DateTime> occurredAt;
+  final Value<String> syncStatus;
+  final Value<String?> syncError;
+  final Value<int> syncAttemptCount;
+  final Value<DateTime?> lastAttemptAt;
+  final Value<DateTime?> syncedAt;
+  final Value<DateTime> createdAt;
+  const LocalAuditLogCompanion({
+    this.id = const Value.absent(),
+    this.actorUserId = const Value.absent(),
+    this.action = const Value.absent(),
+    this.resourceType = const Value.absent(),
+    this.resourceId = const Value.absent(),
+    this.detailsJson = const Value.absent(),
+    this.occurredAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncAttemptCount = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  LocalAuditLogCompanion.insert({
+    this.id = const Value.absent(),
+    required String actorUserId,
+    required String action,
+    this.resourceType = const Value.absent(),
+    this.resourceId = const Value.absent(),
+    this.detailsJson = const Value.absent(),
+    required DateTime occurredAt,
+    this.syncStatus = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncAttemptCount = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    required DateTime createdAt,
+  }) : actorUserId = Value(actorUserId),
+       action = Value(action),
+       occurredAt = Value(occurredAt),
+       createdAt = Value(createdAt);
+  static Insertable<LocalAuditLogData> custom({
+    Expression<int>? id,
+    Expression<String>? actorUserId,
+    Expression<String>? action,
+    Expression<String>? resourceType,
+    Expression<String>? resourceId,
+    Expression<String>? detailsJson,
+    Expression<DateTime>? occurredAt,
+    Expression<String>? syncStatus,
+    Expression<String>? syncError,
+    Expression<int>? syncAttemptCount,
+    Expression<DateTime>? lastAttemptAt,
+    Expression<DateTime>? syncedAt,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (actorUserId != null) 'actor_user_id': actorUserId,
+      if (action != null) 'action': action,
+      if (resourceType != null) 'resource_type': resourceType,
+      if (resourceId != null) 'resource_id': resourceId,
+      if (detailsJson != null) 'details_json': detailsJson,
+      if (occurredAt != null) 'occurred_at': occurredAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (syncError != null) 'sync_error': syncError,
+      if (syncAttemptCount != null) 'sync_attempt_count': syncAttemptCount,
+      if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  LocalAuditLogCompanion copyWith({
+    Value<int>? id,
+    Value<String>? actorUserId,
+    Value<String>? action,
+    Value<String?>? resourceType,
+    Value<String?>? resourceId,
+    Value<String?>? detailsJson,
+    Value<DateTime>? occurredAt,
+    Value<String>? syncStatus,
+    Value<String?>? syncError,
+    Value<int>? syncAttemptCount,
+    Value<DateTime?>? lastAttemptAt,
+    Value<DateTime?>? syncedAt,
+    Value<DateTime>? createdAt,
+  }) {
+    return LocalAuditLogCompanion(
+      id: id ?? this.id,
+      actorUserId: actorUserId ?? this.actorUserId,
+      action: action ?? this.action,
+      resourceType: resourceType ?? this.resourceType,
+      resourceId: resourceId ?? this.resourceId,
+      detailsJson: detailsJson ?? this.detailsJson,
+      occurredAt: occurredAt ?? this.occurredAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      syncError: syncError ?? this.syncError,
+      syncAttemptCount: syncAttemptCount ?? this.syncAttemptCount,
+      lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
+      syncedAt: syncedAt ?? this.syncedAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (actorUserId.present) {
+      map['actor_user_id'] = Variable<String>(actorUserId.value);
+    }
+    if (action.present) {
+      map['action'] = Variable<String>(action.value);
+    }
+    if (resourceType.present) {
+      map['resource_type'] = Variable<String>(resourceType.value);
+    }
+    if (resourceId.present) {
+      map['resource_id'] = Variable<String>(resourceId.value);
+    }
+    if (detailsJson.present) {
+      map['details_json'] = Variable<String>(detailsJson.value);
+    }
+    if (occurredAt.present) {
+      map['occurred_at'] = Variable<DateTime>(occurredAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<String>(syncStatus.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (syncAttemptCount.present) {
+      map['sync_attempt_count'] = Variable<int>(syncAttemptCount.value);
+    }
+    if (lastAttemptAt.present) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalAuditLogCompanion(')
+          ..write('id: $id, ')
+          ..write('actorUserId: $actorUserId, ')
+          ..write('action: $action, ')
+          ..write('resourceType: $resourceType, ')
+          ..write('resourceId: $resourceId, ')
+          ..write('detailsJson: $detailsJson, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncAttemptCount: $syncAttemptCount, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3563,6 +7907,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PendingSaleLineItemsTable pendingSaleLineItems =
       $PendingSaleLineItemsTable(this);
   late final $CachedItemsTable cachedItems = $CachedItemsTable(this);
+  late final $CachedPermissionsTable cachedPermissions =
+      $CachedPermissionsTable(this);
+  late final $CachedStockLevelsTable cachedStockLevels =
+      $CachedStockLevelsTable(this);
+  late final $PendingVoidsRefundsTable pendingVoidsRefunds =
+      $PendingVoidsRefundsTable(this);
+  late final $ExpenseEntriesTable expenseEntries = $ExpenseEntriesTable(this);
+  late final $OtherIncomeEntriesTable otherIncomeEntries =
+      $OtherIncomeEntriesTable(this);
+  late final $LocalAuditLogTable localAuditLog = $LocalAuditLogTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3573,6 +7927,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     pendingSales,
     pendingSaleLineItems,
     cachedItems,
+    cachedPermissions,
+    cachedStockLevels,
+    pendingVoidsRefunds,
+    expenseEntries,
+    otherIncomeEntries,
+    localAuditLog,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -3582,6 +7942,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('pending_sale_line_items', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'local_user_profiles',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('cached_permissions', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -3598,6 +7965,7 @@ typedef $$LocalUserProfilesTableCreateCompanionBuilder =
       Value<DateTime?> lockedUntil,
       required DateTime createdAt,
       required DateTime updatedAt,
+      Value<DateTime?> lastRevocationCheckAt,
       Value<int> rowid,
     });
 typedef $$LocalUserProfilesTableUpdateCompanionBuilder =
@@ -3612,8 +7980,44 @@ typedef $$LocalUserProfilesTableUpdateCompanionBuilder =
       Value<DateTime?> lockedUntil,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<DateTime?> lastRevocationCheckAt,
       Value<int> rowid,
     });
+
+final class $$LocalUserProfilesTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $LocalUserProfilesTable,
+          LocalUserProfile
+        > {
+  $$LocalUserProfilesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$CachedPermissionsTable, List<CachedPermission>>
+  _cachedPermissionsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.cachedPermissions,
+        aliasName: 'local_user_profiles__id__cached_permissions__user_id',
+      );
+
+  $$CachedPermissionsTableProcessedTableManager get cachedPermissionsRefs {
+    final manager = $$CachedPermissionsTableTableManager(
+      $_db,
+      $_db.cachedPermissions,
+    ).filter((f) => f.userId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _cachedPermissionsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
 
 class $$LocalUserProfilesTableFilterComposer
     extends Composer<_$AppDatabase, $LocalUserProfilesTable> {
@@ -3673,6 +8077,36 @@ class $$LocalUserProfilesTableFilterComposer
     column: $table.updatedAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<DateTime> get lastRevocationCheckAt => $composableBuilder(
+    column: $table.lastRevocationCheckAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> cachedPermissionsRefs(
+    Expression<bool> Function($$CachedPermissionsTableFilterComposer f) f,
+  ) {
+    final $$CachedPermissionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.cachedPermissions,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CachedPermissionsTableFilterComposer(
+            $db: $db,
+            $table: $db.cachedPermissions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$LocalUserProfilesTableOrderingComposer
@@ -3733,6 +8167,11 @@ class $$LocalUserProfilesTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get lastRevocationCheckAt => $composableBuilder(
+    column: $table.lastRevocationCheckAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LocalUserProfilesTableAnnotationComposer
@@ -3781,6 +8220,37 @@ class $$LocalUserProfilesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastRevocationCheckAt => $composableBuilder(
+    column: $table.lastRevocationCheckAt,
+    builder: (column) => column,
+  );
+
+  Expression<T> cachedPermissionsRefs<T extends Object>(
+    Expression<T> Function($$CachedPermissionsTableAnnotationComposer a) f,
+  ) {
+    final $$CachedPermissionsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.cachedPermissions,
+          getReferencedColumn: (t) => t.userId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CachedPermissionsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.cachedPermissions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$LocalUserProfilesTableTableManager
@@ -3794,16 +8264,9 @@ class $$LocalUserProfilesTableTableManager
           $$LocalUserProfilesTableAnnotationComposer,
           $$LocalUserProfilesTableCreateCompanionBuilder,
           $$LocalUserProfilesTableUpdateCompanionBuilder,
-          (
-            LocalUserProfile,
-            BaseReferences<
-              _$AppDatabase,
-              $LocalUserProfilesTable,
-              LocalUserProfile
-            >,
-          ),
+          (LocalUserProfile, $$LocalUserProfilesTableReferences),
           LocalUserProfile,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool cachedPermissionsRefs})
         > {
   $$LocalUserProfilesTableTableManager(
     _$AppDatabase db,
@@ -3833,6 +8296,7 @@ class $$LocalUserProfilesTableTableManager
                 Value<DateTime?> lockedUntil = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> lastRevocationCheckAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalUserProfilesCompanion(
                 id: id,
@@ -3845,6 +8309,7 @@ class $$LocalUserProfilesTableTableManager
                 lockedUntil: lockedUntil,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                lastRevocationCheckAt: lastRevocationCheckAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3859,6 +8324,7 @@ class $$LocalUserProfilesTableTableManager
                 Value<DateTime?> lockedUntil = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
+                Value<DateTime?> lastRevocationCheckAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalUserProfilesCompanion.insert(
                 id: id,
@@ -3871,12 +8337,49 @@ class $$LocalUserProfilesTableTableManager
                 lockedUntil: lockedUntil,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                lastRevocationCheckAt: lastRevocationCheckAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$LocalUserProfilesTableReferences(db, table, e),
+                ),
+              )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({cachedPermissionsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (cachedPermissionsRefs) db.cachedPermissions,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (cachedPermissionsRefs)
+                    await $_getPrefetchedData<
+                      LocalUserProfile,
+                      $LocalUserProfilesTable,
+                      CachedPermission
+                    >(
+                      currentTable: table,
+                      referencedTable: $$LocalUserProfilesTableReferences
+                          ._cachedPermissionsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$LocalUserProfilesTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).cachedPermissionsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.userId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
         ),
       );
 }
@@ -3891,16 +8394,9 @@ typedef $$LocalUserProfilesTableProcessedTableManager =
       $$LocalUserProfilesTableAnnotationComposer,
       $$LocalUserProfilesTableCreateCompanionBuilder,
       $$LocalUserProfilesTableUpdateCompanionBuilder,
-      (
-        LocalUserProfile,
-        BaseReferences<
-          _$AppDatabase,
-          $LocalUserProfilesTable,
-          LocalUserProfile
-        >,
-      ),
+      (LocalUserProfile, $$LocalUserProfilesTableReferences),
       LocalUserProfile,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool cachedPermissionsRefs})
     >;
 typedef $$DeviceConfigTableCreateCompanionBuilder =
     DeviceConfigCompanion Function({
@@ -4212,6 +8708,36 @@ final class $$PendingSalesTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $PendingVoidsRefundsTable,
+    List<PendingVoidsRefund>
+  >
+  _pendingVoidsRefundsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.pendingVoidsRefunds,
+        aliasName:
+            'pending_sales__client_sale_id__pending_voids_refunds__sale_id',
+      );
+
+  $$PendingVoidsRefundsTableProcessedTableManager get pendingVoidsRefundsRefs {
+    final manager =
+        $$PendingVoidsRefundsTableTableManager(
+          $_db,
+          $_db.pendingVoidsRefunds,
+        ).filter(
+          (f) => f.saleId.clientSaleId.sqlEquals(
+            $_itemColumn<String>('client_sale_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _pendingVoidsRefundsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$PendingSalesTableFilterComposer
@@ -4320,6 +8846,31 @@ class $$PendingSalesTableFilterComposer
           }) => $$PendingSaleLineItemsTableFilterComposer(
             $db: $db,
             $table: $db.pendingSaleLineItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> pendingVoidsRefundsRefs(
+    Expression<bool> Function($$PendingVoidsRefundsTableFilterComposer f) f,
+  ) {
+    final $$PendingVoidsRefundsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.clientSaleId,
+      referencedTable: $db.pendingVoidsRefunds,
+      getReferencedColumn: (t) => t.saleId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PendingVoidsRefundsTableFilterComposer(
+            $db: $db,
+            $table: $db.pendingVoidsRefunds,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4525,6 +9076,32 @@ class $$PendingSalesTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> pendingVoidsRefundsRefs<T extends Object>(
+    Expression<T> Function($$PendingVoidsRefundsTableAnnotationComposer a) f,
+  ) {
+    final $$PendingVoidsRefundsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.clientSaleId,
+          referencedTable: $db.pendingVoidsRefunds,
+          getReferencedColumn: (t) => t.saleId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PendingVoidsRefundsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.pendingVoidsRefunds,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$PendingSalesTableTableManager
@@ -4540,7 +9117,10 @@ class $$PendingSalesTableTableManager
           $$PendingSalesTableUpdateCompanionBuilder,
           (PendingSale, $$PendingSalesTableReferences),
           PendingSale,
-          PrefetchHooks Function({bool pendingSaleLineItemsRefs})
+          PrefetchHooks Function({
+            bool pendingSaleLineItemsRefs,
+            bool pendingVoidsRefundsRefs,
+          })
         > {
   $$PendingSalesTableTableManager(_$AppDatabase db, $PendingSalesTable table)
     : super(
@@ -4633,40 +9213,66 @@ class $$PendingSalesTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({pendingSaleLineItemsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (pendingSaleLineItemsRefs) db.pendingSaleLineItems,
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (pendingSaleLineItemsRefs)
-                    await $_getPrefetchedData<
-                      PendingSale,
-                      $PendingSalesTable,
-                      PendingSaleLineItem
-                    >(
-                      currentTable: table,
-                      referencedTable: $$PendingSalesTableReferences
-                          ._pendingSaleLineItemsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$PendingSalesTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).pendingSaleLineItemsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where(
-                            (e) => e.pendingSaleId == item.id,
-                          ),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({
+                pendingSaleLineItemsRefs = false,
+                pendingVoidsRefundsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (pendingSaleLineItemsRefs) db.pendingSaleLineItems,
+                    if (pendingVoidsRefundsRefs) db.pendingVoidsRefunds,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (pendingSaleLineItemsRefs)
+                        await $_getPrefetchedData<
+                          PendingSale,
+                          $PendingSalesTable,
+                          PendingSaleLineItem
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PendingSalesTableReferences
+                              ._pendingSaleLineItemsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PendingSalesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).pendingSaleLineItemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.pendingSaleId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (pendingVoidsRefundsRefs)
+                        await $_getPrefetchedData<
+                          PendingSale,
+                          $PendingSalesTable,
+                          PendingVoidsRefund
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PendingSalesTableReferences
+                              ._pendingVoidsRefundsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PendingSalesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).pendingVoidsRefundsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.saleId == item.clientSaleId,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -4683,7 +9289,10 @@ typedef $$PendingSalesTableProcessedTableManager =
       $$PendingSalesTableUpdateCompanionBuilder,
       (PendingSale, $$PendingSalesTableReferences),
       PendingSale,
-      PrefetchHooks Function({bool pendingSaleLineItemsRefs})
+      PrefetchHooks Function({
+        bool pendingSaleLineItemsRefs,
+        bool pendingVoidsRefundsRefs,
+      })
     >;
 typedef $$PendingSaleLineItemsTableCreateCompanionBuilder =
     PendingSaleLineItemsCompanion Function({
@@ -5479,6 +10088,2266 @@ typedef $$CachedItemsTableProcessedTableManager =
       CachedItem,
       PrefetchHooks Function()
     >;
+typedef $$CachedPermissionsTableCreateCompanionBuilder =
+    CachedPermissionsCompanion Function({
+      required String userId,
+      required String businessId,
+      required String businessName,
+      required String businessLocationId,
+      required String roleName,
+      required String permissionCodes,
+      required DateTime cachedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedPermissionsTableUpdateCompanionBuilder =
+    CachedPermissionsCompanion Function({
+      Value<String> userId,
+      Value<String> businessId,
+      Value<String> businessName,
+      Value<String> businessLocationId,
+      Value<String> roleName,
+      Value<String> permissionCodes,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+final class $$CachedPermissionsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $CachedPermissionsTable,
+          CachedPermission
+        > {
+  $$CachedPermissionsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $LocalUserProfilesTable _userIdTable(_$AppDatabase db) => db
+      .localUserProfiles
+      .createAlias('cached_permissions__user_id__local_user_profiles__id');
+
+  $$LocalUserProfilesTableProcessedTableManager get userId {
+    final $_column = $_itemColumn<String>('user_id')!;
+
+    final manager = $$LocalUserProfilesTableTableManager(
+      $_db,
+      $_db.localUserProfiles,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_userIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$CachedPermissionsTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedPermissionsTable> {
+  $$CachedPermissionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessName => $composableBuilder(
+    column: $table.businessName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessLocationId => $composableBuilder(
+    column: $table.businessLocationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get roleName => $composableBuilder(
+    column: $table.roleName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get permissionCodes => $composableBuilder(
+    column: $table.permissionCodes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$LocalUserProfilesTableFilterComposer get userId {
+    final $$LocalUserProfilesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localUserProfiles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LocalUserProfilesTableFilterComposer(
+            $db: $db,
+            $table: $db.localUserProfiles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CachedPermissionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedPermissionsTable> {
+  $$CachedPermissionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessName => $composableBuilder(
+    column: $table.businessName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessLocationId => $composableBuilder(
+    column: $table.businessLocationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get roleName => $composableBuilder(
+    column: $table.roleName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get permissionCodes => $composableBuilder(
+    column: $table.permissionCodes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$LocalUserProfilesTableOrderingComposer get userId {
+    final $$LocalUserProfilesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localUserProfiles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LocalUserProfilesTableOrderingComposer(
+            $db: $db,
+            $table: $db.localUserProfiles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CachedPermissionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedPermissionsTable> {
+  $$CachedPermissionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get businessName => $composableBuilder(
+    column: $table.businessName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get businessLocationId => $composableBuilder(
+    column: $table.businessLocationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get roleName =>
+      $composableBuilder(column: $table.roleName, builder: (column) => column);
+
+  GeneratedColumn<String> get permissionCodes => $composableBuilder(
+    column: $table.permissionCodes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+
+  $$LocalUserProfilesTableAnnotationComposer get userId {
+    final $$LocalUserProfilesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.userId,
+          referencedTable: $db.localUserProfiles,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$LocalUserProfilesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.localUserProfiles,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$CachedPermissionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedPermissionsTable,
+          CachedPermission,
+          $$CachedPermissionsTableFilterComposer,
+          $$CachedPermissionsTableOrderingComposer,
+          $$CachedPermissionsTableAnnotationComposer,
+          $$CachedPermissionsTableCreateCompanionBuilder,
+          $$CachedPermissionsTableUpdateCompanionBuilder,
+          (CachedPermission, $$CachedPermissionsTableReferences),
+          CachedPermission,
+          PrefetchHooks Function({bool userId})
+        > {
+  $$CachedPermissionsTableTableManager(
+    _$AppDatabase db,
+    $CachedPermissionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedPermissionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedPermissionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedPermissionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> userId = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String> businessName = const Value.absent(),
+                Value<String> businessLocationId = const Value.absent(),
+                Value<String> roleName = const Value.absent(),
+                Value<String> permissionCodes = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedPermissionsCompanion(
+                userId: userId,
+                businessId: businessId,
+                businessName: businessName,
+                businessLocationId: businessLocationId,
+                roleName: roleName,
+                permissionCodes: permissionCodes,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String userId,
+                required String businessId,
+                required String businessName,
+                required String businessLocationId,
+                required String roleName,
+                required String permissionCodes,
+                required DateTime cachedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CachedPermissionsCompanion.insert(
+                userId: userId,
+                businessId: businessId,
+                businessName: businessName,
+                businessLocationId: businessLocationId,
+                roleName: roleName,
+                permissionCodes: permissionCodes,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$CachedPermissionsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({userId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (userId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.userId,
+                                referencedTable:
+                                    $$CachedPermissionsTableReferences
+                                        ._userIdTable(db),
+                                referencedColumn:
+                                    $$CachedPermissionsTableReferences
+                                        ._userIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$CachedPermissionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedPermissionsTable,
+      CachedPermission,
+      $$CachedPermissionsTableFilterComposer,
+      $$CachedPermissionsTableOrderingComposer,
+      $$CachedPermissionsTableAnnotationComposer,
+      $$CachedPermissionsTableCreateCompanionBuilder,
+      $$CachedPermissionsTableUpdateCompanionBuilder,
+      (CachedPermission, $$CachedPermissionsTableReferences),
+      CachedPermission,
+      PrefetchHooks Function({bool userId})
+    >;
+typedef $$CachedStockLevelsTableCreateCompanionBuilder =
+    CachedStockLevelsCompanion Function({
+      required String itemId,
+      required String businessLocationId,
+      required Decimal currentQuantity,
+      required DateTime cachedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedStockLevelsTableUpdateCompanionBuilder =
+    CachedStockLevelsCompanion Function({
+      Value<String> itemId,
+      Value<String> businessLocationId,
+      Value<Decimal> currentQuantity,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedStockLevelsTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedStockLevelsTable> {
+  $$CachedStockLevelsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessLocationId => $composableBuilder(
+    column: $table.businessLocationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Decimal, Decimal, String>
+  get currentQuantity => $composableBuilder(
+    column: $table.currentQuantity,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedStockLevelsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedStockLevelsTable> {
+  $$CachedStockLevelsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessLocationId => $composableBuilder(
+    column: $table.businessLocationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currentQuantity => $composableBuilder(
+    column: $table.currentQuantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedStockLevelsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedStockLevelsTable> {
+  $$CachedStockLevelsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get itemId =>
+      $composableBuilder(column: $table.itemId, builder: (column) => column);
+
+  GeneratedColumn<String> get businessLocationId => $composableBuilder(
+    column: $table.businessLocationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<Decimal, String> get currentQuantity =>
+      $composableBuilder(
+        column: $table.currentQuantity,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$CachedStockLevelsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedStockLevelsTable,
+          CachedStockLevel,
+          $$CachedStockLevelsTableFilterComposer,
+          $$CachedStockLevelsTableOrderingComposer,
+          $$CachedStockLevelsTableAnnotationComposer,
+          $$CachedStockLevelsTableCreateCompanionBuilder,
+          $$CachedStockLevelsTableUpdateCompanionBuilder,
+          (
+            CachedStockLevel,
+            BaseReferences<
+              _$AppDatabase,
+              $CachedStockLevelsTable,
+              CachedStockLevel
+            >,
+          ),
+          CachedStockLevel,
+          PrefetchHooks Function()
+        > {
+  $$CachedStockLevelsTableTableManager(
+    _$AppDatabase db,
+    $CachedStockLevelsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedStockLevelsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedStockLevelsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedStockLevelsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> itemId = const Value.absent(),
+                Value<String> businessLocationId = const Value.absent(),
+                Value<Decimal> currentQuantity = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedStockLevelsCompanion(
+                itemId: itemId,
+                businessLocationId: businessLocationId,
+                currentQuantity: currentQuantity,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String itemId,
+                required String businessLocationId,
+                required Decimal currentQuantity,
+                required DateTime cachedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CachedStockLevelsCompanion.insert(
+                itemId: itemId,
+                businessLocationId: businessLocationId,
+                currentQuantity: currentQuantity,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedStockLevelsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedStockLevelsTable,
+      CachedStockLevel,
+      $$CachedStockLevelsTableFilterComposer,
+      $$CachedStockLevelsTableOrderingComposer,
+      $$CachedStockLevelsTableAnnotationComposer,
+      $$CachedStockLevelsTableCreateCompanionBuilder,
+      $$CachedStockLevelsTableUpdateCompanionBuilder,
+      (
+        CachedStockLevel,
+        BaseReferences<
+          _$AppDatabase,
+          $CachedStockLevelsTable,
+          CachedStockLevel
+        >,
+      ),
+      CachedStockLevel,
+      PrefetchHooks Function()
+    >;
+typedef $$PendingVoidsRefundsTableCreateCompanionBuilder =
+    PendingVoidsRefundsCompanion Function({
+      Value<int> id,
+      required String clientActionId,
+      required String saleId,
+      required String newStatus,
+      required String reason,
+      required String actorUserId,
+      required DateTime occurredAt,
+      Value<String> syncStatus,
+      Value<String?> syncError,
+      Value<int> syncAttemptCount,
+      Value<DateTime?> lastAttemptAt,
+      Value<DateTime?> syncedAt,
+      required DateTime createdAt,
+    });
+typedef $$PendingVoidsRefundsTableUpdateCompanionBuilder =
+    PendingVoidsRefundsCompanion Function({
+      Value<int> id,
+      Value<String> clientActionId,
+      Value<String> saleId,
+      Value<String> newStatus,
+      Value<String> reason,
+      Value<String> actorUserId,
+      Value<DateTime> occurredAt,
+      Value<String> syncStatus,
+      Value<String?> syncError,
+      Value<int> syncAttemptCount,
+      Value<DateTime?> lastAttemptAt,
+      Value<DateTime?> syncedAt,
+      Value<DateTime> createdAt,
+    });
+
+final class $$PendingVoidsRefundsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $PendingVoidsRefundsTable,
+          PendingVoidsRefund
+        > {
+  $$PendingVoidsRefundsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PendingSalesTable _saleIdTable(_$AppDatabase db) =>
+      db.pendingSales.createAlias(
+        'pending_voids_refunds__sale_id__pending_sales__client_sale_id',
+      );
+
+  $$PendingSalesTableProcessedTableManager get saleId {
+    final $_column = $_itemColumn<String>('sale_id')!;
+
+    final manager = $$PendingSalesTableTableManager(
+      $_db,
+      $_db.pendingSales,
+    ).filter((f) => f.clientSaleId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_saleIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PendingVoidsRefundsTableFilterComposer
+    extends Composer<_$AppDatabase, $PendingVoidsRefundsTable> {
+  $$PendingVoidsRefundsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clientActionId => $composableBuilder(
+    column: $table.clientActionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get newStatus => $composableBuilder(
+    column: $table.newStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncAttemptCount => $composableBuilder(
+    column: $table.syncAttemptCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PendingSalesTableFilterComposer get saleId {
+    final $$PendingSalesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.saleId,
+      referencedTable: $db.pendingSales,
+      getReferencedColumn: (t) => t.clientSaleId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PendingSalesTableFilterComposer(
+            $db: $db,
+            $table: $db.pendingSales,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PendingVoidsRefundsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PendingVoidsRefundsTable> {
+  $$PendingVoidsRefundsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clientActionId => $composableBuilder(
+    column: $table.clientActionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get newStatus => $composableBuilder(
+    column: $table.newStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncAttemptCount => $composableBuilder(
+    column: $table.syncAttemptCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PendingSalesTableOrderingComposer get saleId {
+    final $$PendingSalesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.saleId,
+      referencedTable: $db.pendingSales,
+      getReferencedColumn: (t) => t.clientSaleId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PendingSalesTableOrderingComposer(
+            $db: $db,
+            $table: $db.pendingSales,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PendingVoidsRefundsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PendingVoidsRefundsTable> {
+  $$PendingVoidsRefundsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get clientActionId => $composableBuilder(
+    column: $table.clientActionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get newStatus =>
+      $composableBuilder(column: $table.newStatus, builder: (column) => column);
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+
+  GeneratedColumn<int> get syncAttemptCount => $composableBuilder(
+    column: $table.syncAttemptCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$PendingSalesTableAnnotationComposer get saleId {
+    final $$PendingSalesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.saleId,
+      referencedTable: $db.pendingSales,
+      getReferencedColumn: (t) => t.clientSaleId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PendingSalesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.pendingSales,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PendingVoidsRefundsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PendingVoidsRefundsTable,
+          PendingVoidsRefund,
+          $$PendingVoidsRefundsTableFilterComposer,
+          $$PendingVoidsRefundsTableOrderingComposer,
+          $$PendingVoidsRefundsTableAnnotationComposer,
+          $$PendingVoidsRefundsTableCreateCompanionBuilder,
+          $$PendingVoidsRefundsTableUpdateCompanionBuilder,
+          (PendingVoidsRefund, $$PendingVoidsRefundsTableReferences),
+          PendingVoidsRefund,
+          PrefetchHooks Function({bool saleId})
+        > {
+  $$PendingVoidsRefundsTableTableManager(
+    _$AppDatabase db,
+    $PendingVoidsRefundsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PendingVoidsRefundsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PendingVoidsRefundsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PendingVoidsRefundsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> clientActionId = const Value.absent(),
+                Value<String> saleId = const Value.absent(),
+                Value<String> newStatus = const Value.absent(),
+                Value<String> reason = const Value.absent(),
+                Value<String> actorUserId = const Value.absent(),
+                Value<DateTime> occurredAt = const Value.absent(),
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> syncAttemptCount = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => PendingVoidsRefundsCompanion(
+                id: id,
+                clientActionId: clientActionId,
+                saleId: saleId,
+                newStatus: newStatus,
+                reason: reason,
+                actorUserId: actorUserId,
+                occurredAt: occurredAt,
+                syncStatus: syncStatus,
+                syncError: syncError,
+                syncAttemptCount: syncAttemptCount,
+                lastAttemptAt: lastAttemptAt,
+                syncedAt: syncedAt,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String clientActionId,
+                required String saleId,
+                required String newStatus,
+                required String reason,
+                required String actorUserId,
+                required DateTime occurredAt,
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> syncAttemptCount = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                required DateTime createdAt,
+              }) => PendingVoidsRefundsCompanion.insert(
+                id: id,
+                clientActionId: clientActionId,
+                saleId: saleId,
+                newStatus: newStatus,
+                reason: reason,
+                actorUserId: actorUserId,
+                occurredAt: occurredAt,
+                syncStatus: syncStatus,
+                syncError: syncError,
+                syncAttemptCount: syncAttemptCount,
+                lastAttemptAt: lastAttemptAt,
+                syncedAt: syncedAt,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PendingVoidsRefundsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({saleId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (saleId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.saleId,
+                                referencedTable:
+                                    $$PendingVoidsRefundsTableReferences
+                                        ._saleIdTable(db),
+                                referencedColumn:
+                                    $$PendingVoidsRefundsTableReferences
+                                        ._saleIdTable(db)
+                                        .clientSaleId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PendingVoidsRefundsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PendingVoidsRefundsTable,
+      PendingVoidsRefund,
+      $$PendingVoidsRefundsTableFilterComposer,
+      $$PendingVoidsRefundsTableOrderingComposer,
+      $$PendingVoidsRefundsTableAnnotationComposer,
+      $$PendingVoidsRefundsTableCreateCompanionBuilder,
+      $$PendingVoidsRefundsTableUpdateCompanionBuilder,
+      (PendingVoidsRefund, $$PendingVoidsRefundsTableReferences),
+      PendingVoidsRefund,
+      PrefetchHooks Function({bool saleId})
+    >;
+typedef $$ExpenseEntriesTableCreateCompanionBuilder =
+    ExpenseEntriesCompanion Function({
+      Value<int> id,
+      required String expenseId,
+      required String businessId,
+      required String businessLocationId,
+      required String category,
+      required Decimal amount,
+      Value<String?> description,
+      required DateTime occurredAt,
+      required String actorUserId,
+      Value<String> syncStatus,
+      Value<String?> syncError,
+      Value<int> syncAttemptCount,
+      Value<DateTime?> lastAttemptAt,
+      Value<DateTime?> syncedAt,
+      required DateTime createdAt,
+    });
+typedef $$ExpenseEntriesTableUpdateCompanionBuilder =
+    ExpenseEntriesCompanion Function({
+      Value<int> id,
+      Value<String> expenseId,
+      Value<String> businessId,
+      Value<String> businessLocationId,
+      Value<String> category,
+      Value<Decimal> amount,
+      Value<String?> description,
+      Value<DateTime> occurredAt,
+      Value<String> actorUserId,
+      Value<String> syncStatus,
+      Value<String?> syncError,
+      Value<int> syncAttemptCount,
+      Value<DateTime?> lastAttemptAt,
+      Value<DateTime?> syncedAt,
+      Value<DateTime> createdAt,
+    });
+
+class $$ExpenseEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $ExpenseEntriesTable> {
+  $$ExpenseEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get expenseId => $composableBuilder(
+    column: $table.expenseId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessLocationId => $composableBuilder(
+    column: $table.businessLocationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Decimal, Decimal, String> get amount =>
+      $composableBuilder(
+        column: $table.amount,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncAttemptCount => $composableBuilder(
+    column: $table.syncAttemptCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ExpenseEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ExpenseEntriesTable> {
+  $$ExpenseEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get expenseId => $composableBuilder(
+    column: $table.expenseId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessLocationId => $composableBuilder(
+    column: $table.businessLocationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncAttemptCount => $composableBuilder(
+    column: $table.syncAttemptCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ExpenseEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ExpenseEntriesTable> {
+  $$ExpenseEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get expenseId =>
+      $composableBuilder(column: $table.expenseId, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get businessLocationId => $composableBuilder(
+    column: $table.businessLocationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<Decimal, String> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+
+  GeneratedColumn<int> get syncAttemptCount => $composableBuilder(
+    column: $table.syncAttemptCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$ExpenseEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ExpenseEntriesTable,
+          ExpenseEntry,
+          $$ExpenseEntriesTableFilterComposer,
+          $$ExpenseEntriesTableOrderingComposer,
+          $$ExpenseEntriesTableAnnotationComposer,
+          $$ExpenseEntriesTableCreateCompanionBuilder,
+          $$ExpenseEntriesTableUpdateCompanionBuilder,
+          (
+            ExpenseEntry,
+            BaseReferences<_$AppDatabase, $ExpenseEntriesTable, ExpenseEntry>,
+          ),
+          ExpenseEntry,
+          PrefetchHooks Function()
+        > {
+  $$ExpenseEntriesTableTableManager(
+    _$AppDatabase db,
+    $ExpenseEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ExpenseEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ExpenseEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ExpenseEntriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> expenseId = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String> businessLocationId = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<Decimal> amount = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<DateTime> occurredAt = const Value.absent(),
+                Value<String> actorUserId = const Value.absent(),
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> syncAttemptCount = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => ExpenseEntriesCompanion(
+                id: id,
+                expenseId: expenseId,
+                businessId: businessId,
+                businessLocationId: businessLocationId,
+                category: category,
+                amount: amount,
+                description: description,
+                occurredAt: occurredAt,
+                actorUserId: actorUserId,
+                syncStatus: syncStatus,
+                syncError: syncError,
+                syncAttemptCount: syncAttemptCount,
+                lastAttemptAt: lastAttemptAt,
+                syncedAt: syncedAt,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String expenseId,
+                required String businessId,
+                required String businessLocationId,
+                required String category,
+                required Decimal amount,
+                Value<String?> description = const Value.absent(),
+                required DateTime occurredAt,
+                required String actorUserId,
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> syncAttemptCount = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                required DateTime createdAt,
+              }) => ExpenseEntriesCompanion.insert(
+                id: id,
+                expenseId: expenseId,
+                businessId: businessId,
+                businessLocationId: businessLocationId,
+                category: category,
+                amount: amount,
+                description: description,
+                occurredAt: occurredAt,
+                actorUserId: actorUserId,
+                syncStatus: syncStatus,
+                syncError: syncError,
+                syncAttemptCount: syncAttemptCount,
+                lastAttemptAt: lastAttemptAt,
+                syncedAt: syncedAt,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ExpenseEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ExpenseEntriesTable,
+      ExpenseEntry,
+      $$ExpenseEntriesTableFilterComposer,
+      $$ExpenseEntriesTableOrderingComposer,
+      $$ExpenseEntriesTableAnnotationComposer,
+      $$ExpenseEntriesTableCreateCompanionBuilder,
+      $$ExpenseEntriesTableUpdateCompanionBuilder,
+      (
+        ExpenseEntry,
+        BaseReferences<_$AppDatabase, $ExpenseEntriesTable, ExpenseEntry>,
+      ),
+      ExpenseEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$OtherIncomeEntriesTableCreateCompanionBuilder =
+    OtherIncomeEntriesCompanion Function({
+      Value<int> id,
+      required String incomeId,
+      required String businessId,
+      required String businessLocationId,
+      required String category,
+      required Decimal amount,
+      Value<String?> description,
+      required DateTime occurredAt,
+      required String actorUserId,
+      Value<String> syncStatus,
+      Value<String?> syncError,
+      Value<int> syncAttemptCount,
+      Value<DateTime?> lastAttemptAt,
+      Value<DateTime?> syncedAt,
+      required DateTime createdAt,
+    });
+typedef $$OtherIncomeEntriesTableUpdateCompanionBuilder =
+    OtherIncomeEntriesCompanion Function({
+      Value<int> id,
+      Value<String> incomeId,
+      Value<String> businessId,
+      Value<String> businessLocationId,
+      Value<String> category,
+      Value<Decimal> amount,
+      Value<String?> description,
+      Value<DateTime> occurredAt,
+      Value<String> actorUserId,
+      Value<String> syncStatus,
+      Value<String?> syncError,
+      Value<int> syncAttemptCount,
+      Value<DateTime?> lastAttemptAt,
+      Value<DateTime?> syncedAt,
+      Value<DateTime> createdAt,
+    });
+
+class $$OtherIncomeEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $OtherIncomeEntriesTable> {
+  $$OtherIncomeEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get incomeId => $composableBuilder(
+    column: $table.incomeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessLocationId => $composableBuilder(
+    column: $table.businessLocationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Decimal, Decimal, String> get amount =>
+      $composableBuilder(
+        column: $table.amount,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncAttemptCount => $composableBuilder(
+    column: $table.syncAttemptCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OtherIncomeEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $OtherIncomeEntriesTable> {
+  $$OtherIncomeEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get incomeId => $composableBuilder(
+    column: $table.incomeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessLocationId => $composableBuilder(
+    column: $table.businessLocationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncAttemptCount => $composableBuilder(
+    column: $table.syncAttemptCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OtherIncomeEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OtherIncomeEntriesTable> {
+  $$OtherIncomeEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get incomeId =>
+      $composableBuilder(column: $table.incomeId, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get businessLocationId => $composableBuilder(
+    column: $table.businessLocationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<Decimal, String> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+
+  GeneratedColumn<int> get syncAttemptCount => $composableBuilder(
+    column: $table.syncAttemptCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$OtherIncomeEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $OtherIncomeEntriesTable,
+          OtherIncomeEntry,
+          $$OtherIncomeEntriesTableFilterComposer,
+          $$OtherIncomeEntriesTableOrderingComposer,
+          $$OtherIncomeEntriesTableAnnotationComposer,
+          $$OtherIncomeEntriesTableCreateCompanionBuilder,
+          $$OtherIncomeEntriesTableUpdateCompanionBuilder,
+          (
+            OtherIncomeEntry,
+            BaseReferences<
+              _$AppDatabase,
+              $OtherIncomeEntriesTable,
+              OtherIncomeEntry
+            >,
+          ),
+          OtherIncomeEntry,
+          PrefetchHooks Function()
+        > {
+  $$OtherIncomeEntriesTableTableManager(
+    _$AppDatabase db,
+    $OtherIncomeEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OtherIncomeEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OtherIncomeEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OtherIncomeEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> incomeId = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String> businessLocationId = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<Decimal> amount = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<DateTime> occurredAt = const Value.absent(),
+                Value<String> actorUserId = const Value.absent(),
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> syncAttemptCount = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => OtherIncomeEntriesCompanion(
+                id: id,
+                incomeId: incomeId,
+                businessId: businessId,
+                businessLocationId: businessLocationId,
+                category: category,
+                amount: amount,
+                description: description,
+                occurredAt: occurredAt,
+                actorUserId: actorUserId,
+                syncStatus: syncStatus,
+                syncError: syncError,
+                syncAttemptCount: syncAttemptCount,
+                lastAttemptAt: lastAttemptAt,
+                syncedAt: syncedAt,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String incomeId,
+                required String businessId,
+                required String businessLocationId,
+                required String category,
+                required Decimal amount,
+                Value<String?> description = const Value.absent(),
+                required DateTime occurredAt,
+                required String actorUserId,
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> syncAttemptCount = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                required DateTime createdAt,
+              }) => OtherIncomeEntriesCompanion.insert(
+                id: id,
+                incomeId: incomeId,
+                businessId: businessId,
+                businessLocationId: businessLocationId,
+                category: category,
+                amount: amount,
+                description: description,
+                occurredAt: occurredAt,
+                actorUserId: actorUserId,
+                syncStatus: syncStatus,
+                syncError: syncError,
+                syncAttemptCount: syncAttemptCount,
+                lastAttemptAt: lastAttemptAt,
+                syncedAt: syncedAt,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OtherIncomeEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $OtherIncomeEntriesTable,
+      OtherIncomeEntry,
+      $$OtherIncomeEntriesTableFilterComposer,
+      $$OtherIncomeEntriesTableOrderingComposer,
+      $$OtherIncomeEntriesTableAnnotationComposer,
+      $$OtherIncomeEntriesTableCreateCompanionBuilder,
+      $$OtherIncomeEntriesTableUpdateCompanionBuilder,
+      (
+        OtherIncomeEntry,
+        BaseReferences<
+          _$AppDatabase,
+          $OtherIncomeEntriesTable,
+          OtherIncomeEntry
+        >,
+      ),
+      OtherIncomeEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$LocalAuditLogTableCreateCompanionBuilder =
+    LocalAuditLogCompanion Function({
+      Value<int> id,
+      required String actorUserId,
+      required String action,
+      Value<String?> resourceType,
+      Value<String?> resourceId,
+      Value<String?> detailsJson,
+      required DateTime occurredAt,
+      Value<String> syncStatus,
+      Value<String?> syncError,
+      Value<int> syncAttemptCount,
+      Value<DateTime?> lastAttemptAt,
+      Value<DateTime?> syncedAt,
+      required DateTime createdAt,
+    });
+typedef $$LocalAuditLogTableUpdateCompanionBuilder =
+    LocalAuditLogCompanion Function({
+      Value<int> id,
+      Value<String> actorUserId,
+      Value<String> action,
+      Value<String?> resourceType,
+      Value<String?> resourceId,
+      Value<String?> detailsJson,
+      Value<DateTime> occurredAt,
+      Value<String> syncStatus,
+      Value<String?> syncError,
+      Value<int> syncAttemptCount,
+      Value<DateTime?> lastAttemptAt,
+      Value<DateTime?> syncedAt,
+      Value<DateTime> createdAt,
+    });
+
+class $$LocalAuditLogTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalAuditLogTable> {
+  $$LocalAuditLogTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resourceType => $composableBuilder(
+    column: $table.resourceType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resourceId => $composableBuilder(
+    column: $table.resourceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get detailsJson => $composableBuilder(
+    column: $table.detailsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncAttemptCount => $composableBuilder(
+    column: $table.syncAttemptCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalAuditLogTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalAuditLogTable> {
+  $$LocalAuditLogTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resourceType => $composableBuilder(
+    column: $table.resourceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resourceId => $composableBuilder(
+    column: $table.resourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get detailsJson => $composableBuilder(
+    column: $table.detailsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncAttemptCount => $composableBuilder(
+    column: $table.syncAttemptCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalAuditLogTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalAuditLogTable> {
+  $$LocalAuditLogTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get action =>
+      $composableBuilder(column: $table.action, builder: (column) => column);
+
+  GeneratedColumn<String> get resourceType => $composableBuilder(
+    column: $table.resourceType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resourceId => $composableBuilder(
+    column: $table.resourceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get detailsJson => $composableBuilder(
+    column: $table.detailsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+
+  GeneratedColumn<int> get syncAttemptCount => $composableBuilder(
+    column: $table.syncAttemptCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$LocalAuditLogTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalAuditLogTable,
+          LocalAuditLogData,
+          $$LocalAuditLogTableFilterComposer,
+          $$LocalAuditLogTableOrderingComposer,
+          $$LocalAuditLogTableAnnotationComposer,
+          $$LocalAuditLogTableCreateCompanionBuilder,
+          $$LocalAuditLogTableUpdateCompanionBuilder,
+          (
+            LocalAuditLogData,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalAuditLogTable,
+              LocalAuditLogData
+            >,
+          ),
+          LocalAuditLogData,
+          PrefetchHooks Function()
+        > {
+  $$LocalAuditLogTableTableManager(_$AppDatabase db, $LocalAuditLogTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalAuditLogTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalAuditLogTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalAuditLogTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> actorUserId = const Value.absent(),
+                Value<String> action = const Value.absent(),
+                Value<String?> resourceType = const Value.absent(),
+                Value<String?> resourceId = const Value.absent(),
+                Value<String?> detailsJson = const Value.absent(),
+                Value<DateTime> occurredAt = const Value.absent(),
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> syncAttemptCount = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => LocalAuditLogCompanion(
+                id: id,
+                actorUserId: actorUserId,
+                action: action,
+                resourceType: resourceType,
+                resourceId: resourceId,
+                detailsJson: detailsJson,
+                occurredAt: occurredAt,
+                syncStatus: syncStatus,
+                syncError: syncError,
+                syncAttemptCount: syncAttemptCount,
+                lastAttemptAt: lastAttemptAt,
+                syncedAt: syncedAt,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String actorUserId,
+                required String action,
+                Value<String?> resourceType = const Value.absent(),
+                Value<String?> resourceId = const Value.absent(),
+                Value<String?> detailsJson = const Value.absent(),
+                required DateTime occurredAt,
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> syncAttemptCount = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                required DateTime createdAt,
+              }) => LocalAuditLogCompanion.insert(
+                id: id,
+                actorUserId: actorUserId,
+                action: action,
+                resourceType: resourceType,
+                resourceId: resourceId,
+                detailsJson: detailsJson,
+                occurredAt: occurredAt,
+                syncStatus: syncStatus,
+                syncError: syncError,
+                syncAttemptCount: syncAttemptCount,
+                lastAttemptAt: lastAttemptAt,
+                syncedAt: syncedAt,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalAuditLogTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalAuditLogTable,
+      LocalAuditLogData,
+      $$LocalAuditLogTableFilterComposer,
+      $$LocalAuditLogTableOrderingComposer,
+      $$LocalAuditLogTableAnnotationComposer,
+      $$LocalAuditLogTableCreateCompanionBuilder,
+      $$LocalAuditLogTableUpdateCompanionBuilder,
+      (
+        LocalAuditLogData,
+        BaseReferences<_$AppDatabase, $LocalAuditLogTable, LocalAuditLogData>,
+      ),
+      LocalAuditLogData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5493,4 +12362,16 @@ class $AppDatabaseManager {
       $$PendingSaleLineItemsTableTableManager(_db, _db.pendingSaleLineItems);
   $$CachedItemsTableTableManager get cachedItems =>
       $$CachedItemsTableTableManager(_db, _db.cachedItems);
+  $$CachedPermissionsTableTableManager get cachedPermissions =>
+      $$CachedPermissionsTableTableManager(_db, _db.cachedPermissions);
+  $$CachedStockLevelsTableTableManager get cachedStockLevels =>
+      $$CachedStockLevelsTableTableManager(_db, _db.cachedStockLevels);
+  $$PendingVoidsRefundsTableTableManager get pendingVoidsRefunds =>
+      $$PendingVoidsRefundsTableTableManager(_db, _db.pendingVoidsRefunds);
+  $$ExpenseEntriesTableTableManager get expenseEntries =>
+      $$ExpenseEntriesTableTableManager(_db, _db.expenseEntries);
+  $$OtherIncomeEntriesTableTableManager get otherIncomeEntries =>
+      $$OtherIncomeEntriesTableTableManager(_db, _db.otherIncomeEntries);
+  $$LocalAuditLogTableTableManager get localAuditLog =>
+      $$LocalAuditLogTableTableManager(_db, _db.localAuditLog);
 }

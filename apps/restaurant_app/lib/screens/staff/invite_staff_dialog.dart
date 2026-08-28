@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/identity_service_api.dart' show AuthException;
 import '../../models/business_role.dart';
 import '../../models/permission.dart';
 import '../../models/staff_member.dart';
@@ -8,6 +10,7 @@ import '../../providers/roles_provider.dart';
 import '../../providers/staff_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
+import '../../utils/phone_validation.dart';
 import '../../widgets/labeled_form_field.dart';
 import '../../widgets/responsive_form_dialog.dart';
 import '../../widgets/staff/role_badge.dart';
@@ -20,14 +23,18 @@ Future<void> showInviteStaffDialog(BuildContext context) {
   );
 }
 
-/// Opens a small dialog for reassigning one member's role.
+/// Opens a small dialog for granting one member an additional role.
 ///
 /// Shares the role picker and its permission preview with the invite form, so
-/// the two never describe the same role differently.
-Future<void> showChangeRoleDialog(BuildContext context, StaffMember member) {
+/// the two never describe the same role differently. There is no "change"
+/// here — the backend allows a staff member to hold more than one role
+/// simultaneously and has no replace/revoke-in-one-call endpoint, so this
+/// only ever adds; removing a role no longer wanted is a separate action
+/// from the staff list ("Remove from team" revokes a specific role).
+Future<void> showAddRoleDialog(BuildContext context, StaffMember member) {
   return showResponsiveFormDialog<void>(
     context,
-    builder: (_) => ChangeRoleDialog(member: member),
+    builder: (_) => AddRoleDialog(member: member),
   );
 }
 
@@ -41,51 +48,67 @@ class InviteStaffDialog extends ConsumerStatefulWidget {
 class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
-  final _email = TextEditingController();
   final _phone = TextEditingController();
-  final _note = TextEditingController();
 
   String? _roleId;
+  bool _submitting = false;
+  String? _submitError;
 
   @override
   void dispose() {
     _name.dispose();
-    _email.dispose();
     _phone.dispose();
-    _note.dispose();
     super.dispose();
   }
 
   bool get _canSubmit =>
+      !_submitting &&
       validateName(_name.text) == null &&
-      validateEmail(_email.text) == null &&
+      isValidTanzanianPhone(_phone.text) &&
       _roleId != null;
 
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate() || !_canSubmit) return;
 
-    final member = ref
-        .read(staffMembersProvider.notifier)
-        .invite(
-          name: _name.text,
-          email: _email.text,
-          phone: _phone.text,
-          roleId: _roleId!,
-          note: _note.text,
-        );
+    setState(() {
+      _submitting = true;
+      _submitError = null;
+    });
 
-    // Captured before the pop — this dialog's context is defunct afterwards.
-    final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context).pop();
+    try {
+      await ref.read(staffMembersProvider.notifier).assignRole(
+            phone: '+255${_phone.text.trim()}',
+            roleId: _roleId!,
+          );
 
-    messenger.showSnackBar(
-      SnackBar(content: Text('Invite sent to ${member.email}')),
-    );
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.of(context).pop();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Invite sent to ${_name.text.trim()}')),
+      );
+    } on AuthException catch (e) {
+      // Surfaces the backend's own message verbatim (e.g. its real 409
+      // "already has this role assignment" text) rather than invented copy.
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _submitError = e.statusCode == null
+            ? 'Staff management requires an internet connection.'
+            : e.message;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _submitError = 'Something went wrong sending the invite.';
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final roles = ref.watch(rolesProvider);
+    final roles = ref.watch(rolesProvider).valueOrNull ?? const <BusinessRole>[];
 
     return Form(
       key: _formKey,
@@ -95,17 +118,38 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
         width: 520,
         actions: [
           OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: _submitting ? null : () => Navigator.of(context).pop(),
             child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: _canSubmit ? _submit : null,
-            child: const Text('Send invite'),
+            child: _submitting
+                ? const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Send invite'),
           ),
         ],
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (_submitError != null) ...[
+              Container(
+                padding: const EdgeInsets.all(Insets.md),
+                decoration: BoxDecoration(
+                  color: context.semantic.danger.withValues(alpha: 0.1),
+                  borderRadius: Radii.card,
+                  border: Border.all(color: context.semantic.danger.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  _submitError!,
+                  style: context.text.bodySmall?.copyWith(color: context.semantic.danger),
+                ),
+              ),
+              const SizedBox(height: Insets.lg),
+            ],
             LabeledFormField(
               label: 'Full name',
               isRequired: true,
@@ -122,28 +166,35 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
             const SizedBox(height: Insets.lg),
 
             LabeledFormField(
-              label: 'Email',
-              isRequired: true,
-              helper: 'The invite link goes here',
-              child: TextFormField(
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(hintText: 'name@example.com'),
-                onChanged: (_) => setState(() {}),
-                validator: validateEmail,
-              ),
-            ),
-            const SizedBox(height: Insets.lg),
-
-            LabeledFormField(
               label: 'Phone',
-              helper: 'Optional',
+              isRequired: true,
+              helper: "Their invite is sent to this number — it's how the backend finds or creates their account",
               child: TextFormField(
                 controller: _phone,
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(hintText: '+1 415 555 0100'),
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(9),
+                ],
+                decoration: InputDecoration(
+                  hintText: '6XXXXXXXX or 7XXXXXXXX',
+                  errorText: _phone.text.isEmpty || isValidTanzanianPhone(_phone.text)
+                      ? null
+                      : tanzanianPhoneHint,
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(left: Insets.lg, right: Insets.sm),
+                    child: Text(
+                      '+255',
+                      style: context.text.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  prefixIconConstraints: const BoxConstraints(minWidth: 0),
+                ),
+                onChanged: (_) => setState(() {}),
               ),
             ),
             const SizedBox(height: Insets.lg),
@@ -153,34 +204,6 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
               value: _roleId,
               onChanged: (value) => setState(() => _roleId = value),
             ),
-            const SizedBox(height: Insets.lg),
-
-            LabeledFormField(
-              label: 'Personal message',
-              helper: 'Optional — included in the invite email',
-              child: TextFormField(
-                controller: _note,
-                maxLines: 3,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  hintText: 'Welcome aboard — first shift is Thursday at 4pm.',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(Radii.md),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(Radii.md),
-                    borderSide: BorderSide(color: context.semantic.hairline),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(Radii.md),
-                    borderSide: BorderSide(
-                      color: context.colors.primary,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-            ),
           ],
         ),
       ),
@@ -188,34 +211,49 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
   }
 }
 
-class ChangeRoleDialog extends ConsumerStatefulWidget {
-  const ChangeRoleDialog({super.key, required this.member});
+class AddRoleDialog extends ConsumerStatefulWidget {
+  const AddRoleDialog({super.key, required this.member});
 
   final StaffMember member;
 
   @override
-  ConsumerState<ChangeRoleDialog> createState() => _ChangeRoleDialogState();
+  ConsumerState<AddRoleDialog> createState() => _AddRoleDialogState();
 }
 
-class _ChangeRoleDialogState extends ConsumerState<ChangeRoleDialog> {
-  late String _roleId = widget.member.roleId;
+class _AddRoleDialogState extends ConsumerState<AddRoleDialog> {
+  String? _roleId;
+  bool _submitting = false;
+  String? _submitError;
 
   @override
   Widget build(BuildContext context) {
-    final roles = ref.watch(rolesProvider);
-    final changed = _roleId != widget.member.roleId;
+    final roles = ref.watch(rolesProvider).valueOrNull ?? const <BusinessRole>[];
+    final heldRoleIds = {for (final r in widget.member.roles) r.roleId};
+    // A role they already hold can't be granted again — the backend treats
+    // that exact triple as a 409, so it's excluded here rather than left to
+    // fail server-side.
+    final available = [
+      for (final role in roles)
+        if (!heldRoleIds.contains(role.id)) role,
+    ];
 
     return ResponsiveFormDialog(
-      title: 'Change role',
+      title: 'Add a role',
       width: 480,
       actions: [
         OutlinedButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: changed ? _submit : null,
-          child: const Text('Save role'),
+          onPressed: _roleId != null && !_submitting ? _submit : null,
+          child: _submitting
+              ? const SizedBox(
+                  height: 16,
+                  width: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Add role'),
         ),
       ],
       child: Column(
@@ -227,35 +265,78 @@ class _ChangeRoleDialogState extends ConsumerState<ChangeRoleDialog> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          Text(
-            widget.member.email,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: context.text.bodySmall?.copyWith(
-              color: context.colors.onSurfaceVariant,
+          if (widget.member.roles.isNotEmpty) ...[
+            const SizedBox(height: Insets.sm),
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                for (final r in widget.member.roles)
+                  RoleBadge(role: roles.where((role) => role.id == r.roleId).firstOrNull, dense: true),
+              ],
             ),
-          ),
+          ],
           const SizedBox(height: Insets.xl),
-          RolePickerField(
-            roles: roles,
-            value: _roleId,
-            onChanged: (value) => setState(() => _roleId = value ?? _roleId),
-          ),
+          if (_submitError != null) ...[
+            Text(
+              _submitError!,
+              style: context.text.bodySmall?.copyWith(color: context.semantic.danger),
+            ),
+            const SizedBox(height: Insets.md),
+          ],
+          if (available.isEmpty)
+            Text(
+              'They already hold every role at this business.',
+              style: context.text.bodySmall?.copyWith(color: context.colors.onSurfaceVariant),
+            )
+          else
+            RolePickerField(
+              roles: available,
+              value: _roleId,
+              onChanged: (value) => setState(() => _roleId = value),
+            ),
         ],
       ),
     );
   }
 
-  void _submit() {
-    ref.read(staffMembersProvider.notifier).setRole(widget.member.id, _roleId);
+  Future<void> _submit() async {
+    final roleId = _roleId;
+    if (roleId == null) return;
 
-    final roleName = ref.read(roleByIdProvider(_roleId))?.name ?? 'their role';
-    final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context).pop();
+    setState(() {
+      _submitting = true;
+      _submitError = null;
+    });
 
-    messenger.showSnackBar(
-      SnackBar(content: Text('${widget.member.name} is now $roleName')),
-    );
+    try {
+      await ref.read(staffMembersProvider.notifier).assignRole(
+            phone: widget.member.phone,
+            roleId: roleId,
+          );
+
+      if (!mounted) return;
+      final roleName = ref.read(roleByIdProvider(roleId))?.name ?? 'the role';
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.of(context).pop();
+      messenger.showSnackBar(
+        SnackBar(content: Text('${widget.member.name} now has $roleName')),
+      );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _submitError = e.statusCode == null
+            ? 'Staff management requires an internet connection.'
+            : e.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _submitError = 'Something went wrong adding the role.';
+      });
+    }
   }
 }
 
@@ -440,14 +521,3 @@ class _PermissionChip extends StatelessWidget {
 
 String? validateName(String? value) =>
     (value ?? '').trim().isEmpty ? 'Enter their full name' : null;
-
-String? validateEmail(String? value) {
-  final text = (value ?? '').trim();
-  if (text.isEmpty) return 'Enter an email address';
-  // Deliberately loose: the point is to catch a typo, not to adjudicate RFC
-  // 5322. A real invite is validated by whether the mail arrives.
-  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(text)) {
-    return 'Enter a valid email address';
-  }
-  return null;
-}

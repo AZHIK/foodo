@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../auth/identity_service_api.dart' show AuthException;
 import '../../models/business_role.dart';
 import '../../models/permission.dart';
+import '../../providers/permissions_provider.dart';
 import '../../providers/roles_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
@@ -32,6 +34,7 @@ class RolesScreen extends ConsumerWidget {
     final summary = ref.watch(rolesSummaryProvider);
     final counts = ref.watch(roleStaffCountsProvider);
     final notifier = ref.read(rolesQueryProvider.notifier);
+    final canCreate = ref.watch(hasPermissionProvider(AppPermissions.rolesCreate));
 
     return DataPageScaffold(
       title: 'Roles & permissions',
@@ -47,11 +50,13 @@ class RolesScreen extends ConsumerWidget {
           label: const Text('Back to staff'),
         ),
       ],
-      primaryAction: FilledButton.icon(
-        onPressed: () => showRoleFormDialog(context),
-        icon: const Icon(Icons.add_rounded, size: 18),
-        label: const Text('Create role'),
-      ),
+      primaryAction: !canCreate
+          ? null
+          : FilledButton.icon(
+              onPressed: () => showRoleFormDialog(context),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('Create role'),
+            ),
       metrics: [
         SummaryMetricCard(
           label: 'Total roles',
@@ -93,52 +98,56 @@ class RolesScreen extends ConsumerWidget {
   }
 
   List<DataRowAction<BusinessRole>> _actions(WidgetRef ref) => [
-    DataRowAction(
-      label: 'Edit role',
-      icon: Icons.edit_outlined,
-      onSelected: (context, role) =>
-          showRoleFormDialog(context, existingRole: role),
-    ),
-    DataRowAction(
-      label: 'Duplicate',
-      icon: Icons.copy_all_outlined,
-      onSelected: (context, role) {
-        final copy = ref.read(rolesProvider.notifier).duplicate(role.id);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Created "${copy.name}"')),
-        );
-      },
-    ),
-    DataRowAction(
-      label: 'Delete',
-      icon: Icons.delete_outline_rounded,
-      isDestructive: true,
-      // System roles are referenced by staff records and by reporting, so
-      // removing one would orphan both. The row explains why in a tooltip.
-      isEnabled: (role) => !role.isSystem,
-      onSelected: (context, role) => _confirmDelete(context, ref, role),
-    ),
+    if (ref.watch(hasPermissionProvider(AppPermissions.rolesUpdate)))
+      DataRowAction(
+        label: 'Edit role',
+        icon: Icons.edit_outlined,
+        onSelected: (context, role) =>
+            showRoleFormDialog(context, existingRole: role),
+      ),
+    if (ref.watch(hasPermissionProvider(AppPermissions.rolesCreate)))
+      DataRowAction(
+        label: 'Duplicate',
+        icon: Icons.copy_all_outlined,
+        onSelected: (context, role) => _duplicate(context, ref, role),
+      ),
+    if (ref.watch(hasPermissionProvider(AppPermissions.rolesDelete)))
+      DataRowAction(
+        label: 'Delete',
+        icon: Icons.delete_outline_rounded,
+        isDestructive: true,
+        // The backend refuses a protected role (403) or one with active
+        // staff assignments (409) — disabled here for the same reasons,
+        // matching what the row's tooltip already explains.
+        isEnabled: (role) =>
+            !role.isProtected && (ref.read(roleStaffCountsProvider)[role.id] ?? 0) == 0,
+        onSelected: (context, role) => _confirmDelete(context, ref, role),
+      ),
   ];
+
+  Future<void> _duplicate(BuildContext context, WidgetRef ref, BusinessRole role) async {
+    try {
+      final copy = await ref.read(rolesProvider.notifier).duplicate(role.id);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Created "${copy.name}"')),
+      );
+    } on AuthException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
 
   Future<void> _confirmDelete(
     BuildContext context,
     WidgetRef ref,
     BusinessRole role,
   ) async {
-    final assigned = ref.read(roleStaffCountsProvider)[role.id] ?? 0;
-
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('Delete "${role.name}"?'),
-        content: Text(
-          assigned == 0
-              ? 'This role is not assigned to anyone. It will be removed '
-                    'permanently.'
-              : '$assigned ${assigned == 1 ? 'person is' : 'people are'} '
-                    'assigned to this role. They will keep the role on their '
-                    'record but it will no longer grant any permissions.',
-        ),
+        content: const Text('This role is not assigned to anyone and will be removed permanently.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -153,10 +162,17 @@ class RolesScreen extends ConsumerWidget {
     );
 
     if (confirmed != true || !context.mounted) return;
-    ref.read(rolesProvider.notifier).delete(role.id);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('"${role.name}" deleted')));
+
+    try {
+      await ref.read(rolesProvider.notifier).delete(role.id);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('"${role.name}" deleted')));
+    } on AuthException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 }
 
@@ -219,18 +235,18 @@ List<DataColumnSpec<BusinessRole>> roleColumns(Map<String, int> counts) => [
     role: ColumnRole.status,
     sortable: false,
     width: 120,
-    value: (role) => role.isSystem ? 'Built in' : 'Custom',
+    value: (role) => role.isProtected ? 'Built in' : 'Custom',
     // Says the same thing the column's value says — a badge showing the role's
     // name here would put a different word on screen from the one an export
     // carries for the same cell.
     cellBuilder: (context, role) => Tooltip(
-      message: role.isSystem
+      message: role.isProtected
           ? 'Built-in roles cannot be renamed or deleted'
           : 'Created for this business',
       child: StatusBadge(
-        label: role.isSystem ? 'Built in' : 'Custom',
-        tone: role.isSystem ? StatusTone.neutral : StatusTone.info,
-        icon: role.isSystem
+        label: role.isProtected ? 'Built in' : 'Custom',
+        tone: role.isProtected ? StatusTone.neutral : StatusTone.info,
+        icon: role.isProtected
             ? Icons.lock_outline_rounded
             : Icons.auto_awesome_outlined,
         dense: true,

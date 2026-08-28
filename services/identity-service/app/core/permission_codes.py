@@ -4,8 +4,23 @@ from enum import StrEnum
 class PermissionCode(StrEnum):
     POS_WRITE = "pos.write"
     POS_REFUND = "pos.refund"
+    POS_DISCOUNT = "pos.discount"
     INVENTORY_VIEW = "inventory.view"
     INVENTORY_ADJUST = "inventory.adjust"
+    INVENTORY_EDIT = "inventory.edit"
+    INVENTORY_DELETE = "inventory.delete"
+    SALES_VIEW = "sales.view"
+    SALES_EXPORT = "sales.export"
+    REPORTS_VIEW = "reports.view"
+    # Not yet enforced by any endpoint — no settings resource exists in this
+    # service today. Added so a business owner's custom-role editor can
+    # reference these business-facing concepts now; a future settings/POS
+    # service checks them once it exists, same pattern as PROCUREMENT_*/AI_*
+    # below being defined ahead of the services that will enforce them.
+    SETTINGS_STORE = "settings.store"
+    SETTINGS_TAX = "settings.tax"
+    SETTINGS_DEVICES = "settings.devices"
+    SETTINGS_BILLING = "settings.billing"
     PROCUREMENT_CREATE = "procurement.create"
     PROCUREMENT_APPROVE = "procurement.approve"
     PROCUREMENT_AUTO_ORDER_ENABLE = "procurement.auto_order.enable"

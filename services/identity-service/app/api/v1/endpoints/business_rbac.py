@@ -28,8 +28,11 @@ from app.schemas.business_rbac import (
     AddRolePermissionRequest,
     AssignStaffRequest,
     BusinessRoleCreateRequest,
+    BusinessRolePermissionRead,
     BusinessRoleRead,
     BusinessRoleUpdateRequest,
+    StaffMemberRead,
+    StaffRoleSummary,
 )
 
 router = APIRouter(prefix="/api/v1/businesses", tags=["Business RBAC"])
@@ -52,6 +55,23 @@ async def _get_business_role_or_404(
     if role is None or role.business_id != business_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Business role not found")
     return role
+
+
+def _require_matching_business(business_id: UUID, token_business_id: str) -> None:
+    """Reject if the path's business_id doesn't match the token's active context.
+
+    ``require_business_permission`` only checks that *a* business context and
+    permission are present — it never compares that context against the
+    ``business_id`` in the URL. Without this check, a caller with the right
+    permission on their own business could act on any other business by
+    swapping the path parameter. The read/write endpoints below (staff list,
+    role-permission list, staff-role revoke) all cross-check explicitly.
+    """
+    if str(business_id) != token_business_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Token business context does not match the requested business",
+        )
 
 
 # ── 1. Create Business Role ──────────────────────────────────────────────────
@@ -368,3 +388,124 @@ async def assign_staff_role(
         db.add(ubr)
 
     return {"detail": "Staff role assigned"}
+
+
+# ── 7. List Staff ─────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/{business_id}/staff",
+    response_model=list[StaffMemberRead],
+)
+async def list_staff(
+    business_id: UUID,
+    token_business_id: str = Depends(
+        require_business_permission(PermissionCode.USER_BUSINESS_ROLES_VIEW)
+    ),
+    db: AsyncSession = Depends(get_async_session),
+) -> list[StaffMemberRead]:
+    """One entry per staff member, with every role they hold at this business.
+
+    A user can hold more than one ``UserBusinessRole`` row here (the model
+    allows multiple simultaneous roles per business) — this groups them
+    rather than returning one row per role.
+    """
+    _require_matching_business(business_id, token_business_id)
+    await _get_business_or_404(db, business_id)
+
+    result = await db.exec(
+        select(UserBusinessRole, User, BusinessRole)
+        .join(User, UserBusinessRole.user_id == User.id)  # type: ignore[arg-type]
+        .join(BusinessRole, UserBusinessRole.business_role_id == BusinessRole.id)  # type: ignore[arg-type]
+        .where(UserBusinessRole.business_id == business_id)
+        .order_by(User.phone)
+    )
+
+    by_user: dict[UUID, StaffMemberRead] = {}
+    for _ubr, user, role in result.all():
+        entry = by_user.get(user.id)
+        if entry is None:
+            entry = StaffMemberRead(
+                user_id=user.id,
+                phone=user.phone,
+                full_name=user.full_name,
+                email=user.email,
+                status=user.status,
+                roles=[],
+            )
+            by_user[user.id] = entry
+        entry.roles.append(StaffRoleSummary(business_role_id=role.id, name=role.name))
+
+    return list(by_user.values())
+
+
+# ── 8. Revoke Staff Role ─────────────────────────────────────────────────
+
+
+@router.delete(
+    "/{business_id}/staff/{user_id}/roles/{role_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def revoke_staff_role(
+    business_id: UUID,
+    user_id: UUID,
+    role_id: UUID,
+    token_business_id: str = Depends(
+        require_business_permission(PermissionCode.USER_BUSINESS_ROLES_REVOKE)
+    ),
+    db: AsyncSession = Depends(get_async_session),
+) -> None:
+    """Remove one role assignment from a staff member.
+
+    Removes exactly the ``(user_id, business_id, role_id)`` assignment —
+    any other roles the user holds at this business are untouched.
+    """
+    _require_matching_business(business_id, token_business_id)
+
+    async with db.begin():
+        ubr = (
+            await db.exec(
+                select(UserBusinessRole).where(
+                    UserBusinessRole.user_id == user_id,
+                    UserBusinessRole.business_id == business_id,
+                    UserBusinessRole.business_role_id == role_id,
+                )
+            )
+        ).one_or_none()
+        if ubr is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Staff role assignment not found",
+            )
+
+        await db.delete(ubr)
+
+
+# ── 9. List Role Permissions ─────────────────────────────────────────────
+
+
+@router.get(
+    "/{business_id}/roles/{role_id}/permissions",
+    response_model=list[BusinessRolePermissionRead],
+)
+async def list_role_permissions(
+    business_id: UUID,
+    role_id: UUID,
+    token_business_id: str = Depends(
+        require_business_permission(PermissionCode.BUSINESS_ROLES_VIEW)
+    ),
+    db: AsyncSession = Depends(get_async_session),
+) -> list[BusinessRolePermission]:
+    """The permission codes currently assigned to a role.
+
+    Needed because assign/remove (endpoints 4-5 above) only ever touch one
+    code at a time — there is no other way to learn a role's current
+    permission set.
+    """
+    _require_matching_business(business_id, token_business_id)
+    await _get_business_role_or_404(db, business_id, role_id)
+
+    result = await db.exec(
+        select(BusinessRolePermission).where(BusinessRolePermission.business_role_id == role_id)
+    )
+    return list(result.all())

@@ -46,10 +46,25 @@ class PermissionGroup {
 /// The single source of truth for what a role *can* grant. The role form
 /// renders it, the roles table counts against it, and the invite dialog reads
 /// labels out of it — none of them hold a list of their own.
+///
+/// Every id here is a real `PermissionCode` value from the identity-service
+/// backend (`app/core/permission_codes.py`) — this used to be an invented
+/// catalogue that only accidentally overlapped the backend on 3 of 18
+/// entries; every id below either matches a code an endpoint actually
+/// enforces today, or one added specifically so this editor has something
+/// real to assign (POS/Inventory extras, Sales & Reports, Settings — all
+/// unenforced until a future service checks them, same as the backend's own
+/// `procurement.*`/`ai.*` codes being defined ahead of their service).
+///
+/// The Staff Management group deliberately does *not* invent parallel
+/// `staff.invite`/`staff.roles`-style ids: the real staff/role endpoints
+/// check `user_business_roles.*`/`business_roles.*` specifically, so this
+/// group uses those directly — a toggle that doesn't match what the backend
+/// actually checks would grant nothing.
 abstract final class AppPermissions {
-  /// Permissions that let a staff member work a till. A role holding any of
-  /// these gets the sales performance block on their detail screen.
-  static const posAccess = 'pos.access';
+  /// Permissions that let a staff member work a till. A role holding this
+  /// gets the sales performance block on their detail screen.
+  static const posAccess = 'pos.write';
   static const posDiscount = 'pos.discount';
   static const posRefund = 'pos.refund';
 
@@ -62,10 +77,14 @@ abstract final class AppPermissions {
   static const salesExport = 'sales.export';
   static const reportsView = 'reports.view';
 
-  static const staffView = 'staff.view';
-  static const staffInvite = 'staff.invite';
-  static const staffRoles = 'staff.roles';
-  static const staffRemove = 'staff.remove';
+  static const rolesView = 'business_roles.view';
+  static const rolesCreate = 'business_roles.create';
+  static const rolesUpdate = 'business_roles.update';
+  static const rolesDelete = 'business_roles.delete';
+  static const rolesManagePermissions = 'business_roles.manage_permissions';
+  static const staffView = 'user_business_roles.view';
+  static const staffAssign = 'user_business_roles.assign';
+  static const staffRevoke = 'user_business_roles.revoke';
 
   static const settingsStore = 'settings.store';
   static const settingsTax = 'settings.tax';
@@ -155,19 +174,39 @@ abstract final class AppPermissions {
           description: 'See the team list and member profiles',
         ),
         Permission(
-          id: staffInvite,
-          label: 'Invite staff',
-          description: 'Send an invite and assign a starting role',
+          id: staffAssign,
+          label: 'Invite & assign staff',
+          description: 'Send an invite and assign a role',
         ),
         Permission(
-          id: staffRoles,
-          label: 'Manage roles',
-          description: 'Create roles and change what they can do',
+          id: staffRevoke,
+          label: 'Remove staff roles',
+          description: 'Revoke a role assignment from a member',
         ),
         Permission(
-          id: staffRemove,
-          label: 'Remove staff',
-          description: 'Deactivate accounts or remove a member',
+          id: rolesView,
+          label: 'View roles',
+          description: 'See custom roles and what they can do',
+        ),
+        Permission(
+          id: rolesCreate,
+          label: 'Create roles',
+          description: 'Define a new custom role',
+        ),
+        Permission(
+          id: rolesUpdate,
+          label: 'Edit roles',
+          description: 'Rename or redescribe an existing role',
+        ),
+        Permission(
+          id: rolesDelete,
+          label: 'Delete roles',
+          description: 'Remove a custom role with no staff assigned',
+        ),
+        Permission(
+          id: rolesManagePermissions,
+          label: 'Manage role permissions',
+          description: "Change what a role's toggles grant",
         ),
       ],
     ),

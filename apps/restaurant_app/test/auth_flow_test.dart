@@ -1,12 +1,19 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:restaurant_pos/database/app_database.dart';
+import 'package:restaurant_pos/database/local_profile_repository.dart';
 import 'package:restaurant_pos/main.dart';
 import 'package:restaurant_pos/models/session.dart';
 import 'package:restaurant_pos/models/staff_member.dart';
 import 'package:restaurant_pos/providers/auth_provider.dart';
+import 'package:restaurant_pos/providers/database_providers.dart';
+import 'package:restaurant_pos/providers/roles_provider.dart';
 import 'package:restaurant_pos/providers/session_provider.dart';
 import 'package:restaurant_pos/providers/settings_provider.dart';
 import 'package:restaurant_pos/providers/staff_provider.dart';
@@ -17,11 +24,25 @@ import 'package:restaurant_pos/screens/auth/otp_login_screen.dart';
 import 'package:restaurant_pos/screens/auth/pin_unlock_screen.dart';
 import 'package:restaurant_pos/screens/auth/set_pin_screen.dart';
 import 'package:restaurant_pos/utils/phone_validation.dart';
+import 'package:restaurant_pos/utils/pin_hasher.dart';
 import 'package:restaurant_pos/widgets/auth/auth_aside.dart';
 
 import 'test_helpers/fake_identity_backend.dart';
 
 const _widths = <double>[360, 400, 768, 1024, 1440, 1920];
+
+/// A local staff profile to seed into the in-memory database before a test
+/// pumps the app — the record `LocalProfileRepository`/`PinUnlockScreen`'s
+/// real PIN-verification path (and the Profile Picker's saved-profile names)
+/// expect to already be on the device, exactly as Set PIN would have written
+/// it on a previous sign-in.
+class LocalProfile {
+  const LocalProfile({required this.id, required this.name, this.pin});
+
+  final String id;
+  final String name;
+  final String? pin;
+}
 
 /// Pumps the app with [session] as the starting state and navigates to [route].
 ///
@@ -34,15 +55,52 @@ Future<ProviderContainer> pumpSession(
   SessionState? session,
   String? route,
   List<Override> overrides = const [],
+  // Tests that jump straight to an authenticated route via `session` skip
+  // the real OTP flow entirely, so `authProvider`'s in-memory access token
+  // is never populated — anything that reads it (business/staff/role
+  // calls, all gated behind a real token) needs it seeded by hand here.
+  String? authAccessToken,
+  List<LocalProfile> localProfiles = const [],
 }) async {
   tester.view.physicalSize = size * tester.view.devicePixelRatio;
   addTearDown(tester.view.reset);
 
-  final container = ProviderContainer(overrides: overrides);
+  // `authProvider`'s build() reaches `appDatabaseProvider` (via
+  // `localProfileRepositoryProvider`) to restore any saved local profile —
+  // real in production because `main.dart` always overrides it, but every
+  // screen that shows staff/role/permission info now watches `authProvider`
+  // too (for the current user's decoded token), so any route reachable here
+  // needs a working database, not just the tests that log in explicitly.
+  final database = AppDatabase(NativeDatabase.memory());
+  addTearDown(database.close);
+
+  final profileRepo = LocalProfileRepository(database);
+  for (final profile in localProfiles) {
+    final salt = PinHasher.generateSalt();
+    final now = DateTime.now();
+    await profileRepo.upsertProfile(LocalUserProfilesCompanion.insert(
+      id: profile.id,
+      displayName: profile.name,
+      pinHash: profile.pin == null ? '' : PinHasher.hash(profile.pin!, salt),
+      pinSalt: salt,
+      createdAt: now,
+      updatedAt: now,
+    ));
+  }
+
+  final container = ProviderContainer(
+    overrides: [appDatabaseProvider.overrideWithValue(database), ...overrides],
+  );
   addTearDown(container.dispose);
 
   if (session != null) {
     container.read(sessionProvider.notifier).state = session;
+  }
+  if (authAccessToken != null) {
+    container.read(authProvider.notifier).state = AuthContext(
+      state: AuthState.complete,
+      accessToken: authAccessToken,
+    );
   }
 
   await tester.pumpWidget(
@@ -173,6 +231,15 @@ void main() {
       final container = await pumpSession(
         tester,
         size: const Size(1440, 900),
+        session: const SessionState(
+          savedProfileIds: ['stf-01'],
+          activeStaffId: 'stf-01',
+          isLoggedIn: true,
+          pin: '246813',
+          isUnlocked: true,
+          hasCompletedOnboarding: true,
+          bootstrapped: true,
+        ),
         route: AppRoute.inventoryPath,
       );
 
@@ -183,6 +250,15 @@ void main() {
       final container = await pumpSession(
         tester,
         size: const Size(1440, 900),
+        session: const SessionState(
+          savedProfileIds: ['stf-01'],
+          activeStaffId: 'stf-01',
+          isLoggedIn: true,
+          pin: '246813',
+          isUnlocked: true,
+          hasCompletedOnboarding: true,
+          bootstrapped: true,
+        ),
         route: AppRoute.dashboardPath,
       );
       expect(_locationOf(container), AppRoute.dashboardPath);
@@ -297,6 +373,10 @@ void main() {
           bootstrapped: true,
         ),
         route: AppRoute.profilesPath,
+        localProfiles: const [
+          LocalProfile(id: 'stf-01', name: 'Ava Mensah'),
+          LocalProfile(id: 'stf-02', name: 'Marco Ferreira'),
+        ],
       );
 
       await tester.tap(find.text('Marco Ferreira'));
@@ -532,6 +612,9 @@ void main() {
         size: const Size(1440, 900),
         session: lockedSession(),
         route: AppRoute.unlockPath,
+        localProfiles: const [
+          LocalProfile(id: 'stf-01', name: 'Ava Mensah', pin: '246813'),
+        ],
       );
 
       await enter(tester, '246813');
@@ -549,6 +632,9 @@ void main() {
         size: const Size(1440, 900),
         session: lockedSession(),
         route: AppRoute.unlockPath,
+        localProfiles: const [
+          LocalProfile(id: 'stf-01', name: 'Ava Mensah', pin: '246813'),
+        ],
       );
 
       await enter(tester, '000000');
@@ -597,7 +683,7 @@ void main() {
 
       // Even the correct PIN is refused while the lockout stands.
       expect(
-        container.read(sessionProvider.notifier).submitPin('246813'),
+        await container.read(sessionProvider.notifier).submitPin('246813'),
         isFalse,
       );
       expect(container.read(sessionProvider).isUnlocked, isFalse);
@@ -608,6 +694,17 @@ void main() {
   });
 
   group('Business onboarding', () {
+    /// The onboarding tests jump straight to `/auth/onboarding` via a
+    /// pre-set `sessionProvider` state, bypassing the real OTP flow — so
+    /// `authProvider` needs its own fake token, and business creation now
+    /// happens mid-wizard (leaving "How you charge"), so the fake backend
+    /// needs to answer business/role/staff calls, not just OTP ones.
+    List<Override> fakeBackend(FakeIdentityBackendState state) => [
+      identityServiceDioProvider.overrideWithValue(
+        Dio()..httpClientAdapter = FakeIdentityAdapter(state),
+      ),
+    ];
+
     testWidgets('the steps write to the providers Settings already uses', (
       tester,
     ) async {
@@ -619,6 +716,8 @@ void main() {
           bootstrapped: true,
         ),
         route: AppRoute.onboardingPath,
+        overrides: fakeBackend(FakeIdentityBackendState()),
+        authAccessToken: fakeScopedToken(),
       );
 
       // Step 1 — business identity.
@@ -652,22 +751,27 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(container.read(taxRateProvider), closeTo(0.11, 0.0001));
-      // Not finished yet — the team step comes after preferences.
+      // Leaving this step is also where the business gets created for real
+      // (roles have to exist before the team step can offer any) — not
+      // finished yet, the team step still follows.
       expect(container.read(sessionProvider).hasCompletedOnboarding, isFalse);
+      final rolesAfterCreation = await container.read(rolesProvider.future);
+      expect(rolesAfterCreation, isNotEmpty);
 
-      // Step 4 — a teammate, filed as a pending invite on the Staff list.
-      final before = container.read(staffMembersProvider).length;
+      // Step 4 — a teammate, invited by phone for real.
+      final before = (container.read(staffMembersProvider).valueOrNull ?? const []).length;
       await tester.enterText(
         find.byKey(OnboardingKeys.teammateName(0)),
         'Nadia Okafor',
       );
+      await tester.enterText(find.byKey(OnboardingKeys.teammatePhone(0)), '712345678');
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(OnboardingKeys.next));
       await tester.pumpAndSettle();
 
-      final staff = container.read(staffMembersProvider);
+      final staff = container.read(staffMembersProvider).valueOrNull ?? const [];
       expect(staff, hasLength(before + 1));
-      final invited = staff.firstWhere((m) => m.name == 'Nadia Okafor');
+      final invited = staff.firstWhere((m) => m.phone == '+255712345678');
       expect(invited.status, StaffStatus.pendingInvite);
 
       expect(container.read(sessionProvider).hasCompletedOnboarding, isTrue);
@@ -688,9 +792,11 @@ void main() {
           bootstrapped: true,
         ),
         route: AppRoute.onboardingPath,
+        overrides: fakeBackend(FakeIdentityBackendState()),
+        authAccessToken: fakeScopedToken(),
       );
 
-      final before = container.read(staffMembersProvider).length;
+      final before = (container.read(staffMembersProvider).valueOrNull ?? const []).length;
 
       // Straight through: every step but the team one is pre-filled from the
       // seeded providers, so Continue is live from the start.
@@ -699,7 +805,10 @@ void main() {
         await tester.pumpAndSettle();
       }
 
-      expect(container.read(staffMembersProvider), hasLength(before));
+      expect(
+        container.read(staffMembersProvider).valueOrNull ?? const [],
+        hasLength(before),
+      );
       expect(container.read(sessionProvider).hasCompletedOnboarding, isTrue);
       expect(_locationOf(container), AppRoute.dashboardPath);
     });
@@ -735,5 +844,98 @@ void main() {
       // Back is hidden on the first step.
       expect(find.byKey(OnboardingKeys.back), findsNothing);
     });
+  });
+
+  group('First-login local caching', () {
+    /// Same fake backend pattern as 'OTP login' / 'Business onboarding'.
+    ///
+    /// These tests drive `authProvider`'s notifier methods directly rather
+    /// than through the OTP/onboarding screens: the write logic under test
+    /// lives entirely in `auth_provider.dart` (see `setPin` and
+    /// `createBusinessAndOnboard`), and going through the real widgets would
+    /// pull in unrelated form validation and layout that aren't part of what
+    /// these tests are checking.
+    List<Override> fakeBackend(FakeIdentityBackendState state) => [
+      identityServiceDioProvider.overrideWithValue(
+        Dio()..httpClientAdapter = FakeIdentityAdapter(state),
+      ),
+    ];
+
+    testWidgets(
+      'an invited staff member caches business/role/permissions only once they set a PIN',
+      (tester) async {
+        final state = FakeIdentityBackendState()
+          ..needsOnboarding = false
+          ..businessId = 'biz-1'
+          ..businessName = 'The Copper Fig';
+
+        final container = await pumpSession(
+          tester,
+          size: const Size(1440, 900),
+          session: const SessionState(bootstrapped: true),
+          overrides: fakeBackend(state),
+        );
+        final db = container.read(appDatabaseProvider);
+        final notifier = container.read(authProvider.notifier);
+
+        await tester.runAsync(() async {
+          await notifier.requestOtp('712345678');
+          await notifier.verifyOtp(fakeOtpCode);
+        });
+
+        // Signed in and context-switched (device provisioned to biz-1
+        // already), but Set PIN hasn't run yet — nothing about this staff
+        // member should be cached locally until it does.
+        expect(await db.select(db.cachedPermissions).get(), isEmpty);
+
+        await tester.runAsync(() => notifier.setPin('135790'));
+
+        final cached = await db.select(db.cachedPermissions).get();
+        expect(cached, hasLength(1));
+        expect(cached.single.businessId, 'biz-1');
+        expect(cached.single.businessLocationId, 'store-1');
+        expect(cached.single.roleName, 'owner');
+        expect(jsonDecode(cached.single.permissionCodes), contains('*'));
+      },
+    );
+
+    testWidgets(
+      'a new owner caches business/role/permissions as soon as their business is saved',
+      (tester) async {
+        final container = await pumpSession(
+          tester,
+          size: const Size(1440, 900),
+          session: const SessionState(bootstrapped: true),
+          overrides: fakeBackend(FakeIdentityBackendState()),
+        );
+        final db = container.read(appDatabaseProvider);
+        final notifier = container.read(authProvider.notifier);
+
+        await tester.runAsync(() async {
+          await notifier.requestOtp('712345678');
+          await notifier.verifyOtp(fakeOtpCode);
+          await notifier.setPin('135790');
+        });
+
+        // Set PIN runs before onboarding for a fresh owner (no business
+        // exists yet), so nothing should be cached from this alone.
+        expect(await db.select(db.cachedPermissions).get(), isEmpty);
+
+        await tester.runAsync(() => notifier.createBusinessAndOnboard(
+              name: 'The Brass Olive',
+              address: '12 Harbour Rd',
+              phone: '',
+            ));
+
+        final ownerId = container.read(authProvider).userId;
+        expect(ownerId, isNotNull);
+
+        final cached = await (db.select(db.cachedPermissions)
+              ..where((row) => row.userId.equals(ownerId!)))
+            .getSingle();
+        expect(cached.businessId, container.read(authProvider).selectedBusinessId);
+        expect(cached.roleName, 'owner');
+      },
+    );
   });
 }

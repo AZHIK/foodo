@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../auth/token_storage.dart';
 import '../database/local_profile_repository.dart';
 import '../models/session.dart';
 import '../models/staff_member.dart';
@@ -16,21 +15,17 @@ import 'staff_provider.dart';
 /// flow has exactly one source of truth. Nothing navigates by hand: a screen
 /// records what happened, and the guard decides where that leaves you.
 ///
-/// `build()` returns a fresh-device state synchronously (Riverpod's `build()`
-/// cannot itself be async) and immediately kicks off [_restoreFromStorage],
-/// which reads the real secure-storage token and local DB and corrects the
-/// state once that resolves — the same fire-and-update pattern
-/// `AuthNotifier._checkStoredSession` already uses. A device with nothing
-/// stored yet is genuinely a fresh device, so there is nothing to correct.
+/// A cold start is always either the phone-number screen (nothing saved on
+/// this device yet) or the profile picker (someone has signed in here
+/// before) — never straight to the PIN screen. [SessionState.entryRoute]
+/// only reaches `/auth/unlock` once [selectProfile] has recorded who is
+/// signing in, which happens from the picker, not from `build()`.
 class SessionNotifier extends Notifier<SessionState> {
   late final LocalProfileRepository _profileRepo;
-  late final TokenStorage _tokenStorage;
 
   @override
   SessionState build() {
     _profileRepo = ref.watch(localProfileRepositoryProvider);
-    _tokenStorage = TokenStorage();
-    _restoreFromStorage();
     return freshDevice;
   }
 
@@ -53,37 +48,6 @@ class SessionNotifier extends Notifier<SessionState> {
     isUnlocked: true,
     hasCompletedOnboarding: true,
   );
-
-  /// Reconciles the in-memory state with what this device actually has
-  /// stored: a valid access token means signed in, a `DeviceConfig` row means
-  /// onboarding is done, and a saved PIN hash means Set PIN is behind us.
-  ///
-  /// `pin` is set to the stored *hash*, not the PIN itself — `hasPin` only
-  /// needs a non-empty value to gate routing correctly, and `submitPin`'s
-  /// real verification path checks the hash via `_profileRepo.getProfile`
-  /// regardless, so nothing here ever holds a plaintext PIN.
-  Future<void> _restoreFromStorage() async {
-    try {
-      final tokenSet = await _tokenStorage.getTokenSet();
-      if (tokenSet == null || tokenSet.isExpired) return;
-
-      final device = await _profileRepo.currentDevice();
-      final profile = await _profileRepo.getProfile(tokenSet.userId);
-
-      state = state.copyWith(
-        activeStaffId: tokenSet.userId,
-        isLoggedIn: true,
-        // A locked terminal is the correct real-world default on a cold
-        // start, unlike the old always-unlocked demo seed.
-        isUnlocked: false,
-        hasCompletedOnboarding: device != null,
-        pin: profile?.pinHash as String?,
-      );
-    } catch (_) {
-      // Nothing readable (first launch, storage cleared, DB unavailable) —
-      // stay on the fresh-device state.
-    }
-  }
 
   // -------------------------------------------------------------------------
   // Boot
@@ -117,7 +81,12 @@ class SessionNotifier extends Notifier<SessionState> {
 
   /// Marks a profile as the one signing in, without granting access — the PIN
   /// screen still has to be satisfied.
-  void selectProfile(String staffId) {
+  ///
+  /// Also loads this profile's saved PIN hash and this device's onboarding
+  /// status, so `hasPin` and `hasCompletedOnboarding` are correct once
+  /// `submitPin` unlocks the session — `selectProfile` is now the only place
+  /// that flips `isLoggedIn`, so nothing else populates them.
+  Future<void> selectProfile(String staffId) async {
     state = state.copyWith(
       activeStaffId: staffId,
       isLoggedIn: true,
@@ -125,6 +94,21 @@ class SessionNotifier extends Notifier<SessionState> {
       failedAttempts: 0,
       clearLockout: true,
     );
+
+    try {
+      final device = await _profileRepo.currentDevice();
+      final profile = await _profileRepo.getProfile(staffId);
+      // `pin` is set to the stored *hash*, not the PIN itself — `hasPin` only
+      // needs a non-empty value to gate routing correctly, and `submitPin`'s
+      // real verification path checks the hash via `_profileRepo.getProfile`
+      // regardless, so nothing here ever holds a plaintext PIN.
+      state = state.copyWith(
+        hasCompletedOnboarding: device != null,
+        pin: profile?.pinHash as String?,
+      );
+    } catch (_) {
+      // Nothing readable — leave hasPin/hasCompletedOnboarding as they were.
+    }
   }
 
   /// Requests an OTP code for a phone number (start of login flow).
@@ -141,8 +125,19 @@ class SessionNotifier extends Notifier<SessionState> {
   /// Verifies an OTP code and completes login.
   ///
   /// After verification, the session is marked as logged in and unlocked
-  /// (OTP is proof of identity). The user is now in the PIN setup or
-  /// onboarding flow depending on account status.
+  /// (OTP is proof of identity). Whether the user lands on the dashboard or
+  /// the business-creation onboarding flow next comes down to one thing: did
+  /// `verifyOtp` find a store to lock this device to?
+  ///
+  /// - Has a store → they were logged into it (`_switchContextAndLock`
+  ///   provisioned `DeviceConfig`) → treated as a returning user.
+  /// - No store → nothing was provisioned → treated the same as a brand-new
+  ///   signup, and `entryRoute` sends them to onboarding to register a
+  ///   business, store included.
+  ///
+  /// `_profileRepo.currentDevice()` is re-read here (rather than assumed)
+  /// because that provisioning happens as a side effect inside
+  /// `AuthNotifier._switchContextAndLock`, not in this method.
   Future<void> completeOtpLogin(String code) async {
     try {
       final auth = ref.read(authProvider.notifier);
@@ -152,11 +147,14 @@ class SessionNotifier extends Notifier<SessionState> {
       final staffId = authState.userId;
       if (staffId == null) throw StateError('User ID not set after OTP verify');
 
+      final device = await _profileRepo.currentDevice();
+
       // OTP is a stronger proof than PIN, so it unlocks immediately.
       state = state.copyWith(
         activeStaffId: staffId,
         isLoggedIn: true,
         isUnlocked: true,
+        hasCompletedOnboarding: device != null,
         savedProfileIds: _withProfile(staffId),
         failedAttempts: 0,
         clearLockout: true,
@@ -322,14 +320,19 @@ final sessionProvider = NotifierProvider<SessionNotifier, SessionState>(
 /// The staff member currently signing in or signed in.
 ///
 /// Resolved against the live staff list, so renaming someone on the Staff
-/// screen renames them on the lock screen too. Falls back to
+/// screen renames them on the lock screen too. Falls back to the locally
+/// saved profile (name only — this runs before the PIN is entered, so there
+/// is no business-scoped token yet to fetch the live list with), then to
 /// [currentUserProvider] — the owner — when no profile has been selected,
 /// which is what the app did before sessions existed.
 final sessionStaffProvider = Provider<StaffMember?>((ref) {
   final id = ref.watch(sessionProvider.select((s) => s.activeStaffId));
   if (id == null) return ref.watch(currentUserProvider);
 
-  for (final member in ref.watch(staffMembersProvider)) {
+  for (final member in ref.watch(staffMembersProvider).valueOrNull ?? const <StaffMember>[]) {
+    if (member.id == id) return member;
+  }
+  for (final member in ref.watch(localSavedStaffProvider).valueOrNull ?? const <StaffMember>[]) {
     if (member.id == id) return member;
   }
   return ref.watch(currentUserProvider);
@@ -339,10 +342,10 @@ final sessionStaffProvider = Provider<StaffMember?>((ref) {
 /// record has since been deleted.
 final savedProfilesProvider = Provider<List<StaffMember>>((ref) {
   final ids = ref.watch(sessionProvider.select((s) => s.savedProfileIds));
-  final members = ref.watch(staffMembersProvider);
+  final members = ref.watch(staffMembersProvider).valueOrNull ?? const <StaffMember>[];
   final localMembers = ref.watch(localSavedStaffProvider);
 
-  // Combine mock staff and local saved staff
+  // Combine real staff and local saved staff
   final allMembers = [...members];
   if (localMembers.isLoading == false && localMembers.hasValue) {
     for (final member in localMembers.value!) {

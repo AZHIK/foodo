@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/mock_staff.dart';
+import '../auth/staff_rbac_api.dart';
+import '../auth/staff_rbac_dtos.dart';
 import '../models/business_role.dart';
 import '../models/table_query.dart';
+import 'auth_provider.dart';
+import 'permissions_provider.dart';
 import 'staff_provider.dart';
 import 'table_query_provider.dart';
 
@@ -13,76 +16,137 @@ abstract final class RoleSort {
   static const permissions = 'rolePermissions';
 }
 
-/// The single source of truth for roles.
+/// The one real client for every business-RBAC call (roles, role
+/// permissions, staff assignment) — built on the shared, interceptor-backed
+/// `identityServiceDioProvider`, not a second HTTP setup.
+final staffRbacApiProvider = Provider<StaffRbacApi>(
+  (ref) => StaffRbacApi(dio: ref.watch(identityServiceDioProvider)),
+);
+
+/// The single source of truth for roles, backed by the real
+/// identity-service business-RBAC endpoints.
 ///
-/// The roles table, the role form, the staff table's badges and the invite
-/// dialog's role picker all read this one list — editing a role in the form is
-/// visible everywhere else on the next frame, with nothing to synchronise.
-class RolesNotifier extends Notifier<List<BusinessRole>> {
+/// `GET /businesses/{id}/roles` doesn't return each role's permissions
+/// (that's a separate endpoint, one call per role) — `build()` fetches both
+/// and joins them, so every other provider here still reads a plain
+/// `List<BusinessRole>` with `permissionIds` already populated, same as
+/// the pre-integration shape.
+class RolesNotifier extends AsyncNotifier<List<BusinessRole>> {
+  StaffRbacApi get _api => ref.read(staffRbacApiProvider);
+
+  String get _businessId {
+    final id = ref.read(currentBusinessIdProvider);
+    if (id == null) throw StateError('No active business context');
+    return id;
+  }
+
   @override
-  List<BusinessRole> build() => MockStaff.roles;
+  Future<List<BusinessRole>> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    if (businessId == null) return const [];
 
-  void upsert(BusinessRole role) {
-    final index = state.indexWhere((r) => r.id == role.id);
-    if (index == -1) {
-      state = [...state, role];
-      return;
-    }
-    final next = [...state];
-    next[index] = role;
-    state = next;
+    final roles = await _api.listRoles(businessId: businessId);
+    return Future.wait(roles.map((dto) => _withPermissions(businessId, dto)));
   }
 
-  /// Deletes a role, refusing to touch a system one.
-  ///
-  /// The refusal is the contract rather than an assert: staff records and
-  /// reporting both reference the built-in roles by id, so losing one corrupts
-  /// data that is expensive to reconstruct. The roles table also disables the
-  /// action, but a guard that only holds when the UI remembers to ask is not a
-  /// guard.
-  void delete(String id) {
-    final role = byId(id);
-    if (role != null && role.isSystem) return;
-    state = state.where((r) => r.id != id).toList();
-  }
-
-  /// Copies a role's permissions under a new name, which is how most custom
-  /// roles actually get made — "Manager, but without refunds".
-  BusinessRole duplicate(String id) {
-    final source = state.firstWhere((r) => r.id == id);
-    final copy = BusinessRole(
-      id: nextId(),
-      name: _uniqueName('${source.name} copy'),
-      description: source.description,
-      // A duplicate is never a system role, however it was made.
-      permissionIds: Set.of(source.permissionIds),
+  Future<BusinessRole> _withPermissions(String businessId, BusinessRoleDto dto) async {
+    final perms = await _api.listRolePermissions(businessId: businessId, roleId: dto.id);
+    return BusinessRole(
+      id: dto.id,
+      name: dto.name,
+      description: dto.description ?? '',
+      permissionIds: perms.map((p) => p.permissionCode).toSet(),
+      isProtected: dto.isProtected,
     );
-    state = [...state, copy];
-    return copy;
   }
 
-  BusinessRole? byId(String id) {
-    for (final role in state) {
-      if (role.id == id) return role;
-    }
-    return null;
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(build);
   }
 
-  String nextId() {
-    var highest = 0;
-    for (final role in state) {
-      final n = int.tryParse(role.id.split('-').last);
-      if (n != null && n > highest) highest = n;
+  /// Creates a role and grants it [permissionCodes] in one batch (as few
+  /// calls as the backend allows — one per code, since there's no bulk
+  /// endpoint), then reloads once. Returns the created role.
+  Future<BusinessRole> create({
+    required String name,
+    String? description,
+    Set<String> permissionCodes = const {},
+  }) async {
+    final businessId = _businessId;
+    final created = await _api.createRole(
+      businessId: businessId,
+      input: CreateRoleInput(name: name, description: description),
+    );
+    for (final code in permissionCodes) {
+      await _api.assignRolePermission(
+        businessId: businessId,
+        roleId: created.id,
+        permissionCode: code,
+      );
     }
-    // System roles use word ids ("role-owner"), so the counter starts above
-    // them rather than colliding at "role-1".
-    return 'role-${(highest + 1).clamp(100, 1 << 30)}';
+    await refresh();
+    return byId(created.id) ??
+        BusinessRole(
+          id: created.id,
+          name: created.name,
+          description: created.description ?? '',
+          permissionIds: permissionCodes,
+        );
+  }
+
+  Future<void> updateRole(
+    String roleId, {
+    required String name,
+    String? description,
+  }) async {
+    await _api.updateRole(
+      businessId: _businessId,
+      roleId: roleId,
+      input: UpdateRoleInput(name: name, description: description),
+    );
+    await refresh();
+  }
+
+  /// Deletes a role. The backend itself refuses a protected role (403) or
+  /// one with active staff assignments (409) — this doesn't duplicate that
+  /// check client-side beyond what the UI needs to disable the action.
+  Future<void> delete(String id) async {
+    await _api.deleteRole(businessId: _businessId, roleId: id);
+    await refresh();
+  }
+
+  /// Copies a role's permissions under a new name — the backend has no
+  /// duplicate endpoint, so this is a real create-then-copy-each-permission
+  /// sequence (not instant/atomic like the old mock), not a fake action.
+  Future<BusinessRole> duplicate(String id) async {
+    final source = byId(id);
+    if (source == null) throw StateError('Role $id not found');
+
+    final businessId = _businessId;
+    final name = _uniqueName('${source.name} copy');
+    final created = await _api.createRole(
+      businessId: businessId,
+      input: CreateRoleInput(name: name, description: source.description),
+    );
+    for (final code in source.permissionIds) {
+      await _api.assignRolePermission(
+        businessId: businessId,
+        roleId: created.id,
+        permissionCode: code,
+      );
+    }
+    await refresh();
+    return byId(created.id) ??
+        BusinessRole(id: created.id, name: created.name, description: created.description ?? '');
   }
 
   /// Appends "2", "3", … until the name is free. Two roles called "Manager
   /// copy" would be indistinguishable in every picker in the app.
   String _uniqueName(String preferred) {
-    final taken = {for (final role in state) role.name.toLowerCase()};
+    final taken = {
+      for (final role in state.valueOrNull ?? const <BusinessRole>[]) role.name.toLowerCase(),
+    };
     if (!taken.contains(preferred.toLowerCase())) return preferred;
 
     for (var n = 2; n < 100; n++) {
@@ -91,16 +155,67 @@ class RolesNotifier extends Notifier<List<BusinessRole>> {
     }
     return preferred;
   }
+
+  /// Applies a full permission-set diff for one role in as few calls as
+  /// possible (one per changed code — the backend has no bulk-set
+  /// endpoint), then reloads once, not once per toggle.
+  Future<void> syncPermissions(String roleId, Set<String> desired) async {
+    final current = byId(roleId)?.permissionIds ?? const <String>{};
+    final businessId = _businessId;
+    for (final code in desired.difference(current)) {
+      await _api.assignRolePermission(
+        businessId: businessId,
+        roleId: roleId,
+        permissionCode: code,
+      );
+    }
+    for (final code in current.difference(desired)) {
+      await _api.removeRolePermission(
+        businessId: businessId,
+        roleId: roleId,
+        permissionCode: code,
+      );
+    }
+    await refresh();
+  }
+
+  /// Grants or revokes a single permission on a role, then reloads so
+  /// `permissionIds` reflects the real, current set — not an optimistic
+  /// local toggle that could drift from what the backend actually stored.
+  Future<void> setPermission(String roleId, String permissionCode, bool granted) async {
+    if (granted) {
+      await _api.assignRolePermission(
+        businessId: _businessId,
+        roleId: roleId,
+        permissionCode: permissionCode,
+      );
+    } else {
+      await _api.removeRolePermission(
+        businessId: _businessId,
+        roleId: roleId,
+        permissionCode: permissionCode,
+      );
+    }
+    await refresh();
+  }
+
+  BusinessRole? byId(String id) {
+    for (final role in state.valueOrNull ?? const <BusinessRole>[]) {
+      if (role.id == id) return role;
+    }
+    return null;
+  }
 }
 
-final rolesProvider = NotifierProvider<RolesNotifier, List<BusinessRole>>(
+final rolesProvider = AsyncNotifierProvider<RolesNotifier, List<BusinessRole>>(
   RolesNotifier.new,
 );
 
-/// A single role by id. Null once a role has been deleted, which is what lets
-/// a detail screen show a "not found" state instead of throwing.
+/// A single role by id. Null once a role has been deleted (or while still
+/// loading), which is what lets a detail screen show a "not found"/loading
+/// state instead of throwing.
 final roleByIdProvider = Provider.family<BusinessRole?, String>((ref, id) {
-  for (final role in ref.watch(rolesProvider)) {
+  for (final role in ref.watch(rolesProvider).valueOrNull ?? const <BusinessRole>[]) {
     if (role.id == id) return role;
   }
   return null;
@@ -108,12 +223,14 @@ final roleByIdProvider = Provider.family<BusinessRole?, String>((ref, id) {
 
 /// How many staff wear each role, keyed by role id.
 ///
-/// Computed once here rather than by each row counting the staff list itself,
-/// which would be quadratic over two lists that both live in memory anyway.
+/// A staff member holding more than one role counts once toward each of
+/// them — reflects the real multi-role model directly.
 final roleStaffCountsProvider = Provider<Map<String, int>>((ref) {
   final counts = <String, int>{};
-  for (final member in ref.watch(staffMembersProvider)) {
-    counts[member.roleId] = (counts[member.roleId] ?? 0) + 1;
+  for (final member in ref.watch(staffMembersProvider).valueOrNull ?? const []) {
+    for (final role in member.roles) {
+      counts[role.roleId] = (counts[role.roleId] ?? 0) + 1;
+    }
   }
   return counts;
 });
@@ -131,7 +248,7 @@ final rolesQueryProvider = NotifierProvider<TableQueryNotifier, TableQuery>(
 );
 
 final sortedRolesProvider = Provider<List<BusinessRole>>((ref) {
-  final roles = [...ref.watch(rolesProvider)];
+  final roles = [...ref.watch(rolesProvider).valueOrNull ?? const <BusinessRole>[]];
   final query = ref.watch(rolesQueryProvider);
   final counts = ref.watch(roleStaffCountsProvider);
   final direction = query.ascending ? 1 : -1;
@@ -169,13 +286,13 @@ class RolesSummary {
 }
 
 final rolesSummaryProvider = Provider<RolesSummary>((ref) {
-  final roles = ref.watch(rolesProvider);
+  final roles = ref.watch(rolesProvider).valueOrNull ?? const <BusinessRole>[];
   final counts = ref.watch(roleStaffCountsProvider);
 
   var custom = 0;
   var assigned = 0;
   for (final role in roles) {
-    if (!role.isSystem) custom++;
+    if (!role.isProtected) custom++;
     assigned += counts[role.id] ?? 0;
   }
 

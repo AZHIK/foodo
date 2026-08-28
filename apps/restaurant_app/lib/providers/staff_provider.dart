@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../auth/staff_rbac_dtos.dart';
 import '../data/mock_activity.dart';
-import '../data/mock_staff.dart';
-import '../database/local_profile_repository.dart';
 import '../models/activity_entry.dart';
 import '../models/staff_member.dart';
 import '../models/table_query.dart';
 import 'database_providers.dart';
+import 'permissions_provider.dart';
 import 'roles_provider.dart';
 import 'table_query_provider.dart';
 
@@ -23,123 +23,107 @@ abstract final class StaffSort {
 // Raw data
 // ---------------------------------------------------------------------------
 
-/// The single source of truth for staff.
+StaffStatus _parseStatus(String backendStatus) => switch (backendStatus) {
+  'invited' => StaffStatus.pendingInvite,
+  'suspended' || 'locked' => StaffStatus.inactive,
+  _ => StaffStatus.active,
+};
+
+StaffMember _fromDto(StaffMemberDto dto) => StaffMember(
+  id: dto.userId,
+  name: dto.fullName.trim().isEmpty ? dto.phone : dto.fullName,
+  email: dto.email ?? '',
+  phone: dto.phone,
+  roles: [
+    for (final r in dto.roles) StaffRoleAssignment(roleId: r.businessRoleId, roleName: r.name),
+  ],
+  status: _parseStatus(dto.status),
+  // The backend doesn't return a joined/invited timestamp on this endpoint —
+  // "now" is wrong for anyone but a just-invited member, so this is the one
+  // field the real integration can't populate honestly yet. See the
+  // integration report for how staffActivityProvider below is affected.
+  joinedAt: DateTime.now(),
+);
+
+/// The single source of truth for staff, backed by the real
+/// `GET /businesses/{id}/staff` endpoint.
 ///
 /// The list, the detail screen and the invite dialog all read and write this
-/// one notifier — an invite sent from the dialog appears in the table because
-/// they are the same list, not because anything was copied across.
-class StaffNotifier extends Notifier<List<StaffMember>> {
+/// one notifier — an invite sent from the dialog appears in the table
+/// because `invite()` re-fetches this same list, not because anything was
+/// copied across.
+class StaffNotifier extends AsyncNotifier<List<StaffMember>> {
   @override
-  List<StaffMember> build() => MockStaff.members;
-
-  void upsert(StaffMember member) {
-    final index = state.indexWhere((m) => m.id == member.id);
-    if (index == -1) {
-      // Newest first, so an invite just sent is at the top of the list the
-      // user is already looking at.
-      state = [member, ...state];
-      return;
-    }
-    final next = [...state];
-    next[index] = member;
-    state = next;
+  Future<List<StaffMember>> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    if (businessId == null) return const [];
+    final api = ref.read(staffRbacApiProvider);
+    final dtos = await api.listStaff(businessId: businessId);
+    return dtos.map(_fromDto).toList();
   }
 
-  void remove(String id) => state = state.where((m) => m.id != id).toList();
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(build);
+  }
 
-  void setRole(String id, String roleId) => _update(
-    id,
-    (member) => member.copyWith(roleId: roleId),
-  );
+  String get _businessId {
+    final id = ref.read(currentBusinessIdProvider);
+    if (id == null) throw StateError('No active business context');
+    return id;
+  }
 
-  void setStatus(String id, StaffStatus status) => _update(
-    id,
-    (member) => member.copyWith(status: status),
-  );
-
-  /// Flips active ↔ inactive. A pending invite is left alone: there is no
-  /// account yet to deactivate.
-  void toggleActive(String id) => _update(id, (member) {
-    if (member.isPending) return member;
-    return member.copyWith(
-      status: member.status == StaffStatus.active
-          ? StaffStatus.inactive
-          : StaffStatus.active,
+  /// Assigns [roleId] to the person at [phone] — invites them if the phone
+  /// is new, or adds an additional role if they're already staff here (the
+  /// backend allows more than one simultaneous role per person; there is no
+  /// single-role "replace").
+  Future<void> assignRole({required String phone, required String roleId}) async {
+    await ref.read(staffRbacApiProvider).assignStaff(
+      businessId: _businessId,
+      input: AssignStaffInput(businessRoleId: roleId, phone: phone),
     );
-  });
+    await refresh();
+  }
 
-  /// Creates a pending member from the invite dialog.
-  StaffMember invite({
-    required String name,
-    required String email,
-    required String phone,
-    required String roleId,
-    String? note,
-  }) {
-    final member = StaffMember(
-      id: nextId(),
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
+  /// Removes exactly one role assignment from a staff member — their other
+  /// roles, if any, are untouched.
+  Future<void> revokeRole({required String userId, required String roleId}) async {
+    await ref.read(staffRbacApiProvider).revokeStaffRole(
+      businessId: _businessId,
+      userId: userId,
       roleId: roleId,
-      status: StaffStatus.pendingInvite,
-      // The invite date is what "joined" means until they accept it.
-      joinedAt: DateTime.now(),
-      inviteNote: note == null || note.trim().isEmpty ? null : note.trim(),
     );
-
-    upsert(member);
-    return member;
+    await refresh();
   }
 
-  String nextId() {
-    var highest = 0;
-    for (final member in state) {
-      final n = int.tryParse(member.id.split('-').last);
-      if (n != null && n > highest) highest = n;
+  StaffMember? byId(String id) {
+    for (final member in state.valueOrNull ?? const <StaffMember>[]) {
+      if (member.id == id) return member;
     }
-    return 'stf-${(highest + 1).toString().padLeft(2, '0')}';
-  }
-
-  void _update(String id, StaffMember Function(StaffMember) change) {
-    state = [
-      for (final member in state)
-        if (member.id == id) change(member) else member,
-    ];
+    return null;
   }
 }
 
-final staffMembersProvider =
-    NotifierProvider<StaffNotifier, List<StaffMember>>(StaffNotifier.new);
+final staffMembersProvider = AsyncNotifierProvider<StaffNotifier, List<StaffMember>>(
+  StaffNotifier.new,
+);
 
 final staffByIdProvider = Provider.family<StaffMember?, String>((ref, id) {
-  for (final member in ref.watch(staffMembersProvider)) {
+  for (final member in ref.watch(staffMembersProvider).valueOrNull ?? const <StaffMember>[]) {
     if (member.id == id) return member;
   }
   return null;
 });
 
-/// Who is signed in at this terminal.
-///
-/// There is no auth layer yet, so this resolves to the owner — the account a
-/// single-terminal install would be running as. It exists so the things that
-/// need an actor (a stock movement's "who", an audit entry) ask one provider
-/// rather than each hardcoding a name, and swapping in a real session later is
-/// a change to this provider alone.
+/// Who is signed in at this terminal — the staff member matching the
+/// current session's own user id, straight from the decoded token.
 final currentUserProvider = Provider<StaffMember?>((ref) {
-  final members = ref.watch(staffMembersProvider);
-  if (members.isEmpty) return null;
-
-  for (final member in members) {
-    if (member.roleId == MockStaff.ownerRoleId &&
-        member.status == StaffStatus.active) {
-      return member;
-    }
-  }
-  return members.first;
+  final myId = ref.watch(currentClaimsProvider)?.sub;
+  if (myId == null) return null;
+  return ref.watch(staffByIdProvider(myId));
 });
 
-/// The signed-in user's name, or a neutral fallback for an empty roster.
+/// The signed-in user's name, or a neutral fallback while staff is loading.
 final currentUserNameProvider = Provider<String>(
   (ref) => ref.watch(currentUserProvider)?.name ?? 'System',
 );
@@ -158,7 +142,7 @@ final localSavedStaffProvider = FutureProvider<List<StaffMember>>((ref) async {
           name: profile.displayName as String,
           email: '',
           phone: '',
-          roleId: '',
+          roles: const [],
           status: StaffStatus.active,
           joinedAt: profile.createdAt as DateTime,
         ),
@@ -194,7 +178,9 @@ class StaffFilters {
   int get activeCount => roleIds.length + statuses.length;
 
   bool matches(StaffMember member) {
-    if (roleIds.isNotEmpty && !roleIds.contains(member.roleId)) return false;
+    if (roleIds.isNotEmpty && !member.roles.any((r) => roleIds.contains(r.roleId))) {
+      return false;
+    }
     if (statuses.isNotEmpty && !statuses.contains(member.status)) return false;
     return true;
   }
@@ -244,31 +230,25 @@ final staffFiltersProvider =
 /// Search + filters + sort in one place, so the screen never sees an
 /// unfiltered list and no filtering logic lives in the widget tree.
 final filteredStaffProvider = Provider<List<StaffMember>>((ref) {
-  final members = ref.watch(staffMembersProvider);
+  final members = ref.watch(staffMembersProvider).valueOrNull ?? const <StaffMember>[];
   final query = ref.watch(staffQueryProvider);
   final filters = ref.watch(staffFiltersProvider);
-  final roles = ref.watch(rolesProvider);
   final search = query.search.trim().toLowerCase();
 
-  String roleName(String roleId) {
-    for (final role in roles) {
-      if (role.id == roleId) return role.name;
-    }
-    return '';
-  }
+  String roleNames(StaffMember m) => m.roles.map((r) => r.roleName).join(' ');
 
   final rows = members.where((member) {
     if (!filters.matches(member)) return false;
     if (search.isEmpty) return true;
     return member.name.toLowerCase().contains(search) ||
         member.email.toLowerCase().contains(search) ||
-        roleName(member.roleId).toLowerCase().contains(search);
+        roleNames(member).toLowerCase().contains(search);
   }).toList();
 
   final direction = query.ascending ? 1 : -1;
   rows.sort((a, b) {
     final cmp = switch (query.sortField) {
-      StaffSort.role => roleName(a.roleId).compareTo(roleName(b.roleId)),
+      StaffSort.role => roleNames(a).toLowerCase().compareTo(roleNames(b).toLowerCase()),
       StaffSort.email => a.email.toLowerCase().compareTo(b.email.toLowerCase()),
       // Active → Inactive → Pending, so ascending reads as "working now first".
       StaffSort.status => a.status.index.compareTo(b.status.index),
@@ -313,7 +293,7 @@ final staffSummaryProvider = Provider<StaffSummary>((ref) {
   var inactive = 0;
   var pending = 0;
 
-  for (final member in ref.watch(staffMembersProvider)) {
+  for (final member in ref.watch(staffMembersProvider).valueOrNull ?? const <StaffMember>[]) {
     switch (member.status) {
       case StaffStatus.active:
         active++;
@@ -333,21 +313,25 @@ final staffSummaryProvider = Provider<StaffSummary>((ref) {
 });
 
 // ---------------------------------------------------------------------------
-// Activity
+// Activity & performance
+//
+// Neither the staff nor role endpoints carry an activity log or POS sales
+// figures — those belong to services not wired up in this pass (this task
+// is identity-service RBAC only; POS/Inventory integration is the next
+// pass per the plan). Both stay synthetic for now, generated from the real
+// member/role data rather than separate mock records, so they at least
+// react correctly to real role changes; they are not "real" data and this
+// block is the one deliberate exception to "no mock data reachable".
 // ---------------------------------------------------------------------------
 
 /// A staff member's audit log, newest first.
-///
-/// Generated from the member and their role, so a role change alters what the
-/// person is shown to have plausibly been doing.
-final staffActivityProvider =
-    Provider.family<List<ActivityEntry>, String>((ref, staffId) {
-      final member = ref.watch(staffByIdProvider(staffId));
-      if (member == null) return const [];
+final staffActivityProvider = Provider.family<List<ActivityEntry>, String>((ref, staffId) {
+  final member = ref.watch(staffByIdProvider(staffId));
+  if (member == null) return const [];
 
-      final role = ref.watch(roleByIdProvider(member.roleId));
-      return MockActivity.forStaff(member, role);
-    });
+  final role = ref.watch(roleByIdProvider(member.roleId));
+  return MockActivity.forStaff(member, role);
+});
 
 /// Till numbers for a member's detail screen.
 ///
@@ -375,24 +359,26 @@ class StaffPerformance {
   );
 }
 
-final staffPerformanceProvider =
-    Provider.family<StaffPerformance, String>((ref, staffId) {
-      final member = ref.watch(staffByIdProvider(staffId));
-      if (member == null || member.isPending) return StaffPerformance.none;
+final staffPerformanceProvider = Provider.family<StaffPerformance, String>((ref, staffId) {
+  final member = ref.watch(staffByIdProvider(staffId));
+  if (member == null || member.isPending) return StaffPerformance.none;
 
-      final role = ref.watch(roleByIdProvider(member.roleId));
-      if (role == null || !role.hasPosAccess) return StaffPerformance.none;
+  final hasPosRole = member.roles.any((assignment) {
+    final role = ref.watch(roleByIdProvider(assignment.roleId));
+    return role?.hasPosAccess ?? false;
+  });
+  if (!hasPosRole) return StaffPerformance.none;
 
-      // Derived from the id so the numbers are stable across rebuilds and
-      // differ per person, without a second random data source to keep in step.
-      final seed = member.id.hashCode & 0x7fffffff;
-      final today = member.status == StaffStatus.active ? 4 + seed % 19 : 0;
-      final week = today * 5 + seed % 23;
+  // Derived from the id so the numbers are stable across rebuilds and
+  // differ per person, without a second random data source to keep in step.
+  final seed = member.id.hashCode & 0x7fffffff;
+  final today = member.status == StaffStatus.active ? 4 + seed % 19 : 0;
+  final week = today * 5 + seed % 23;
 
-      return StaffPerformance(
-        applies: true,
-        ordersToday: today,
-        ordersThisWeek: week,
-        salesHandled: week * (18.4 + (seed % 900) / 100),
-      );
-    });
+  return StaffPerformance(
+    applies: true,
+    ordersToday: today,
+    ordersThisWeek: week,
+    salesHandled: week * (18.4 + (seed % 900) / 100),
+  );
+});

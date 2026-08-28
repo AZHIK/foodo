@@ -44,6 +44,11 @@ class LocalUserProfiles extends Table {
   /// Row last-updated timestamp.
   DateTimeColumn get updatedAt => dateTime()();
 
+  /// When this profile's server-side role/existence was last confirmed via
+  /// a revocation check (active-profile-only on reconnect, all-profiles on
+  /// Profile Picker open). Null means never checked since local creation.
+  DateTimeColumn get lastRevocationCheckAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

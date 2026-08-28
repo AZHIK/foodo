@@ -19,7 +19,7 @@ class StaffFilterPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filters = ref.watch(staffFiltersProvider);
     final notifier = ref.read(staffFiltersProvider.notifier);
-    final roles = ref.watch(rolesProvider);
+    final roles = ref.watch(rolesProvider).valueOrNull ?? const [];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

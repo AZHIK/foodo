@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.core.permission_codes import PermissionCode
+from app.models.user import UserStatus
 from app.schemas.validators import PhoneStr
 
 # ── BusinessRole ──────────────────────────────────────────────────────────
@@ -201,3 +202,29 @@ class UserBusinessPermissionRead(UserBusinessPermissionBase):
     created_by: UUID | None = None
     created_at: datetime
     updated_at: datetime
+
+
+# ── Staff list (GET /businesses/{business_id}/staff) ──────────────────────
+
+
+class StaffRoleSummary(BaseModel):
+    """One role a staff member holds, as returned within a staff list entry."""
+
+    business_role_id: UUID
+    name: str
+
+
+class StaffMemberRead(BaseModel):
+    """One staff member and every role they hold at this business.
+
+    A user can hold more than one ``UserBusinessRole`` row at the same
+    business — this groups all of them under a single entry rather than
+    returning one row per role.
+    """
+
+    user_id: UUID
+    phone: str
+    full_name: str
+    email: str | None
+    status: UserStatus
+    roles: list[StaffRoleSummary]

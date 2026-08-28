@@ -1,9 +1,9 @@
 /// Tests for the Drift database schema and basic operations.
 ///
-/// This test suite verifies that the database schema is correctly defined
-/// and that migrations work as expected. Since this is schemaVersion 1
-/// (the first version), only the `onCreate` path is tested; there is no
-/// prior version to migrate from.
+/// This test suite verifies that the database schema is correctly defined.
+/// `onCreate` builds the full schemaVersion 2 shape directly (as it does
+/// for any fresh install), so these tests exercise that path rather than
+/// the v1-to-v2 `onUpgrade` migration.
 library;
 
 import 'package:decimal/decimal.dart';
@@ -36,8 +36,8 @@ void main() {
       expect(database != null, true);
     });
 
-    test('schema version is 1', () async {
-      expect(database.schemaVersion, 1);
+    test('schema version is 2', () async {
+      expect(database.schemaVersion, 2);
     });
 
     test('LocalUserProfiles table exists and can be queried', () async {
@@ -162,6 +162,186 @@ void main() {
       final items = await database.select(database.cachedItems).get();
       expect(items.length, 1);
       expect(items.first.name, 'Tomato');
+    });
+
+    test('LocalUserProfiles.lastRevocationCheckAt defaults to null and is settable', () async {
+      await database.into(database.localUserProfiles).insert(
+            LocalUserProfilesCompanion.insert(
+              id: 'test-staff-2',
+              displayName: 'Test Staff 2',
+              pinHash: 'hashed_pin',
+              pinSalt: 'salt',
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+          );
+
+      final profile = await (database.select(database.localUserProfiles)
+            ..where((row) => row.id.equals('test-staff-2')))
+          .getSingle();
+      expect(profile.lastRevocationCheckAt, null);
+
+      // Drift's DateTime column stores unix-epoch seconds, truncating
+      // sub-second precision, so compare at second resolution.
+      final checkedAt = DateTime.fromMillisecondsSinceEpoch(
+        (DateTime.now().millisecondsSinceEpoch ~/ 1000) * 1000,
+      );
+      await (database.update(database.localUserProfiles)
+            ..where((row) => row.id.equals('test-staff-2')))
+          .write(LocalUserProfilesCompanion(
+            lastRevocationCheckAt: Value(checkedAt),
+          ));
+
+      final updated = await (database.select(database.localUserProfiles)
+            ..where((row) => row.id.equals('test-staff-2')))
+          .getSingle();
+      expect(updated.lastRevocationCheckAt, checkedAt);
+    });
+
+    test('CachedPermissions table exists and cascades on profile delete', () async {
+      final now = DateTime.now();
+
+      await database.into(database.localUserProfiles).insert(
+            LocalUserProfilesCompanion.insert(
+              id: 'test-staff-3',
+              displayName: 'Test Staff 3',
+              pinHash: 'hashed_pin',
+              pinSalt: 'salt',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      await database.into(database.cachedPermissions).insert(
+            CachedPermissionsCompanion.insert(
+              userId: 'test-staff-3',
+              businessId: 'biz-123',
+              businessName: 'Test Business',
+              businessLocationId: 'loc-456',
+              roleName: 'manager',
+              permissionCodes: '["sales.void","staff.invite"]',
+              cachedAt: now,
+            ),
+          );
+
+      final permissions = await database.select(database.cachedPermissions).get();
+      expect(permissions.length, 1);
+      expect(permissions.first.roleName, 'manager');
+
+      // Deleting the profile should cascade-delete its cached permissions.
+      await (database.delete(database.localUserProfiles)
+            ..where((row) => row.id.equals('test-staff-3')))
+          .go();
+
+      final remaining = await database.select(database.cachedPermissions).get();
+      expect(remaining, isEmpty);
+    });
+
+    test('CachedStockLevels table exists', () async {
+      final now = DateTime.now();
+
+      await database.into(database.cachedStockLevels).insert(
+            CachedStockLevelsCompanion.insert(
+              itemId: 'item-uuid-1',
+              businessLocationId: 'loc-456',
+              currentQuantity: Decimal.fromInt(12),
+              cachedAt: now,
+            ),
+          );
+
+      final levels = await database.select(database.cachedStockLevels).get();
+      expect(levels.length, 1);
+      expect(levels.first.currentQuantity, Decimal.fromInt(12));
+    });
+
+    test('PendingVoidsRefunds table exists and references a synced sale', () async {
+      final now = DateTime.now();
+
+      await database.into(database.pendingSales).insert(
+            PendingSalesCompanion.insert(
+              clientSaleId: 'sale-uuid-2',
+              status: 'completed',
+              businessLocationId: 'loc-123',
+              paymentMethod: 'cash',
+              occurredAt: now,
+              createdAt: now,
+            ),
+          );
+
+      await database.into(database.pendingVoidsRefunds).insert(
+            PendingVoidsRefundsCompanion.insert(
+              clientActionId: 'void-uuid-1',
+              saleId: 'sale-uuid-2',
+              newStatus: 'voided',
+              reason: 'Customer changed order',
+              actorUserId: 'test-staff-1',
+              occurredAt: now,
+              createdAt: now,
+            ),
+          );
+
+      final voids = await database.select(database.pendingVoidsRefunds).get();
+      expect(voids.length, 1);
+      expect(voids.first.newStatus, 'voided');
+    });
+
+    test('ExpenseEntries table exists', () async {
+      final now = DateTime.now();
+
+      await database.into(database.expenseEntries).insert(
+            ExpenseEntriesCompanion.insert(
+              expenseId: 'expense-uuid-1',
+              businessId: 'biz-123',
+              businessLocationId: 'loc-456',
+              category: 'supplies',
+              amount: Decimal.parse('45.00'),
+              occurredAt: now,
+              actorUserId: 'test-staff-1',
+              createdAt: now,
+            ),
+          );
+
+      final expenses = await database.select(database.expenseEntries).get();
+      expect(expenses.length, 1);
+      expect(expenses.first.category, 'supplies');
+    });
+
+    test('OtherIncomeEntries table exists', () async {
+      final now = DateTime.now();
+
+      await database.into(database.otherIncomeEntries).insert(
+            OtherIncomeEntriesCompanion.insert(
+              incomeId: 'income-uuid-1',
+              businessId: 'biz-123',
+              businessLocationId: 'loc-456',
+              category: 'equipment_rental',
+              amount: Decimal.parse('100.00'),
+              occurredAt: now,
+              actorUserId: 'test-staff-1',
+              createdAt: now,
+            ),
+          );
+
+      final income = await database.select(database.otherIncomeEntries).get();
+      expect(income.length, 1);
+      expect(income.first.category, 'equipment_rental');
+    });
+
+    test('LocalAuditLog table exists', () async {
+      final now = DateTime.now();
+
+      await database.into(database.localAuditLog).insert(
+            LocalAuditLogCompanion.insert(
+              actorUserId: 'test-staff-1',
+              action: 'sale.completed',
+              occurredAt: now,
+              createdAt: now,
+            ),
+          );
+
+      final entries = await database.select(database.localAuditLog).get();
+      expect(entries.length, 1);
+      expect(entries.first.action, 'sale.completed');
     });
 
     test('foreign keys are enforced', () async {

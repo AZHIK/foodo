@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/identity_service_api.dart' show AuthException;
 import '../../models/business_role.dart';
 import '../../models/permission.dart';
 import '../../providers/roles_provider.dart';
@@ -56,6 +57,8 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
 
   BusinessRole? _existing;
   bool _seeded = false;
+  bool _saving = false;
+  String? _saveError;
 
   @override
   void didChangeDependencies() {
@@ -90,10 +93,10 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
   /// A built-in role's identity is referenced by staff records and reporting,
   /// so its name and description are fixed — but what it *can do* is still the
   /// business's decision, so the matrix stays live.
-  bool get _isSystem => _existing?.isSystem ?? false;
+  bool get _isProtected => _existing?.isProtected ?? false;
 
   bool get _canSave =>
-      _name.text.trim().isNotEmpty && _selected.isNotEmpty;
+      !_saving && _name.text.trim().isNotEmpty && _selected.isNotEmpty;
 
   void _toggle(String permissionId, bool on) {
     setState(() {
@@ -117,40 +120,57 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
     });
   }
 
-  void _save() {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate() || !_canSave) return;
+
+    setState(() {
+      _saving = true;
+      _saveError = null;
+    });
 
     final notifier = ref.read(rolesProvider.notifier);
     final existing = _existing;
+    final name = _name.text.trim();
 
-    final role = existing != null
-        ? existing.copyWith(
-            // A system role keeps its stored name and description whatever the
-            // disabled fields happen to contain.
-            name: _isSystem ? existing.name : _name.text.trim(),
-            description:
-                _isSystem ? existing.description : _description.text.trim(),
-            permissionIds: _selected,
-          )
-        : BusinessRole(
-            id: notifier.nextId(),
-            name: _name.text.trim(),
+    try {
+      if (existing == null) {
+        await notifier.create(
+          name: name,
+          description: _description.text.trim(),
+          permissionCodes: _selected,
+        );
+      } else {
+        // A protected role keeps its stored name/description regardless of
+        // what the (disabled) fields contain — only its permissions move.
+        if (!_isProtected) {
+          await notifier.updateRole(
+            existing.id,
+            name: name,
             description: _description.text.trim(),
-            permissionIds: _selected,
           );
+        }
+        await notifier.syncPermissions(existing.id, _selected);
+      }
 
-    notifier.upsert(role);
-
-    final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context).pop();
-
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          _isEdit ? '"${role.name}" updated' : '"${role.name}" created',
-        ),
-      ),
-    );
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.of(context).pop();
+      messenger.showSnackBar(
+        SnackBar(content: Text(_isEdit ? '"$name" updated' : '"$name" created')),
+      );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _saveError = e.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _saveError = 'Something went wrong saving this role.';
+      });
+    }
   }
 
   @override
@@ -163,21 +183,42 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
         width: RoleFormDialog.dialogWidth,
         actions: [
           OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: _saving ? null : () => Navigator.of(context).pop(),
             child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: _canSave ? _save : null,
-            child: Text(_isEdit ? 'Save role' : 'Create role'),
+            child: _saving
+                ? const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(_isEdit ? 'Save role' : 'Create role'),
           ),
         ],
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (_saveError != null) ...[
+              Container(
+                padding: const EdgeInsets.all(Insets.md),
+                decoration: BoxDecoration(
+                  color: context.semantic.danger.withValues(alpha: 0.1),
+                  borderRadius: Radii.card,
+                  border: Border.all(color: context.semantic.danger.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  _saveError!,
+                  style: context.text.bodySmall?.copyWith(color: context.semantic.danger),
+                ),
+              ),
+              const SizedBox(height: Insets.lg),
+            ],
             const SectionLabel('Basic info'),
             const SizedBox(height: Insets.md),
 
-            if (_isSystem) ...[
+            if (_isProtected) ...[
               const _SystemRoleNotice(),
               const SizedBox(height: Insets.lg),
             ],
@@ -185,11 +226,11 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
             LabeledFormField(
               label: 'Role name',
               isRequired: true,
-              enabled: !_isSystem,
+              enabled: !_isProtected,
               child: TextFormField(
                 controller: _name,
-                enabled: !_isSystem,
-                autofocus: !_isSystem,
+                enabled: !_isProtected,
+                autofocus: !_isProtected,
                 textCapitalization: TextCapitalization.words,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
@@ -205,11 +246,11 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
 
             LabeledFormField(
               label: 'Description',
-              enabled: !_isSystem,
+              enabled: !_isProtected,
               helper: 'One line on what this role is for',
               child: TextFormField(
                 controller: _description,
-                enabled: !_isSystem,
+                enabled: !_isProtected,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(
                   hintText: 'Runs the floor when a manager is off',

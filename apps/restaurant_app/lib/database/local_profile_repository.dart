@@ -95,4 +95,9 @@ class LocalProfileRepository {
       ),
     );
   }
+
+  /// Inserts or replaces the cached role/permission set for a staff member.
+  Future<void> upsertPermissions(CachedPermissionsCompanion permissions) {
+    return _db.into(_db.cachedPermissions).insertOnConflictUpdate(permissions);
+  }
 }

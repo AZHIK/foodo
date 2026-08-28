@@ -24,6 +24,33 @@ enum StaffStatus {
   };
 }
 
+/// One role a staff member holds at the business, embedded on [StaffMember].
+///
+/// The backend allows a staff member to hold more than one role
+/// simultaneously (confirmed: `POST .../staff` has no single-role
+/// replace/duplicate-block beyond the exact same role twice) — this list
+/// reflects that directly rather than assuming one role per person.
+@immutable
+class StaffRoleAssignment {
+  const StaffRoleAssignment({required this.roleId, required this.roleName});
+
+  /// References [BusinessRole.id].
+  final String roleId;
+
+  /// Denormalized so the staff list can render a role name without a join
+  /// against the roles provider — matches what the backend's staff-list
+  /// response already returns inline.
+  final String roleName;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StaffRoleAssignment && other.roleId == roleId);
+
+  @override
+  int get hashCode => roleId.hashCode;
+}
+
 /// A person with access to the business.
 @immutable
 class StaffMember {
@@ -31,7 +58,7 @@ class StaffMember {
     required this.id,
     required this.name,
     required this.email,
-    required this.roleId,
+    required this.roles,
     required this.status,
     required this.joinedAt,
     this.phone = '',
@@ -44,9 +71,17 @@ class StaffMember {
   final String email;
   final String phone;
 
-  /// References [BusinessRole.id]. Held as an id rather than an embedded role
-  /// so editing a role updates every member wearing it, with no copies to sync.
-  final String roleId;
+  /// Every role this person currently holds at the business — a staff
+  /// member can hold more than one simultaneously.
+  final List<StaffRoleAssignment> roles;
+
+  /// The role shown wherever the UI only has room for one (avatar row,
+  /// filter chips). The first assignment, or null for someone with none.
+  StaffRoleAssignment? get primaryRole => roles.isEmpty ? null : roles.first;
+
+  /// Kept for call sites that only ever cared about a single role id
+  /// (filtering, display) — resolves to [primaryRole], or `''` for none.
+  String get roleId => primaryRole?.roleId ?? '';
 
   final StaffStatus status;
 
@@ -79,7 +114,7 @@ class StaffMember {
     String? name,
     String? email,
     String? phone,
-    String? roleId,
+    List<StaffRoleAssignment>? roles,
     StaffStatus? status,
     DateTime? joinedAt,
     DateTime? lastActiveAt,
@@ -90,7 +125,7 @@ class StaffMember {
       name: name ?? this.name,
       email: email ?? this.email,
       phone: phone ?? this.phone,
-      roleId: roleId ?? this.roleId,
+      roles: roles ?? this.roles,
       status: status ?? this.status,
       joinedAt: joinedAt ?? this.joinedAt,
       lastActiveAt: lastActiveAt ?? this.lastActiveAt,

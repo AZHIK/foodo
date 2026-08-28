@@ -4,8 +4,12 @@ import '../models/staff_member.dart';
 
 /// In-memory stand-in for a staff/roles service.
 ///
-/// Swap this for an HTTP implementation and only `staff_provider.dart` and
-/// `roles_provider.dart` need to change.
+/// The real staff/roles screens (`staff_provider.dart`, `roles_provider.dart`)
+/// no longer read this — they call the real identity-service endpoints. This
+/// stays in place only because inventory's mock stock-movement generator
+/// (`mock_stock_movements.dart`) still needs a plausible staff/role roster to
+/// attribute adjustments to — that area hasn't been integrated with a real
+/// backend yet (POS/Inventory integration is a separate, later pass).
 abstract final class MockStaff {
   // -------------------------------------------------------------------
   // Roles
@@ -24,7 +28,7 @@ abstract final class MockStaff {
       id: ownerRoleId,
       name: 'Owner',
       description: 'Unrestricted access to every part of the business',
-      isSystem: true,
+      isProtected: true,
       // Every permission in the catalogue — an owner is defined by having no
       // ceiling, so this stays derived rather than a list that must be
       // extended by hand each time a permission is added.
@@ -34,7 +38,7 @@ abstract final class MockStaff {
       id: managerRoleId,
       name: 'Manager',
       description: 'Runs the floor day to day, without billing access',
-      isSystem: true,
+      isProtected: true,
       permissionIds: {
         AppPermissions.posAccess,
         AppPermissions.posDiscount,
@@ -46,7 +50,7 @@ abstract final class MockStaff {
         AppPermissions.salesExport,
         AppPermissions.reportsView,
         AppPermissions.staffView,
-        AppPermissions.staffInvite,
+        AppPermissions.staffAssign,
         AppPermissions.settingsStore,
         AppPermissions.settingsTax,
         AppPermissions.settingsDevices,
@@ -56,7 +60,7 @@ abstract final class MockStaff {
       id: cashierRoleId,
       name: 'Cashier',
       description: 'Takes orders and payments at the till',
-      isSystem: true,
+      isProtected: true,
       permissionIds: {
         AppPermissions.posAccess,
         AppPermissions.posDiscount,
@@ -108,6 +112,15 @@ abstract final class MockStaff {
   static DateTime _hoursAgo(num hours) =>
       _now.subtract(Duration(minutes: (hours * 60).round()));
 
+  static const _ownerRole = StaffRoleAssignment(roleId: ownerRoleId, roleName: 'Owner');
+  static const _managerRole = StaffRoleAssignment(roleId: managerRoleId, roleName: 'Manager');
+  static const _cashierRole = StaffRoleAssignment(roleId: cashierRoleId, roleName: 'Cashier');
+  static const _kitchenRole = StaffRoleAssignment(roleId: kitchenRoleId, roleName: 'Kitchen lead');
+  static const _stockRole = StaffRoleAssignment(
+    roleId: stockRoleId,
+    roleName: 'Stock controller',
+  );
+
   /// First names match the servers in `mock_orders.dart`, so a sale attributed
   /// to "Ava" belongs to a person who actually appears in the staff list.
   static List<StaffMember> get members => [
@@ -116,7 +129,7 @@ abstract final class MockStaff {
       name: 'Ava Mensah',
       email: 'ava@riversidekitchen.com',
       phone: '+1 415 555 0118',
-      roleId: ownerRoleId,
+      roles: const [_ownerRole],
       status: StaffStatus.active,
       joinedAt: _daysAgo(892),
       lastActiveAt: _hoursAgo(0.4),
@@ -126,7 +139,7 @@ abstract final class MockStaff {
       name: 'Marco Ferreira',
       email: 'marco@riversidekitchen.com',
       phone: '+1 415 555 0142',
-      roleId: managerRoleId,
+      roles: const [_managerRole],
       status: StaffStatus.active,
       joinedAt: _daysAgo(614),
       lastActiveAt: _hoursAgo(1.5),
@@ -136,7 +149,7 @@ abstract final class MockStaff {
       name: 'Priya Raman',
       email: 'priya@riversidekitchen.com',
       phone: '+1 415 555 0177',
-      roleId: managerRoleId,
+      roles: const [_managerRole],
       status: StaffStatus.active,
       joinedAt: _daysAgo(430),
       lastActiveAt: _hoursAgo(3),
@@ -146,7 +159,7 @@ abstract final class MockStaff {
       name: 'Dan Okoye',
       email: 'dan@riversidekitchen.com',
       phone: '+1 415 555 0163',
-      roleId: cashierRoleId,
+      roles: const [_cashierRole],
       status: StaffStatus.active,
       joinedAt: _daysAgo(288),
       lastActiveAt: _hoursAgo(0.2),
@@ -156,7 +169,7 @@ abstract final class MockStaff {
       name: 'Yuki Tanaka',
       email: 'yuki@riversidekitchen.com',
       phone: '+1 415 555 0195',
-      roleId: cashierRoleId,
+      roles: const [_cashierRole],
       status: StaffStatus.active,
       joinedAt: _daysAgo(201),
       lastActiveAt: _hoursAgo(5),
@@ -166,7 +179,7 @@ abstract final class MockStaff {
       name: 'Sofia Lindqvist',
       email: 'sofia@riversidekitchen.com',
       phone: '+1 415 555 0121',
-      roleId: cashierRoleId,
+      roles: const [_cashierRole],
       status: StaffStatus.inactive,
       joinedAt: _daysAgo(377),
       lastActiveAt: _daysAgo(46, hour: 17, minute: 20),
@@ -176,7 +189,7 @@ abstract final class MockStaff {
       name: 'Noah Adeyemi',
       email: 'noah@riversidekitchen.com',
       phone: '+1 415 555 0134',
-      roleId: kitchenRoleId,
+      roles: const [_kitchenRole],
       status: StaffStatus.active,
       joinedAt: _daysAgo(512),
       lastActiveAt: _hoursAgo(2.2),
@@ -186,7 +199,7 @@ abstract final class MockStaff {
       name: 'Lena Vogel',
       email: 'lena@riversidekitchen.com',
       phone: '+1 415 555 0186',
-      roleId: stockRoleId,
+      roles: const [_stockRole],
       status: StaffStatus.active,
       joinedAt: _daysAgo(155),
       lastActiveAt: _hoursAgo(7),
@@ -195,7 +208,7 @@ abstract final class MockStaff {
       id: 'stf-09',
       name: 'Tomas Alvarez',
       email: 'tomas.alvarez@gmail.com',
-      roleId: cashierRoleId,
+      roles: const [_cashierRole],
       status: StaffStatus.pendingInvite,
       joinedAt: _daysAgo(2, hour: 11, minute: 15),
       inviteNote: 'Welcome aboard — training shift is Thursday at 4pm.',
@@ -205,7 +218,7 @@ abstract final class MockStaff {
       name: 'Ruth Nakamura',
       email: 'r.nakamura@outlook.com',
       phone: '+1 415 555 0109',
-      roleId: kitchenRoleId,
+      roles: const [_kitchenRole],
       status: StaffStatus.pendingInvite,
       joinedAt: _daysAgo(5, hour: 16, minute: 40),
     ),
@@ -214,7 +227,7 @@ abstract final class MockStaff {
       name: 'Kofi Boateng',
       email: 'kofi@riversidekitchen.com',
       phone: '+1 415 555 0152',
-      roleId: cashierRoleId,
+      roles: const [_cashierRole],
       status: StaffStatus.inactive,
       joinedAt: _daysAgo(268),
       lastActiveAt: _daysAgo(94, hour: 21, minute: 5),
@@ -224,7 +237,7 @@ abstract final class MockStaff {
       name: 'Ines Duarte',
       email: 'ines@riversidekitchen.com',
       phone: '+1 415 555 0173',
-      roleId: managerRoleId,
+      roles: const [_managerRole],
       status: StaffStatus.active,
       joinedAt: _daysAgo(96),
       lastActiveAt: _hoursAgo(11),
@@ -242,7 +255,8 @@ abstract final class MockStaff {
 
     final names = [
       for (final member in members)
-        if (permitted.contains(member.roleId) && !member.isPending) member.name,
+        if (member.roles.any((r) => permitted.contains(r.roleId)) && !member.isPending)
+          member.name,
     ];
 
     // The ledger has to name someone even if the role data is edited down to

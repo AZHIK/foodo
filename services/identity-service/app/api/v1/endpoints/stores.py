@@ -1,16 +1,18 @@
 """Store and store-setting endpoints.
 
-Store endpoints are business-scoped: every route is guarded by a business
-permission code and the path ``business_id`` must match the token's active
-business context.
+Store endpoints are business-scoped: the path ``business_id`` must always
+match the token's active business context. Viewing stores only requires that
+context — any authenticated member of the business can see its store list,
+the same way logging in and landing on the dashboard doesn't ask for a
+specific grant. Mutating routes (create/update) still require the relevant
+``stores.*`` permission code.
 
 Store settings are one-to-one with their store and are created atomically
 with it (both at business creation and standalone store creation), so there
 is deliberately NO standalone POST for settings — only GET/PATCH. The
-store-level ``stores.view`` / ``stores.update`` codes are reused for the
-settings routes: a settings row is intrinsic to its store, so a separate
-STORE_SETTINGS_* code set would add seed surface without any distinct
-authorization semantics.
+store-level ``stores.update`` code is reused for the settings PATCH route: a
+settings row is intrinsic to its store, so a separate STORE_SETTINGS_* code
+set would add seed surface without any distinct authorization semantics.
 """
 
 from typing import Any
@@ -23,7 +25,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.database import get_async_session
 from app.core.exceptions import InvalidStoreTypeError
 from app.core.permission_codes import PermissionCode
-from app.deps.permissions import require_business_permission
+from app.deps.permissions import require_business_context, require_business_permission
 from app.models.business import Business, Store, StoreSetting
 from app.schemas.store import StoreCreate, StoreRead, StoreUpdate
 from app.schemas.store_setting import StoreSettingRead, StoreSettingUpdate
@@ -66,7 +68,11 @@ def _apply_update(model: object, values: dict[str, Any]) -> None:
 async def list_stores(
     business_id: UUID,
     db: AsyncSession = Depends(get_async_session),
-    caller_business_id: str = Depends(require_business_permission(PermissionCode.STORES_VIEW)),
+    # Viewing your own business's stores is basic post-login navigation, not
+    # a privilege some staff can be denied — any authenticated member of the
+    # business context may see the list. STORES_VIEW still gates nothing
+    # here on purpose; it's checked on the mutation routes below.
+    caller_business_id: str = Depends(require_business_context()),
 ) -> list[Store]:
     _require_context_match(business_id, caller_business_id)
 
@@ -126,7 +132,7 @@ async def get_store(
     business_id: UUID,
     store_id: UUID,
     db: AsyncSession = Depends(get_async_session),
-    caller_business_id: str = Depends(require_business_permission(PermissionCode.STORES_VIEW)),
+    caller_business_id: str = Depends(require_business_context()),
 ) -> Store:
     _require_context_match(business_id, caller_business_id)
     return await _get_store_or_404(db, business_id, store_id)
@@ -170,7 +176,7 @@ async def get_store_settings(
     business_id: UUID,
     store_id: UUID,
     db: AsyncSession = Depends(get_async_session),
-    caller_business_id: str = Depends(require_business_permission(PermissionCode.STORES_VIEW)),
+    caller_business_id: str = Depends(require_business_context()),
 ) -> StoreSetting:
     _require_context_match(business_id, caller_business_id)
     await _get_store_or_404(db, business_id, store_id)

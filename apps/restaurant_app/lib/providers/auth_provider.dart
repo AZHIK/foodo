@@ -5,9 +5,13 @@
 /// 2. Verify OTP code → get tokens
 /// 3. Check onboarding status
 /// 4. Either: create business (owner) or switch context (invited staff)
-/// 5. List stores and lock device to primary store
+/// 5. If the business already has a store, lock the device to the primary
+///    one — a business with none yet (owner still mid-onboarding) leaves
+///    the device unprovisioned rather than failing the login
 /// 6. Persist tokens & profile
 library;
+
+import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
@@ -16,6 +20,7 @@ import 'package:drift/drift.dart';
 import '../auth/auth_dtos.dart';
 import '../auth/identity_service_api.dart';
 import '../auth/jwt_decoder.dart';
+import '../auth/token_refresh_interceptor.dart';
 import '../auth/token_storage.dart';
 import '../database/app_database.dart';
 import '../database/local_profile_repository.dart';
@@ -273,6 +278,24 @@ class AuthNotifier extends Notifier<AuthContext> {
 
       // Now switch context and lock to this business.
       await _switchContextAndLock(businessOutput.businessId, accessToken);
+
+      // The owner's PIN (and LocalUserProfiles row) was already set before
+      // reaching onboarding, so their role/business can be cached now,
+      // explicitly, as soon as the business is saved. Invited staff get
+      // this in setPin() instead — see that method for why the two flows
+      // need separate write sites (LocalUserProfiles/CachedPermissions FK
+      // ordering is reversed between them).
+      if (state.userId != null &&
+          state.selectedBusinessId != null &&
+          state.selectedStoreId != null) {
+        await _cachePermissions(
+          userId: state.userId!,
+          businessId: state.selectedBusinessId!,
+          businessLocationId: state.selectedStoreId!,
+          businessName: name,
+          claims: decodeAccessToken(state.accessToken!),
+        );
+      }
     } catch (e) {
       state = state.copyWith(
         state: AuthState.unauthenticated,
@@ -290,32 +313,35 @@ class AuthNotifier extends Notifier<AuthContext> {
     try {
       state = state.copyWith(state: AuthState.switchingContext);
 
-      // Call the context switch endpoint.
+      // Call the context switch endpoint. This alone is what authenticates
+      // the user into this business context — everything below is optional
+      // device provisioning, not a login requirement.
       final switchOutput = await _api.switchContext(
         businessId: businessId,
         bearerToken: accessToken,
       );
 
-      // Now get the list of stores to find the primary one.
+      // Look up stores only to lock this terminal to one, if it already has
+      // one. A business the owner hasn't finished setting up yet — or one
+      // this account was invited to before any store existed — has none,
+      // and that must not block login: the device just stays unprovisioned
+      // (see DeviceConfig's doc comment) until a store exists to lock to.
       final stores = await _api.listStores(
         businessId: businessId,
         bearerToken: switchOutput.accessToken,
       );
+      final primaryStore = stores.isEmpty
+          ? null
+          : stores.firstWhere((s) => s.isPrimary, orElse: () => stores.first);
 
-      // Find the primary store (or use the first one).
-      final primaryStore = stores.firstWhere(
-        (s) => s.isPrimary,
-        orElse: () => stores.isEmpty ? throw StateError('No stores found for business') : stores.first,
-      );
-
-      final businessName = state.onboardingStatus?.businessName ?? 'Restaurant';
-
-      // Lock device to this business and location.
-      await _profileRepo.provisionDevice(
-        businessId: businessId,
-        businessLocationId: primaryStore.id,
-        businessName: businessName,
-      );
+      if (primaryStore != null) {
+        final businessName = state.onboardingStatus?.businessName ?? 'Restaurant';
+        await _profileRepo.provisionDevice(
+          businessId: businessId,
+          businessLocationId: primaryStore.id,
+          businessName: businessName,
+        );
+      }
 
       // Save tokens (access token may have changed after context switch).
       final expiresAt = DateTime.now().add(
@@ -335,7 +361,7 @@ class AuthNotifier extends Notifier<AuthContext> {
         accessToken: switchOutput.accessToken,
         refreshToken: switchOutput.refreshToken,
         selectedBusinessId: businessId,
-        selectedStoreId: primaryStore.id,
+        selectedStoreId: primaryStore?.id,
       );
     } catch (e) {
       state = state.copyWith(
@@ -355,6 +381,7 @@ class AuthNotifier extends Notifier<AuthContext> {
       final salt = PinHasher.generateSalt();
       final pinHash = PinHasher.hash(pin, salt);
       final now = DateTime.now();
+      final claims = decodeAccessToken(state.accessToken!);
 
       // Create or update the profile.
       final name = state.fullName;
@@ -364,15 +391,56 @@ class AuthNotifier extends Notifier<AuthContext> {
           displayName: Value(name != null && name.isNotEmpty ? name : 'Staff Member'),
           pinHash: Value(pinHash),
           pinSalt: Value(salt),
-          roleLabel: Value(state.onboardingStatus?.businessName),
+          roleLabel: Value(claims.roles.isNotEmpty ? claims.roles.join(', ') : null),
           createdAt: Value(now),
           updatedAt: Value(now),
         ),
       );
+
+      // Invited staff already have a business context by this point (their
+      // _switchContextAndLock() ran during _checkOnboarding(), before Set
+      // PIN) — cache their role/business now that the profile row above
+      // satisfies CachedPermissions' FK. A fresh owner has neither yet
+      // (they onboard after this), so there is nothing to cache here for
+      // them — see createBusinessAndOnboard() for their write site.
+      if (state.selectedBusinessId != null && state.selectedStoreId != null) {
+        await _cachePermissions(
+          userId: userId,
+          businessId: state.selectedBusinessId!,
+          businessLocationId: state.selectedStoreId!,
+          businessName: state.onboardingStatus?.businessName ?? 'Restaurant',
+          claims: claims,
+        );
+      }
     } catch (e) {
       state = state.copyWith(error: e.toString());
       rethrow;
     }
+  }
+
+  /// Refreshes the local RBAC cache for [userId] from [claims]. Callers must
+  /// only invoke this once a `LocalUserProfiles` row for [userId] already
+  /// exists (FK, cascade-delete) — see the two call sites (`setPin` and
+  /// `createBusinessAndOnboard`) for why that's guaranteed differently for
+  /// each account type.
+  Future<void> _cachePermissions({
+    required String userId,
+    required String businessId,
+    required String businessLocationId,
+    required String businessName,
+    required JwtClaims claims,
+  }) {
+    return _profileRepo.upsertPermissions(
+      CachedPermissionsCompanion.insert(
+        userId: userId,
+        businessId: businessId,
+        businessName: businessName,
+        businessLocationId: businessLocationId,
+        roleName: claims.roles.isNotEmpty ? claims.roles.join(', ') : 'Staff',
+        permissionCodes: jsonEncode(claims.permissions),
+        cachedAt: DateTime.now(),
+      ),
+    );
   }
 
   /// Reset state for next login.
@@ -397,6 +465,16 @@ final identityServiceDioProvider = Provider<Dio>((ref) {
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 30),
     sendTimeout: const Duration(seconds: 30),
+  ));
+
+  // Auto-attaches the current access token to every request and silently
+  // refreshes-and-retries on a 401 — this is now the one real, working
+  // client for every identity-service call (auth, business, staff/roles),
+  // not a second parallel setup. Callers built against this provider don't
+  // need to thread a bearer token through every method themselves.
+  dio.interceptors.add(TokenRefreshInterceptor(
+    tokenStorage: TokenStorage(),
+    baseUrl: baseUrl,
   ));
 
   // Add logging for debugging.

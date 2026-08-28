@@ -9,8 +9,8 @@ class BusinessRole {
     required this.id,
     required this.name,
     required this.description,
-    required this.permissionIds,
-    this.isSystem = false,
+    this.permissionIds = const {},
+    this.isProtected = false,
   });
 
   final String id;
@@ -19,11 +19,19 @@ class BusinessRole {
 
   /// Ids from [AppPermissions]. A set because order carries no meaning and
   /// membership is the only question ever asked of it.
+  ///
+  /// The backend returns roles and their permissions from two separate
+  /// endpoints — this is populated by the roles provider after joining
+  /// them, not embedded in the role-list response itself. Defaults to
+  /// empty rather than requiring it up front so a freshly-listed role
+  /// (permissions not yet fetched) can still exist as a value.
   final Set<String> permissionIds;
 
-  /// System roles ship with the product. They can be edited but not renamed or
-  /// deleted — staff and reporting both reference them by name.
-  final bool isSystem;
+  /// Protected roles (the seeded Owner role) ship with the business. They
+  /// can never be renamed, redescribed, or deleted — staff and reporting
+  /// both reference them by name. Driven by the backend's real
+  /// `is_protected` field, not a hardcoded assumption.
+  final bool isProtected;
 
   /// Resolved against the catalogue, so a retired permission id left over in
   /// the data never inflates the count shown in the table.
@@ -49,7 +57,7 @@ class BusinessRole {
       name: name ?? this.name,
       description: description ?? this.description,
       permissionIds: permissionIds ?? this.permissionIds,
-      isSystem: isSystem,
+      isProtected: isProtected,
     );
   }
 

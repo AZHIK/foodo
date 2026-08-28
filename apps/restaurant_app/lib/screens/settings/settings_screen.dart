@@ -25,7 +25,7 @@ class SettingsScreen extends ConsumerWidget {
     final settings = ref.watch(storeSettingsProvider);
     final locations = ref.watch(locationsSummaryProvider);
     final staff = ref.watch(staffSummaryProvider);
-    final roles = ref.watch(rolesProvider);
+    final roles = ref.watch(rolesProvider).valueOrNull ?? const [];
     final themeMode = ref.watch(themeModeProvider);
     final density = ref.watch(tableDensityProvider);
     final staffName = ref.watch(sessionStaffProvider)?.name ?? 'Not signed in';

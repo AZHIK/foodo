@@ -84,7 +84,7 @@ class RoleBadge extends StatelessWidget {
     'role-owner' => Icons.workspace_premium_outlined,
     'role-manager' => Icons.badge_outlined,
     'role-cashier' => Icons.point_of_sale_outlined,
-    _ => role.isSystem
+    _ => role.isProtected
         ? Icons.badge_outlined
         : Icons.person_outline_rounded,
   };

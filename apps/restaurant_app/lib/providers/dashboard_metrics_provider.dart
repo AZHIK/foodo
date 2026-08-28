@@ -111,7 +111,7 @@ final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
   final items = ref.watch(inventoryItemsProvider);
   final expenses = ref.watch(otherExpensesProvider);
   final incomes = ref.watch(otherIncomesProvider);
-  final staff = ref.watch(staffMembersProvider);
+  final staff = ref.watch(staffMembersProvider).valueOrNull ?? const [];
 
   final now = DateTime.now();
   final startOfToday = DateTime(now.year, now.month, now.day);
@@ -294,8 +294,8 @@ final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
 final dashboardActivityProvider = Provider<List<ActivityEntry>>((ref) {
   final orders = ref.watch(ordersProvider);
   final metrics = ref.watch(dashboardMetricsProvider);
-  final staff = ref.watch(staffMembersProvider);
-  final roles = ref.watch(rolesProvider);
+  final staff = ref.watch(staffMembersProvider).valueOrNull ?? const [];
+  final roles = ref.watch(rolesProvider).valueOrNull ?? const [];
 
   final entries = <ActivityEntry>[];
 

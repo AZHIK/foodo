@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../auth/identity_service_api.dart' show AuthException;
 import '../../models/business_role.dart';
+import '../../models/permission.dart';
 import '../../models/staff_member.dart';
+import '../../providers/permissions_provider.dart';
 import '../../providers/roles_provider.dart';
 import '../../providers/staff_provider.dart';
 import '../../router/app_router.dart';
@@ -69,6 +72,8 @@ class _Header extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final canAssign = ref.watch(hasPermissionProvider(AppPermissions.staffAssign));
+
     return DetailPageHeader(
       title: member.name,
       subtitle: member.email,
@@ -86,11 +91,12 @@ class _Header extends ConsumerWidget {
         RoleBadge(role: role, dense: true),
       ],
       actions: [
-        OutlinedButton.icon(
-          onPressed: () => showChangeRoleDialog(context, member),
-          icon: const Icon(Icons.badge_outlined, size: 18),
-          label: const Text('Change role'),
-        ),
+        if (canAssign)
+          OutlinedButton.icon(
+            onPressed: () => showAddRoleDialog(context, member),
+            icon: const Icon(Icons.badge_outlined, size: 18),
+            label: const Text('Add role'),
+          ),
         _OverflowMenu(member: member),
       ],
     );
@@ -104,51 +110,20 @@ class _OverflowMenu extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final active = member.status == StaffStatus.active;
+    final canRevoke = ref.watch(hasPermissionProvider(AppPermissions.staffRevoke));
+    // Nothing on this menu means anything without revoke — hide it rather
+    // than show a menu with one disabled item.
+    if (!canRevoke || member.roles.isEmpty) return const SizedBox.shrink();
 
     return PopupMenuButton<String>(
       tooltip: 'More actions',
       position: PopupMenuPosition.under,
       icon: const Icon(Icons.more_horiz_rounded),
       onSelected: (value) => switch (value) {
-        'toggle' => _toggleActive(context, ref),
-        'resend' => _resend(context),
         'remove' => _confirmRemove(context, ref),
         _ => null,
       },
       itemBuilder: (context) => [
-        if (member.isPending)
-          PopupMenuItem(
-            value: 'resend',
-            child: Row(
-              children: [
-                Icon(
-                  Icons.forward_to_inbox_outlined,
-                  size: 17,
-                  color: context.colors.onSurfaceVariant,
-                ),
-                const SizedBox(width: Insets.md),
-                const Text('Resend invite'),
-              ],
-            ),
-          )
-        else
-          PopupMenuItem(
-            value: 'toggle',
-            child: Row(
-              children: [
-                Icon(
-                  active
-                      ? Icons.person_off_outlined
-                      : Icons.person_add_alt_outlined,
-                  size: 17,
-                  color: context.colors.onSurfaceVariant,
-                ),
-                const SizedBox(width: Insets.md),
-                Text(active ? 'Deactivate account' : 'Reactivate account'),
-              ],
-            ),
-          ),
         PopupMenuItem(
           value: 'remove',
           child: Row(
@@ -160,7 +135,7 @@ class _OverflowMenu extends ConsumerWidget {
               ),
               const SizedBox(width: Insets.md),
               Text(
-                'Remove staff member',
+                'Remove from team',
                 style: TextStyle(color: context.semantic.danger),
               ),
             ],
@@ -170,32 +145,15 @@ class _OverflowMenu extends ConsumerWidget {
     );
   }
 
-  void _resend(BuildContext context) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text('Invite resent to ${member.email}')));
-
-  void _toggleActive(BuildContext context, WidgetRef ref) {
-    ref.read(staffMembersProvider.notifier).toggleActive(member.id);
-
-    final nowActive = member.status != StaffStatus.active;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          nowActive
-              ? '${member.name} reactivated'
-              : '${member.name} deactivated',
-        ),
-      ),
-    );
-  }
-
   Future<void> _confirmRemove(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('Remove ${member.name}?'),
-        content: const Text(
-          'Their account and access will be removed. Sales they processed stay '
-          'in the ledger against their name.',
+        content: Text(
+          member.roles.length > 1
+              ? 'This revokes all ${member.roles.length} of their roles at this business.'
+              : 'This revokes their role at this business.',
         ),
         actions: [
           TextButton(
@@ -203,6 +161,7 @@ class _OverflowMenu extends ConsumerWidget {
             child: const Text('Cancel'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: dialogContext.semantic.danger),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Remove'),
           ),
@@ -212,13 +171,30 @@ class _OverflowMenu extends ConsumerWidget {
 
     if (confirmed != true || !context.mounted) return;
 
-    final messenger = ScaffoldMessenger.of(context);
-    // Leave before the record disappears out from under this screen.
-    context.canPop() ? context.pop() : context.goNamed(AppRoute.staffName);
-    ref.read(staffMembersProvider.notifier).remove(member.id);
+    final notifier = ref.read(staffMembersProvider.notifier);
+    var failures = 0;
+    for (final role in member.roles) {
+      try {
+        await notifier.revokeRole(userId: member.id, roleId: role.roleId);
+      } catch (_) {
+        failures++;
+      }
+    }
+    if (!context.mounted) return;
 
+    final messenger = ScaffoldMessenger.of(context);
+    if (failures == 0) {
+      // Leave before the record disappears out from under this screen.
+      context.canPop() ? context.pop() : context.goNamed(AppRoute.staffName);
+    }
     messenger.showSnackBar(
-      SnackBar(content: Text('${member.name} removed')),
+      SnackBar(
+        content: Text(
+          failures == 0
+              ? '${member.name} removed from the team'
+              : "Couldn't remove all of ${member.name}'s roles — try again",
+        ),
+      ),
     );
   }
 }
@@ -277,39 +253,42 @@ class _AccessPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
+    final allRoles = ref.watch(rolesProvider).valueOrNull ?? const <BusinessRole>[];
+    final canAssign = ref.watch(hasPermissionProvider(AppPermissions.staffAssign));
+    final canRevoke = ref.watch(hasPermissionProvider(AppPermissions.staffRevoke));
 
     return DetailPanel(
       title: 'Access',
-      trailing: TextButton(
-        onPressed: () => showChangeRoleDialog(context, member),
-        style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: Insets.sm),
-          minimumSize: const Size(0, 32),
-          visualDensity: VisualDensity.compact,
-        ),
-        child: const Text('Change'),
-      ),
+      trailing: canAssign
+          ? TextButton(
+              onPressed: () => showAddRoleDialog(context, member),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: Insets.sm),
+                minimumSize: const Size(0, 32),
+                visualDensity: VisualDensity.compact,
+              ),
+              child: const Text('Add'),
+            )
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          RoleBadge(role: role),
-          const SizedBox(height: Insets.sm),
-          Text(
-            role?.description ?? 'This role no longer exists.',
-            style: context.text.bodySmall?.copyWith(
-              color: colors.onSurfaceVariant,
-            ),
-          ),
-          if (role != null) ...[
-            const SizedBox(height: Insets.md),
+          if (member.roles.isEmpty)
             Text(
-              role!.permissionSummary,
-              style: context.text.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
+              'No roles at this business.',
+              style: context.text.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+            )
+          else
+            for (var i = 0; i < member.roles.length; i++) ...[
+              if (i > 0) const SizedBox(height: Insets.lg),
+              _RoleRow(
+                assignment: member.roles[i],
+                role: allRoles.where((r) => r.id == member.roles[i].roleId).firstOrNull,
+                canRevoke: canRevoke,
+                onRevoke: () => _revokeOne(context, ref, member.roles[i]),
               ),
-            ),
-          ],
+            ],
           if (member.inviteNote case final note?) ...[
             const SizedBox(height: Insets.lg),
             const Divider(height: 1),
@@ -323,6 +302,79 @@ class _AccessPanel extends ConsumerWidget {
           ],
         ],
       ),
+    );
+  }
+
+  Future<void> _revokeOne(
+    BuildContext context,
+    WidgetRef ref,
+    StaffRoleAssignment assignment,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(staffMembersProvider.notifier)
+          .revokeRole(userId: member.id, roleId: assignment.roleId);
+      messenger.showSnackBar(
+        SnackBar(content: Text('${assignment.roleName} removed from ${member.name}')),
+      );
+    } on AuthException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(content: Text('Could not remove that role')));
+    }
+  }
+}
+
+class _RoleRow extends StatelessWidget {
+  const _RoleRow({
+    required this.assignment,
+    required this.role,
+    required this.canRevoke,
+    required this.onRevoke,
+  });
+
+  final StaffRoleAssignment assignment;
+  final BusinessRole? role;
+  final bool canRevoke;
+  final VoidCallback onRevoke;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RoleBadge(role: role),
+              const SizedBox(height: Insets.sm),
+              Text(
+                role?.description ?? 'This role no longer exists.',
+                style: context.text.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+              ),
+              if (role != null) ...[
+                const SizedBox(height: Insets.md),
+                Text(
+                  role!.permissionSummary,
+                  style: context.text.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (canRevoke)
+          IconButton(
+            tooltip: 'Remove this role',
+            visualDensity: VisualDensity.compact,
+            icon: Icon(Icons.close_rounded, size: 18, color: colors.onSurfaceVariant),
+            onPressed: onRevoke,
+          ),
+      ],
     );
   }
 }

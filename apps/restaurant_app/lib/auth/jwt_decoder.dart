@@ -14,12 +14,19 @@ class JwtClaims {
   final String sub; // user UUID
   final int exp; // expiry as epoch seconds
   final String? activeBusinessId;
+  final List<String> permissions;
+  final List<String> roles;
 
   JwtClaims({
     required this.sub,
     required this.exp,
     this.activeBusinessId,
+    this.permissions = const [],
+    this.roles = const [],
   });
+
+  /// True if the token carries [code], or the wildcard `*` (owner tokens).
+  bool can(String code) => permissions.contains('*') || permissions.contains(code);
 
   /// Returns when this token expires as a DateTime.
   DateTime get expiresAt =>
@@ -50,6 +57,8 @@ JwtClaims decodeAccessToken(String token) {
       sub: json['sub'] as String? ?? '',
       exp: json['exp'] as int? ?? 0,
       activeBusinessId: json['active_business_id'] as String?,
+      permissions: (json['permissions'] as List<dynamic>?)?.cast<String>() ?? const [],
+      roles: (json['roles'] as List<dynamic>?)?.cast<String>() ?? const [],
     );
   } catch (e) {
     throw FormatException('Failed to decode JWT: $e');

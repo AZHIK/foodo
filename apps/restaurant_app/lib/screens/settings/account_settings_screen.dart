@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/staff_member.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/roles_provider.dart';
 import '../../providers/session_provider.dart';
 import '../../providers/staff_provider.dart';
@@ -90,19 +91,24 @@ class _AccountSettingsScreenState
     });
   }
 
-  void _commitProfile() {
+  Future<void> _commitProfile() async {
     final member = ref.read(sessionStaffProvider);
     if (member == null) return;
+    final name = _name.text.trim().isEmpty ? member.name : _name.text.trim();
+    final email = _email.text.trim();
 
-    ref
-        .read(staffMembersProvider.notifier)
-        .upsert(
-          member.copyWith(
-            name: _name.text.trim().isEmpty ? member.name : _name.text.trim(),
-            email: _email.text.trim(),
-            phone: _phone.text.trim(),
-          ),
-        );
+    try {
+      // Backend has no endpoint to change your own phone number — only
+      // name/email are real (PATCH /users/me). The phone field above stays
+      // editable in the UI but this commit doesn't send it anywhere.
+      await ref.read(authProvider.notifier).completeProfile(
+        fullName: name,
+        email: email.isEmpty ? null : email,
+      );
+      await ref.read(staffMembersProvider.notifier).refresh();
+    } catch (_) {
+      // Best-effort: the debounced save has no error-surfacing slot today.
+    }
   }
 
   void _confirm(String field) {
@@ -527,9 +533,8 @@ class _DangerZone extends ConsumerWidget {
 
     final id = member?.id;
     if (id != null) {
-      ref
-          .read(staffMembersProvider.notifier)
-          .setStatus(id, StaffStatus.inactive);
+      // The backend has no self-deactivate endpoint yet — this can only
+      // forget the device profile and sign out, not flip a real status.
       ref.read(sessionProvider.notifier).forgetProfile(id);
     }
     // Signing out is what makes the deactivation real from here: the guard

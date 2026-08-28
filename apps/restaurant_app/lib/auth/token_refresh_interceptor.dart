@@ -17,6 +17,16 @@ class TokenRefreshInterceptor extends Interceptor {
   final String _baseUrl;
   late final IdentityServiceApi _api;
 
+  /// Public endpoints whose own normal error path is a 401 unrelated to
+  /// token expiry (wrong OTP code, wrong password) — refreshing and
+  /// retrying these would just resend the same bad credentials and get
+  /// the same 401 back, wasting a round-trip on every failed attempt.
+  static const _publicAuthPaths = [
+    '/auth/otp/verify',
+    '/auth/login/password',
+    '/auth/platform/login',
+  ];
+
   // Lock to prevent multiple simultaneous refresh attempts.
   bool _isRefreshing = false;
   late Future<void> _refreshFuture;
@@ -42,10 +52,18 @@ class TokenRefreshInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    // Attach the current access token to every request.
-    final tokenSet = await _tokenStorage.getTokenSet();
-    if (tokenSet != null) {
-      options.headers['Authorization'] = 'Bearer ${tokenSet.accessToken}';
+    // Every IdentityServiceApi call that needs auth already sets its own
+    // Authorization header with the exact token it was handed (e.g. the
+    // freshly-issued one from /auth/otp/verify, before it's ever written to
+    // TokenStorage by _switchContextAndLock). Only fall back to the stored
+    // token for requests that didn't set one — overwriting an explicit
+    // header here would replace a known-good token with a stale or
+    // already-rotated one from a previous session.
+    if (!options.headers.containsKey('Authorization')) {
+      final tokenSet = await _tokenStorage.getTokenSet();
+      if (tokenSet != null) {
+        options.headers['Authorization'] = 'Bearer ${tokenSet.accessToken}';
+      }
     }
     handler.next(options);
   }
@@ -57,6 +75,13 @@ class TokenRefreshInterceptor extends Interceptor {
   ) async {
     // Only handle 401 Unauthorized responses.
     if (err.response?.statusCode != 401) {
+      handler.next(err);
+      return;
+    }
+
+    // These endpoints 401 for reasons unrelated to token expiry — refreshing
+    // and retrying would just resend the same bad credentials.
+    if (_publicAuthPaths.any((p) => err.requestOptions.path.contains(p))) {
       handler.next(err);
       return;
     }

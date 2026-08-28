@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/business_role.dart';
+import '../../models/permission.dart';
 import '../../models/staff_member.dart';
+import '../../providers/permissions_provider.dart';
 import '../../providers/roles_provider.dart';
 import '../../providers/staff_provider.dart';
 import '../../router/app_router.dart';
@@ -35,8 +37,10 @@ class StaffScreen extends ConsumerWidget {
     final slice = ref.watch(staffSliceProvider);
     final summary = ref.watch(staffSummaryProvider);
     final filters = ref.watch(staffFiltersProvider);
-    final roles = ref.watch(rolesProvider);
+    final roles = ref.watch(rolesProvider).valueOrNull ?? const <BusinessRole>[];
     final notifier = ref.read(staffQueryProvider.notifier);
+    final canInvite = ref.watch(hasPermissionProvider(AppPermissions.staffAssign));
+    final canRevoke = ref.watch(hasPermissionProvider(AppPermissions.staffRevoke));
 
     // Resolved once and handed to the column config, so a table of twelve rows
     // does not walk the roles list twelve times per rebuild.
@@ -84,7 +88,11 @@ class StaffScreen extends ConsumerWidget {
                 label: const Text('Roles'),
               ),
       ],
-      primaryAction: context.isMobile
+      // Hidden rather than shown-disabled: an owner who can't invite anyone
+      // shouldn't see a control that only ever 403s.
+      primaryAction: !canInvite
+          ? null
+          : context.isMobile
           ? SizedBox(
               height: 40,
               width: 40,
@@ -168,12 +176,15 @@ class StaffScreen extends ConsumerWidget {
           AppRoute.staffDetailName,
           pathParameters: {'staffId': member.id},
         ),
-        rowActions: _actions(ref),
+        rowActions: _actions(ref, canRevoke: canRevoke),
       ),
     );
   }
 
-  List<DataRowAction<StaffMember>> _actions(WidgetRef ref) => [
+  List<DataRowAction<StaffMember>> _actions(
+    WidgetRef ref, {
+    required bool canRevoke,
+  }) => [
     DataRowAction(
       label: 'View detail',
       icon: Icons.open_in_new_rounded,
@@ -182,44 +193,65 @@ class StaffScreen extends ConsumerWidget {
         pathParameters: {'staffId': member.id},
       ),
     ),
-    DataRowAction(
-      label: 'Change role',
-      icon: Icons.badge_outlined,
-      onSelected: (context, member) => showChangeRoleDialog(context, member),
-    ),
-    DataRowAction(
-      label: 'Resend invite',
-      icon: Icons.forward_to_inbox_outlined,
-      // Only means anything for someone who has not accepted yet.
-      isEnabled: (member) => member.isPending,
-      onSelected: (context, member) => ScaffoldMessenger.of(context)
-          .showSnackBar(
-            SnackBar(content: Text('Invite resent to ${member.email}')),
-          ),
-    ),
-    DataRowAction(
-      label: 'Deactivate',
-      icon: Icons.person_off_outlined,
-      isDestructive: true,
-      isEnabled: (member) => !member.isPending,
-      onSelected: (context, member) => _toggleActive(context, ref, member),
-    ),
+    if (canRevoke)
+      DataRowAction(
+        label: 'Remove from team',
+        icon: Icons.person_off_outlined,
+        isDestructive: true,
+        // No backend endpoint reactivates a removed member — they'd need a
+        // fresh invite — so this only applies to someone currently holding
+        // at least one role here.
+        isEnabled: (member) => member.roles.isNotEmpty,
+        onSelected: (context, member) => _removeFromTeam(context, ref, member),
+      ),
   ];
 
-  void _toggleActive(
+  Future<void> _removeFromTeam(
     BuildContext context,
     WidgetRef ref,
     StaffMember member,
-  ) {
-    ref.read(staffMembersProvider.notifier).toggleActive(member.id);
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Remove ${member.name}?'),
+        content: Text(
+          member.roles.length > 1
+              ? 'This revokes all ${member.roles.length} of their roles at this business.'
+              : 'This revokes their role at this business.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: dialogContext.semantic.danger),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
 
-    final nowActive = member.status != StaffStatus.active;
+    final notifier = ref.read(staffMembersProvider.notifier);
+    var failures = 0;
+    for (final role in member.roles) {
+      try {
+        await notifier.revokeRole(userId: member.id, roleId: role.roleId);
+      } catch (_) {
+        failures++;
+      }
+    }
+
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          nowActive
-              ? '${member.name} reactivated'
-              : '${member.name} deactivated',
+          failures == 0
+              ? '${member.name} removed from the team'
+              : "Couldn't remove all of ${member.name}'s roles — try again",
         ),
       ),
     );
@@ -264,10 +296,21 @@ List<DataColumnSpec<StaffMember>> staffColumns(
     label: 'Role',
     field: StaffSort.role,
     flex: 3,
-    value: (member) => rolesById[member.roleId]?.name ?? '—',
+    // A staff member can hold more than one role — join every name for
+    // sorting/search/export, and render every badge in the cell.
+    value: (member) => member.roles.map((r) => r.roleName).join(', '),
     cellBuilder: (context, member) => Align(
       alignment: Alignment.centerLeft,
-      child: RoleBadge(role: rolesById[member.roleId], dense: true),
+      child: member.roles.isEmpty
+          ? const RoleBadge(role: null, dense: true)
+          : Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                for (final assignment in member.roles)
+                  RoleBadge(role: rolesById[assignment.roleId], dense: true),
+              ],
+            ),
     ),
   ),
   DataColumnSpec(

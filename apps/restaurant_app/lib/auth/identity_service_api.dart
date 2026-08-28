@@ -173,6 +173,18 @@ class AuthException implements Exception {
 
   AuthException(this.message, [this.statusCode]);
 
+  /// Builds from a failed Dio call, preferring the backend's own `detail`
+  /// string over Dio's generic "Http status error [409]" — so a caller
+  /// surfacing this to the UI shows what the backend actually said, not an
+  /// invented paraphrase of it.
+  factory AuthException.fromDio(String action, DioException e) {
+    final data = e.response?.data;
+    final detail = data is Map && data['detail'] is String
+        ? data['detail'] as String
+        : null;
+    return AuthException('$action: ${detail ?? e.message}', e.response?.statusCode);
+  }
+
   @override
   String toString() =>
       'AuthException: $message${statusCode != null ? ' (HTTP $statusCode)' : ''}';

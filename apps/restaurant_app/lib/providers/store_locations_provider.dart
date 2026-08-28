@@ -120,7 +120,7 @@ final transferTargetsProvider = Provider<List<StoreLocation>>((ref) {
 /// Manager names by location id, resolved against the staff list so renaming
 /// someone on the Staff screen renames them here too.
 final locationManagerNamesProvider = Provider<Map<String, String>>((ref) {
-  final staff = ref.watch(staffMembersProvider);
+  final staff = ref.watch(staffMembersProvider).valueOrNull ?? const [];
   final names = {for (final member in staff) member.id: member.name};
 
   return {
