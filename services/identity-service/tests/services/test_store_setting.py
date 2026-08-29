@@ -19,7 +19,7 @@ async def _make_store(db_session: AsyncSession, *, name: str = "Store One") -> S
     user = User(
         phone=f"+2557{uuid4().hex[:9]}",
         full_name="Settings Test User",
-        user_category=UserCategory.BUSINESS_USER,
+        user_category=UserCategory.BUSINESS_STAFF,
     )
     async with db_session.begin():
         db_session.add(user)
@@ -159,7 +159,7 @@ class TestBusinessLogo:
         user = User(
             phone=f"+2557{uuid4().hex[:9]}",
             full_name="Logo Test User",
-            user_category=UserCategory.BUSINESS_USER,
+            user_category=UserCategory.BUSINESS_STAFF,
         )
         logo_url = "https://cdn.foodlink.com/businesses/biz-1.png"
 

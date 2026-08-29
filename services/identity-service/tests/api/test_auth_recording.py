@@ -35,7 +35,7 @@ class TestLoginAttemptsRecording:
             user = User(
                 phone=phone,
                 full_name="Test User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user)
@@ -62,7 +62,7 @@ class TestLoginAttemptsRecording:
             user = User(
                 phone=phone,
                 full_name="Test User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user)
@@ -107,7 +107,7 @@ class TestLoginAttemptsRecording:
             user = User(
                 phone=phone,
                 full_name="OTP User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
             )
             db_session.add(user)
 
@@ -201,7 +201,7 @@ class TestAuthRiskEventsRecording:
             user = User(
                 phone=phone,
                 full_name="Rate Limit User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user)
@@ -239,7 +239,7 @@ class TestAuthRiskEventsRecording:
             user = User(
                 phone=phone,
                 full_name="Replay User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user)
@@ -285,7 +285,7 @@ class TestAuthRiskEventsRecording:
             user = User(
                 phone=phone,
                 full_name="OTP Lockout User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
             )
             db_session.add(user)
 
@@ -332,7 +332,7 @@ class TestAuthRiskEventsRecording:
             user = User(
                 phone=phone,
                 full_name="Reset User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user)
@@ -363,7 +363,7 @@ class TestAuthRiskEventsRecording:
             user = User(
                 phone=phone,
                 full_name="Test User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user)

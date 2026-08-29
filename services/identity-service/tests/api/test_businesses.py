@@ -20,7 +20,7 @@ async def _create_test_user(db_session: AsyncSession) -> User:
     user = User(
         phone=f"+2557{uuid4().hex[:9]}",
         full_name="API Test User",
-        user_category=UserCategory.BUSINESS_USER,
+        user_category=UserCategory.BUSINESS_STAFF,
     )
     async with db_session.begin():
         db_session.add(user)
@@ -34,7 +34,7 @@ def _business_user_token(
 ) -> str:
     return create_access_token(
         subject=subject,
-        user_category=UserCategory.BUSINESS_USER.value,
+        user_category=UserCategory.BUSINESS_STAFF.value,
         active_business_id=business_id,
         roles=["owner"],
         permissions=permissions or [],

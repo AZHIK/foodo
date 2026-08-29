@@ -43,7 +43,13 @@ from app.core.rate_limit import RateLimitDependency, body_field_source
 from app.core.security import create_access_token, hash_password, verify_password
 from app.deps.auth import get_current_claims
 from app.models.auth import AuthEventType, AuthRiskLevel, RefreshToken, VerificationCodePurpose
-from app.models.business import UserBusinessRole
+from app.models.business import (
+    BusinessRole,
+    BusinessRolePermission,
+    UserBusinessPermission,
+    UserBusinessRole,
+    UserStoreRole,
+)
 from app.models.user import User, UserCategory, UserStatus
 from app.schemas.auth import (
     BusinessUserRegisterRequest,
@@ -86,6 +92,61 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 
 
+async def _resolve_store_staff_context(
+    session: AsyncSession, user_id: UUID
+) -> tuple[UUID | None, UUID | None, list[str], list[str]]:
+    """Resolve (active_business_id, active_store_id, role_names, effective_permissions)
+    for a business_store_staff user from their UserStoreRole assignment.
+
+    Single-store only: if more than one UserStoreRole row exists, the first
+    by id is used and a warning is logged. Returns all-None/empty if the
+    user has no UserStoreRole yet (not assigned to any store).
+    """
+    result = await session.exec(
+        select(UserStoreRole).where(UserStoreRole.user_id == user_id).order_by(UserStoreRole.id)
+    )
+    store_roles = result.all()
+    if not store_roles:
+        return None, None, [], []
+    if len(store_roles) > 1:
+        logger.warning("user_has_multiple_store_roles", user_id=str(user_id))
+    usr = store_roles[0]
+
+    role = await session.get(BusinessRole, usr.business_role_id)
+    role_names = [role.name] if role else []
+    role_permission_codes: list[str] = []
+    if role:
+        perm_result = await session.exec(
+            select(BusinessRolePermission).where(BusinessRolePermission.business_role_id == role.id)
+        )
+        role_permission_codes = [rp.permission_code for rp in perm_result.all()]
+
+    grant_result = await session.exec(
+        select(UserBusinessPermission).where(
+            UserBusinessPermission.user_id == user_id,
+            UserBusinessPermission.business_id == usr.business_id,
+            UserBusinessPermission.type == "grant",
+        )
+    )
+    deny_result = await session.exec(
+        select(UserBusinessPermission).where(
+            UserBusinessPermission.user_id == user_id,
+            UserBusinessPermission.business_id == usr.business_id,
+            UserBusinessPermission.type == "deny",
+        )
+    )
+    grants = [p.permission_code for p in grant_result.all()]
+    denies = [p.permission_code for p in deny_result.all()]
+
+    effective = resolve_effective_permissions(
+        business_role_permissions=[],
+        location_role_permissions=role_permission_codes,
+        grants=grants,
+        denies=denies,
+    )
+    return usr.business_id, usr.store_id, role_names, [str(p) for p in effective]
+
+
 async def _issue_tokens(
     session: AsyncSession,
     user: User,
@@ -104,10 +165,20 @@ async def _issue_tokens(
             platform_role=user.user_category.value,
             permissions=sorted(platform_perms),
         )
+    elif user.user_category == UserCategory.BUSINESS_STORE_STAFF:
+        biz_id, store_id, role_names, perms = await _resolve_store_staff_context(session, user.id)
+        access_token = create_access_token(
+            subject=user_id_str,
+            user_category=UserCategory.BUSINESS_STORE_STAFF.value,
+            active_business_id=str(biz_id) if biz_id else None,
+            active_store_id=str(store_id) if store_id else None,
+            roles=role_names,
+            permissions=perms,
+        )
     else:
         access_token = create_access_token(
             subject=user_id_str,
-            user_category=UserCategory.BUSINESS_USER.value,
+            user_category=UserCategory.BUSINESS_STAFF.value,
             active_business_id=None,
             roles=[],
             permissions=[],
@@ -147,7 +218,7 @@ async def register(
 
     password_hash = hash_password(body.password) if body.password else None
 
-    # NOTE: This endpoint defaults to business_user. If driver/consumer
+    # NOTE: This endpoint defaults to business_staff. If driver/consumer
     # registration flows diverge in the future (e.g., different validation,
     # different onboarding steps), they should either get their own endpoint
     # or this endpoint should accept an explicit user_category field.
@@ -155,7 +226,7 @@ async def register(
         phone=body.phone,
         full_name=body.full_name,
         email=body.email,
-        user_category=UserCategory.BUSINESS_USER,
+        user_category=UserCategory.BUSINESS_STAFF,
         status=UserStatus.ACTIVE,
         password_hash=password_hash,
         # No OTP has been checked at this point regardless of whether a
@@ -218,7 +289,7 @@ async def request_otp(
         user = User(
             phone=body.phone,
             full_name="",
-            user_category=UserCategory.BUSINESS_USER,
+            user_category=UserCategory.BUSINESS_STAFF,
             status=UserStatus.ACTIVE,
             is_phone_verified=False,
         )
@@ -685,10 +756,20 @@ async def refresh(
             platform_role=user.user_category.value,
             permissions=sorted(platform_perms),
         )
+    elif user.user_category == UserCategory.BUSINESS_STORE_STAFF:
+        biz_id, store_id, role_names, perms = await _resolve_store_staff_context(db, user.id)
+        access_token = create_access_token(
+            subject=user_id_str,
+            user_category=UserCategory.BUSINESS_STORE_STAFF.value,
+            active_business_id=str(biz_id) if biz_id else None,
+            active_store_id=str(store_id) if store_id else None,
+            roles=role_names,
+            permissions=perms,
+        )
     else:
         access_token = create_access_token(
             subject=user_id_str,
-            user_category=UserCategory.BUSINESS_USER.value,
+            user_category=UserCategory.BUSINESS_STAFF.value,
             active_business_id=None,
             roles=[],
             permissions=[],
@@ -765,6 +846,12 @@ async def switch_business_context(
     claims: dict[str, Any] = Depends(get_current_claims),
     db: AsyncSession = Depends(get_async_session),
 ) -> TokenResponse:
+    if claims.get("user_category") != "business_staff":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This endpoint is for business-staff accounts only.",
+        )
+
     user_id = UUID(claims["sub"])
 
     result = await db.exec(
@@ -839,7 +926,7 @@ async def switch_business_context(
 
     access_token = create_access_token(
         subject=str(user.id),
-        user_category=UserCategory.BUSINESS_USER.value,
+        user_category=UserCategory.BUSINESS_STAFF.value,
         active_business_id=str(body.business_id),
         roles=role_names,
         permissions=[str(p) for p in effective],

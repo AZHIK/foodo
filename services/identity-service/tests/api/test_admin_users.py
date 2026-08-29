@@ -27,14 +27,14 @@ async def _create_business_user_token(db_session: AsyncSession) -> str:
         user = User(
             phone=_unique_phone(),
             full_name="Business User",
-            user_category=UserCategory.BUSINESS_USER,
+            user_category=UserCategory.BUSINESS_STAFF,
             status=UserStatus.ACTIVE,
         )
         db_session.add(user)
 
     return create_access_token(
         subject=str(user.id),
-        user_category=UserCategory.BUSINESS_USER.value,
+        user_category=UserCategory.BUSINESS_STAFF.value,
         roles=[],
         permissions=[],
     )
@@ -91,10 +91,10 @@ async def _create_test_users(db_session: AsyncSession) -> list[User]:
         for i, (cat, status, active) in enumerate(
             [
                 (UserCategory.PLATFORM_STAFF, UserStatus.ACTIVE, True),
-                (UserCategory.BUSINESS_USER, UserStatus.ACTIVE, True),
+                (UserCategory.BUSINESS_STAFF, UserStatus.ACTIVE, True),
                 (UserCategory.DRIVER, UserStatus.ACTIVE, True),
                 (UserCategory.CONSUMER, UserStatus.ACTIVE, True),
-                (UserCategory.BUSINESS_USER, UserStatus.SUSPENDED, False),
+                (UserCategory.BUSINESS_STAFF, UserStatus.SUSPENDED, False),
             ]
         ):
             user = User(
@@ -174,7 +174,7 @@ class TestAdminUserList:
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert all(u["user_category"] == "business_user" for u in data)
+        assert all(u["user_category"] == "business_staff" for u in data)
 
     async def test_list_users_filters_status(
         self, client: AsyncClient, db_session: AsyncSession

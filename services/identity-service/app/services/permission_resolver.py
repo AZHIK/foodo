@@ -28,8 +28,10 @@ def resolve_effective_permissions(
         − denies(user, business)
 
     Union role-derived permissions from both business-wide and location-scoped
-    role assignments, then apply grant overrides, then remove anything in deny
-    overrides. Deny always wins last, even over a grant for the same code.
+    (store-scoped for business_store_staff) role assignments, then apply grant
+    overrides, then remove anything in deny overrides. Deny always wins last,
+    even over a grant for the same code. location_role_permissions is populated
+    for store-staff from their assigned BusinessRole via UserStoreRole.
     """
     role_permissions = {
         coerce_permission_code(permission) for permission in business_role_permissions

@@ -18,7 +18,7 @@ def _valid_phone() -> str:
 def _token(user: User) -> str:
     return create_access_token(
         subject=str(user.id),
-        user_category=UserCategory.BUSINESS_USER.value,
+        user_category=UserCategory.BUSINESS_STAFF.value,
     )
 
 
@@ -26,7 +26,7 @@ async def _make_user(db_session: AsyncSession, phone: str | None = None) -> User
     user = User(
         phone=phone or _valid_phone(),
         full_name="Onboarding User",
-        user_category=UserCategory.BUSINESS_USER,
+        user_category=UserCategory.BUSINESS_STAFF,
         status=UserStatus.ACTIVE,
     )
     db_session.add(user)
@@ -112,7 +112,7 @@ class TestOnboardingStatus:
         biz, role = await _make_business_with_role(db_session, owner)
         owner_token = create_access_token(
             subject=str(owner.id),
-            user_category=UserCategory.BUSINESS_USER.value,
+            user_category=UserCategory.BUSINESS_STAFF.value,
             active_business_id=str(biz.id),
             roles=["owner"],
             permissions=["*"],

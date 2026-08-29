@@ -69,7 +69,7 @@ docker compose exec api uv run python scripts/seed_role_templates.py
 
 Or run all at once:
 ```bash
-docker compose exec api bash -c '
+docker compose exec api-dev bash -c '
   uv run python scripts/seed_permissions.py &&
   uv run python scripts/seed_internal_rbac.py &&
   uv run python scripts/seed_role_templates.py

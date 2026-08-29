@@ -60,7 +60,7 @@ class TestUserModel:
 
     def test_user_category_enum(self) -> None:
         assert UserCategory.PLATFORM_STAFF.value == "platform_staff"
-        assert UserCategory.BUSINESS_USER.value == "business_user"
+        assert UserCategory.BUSINESS_STAFF.value == "business_staff"
         assert UserCategory.DRIVER.value == "driver"
         assert UserCategory.CONSUMER.value == "consumer"
 

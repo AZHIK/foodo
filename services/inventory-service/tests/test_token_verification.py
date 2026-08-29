@@ -104,7 +104,7 @@ def _build_token(
     payload = {
         "sub": "user-test-123",
         "type": "access",
-        "user_category": "business_user",
+        "user_category": "business_staff",
         "iat": now,
         "exp": now + (exp_delta or timedelta(minutes=15)),
         "permissions": ["inventory.view", "inventory.adjust"],
@@ -121,7 +121,7 @@ class TestDecodeAndVerifyAccessToken:
         token = _build_token()
         claims = decode_and_verify_access_token(token)
         assert claims["sub"] == "user-test-123"
-        assert claims["user_category"] == "business_user"
+        assert claims["user_category"] == "business_staff"
         assert claims["type"] == "access"
 
     def test_token_signed_with_different_key_is_rejected(self) -> None:
@@ -139,7 +139,7 @@ class TestDecodeAndVerifyAccessToken:
         settings = get_settings()
         payload = {
             "sub": "user",
-            "user_category": "business_user",
+            "user_category": "business_staff",
             "iat": datetime.now(UTC),
             "exp": datetime.now(UTC) + timedelta(minutes=15),
         }
@@ -153,7 +153,7 @@ class TestDecodeAndVerifyAccessToken:
         payload = {
             "sub": "user",
             "type": "refresh",
-            "user_category": "business_user",
+            "user_category": "business_staff",
             "iat": datetime.now(UTC),
             "exp": datetime.now(UTC) + timedelta(minutes=15),
         }
@@ -195,7 +195,7 @@ class TestRequirePermission:
         checker = require_permission("inventory.view")
         claims = {
             "sub": "user",
-            "user_category": "business_user",
+            "user_category": "business_staff",
             "permissions": ["inventory.view", "inventory.adjust"],
         }
         result = await _call(checker, claims)
@@ -203,7 +203,7 @@ class TestRequirePermission:
 
     async def test_rejects_token_missing_permission(self) -> None:
         checker = require_permission("inventory.adjust")
-        claims = {"sub": "user", "user_category": "business_user", "permissions": ["pos.write"]}
+        claims = {"sub": "user", "user_category": "business_staff", "permissions": ["pos.write"]}
         with pytest.raises(HTTPException) as exc:
             await _call(checker, claims)
         assert exc.value.status_code == 403
@@ -218,13 +218,13 @@ class TestRequirePermission:
 class TestRequireBusinessContext:
     async def test_allows_token_with_active_business_id(self) -> None:
         checker = require_business_context()
-        claims = {"sub": "user", "user_category": "business_user", "active_business_id": "biz-abc"}
+        claims = {"sub": "user", "user_category": "business_staff", "active_business_id": "biz-abc"}
         result = await _call(checker, claims)
         assert result == "biz-abc"
 
     async def test_rejects_token_without_business_context(self) -> None:
         checker = require_business_context()
-        claims = {"sub": "user", "user_category": "business_user"}
+        claims = {"sub": "user", "user_category": "business_staff"}
         with pytest.raises(HTTPException) as exc:
             await _call(checker, claims)
         assert exc.value.status_code == 403
@@ -236,7 +236,7 @@ class TestRequireBusinessPermission:
         biz_id = UUID("550e8400-e29b-41d4-a716-446655440000")
         claims = {
             "sub": "user",
-            "user_category": "business_user",
+            "user_category": "business_staff",
             "active_business_id": str(biz_id),
             "permissions": ["inventory.view"],
         }
@@ -245,7 +245,7 @@ class TestRequireBusinessPermission:
 
     async def test_rejects_without_context(self) -> None:
         checker = require_business_permission("inventory.view")
-        claims = {"sub": "user", "user_category": "business_user", "permissions": ["inventory.view"]}
+        claims = {"sub": "user", "user_category": "business_staff", "permissions": ["inventory.view"]}
         with pytest.raises(HTTPException) as exc:
             await _call(checker, claims, business_id=UUID("550e8400-e29b-41d4-a716-446655440000"))
         assert exc.value.status_code == 403
@@ -255,7 +255,7 @@ class TestRequireBusinessPermission:
         biz_id = UUID("550e8400-e29b-41d4-a716-446655440000")
         claims = {
             "sub": "user",
-            "user_category": "business_user",
+            "user_category": "business_staff",
             "active_business_id": str(biz_id),
             "permissions": ["inventory.view"],
         }
@@ -273,7 +273,7 @@ class TestRequirePlatformStaff:
 
     async def test_rejects_business_user(self) -> None:
         checker = require_platform_staff()
-        claims = {"sub": "user", "user_category": "business_user"}
+        claims = {"sub": "user", "user_category": "business_staff"}
         with pytest.raises(HTTPException) as exc:
             await _call(checker, claims)
         assert exc.value.status_code == 403

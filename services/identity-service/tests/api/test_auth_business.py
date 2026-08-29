@@ -124,7 +124,7 @@ class TestOTP:
             user = User(
                 phone=phone,
                 full_name="OTP User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 status=UserStatus.ACTIVE,
             )
             db_session.add(user)
@@ -153,7 +153,7 @@ class TestOTP:
             user = User(
                 phone=phone,
                 full_name="OTP User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
             )
             db_session.add(user)
 
@@ -182,7 +182,7 @@ class TestOTP:
             user = User(
                 phone=phone,
                 full_name="Lockout User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
             )
             db_session.add(user)
 
@@ -214,7 +214,7 @@ class TestOTP:
             user = User(
                 phone=phone,
                 full_name="",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 status=UserStatus.INVITED,
                 is_phone_verified=False,
             )
@@ -250,7 +250,7 @@ class TestOTP:
             user = User(
                 phone=phone,
                 full_name="",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 status=UserStatus.ACTIVE,
                 is_phone_verified=False,
             )
@@ -284,7 +284,7 @@ class TestPasswordLogin:
             user = User(
                 phone=phone,
                 full_name="Password User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user)
@@ -306,7 +306,7 @@ class TestPasswordLogin:
             user = User(
                 phone=phone,
                 full_name="Password User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user)
@@ -336,7 +336,7 @@ class TestPasswordLogin:
             user = User(
                 phone=phone,
                 full_name="",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 status=UserStatus.INVITED,
                 password_hash=None,
             )
@@ -357,7 +357,7 @@ class TestPasswordReset:
             user = User(
                 phone=phone,
                 full_name="Reset User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password("OldPass1"),
             )
             db_session.add(user)
@@ -404,7 +404,7 @@ class TestRefreshToken:
             user = User(
                 phone=phone,
                 full_name="Refresh User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user)
@@ -440,7 +440,7 @@ class TestLogout:
             user = User(
                 phone=phone,
                 full_name="Logout User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user)
@@ -477,13 +477,13 @@ class TestSessions:
             user1 = User(
                 phone=phone1,
                 full_name="User One",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             user2 = User(
                 phone=phone2,
                 full_name="User Two",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user1)
@@ -528,13 +528,13 @@ class TestSessions:
             user1 = User(
                 phone=phone1,
                 full_name="User One",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             user2 = User(
                 phone=phone2,
                 full_name="User Two",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user1)
@@ -577,7 +577,7 @@ class TestContextSwitch:
             user = User(
                 phone=phone,
                 full_name="Switch User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user)
@@ -617,7 +617,7 @@ class TestRateLimits:
             user = User(
                 phone=phone,
                 full_name="Rate Limit User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user)
@@ -648,13 +648,13 @@ class TestRateLimits:
             user1 = User(
                 phone=phone1,
                 full_name="User One",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             user2 = User(
                 phone=phone2,
                 full_name="User Two",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user1)
@@ -683,7 +683,7 @@ class TestRateLimits:
             user = User(
                 phone=phone,
                 full_name="OTP Rate Limit User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
             )
             db_session.add(user)
 
@@ -712,12 +712,12 @@ class TestRateLimits:
             user1 = User(
                 phone=phone1,
                 full_name="User One",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
             )
             user2 = User(
                 phone=phone2,
                 full_name="User Two",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
             )
             db_session.add(user1)
             db_session.add(user2)
@@ -737,7 +737,7 @@ class TestRateLimits:
             user = User(
                 phone=phone,
                 full_name="Reset Rate Limit User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user)
@@ -765,7 +765,7 @@ class TestRateLimits:
             user = User(
                 phone=phone,
                 full_name="Refresh Rate Limit User",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 password_hash=hash_password(_TEST_PASSWORD),
             )
             db_session.add(user)

@@ -41,14 +41,14 @@ async def _create_business_user_token(db_session: AsyncSession) -> str:
         user = User(
             phone=_unique_phone(),
             full_name="Business User",
-            user_category=UserCategory.BUSINESS_USER,
+            user_category=UserCategory.BUSINESS_STAFF,
             status=UserStatus.ACTIVE,
         )
         db_session.add(user)
 
     return create_access_token(
         subject=str(user.id),
-        user_category=UserCategory.BUSINESS_USER.value,
+        user_category=UserCategory.BUSINESS_STAFF.value,
         roles=[],
         permissions=[],
     )

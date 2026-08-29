@@ -27,7 +27,7 @@ def _token_with_permission(
     """Build a business_user access token."""
     return create_access_token(
         subject=str(uuid4()),
-        user_category=UserCategory.BUSINESS_USER.value,
+        user_category=UserCategory.BUSINESS_STAFF.value,
         active_business_id=business_id,
         roles=["manager"],
         permissions=permissions or [],
@@ -140,7 +140,7 @@ class TestBusinessRolesDemoEndpoint:
         # (In practice, platform staff would use internal-staff endpoints, not this one.)
         token = create_access_token(
             subject=str(uuid4()),
-            user_category=UserCategory.BUSINESS_USER.value,
+            user_category=UserCategory.BUSINESS_STAFF.value,
             active_business_id=biz_id,
             roles=["super_admin"],
             permissions=["*"],

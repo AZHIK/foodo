@@ -23,7 +23,7 @@ async def test_user(db_session: AsyncSession) -> User:
     user = User(
         phone=f"+2558{uuid4().hex[:9]}",
         full_name="Seeded Flow Creator",
-        user_category=UserCategory.BUSINESS_USER,
+        user_category=UserCategory.BUSINESS_STAFF,
     )
     async with db_session.begin():
         db_session.add(user)

@@ -33,7 +33,7 @@ def _business_claims(
 ) -> dict:
     return {
         "sub": "user-uuid-1",
-        "user_category": "business_user",
+        "user_category": "business_staff",
         "active_business_id": active_business_id,
         "permissions": permissions or [],
         "roles": [],

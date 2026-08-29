@@ -113,18 +113,20 @@ def create_access_token(
     roles: list[str] | None = None,
     permissions: list[str] | None = None,
     active_business_id: str | None = None,
+    active_store_id: str | None = None,
     other_businesses: list[dict[str, Any]] | None = None,
     group: str | None = None,
     platform_role: str | None = None,
 ) -> str:
     """Create a signed RS256 JWT access token with claims matching the user's category.
 
-    The token payload shape follows the three claim schemas in app/schemas/auth.py:
+    The token payload shape follows the claim schemas in app/schemas/auth.py:
 
-    * Business-user tokens include roles, permissions, active_business_id,
-      and a list of other businesses (for business-switching).
     * Platform-staff tokens include group and their roles/permissions.
     * Driver/consumer tokens include their platform_role (e.g. "driver", "consumer").
+    * Business-staff tokens include roles, permissions, active_business_id,
+      and a list of other businesses (for business-switching).
+    * Store-staff tokens include roles, permissions, active_business_id, and active_store_id.
 
     The ``subject`` parameter is the user's UUID as a string.
     Expiry is read from ``ACCESS_TOKEN_EXPIRE_MINUTES`` in settings (default 15 min).
@@ -146,12 +148,20 @@ def create_access_token(
     elif user_category in ("driver", "consumer"):
         payload["platform_role"] = platform_role or user_category
         payload["permissions"] = permissions or []
-    else:
-        # business_user (or any future category that carries business context)
+    elif user_category == "business_staff":
         payload["active_business_id"] = active_business_id
         payload["roles"] = roles or []
         payload["permissions"] = permissions or []
         payload["other_businesses"] = other_businesses or []
+    elif user_category == "business_store_staff":
+        payload["active_business_id"] = active_business_id
+        payload["active_store_id"] = active_store_id
+        payload["roles"] = roles or []
+        payload["permissions"] = permissions or []
+    else:
+        # Future categories with no defined claim shape yet (farmer, logistics_provider, qa, ...).
+        payload["roles"] = roles or []
+        payload["permissions"] = permissions or []
 
     private_key = _load_private_key()
     return jwt.encode(payload, private_key, algorithm=settings.jwt_algorithm)

@@ -35,7 +35,7 @@ class TestBusinessContextBinding:
         biz_id = UUID("550e8400-e29b-41d4-a716-446655440000")
         claims = {
             "sub": "user-1",
-            "user_category": "business_user",
+            "user_category": "business_staff",
             "active_business_id": str(biz_id),
             "permissions": ["pos.write"],
         }
@@ -48,7 +48,7 @@ class TestBusinessContextBinding:
         biz_y = UUID("660e8400-e29b-41d4-a716-446655440001")
         claims = {
             "sub": "user-1",
-            "user_category": "business_user",
+            "user_category": "business_staff",
             "active_business_id": str(biz_x),
             "permissions": ["pos.write"],
         }
@@ -62,7 +62,7 @@ class TestBusinessContextBinding:
         biz_id = UUID("550e8400-e29b-41d4-a716-446655440000")
         claims = {
             "sub": "user-1",
-            "user_category": "business_user",
+            "user_category": "business_staff",
             "permissions": ["pos.write"],
         }
         with pytest.raises(HTTPException) as exc:
@@ -74,7 +74,7 @@ class TestBusinessContextBinding:
         biz_id = UUID("550e8400-e29b-41d4-a716-446655440000")
         claims = {
             "sub": "user-1",
-            "user_category": "business_user",
+            "user_category": "business_staff",
             "active_business_id": str(biz_id),
             "permissions": ["pos.write"],
         }

@@ -371,7 +371,7 @@ class TestPlatformRegisterPermissionGuard:
             biz_user = User(
                 phone="+255777000111",
                 full_name="Business Admin",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 status=UserStatus.ACTIVE,
                 is_phone_verified=True,
             )
@@ -380,7 +380,7 @@ class TestPlatformRegisterPermissionGuard:
         # Craft a business_user token that *also* has role "admin" — the worst case
         business_admin_token = create_access_token(
             subject=str(biz_user.id),
-            user_category=UserCategory.BUSINESS_USER.value,
+            user_category=UserCategory.BUSINESS_STAFF.value,
             roles=["admin"],
             permissions=[],
             active_business_id=None,

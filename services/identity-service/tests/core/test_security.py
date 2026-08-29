@@ -80,7 +80,7 @@ class TestJWTAccessToken:
     def test_create_and_verify_business_user(self) -> None:
         token = create_access_token(
             subject="user-1111",
-            user_category="business_user",
+            user_category="business_staff",
             roles=["manager"],
             permissions=["pos.write", "inventory.view"],
             active_business_id="biz-001",
@@ -88,7 +88,7 @@ class TestJWTAccessToken:
         )
         payload = decode_and_verify_access_token(token)
         assert payload["sub"] == "user-1111"
-        assert payload["user_category"] == "business_user"
+        assert payload["user_category"] == "business_staff"
         assert payload["type"] == "access"
         assert payload["roles"] == ["manager"]
         assert payload["permissions"] == ["pos.write", "inventory.view"]
@@ -145,7 +145,7 @@ class TestJWTAccessToken:
         payload = {
             "sub": "user",
             "type": "access",
-            "user_category": "business_user",
+            "user_category": "business_staff",
             "iat": datetime.now(UTC),
             "exp": datetime.now(UTC) + timedelta(minutes=settings["access_token_ttl_minutes"]),
         }
@@ -161,7 +161,7 @@ class TestJWTAccessToken:
         payload = {
             "sub": "user",
             "type": "access",
-            "user_category": "business_user",
+            "user_category": "business_staff",
             "iat": datetime.now(UTC) - timedelta(hours=1),
             "exp": datetime.now(UTC) - timedelta(minutes=1),  # expired 1 minute ago
         }
@@ -176,7 +176,7 @@ class TestJWTAccessToken:
         private_key = _load_private_key()
         payload = {
             "sub": "user",
-            "user_category": "business_user",
+            "user_category": "business_staff",
             "iat": datetime.now(UTC),
             "exp": datetime.now(UTC) + timedelta(minutes=15),
         }
@@ -192,7 +192,7 @@ class TestJWTAccessToken:
         payload = {
             "sub": "user",
             "type": "refresh",
-            "user_category": "business_user",
+            "user_category": "business_staff",
             "iat": datetime.now(UTC),
             "exp": datetime.now(UTC) + timedelta(minutes=15),
         }
@@ -202,7 +202,7 @@ class TestJWTAccessToken:
             decode_and_verify_access_token(token)
 
     def test_iat_and_exp_are_present(self) -> None:
-        token = create_access_token(subject="u1", user_category="business_user")
+        token = create_access_token(subject="u1", user_category="business_staff")
         payload = decode_and_verify_access_token(token)
         assert isinstance(payload["iat"], (int, float))
         assert isinstance(payload["exp"], (int, float))

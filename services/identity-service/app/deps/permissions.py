@@ -64,6 +64,15 @@ AVAILABLE DEPENDENCY FACTORIES
     endpoints that must never be reachable by business users regardless
     of what permissions they hold.
 
+``require_store_context()``
+    Rejects with 403 if ``claims["active_store_id"]`` is absent or
+    ``None``.  Returns the ``active_store_id`` string so route
+    handlers can use it directly to scope DB queries (store-staff only).
+
+``require_store_permission(code)``
+    Chains ``require_store_context()`` and ``require_permission(code)``
+    for store-scoped endpoints.  Returns ``active_store_id``.
+
 ════════════════════════════════════════════════════════
 HOW ANOTHER MICROSERVICE REUSES THIS
 ════════════════════════════════════════════════════════
@@ -348,3 +357,74 @@ def require_platform_staff() -> Callable[..., Awaitable[dict[str, Any]]]:
         return claims
 
     return _check_platform_staff
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 7. require_store_context — active_store_id must be present
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def require_store_context() -> Callable[..., Awaitable[str]]:
+    """Dependency factory: require a live store context in the token.
+
+    Returns the ``active_store_id`` string so route handlers can use
+    it directly without re-extracting it from claims.
+
+    Rejects with 403 when ``active_store_id`` is absent or ``None``
+    (e.g. a store-staff user not yet assigned to any store).
+    """
+
+    async def _check_store_context(
+        claims: Annotated[dict[str, Any], Depends(get_current_claims)],
+    ) -> str:
+        active_store_id: str | None = claims.get("active_store_id")
+        if not active_store_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="A valid store context is required. Ask a business administrator to assign you to a store.",
+            )
+        return active_store_id
+
+    return _check_store_context
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 8. require_store_permission — context + single permission for store scope
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def require_store_permission(
+    permission_code: str | PermissionCode,
+) -> Callable[..., Awaitable[str]]:
+    """Dependency factory: require a store context AND a specific permission.
+
+    Similar to require_business_permission but for store-scoped endpoints:
+
+    - First verifies ``active_store_id`` is present and non-null (403 if not).
+    - Then verifies the permission code is in claims (403 if not).
+    - Returns ``active_store_id`` for direct use in route handlers.
+    """
+    validated: PermissionCode = coerce_permission_code(permission_code)
+
+    async def _check_store_permission(
+        claims: Annotated[dict[str, Any], Depends(get_current_claims)],
+    ) -> str:
+        # 1. Store context gate (runs first, always)
+        active_store_id: str | None = claims.get("active_store_id")
+        if not active_store_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="A valid store context is required. Ask a business administrator to assign you to a store.",
+            )
+
+        # 2. Permission gate
+        permissions: list[str] = claims.get("permissions", [])
+        if str(validated) not in permissions and "*" not in permissions:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission '{validated}' is required",
+            )
+
+        return active_store_id
+
+    return _check_store_permission

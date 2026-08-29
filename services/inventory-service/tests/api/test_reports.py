@@ -78,7 +78,7 @@ def _build_token(
     payload = {
         "sub": "user-test-123",
         "type": "access",
-        "user_category": "business_user",
+        "user_category": "business_staff",
         "iat": now,
         "exp": now + timedelta(minutes=15),
         "permissions": permissions or ALL_INVENTORY_PERMS,

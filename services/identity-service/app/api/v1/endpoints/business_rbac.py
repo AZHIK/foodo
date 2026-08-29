@@ -334,7 +334,7 @@ async def assign_staff_role(
             target_user = User(
                 phone=body.phone,
                 full_name="",
-                user_category=UserCategory.BUSINESS_USER,
+                user_category=UserCategory.BUSINESS_STAFF,
                 status=UserStatus.INVITED,
                 password_hash=None,
                 is_phone_verified=False,
@@ -356,12 +356,12 @@ async def assign_staff_role(
                 detail="Business role not found",
             )
 
-        if target_user.user_category != UserCategory.BUSINESS_USER:
+        if target_user.user_category != UserCategory.BUSINESS_STAFF:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
-                    "Only business users can be assigned business roles. "
-                    "The target user's category is not 'business_user'."
+                    "Only business staff can be assigned business roles. "
+                    "The target user's category is not 'business_staff'."
                 ),
             )
 

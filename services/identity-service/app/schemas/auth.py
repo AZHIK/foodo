@@ -1,4 +1,4 @@
-"""Authentication flow schemas for business-user and platform-staff tracks.
+"""Authentication flow schemas for business-staff, store-staff, and platform-staff tracks.
 
 Covers registration, OTP, login, password reset, token claims, and
 business-context switching.
@@ -123,11 +123,11 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
-class BusinessUserTokenClaims(BaseModel):
-    """Claims shape for a business-user JWT (for documentation / response typing, not encoding)."""
+class BusinessStaffTokenClaims(BaseModel):
+    """Claims shape for a business-staff JWT (for documentation / response typing, not encoding)."""
 
     sub: str
-    user_category: UserCategory = UserCategory.BUSINESS_USER
+    user_category: UserCategory = UserCategory.BUSINESS_STAFF
     active_business_id: UUID | None = None
     roles: list[str] = Field(default_factory=list)
     permissions: list[str] = Field(default_factory=list)
@@ -135,6 +135,17 @@ class BusinessUserTokenClaims(BaseModel):
         default_factory=list,
         description="List of {id: UUID, name: str} for business-switcher UI",
     )
+
+
+class StoreStaffTokenClaims(BaseModel):
+    """Claims shape for a business-store-staff JWT (doc / response typing, not encoding)."""
+
+    sub: str
+    user_category: UserCategory = UserCategory.BUSINESS_STORE_STAFF
+    active_business_id: UUID | None = None
+    active_store_id: UUID | None = None
+    roles: list[str] = Field(default_factory=list)
+    permissions: list[str] = Field(default_factory=list)
 
 
 class PlatformStaffTokenClaims(BaseModel):

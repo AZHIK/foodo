@@ -37,7 +37,7 @@ async def _make_business_user(db_session: AsyncSession, phone: str | None = None
     user = User(
         phone=phone or f"+2557{uuid4().int % 100_000_000:08d}",
         full_name="Business User",
-        user_category=UserCategory.BUSINESS_USER,
+        user_category=UserCategory.BUSINESS_STAFF,
         status=UserStatus.ACTIVE,
         password_hash=hash_password(_TEST_PASSWORD),
     )
@@ -50,7 +50,7 @@ async def _make_business_user(db_session: AsyncSession, phone: str | None = None
 def _owner_token(user: User, business_id) -> str:
     return create_access_token(
         subject=str(user.id),
-        user_category=UserCategory.BUSINESS_USER.value,
+        user_category=UserCategory.BUSINESS_STAFF.value,
         active_business_id=str(business_id),
         roles=["owner"],
         permissions=["*"],
@@ -61,7 +61,7 @@ def _owner_token(user: User, business_id) -> str:
 def _staff_token(user: User, business_id, perms: list[str]) -> str:
     return create_access_token(
         subject=str(user.id),
-        user_category=UserCategory.BUSINESS_USER.value,
+        user_category=UserCategory.BUSINESS_STAFF.value,
         active_business_id=str(business_id),
         roles=["manager"],
         permissions=perms,
@@ -154,7 +154,7 @@ class TestCreateBusinessRole:
         owner = await _make_business_user(db_session)
         token = create_access_token(
             subject=str(owner.id),
-            user_category=UserCategory.BUSINESS_USER.value,
+            user_category=UserCategory.BUSINESS_STAFF.value,
             permissions=["*"],
         )
 
@@ -559,7 +559,7 @@ class TestAssignStaff:
         assert resp.json()["detail"] == "Staff role assigned"
 
         user = (await db_session.exec(select(User).where(User.phone == phone))).one()
-        assert user.user_category == UserCategory.BUSINESS_USER
+        assert user.user_category == UserCategory.BUSINESS_STAFF
         assert user.status == UserStatus.INVITED
         assert user.password_hash is None
         assert user.is_phone_verified is False

@@ -26,6 +26,15 @@ AVAILABLE DEPENDENCY FACTORIES
 
 ``require_platform_staff()``
     Rejects with 403 if ``claims["user_category"]`` is not ``"platform_staff"``.
+
+``require_store_context()``
+    Rejects with 403 if ``claims["active_store_id"]`` is absent.
+    Returns the ``active_store_id`` string.
+
+``require_store_permission(code)``
+    Like ``require_business_permission`` but for store-scoped access:
+    verifies store context, path-param store_id match, and permission code.
+    Returns ``active_store_id``.
 """
 
 from collections.abc import Awaitable, Callable
@@ -197,3 +206,66 @@ def require_platform_staff() -> Callable[..., Awaitable[dict[str, Any]]]:
         return claims
 
     return _check_platform_staff
+
+
+def require_store_context() -> Callable[..., Awaitable[str]]:
+    """Dependency factory: require a live store context in the token.
+
+    Returns the ``active_store_id`` string so route handlers can use
+    it directly without re-extracting it from claims.
+
+    Rejects with 403 when ``active_store_id`` is absent or ``None``.
+    """
+
+    async def _check_store_context(
+        claims: Annotated[dict[str, Any], Depends(get_current_claims)],
+    ) -> str:
+        active_store_id: str | None = claims.get("active_store_id")
+        if not active_store_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="A valid store context is required.",
+            )
+        return active_store_id
+
+    return _check_store_context
+
+
+def require_store_permission(
+    permission_code: str | PermissionCode,
+) -> Callable[..., Awaitable[str]]:
+    """Dependency factory: require a store context AND a specific permission.
+
+    - Verifies ``active_store_id`` is present and non-null (403 if not).
+    - Verifies the URL path ``store_id`` matches the token's
+      ``active_store_id`` (403 if mismatch — enforces store-scoped
+      access at the shared dependency level).
+    - Verifies the permission code is in claims (403 if not).
+    - Returns ``active_store_id`` for direct use in route handlers.
+    """
+    validated: PermissionCode = coerce_permission_code(permission_code)
+
+    async def _check_store_permission(
+        claims: Annotated[dict[str, Any], Depends(get_current_claims)],
+        store_id: UUID,
+    ) -> str:
+        active_store_id: str | None = claims.get("active_store_id")
+        if not active_store_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="A valid store context is required.",
+            )
+        if str(store_id) != active_store_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Store ID in path does not match authenticated store context",
+            )
+        permissions: list[str] = claims.get("permissions", [])
+        if str(validated) not in permissions and "*" not in permissions:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission '{validated}' is required",
+            )
+        return active_store_id
+
+    return _check_store_permission
