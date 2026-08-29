@@ -21,7 +21,7 @@ Available modules (one file per model or logical group):
     rbac                — Group, Role, RolePermission, UserGroup, UserRole,
                           PlatformRole, UserPlatformRole
     business_rbac       — BusinessRole, BusinessRolePermission, UserBusinessRole,
-                          UserBusinessLocationRole, UserBusinessPermission
+                          UserStoreRole, UserBusinessPermission
     role_template       — RoleTemplate, RoleTemplatePermission
     auth_security       — Read-only: VerificationCode, RefreshToken, UserSession,
                           TrustedDevice, LoginAttempt, AuthRiskEvent

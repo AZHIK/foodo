@@ -87,7 +87,7 @@ async def list_sales(
     to_date: datetime | None = Query(default=None, description="End date (inclusive) for occurred_at"),
     status: str | None = Query(default=None, description="Filter by status: completed, voided, refunded"),
     payment_method: str | None = Query(default=None, description="Filter by payment method: cash, mobile_money, card, other"),
-    business_location_id: UUID | None = Query(default=None, description="Filter by business location"),
+    store_id: UUID | None = Query(default=None, description="Filter by store"),
 ) -> SaleListResponse:
     """Paginated sale list, filterable by date range (occurred_at), status, payment method, and location.
 
@@ -103,8 +103,8 @@ async def list_sales(
         stmt = stmt.where(Sale.status == SaleStatus(status))
     if payment_method is not None:
         stmt = stmt.where(Sale.payment_method == PaymentMethod(payment_method))
-    if business_location_id is not None:
-        stmt = stmt.where(Sale.business_location_id == business_location_id)
+    if store_id is not None:
+        stmt = stmt.where(Sale.store_id == store_id)
 
     count_stmt = select(sa_func.count()).select_from(stmt.subquery())
     total = (await session.exec(count_stmt)).one()
@@ -131,7 +131,7 @@ async def get_sales_summary(
     from_date: datetime | None = Query(default=None, description="Start date (inclusive) for occurred_at"),
     to_date: datetime | None = Query(default=None, description="End date (inclusive) for occurred_at"),
     payment_method: str | None = Query(default=None, description="Filter by payment method: cash, mobile_money, card, other"),
-    business_location_id: UUID | None = Query(default=None, description="Filter by business location"),
+    store_id: UUID | None = Query(default=None, description="Filter by store"),
 ) -> SaleSummaryResponse:
     """Lightweight aggregate: total count, revenue (completed only), and payment-method breakdown.
 
@@ -146,8 +146,8 @@ async def get_sales_summary(
         base_where.append(Sale.occurred_at <= to_date)
     if payment_method is not None:
         base_where.append(Sale.payment_method == PaymentMethod(payment_method))
-    if business_location_id is not None:
-        base_where.append(Sale.business_location_id == business_location_id)
+    if store_id is not None:
+        base_where.append(Sale.store_id == store_id)
 
     agg_stmt = select(
         sa_func.count(Sale.id).label("total_count"),
@@ -259,7 +259,7 @@ def _sale_to_list_item(sale: Sale) -> SaleListItem:
     return SaleListItem(
         id=sale.id,
         business_id=sale.business_id,
-        business_location_id=sale.business_location_id,
+        store_id=sale.store_id,
         client_sale_id=sale.client_sale_id,
         status=sale.status.value,
         subtotal=sale.subtotal,
@@ -283,7 +283,7 @@ def _sale_to_read(sale: Sale, line_items: list[SaleLineItem]) -> SaleRead:
     return SaleRead(
         id=sale.id,
         business_id=sale.business_id,
-        business_location_id=sale.business_location_id,
+        store_id=sale.store_id,
         client_sale_id=sale.client_sale_id,
         status=sale.status.value,
         subtotal=sale.subtotal,

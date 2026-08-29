@@ -38,7 +38,7 @@ class TestItemModel:
     def test_create_item_minimal(self) -> None:
         item = Item(
             business_id=UUID("00000000-0000-0000-0000-000000000001"),
-            business_location_id=UUID("00000000-0000-0000-0000-000000000002"),
+            store_id=UUID("00000000-0000-0000-0000-000000000002"),
             name="Fresh Tomatoes",
             unit_of_measure=UnitOfMeasure.KG,
             item_type=ItemType.BOTH,
@@ -61,7 +61,7 @@ class TestItemModel:
     def test_create_item_with_selling_price(self) -> None:
         item = Item(
             business_id=UUID("00000000-0000-0000-0000-000000000001"),
-            business_location_id=UUID("00000000-0000-0000-0000-000000000002"),
+            store_id=UUID("00000000-0000-0000-0000-000000000002"),
             name="Jollof Rice",
             unit_of_measure=UnitOfMeasure.UNIT,
             item_type=ItemType.SELLABLE,
@@ -75,7 +75,7 @@ class TestItemModel:
         """raw_material items may carry a selling_price (unconstrained)."""
         item = Item(
             business_id=UUID("00000000-0000-0000-0000-000000000001"),
-            business_location_id=UUID("00000000-0000-0000-0000-000000000002"),
+            store_id=UUID("00000000-0000-0000-0000-000000000002"),
             name="Flour",
             unit_of_measure=UnitOfMeasure.KG,
             item_type=ItemType.RAW_MATERIAL,
@@ -115,7 +115,7 @@ class TestStockLevelModel:
     def test_create_stock_level(self) -> None:
         sl = StockLevel(
             item_id=UUID("00000000-0000-0000-0000-000000000001"),
-            business_location_id=UUID("00000000-0000-0000-0000-000000000002"),
+            store_id=UUID("00000000-0000-0000-0000-000000000002"),
             current_quantity=Decimal("100.000"),
         )
         assert isinstance(sl.id, UUID)
@@ -128,7 +128,7 @@ class TestStockMovementModel:
         sm = StockMovement(
             item_id=UUID("00000000-0000-0000-0000-000000000001"),
             business_id=UUID("00000000-0000-0000-0000-000000000002"),
-            business_location_id=UUID("00000000-0000-0000-0000-000000000003"),
+            store_id=UUID("00000000-0000-0000-0000-000000000003"),
             quantity_delta=Decimal("-5.000"),
             movement_type=MovementType.SALE,
             actor_type=ActorType.USER,
@@ -174,7 +174,7 @@ class TestPersistence:
     async def _create_item(self, session: AsyncSession, suffix: str = "") -> Item:
         item = Item(
             business_id=UUID("00000000-0000-0000-0000-000000000001"),
-            business_location_id=UUID("00000000-0000-0000-0000-000000000002"),
+            store_id=UUID("00000000-0000-0000-0000-000000000002"),
             name=f"Test Item{suffix}",
             unit_of_measure=UnitOfMeasure.KG,
             item_type=ItemType.BOTH,
@@ -196,13 +196,13 @@ class TestPersistence:
     async def test_stock_levels_unique_constraint_enforced(
         self, db_session: AsyncSession
     ) -> None:
-        """Verify the (item_id, business_location_id) unique constraint is load-bearing."""
+        """Verify the (item_id, store_id) unique constraint is load-bearing."""
         item = await self._create_item(db_session)
         biz_loc = UUID("00000000-0000-0000-0000-000000000002")
 
         sl1 = StockLevel(
             item_id=item.id,
-            business_location_id=biz_loc,
+            store_id=biz_loc,
             current_quantity=Decimal("100.000"),
         )
         db_session.add(sl1)
@@ -210,7 +210,7 @@ class TestPersistence:
 
         sl2 = StockLevel(
             item_id=item.id,
-            business_location_id=biz_loc,
+            store_id=biz_loc,
             current_quantity=Decimal("200.000"),
         )
         db_session.add(sl2)
@@ -222,7 +222,7 @@ class TestPersistence:
         """Confirm selling_price survives a round-trip without floating-point drift."""
         item = Item(
             business_id=UUID("00000000-0000-0000-0000-000000000001"),
-            business_location_id=UUID("00000000-0000-0000-0000-000000000002"),
+            store_id=UUID("00000000-0000-0000-0000-000000000002"),
             name="Precision Priced Item",
             unit_of_measure=UnitOfMeasure.UNIT,
             item_type=ItemType.BOTH,
@@ -257,7 +257,7 @@ class TestPersistence:
 
         sl = StockLevel(
             item_id=item.id,
-            business_location_id=biz_loc,
+            store_id=biz_loc,
             current_quantity=precision_test_value,
         )
         db_session.add(sl)
@@ -272,7 +272,7 @@ class TestPersistence:
         sm = StockMovement(
             item_id=UUID("00000000-0000-0000-0000-000000009999"),
             business_id=UUID("00000000-0000-0000-0000-000000000002"),
-            business_location_id=UUID("00000000-0000-0000-0000-000000000003"),
+            store_id=UUID("00000000-0000-0000-0000-000000000003"),
             quantity_delta=Decimal("-5.000"),
             movement_type=MovementType.SALE,
             actor_type=ActorType.USER,
@@ -286,7 +286,7 @@ class TestPersistence:
         """Inserting a stock_level with a non-existent item_id fails."""
         sl = StockLevel(
             item_id=UUID("00000000-0000-0000-0000-000000009999"),
-            business_location_id=UUID("00000000-0000-0000-0000-000000000002"),
+            store_id=UUID("00000000-0000-0000-0000-000000000002"),
             current_quantity=Decimal("50.000"),
         )
         db_session.add(sl)
@@ -307,10 +307,10 @@ class TestPersistence:
         await db_session.rollback()
 
     async def test_cross_service_columns_accept_any_uuid(self, db_session: AsyncSession) -> None:
-        """business_id and business_location_id are plain UUIDs — no FK enforced."""
+        """business_id and store_id are plain UUIDs — no FK enforced."""
         item = Item(
             business_id=UUID("ffffffff-ffff-ffff-ffff-ffffffffffff"),
-            business_location_id=UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+            store_id=UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
             name="Cross-Service Item",
             unit_of_measure=UnitOfMeasure.UNIT,
             item_type=ItemType.BOTH,
@@ -321,7 +321,7 @@ class TestPersistence:
         await db_session.commit()
         await db_session.refresh(item)
         assert item.business_id == UUID("ffffffff-ffff-ffff-ffff-ffffffffffff")
-        assert item.business_location_id == UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
+        assert item.store_id == UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
 
     async def test_stock_movement_cascade_delete(self, db_session: AsyncSession) -> None:
         """Deleting an item cascades to its stock_movements."""
@@ -330,7 +330,7 @@ class TestPersistence:
         sm = StockMovement(
             item_id=item.id,
             business_id=UUID("00000000-0000-0000-0000-000000000002"),
-            business_location_id=UUID("00000000-0000-0000-0000-000000000003"),
+            store_id=UUID("00000000-0000-0000-0000-000000000003"),
             quantity_delta=Decimal("-5.000"),
             movement_type=MovementType.SALE,
             actor_type=ActorType.USER,

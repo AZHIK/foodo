@@ -1,7 +1,7 @@
 """Schemas for the Item model.
 
 ═══════════════════════════════════════════════════════════════════════════
-ItemCreate includes business_id and business_location_id — why?
+ItemCreate includes business_id and store_id — why?
 ═══════════════════════════════════════════════════════════════════════════
 
 Unlike Identity Service's BusinessCreateRequest (where owner_user_id is
@@ -52,20 +52,20 @@ class ItemCreate(ItemBase):
     (``/businesses/{business_id}/items``) and cross-validated against the
     JWT's ``active_business_id`` by the endpoint layer.
 
-    ``business_location_id`` is required here because the caller knows which
-    location within the business this item belongs to.  The endpoint layer
+    ``store_id`` is required here because the caller knows which
+    store within the business this item belongs to.  The endpoint layer
     does NOT override it.
     """
 
-    business_location_id: UUID
+    store_id: UUID
 
 
 class ItemUpdate(BaseModel):
     """Fields that may be updated on an item (partial update).
 
-    Excludes business_id and business_location_id — an item's location
+    Excludes business_id and store_id — an item's store
     should not change via a generic PATCH.  Transferring an item between
-    locations is a separate operation handled by a dedicated endpoint in a
+    stores is a separate operation handled by a dedicated endpoint in a
     later stage.
     """
 
@@ -87,7 +87,7 @@ class ItemRead(ItemBase):
 
     id: UUID
     business_id: UUID
-    business_location_id: UUID
+    store_id: UUID
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -99,4 +99,4 @@ class ItemListFilters(BaseModel):
     category: str | None = None
     is_active: bool | None = None
     below_threshold: bool | None = None
-    business_location_id: UUID | None = None
+    store_id: UUID | None = None

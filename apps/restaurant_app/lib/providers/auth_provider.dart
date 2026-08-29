@@ -373,6 +373,27 @@ class AuthNotifier extends Notifier<AuthContext> {
   }
 
   /// Save PIN to local profile.
+  ///
+  /// Invited staff already have a business context by this point (their
+  /// `_switchContextAndLock()` ran during `_checkOnboarding()`, before Set
+  /// PIN) — so this is also where their real role and permissions get
+  /// cached, from the access token's `roles`/`permissions` claims.
+  ///
+  /// This was originally an explicit lookup — `GET .../staff` (find self by
+  /// user id) then `GET .../roles/{id}/permissions` per role — rather than
+  /// trusting the token. That turned out to be backwards: both endpoints
+  /// require admin-level permissions (`user_business_roles.view`,
+  /// `business_roles.view`) that an ordinary invited staff member's own
+  /// role doesn't carry, so the lookup 403s for anyone but a manager/owner.
+  /// The backend's own authorization layer (`require_business_permission`,
+  /// `require_business_context`) reads `roles`/`permissions`/
+  /// `active_business_id` straight off these same decoded claims for every
+  /// request — there is no more authoritative source available to a
+  /// non-admin caller, so this uses that directly.
+  ///
+  /// A fresh owner has no business yet at this point (they onboard after
+  /// Set PIN) — there is nothing to cache here for them; see
+  /// `createBusinessAndOnboard()` for their write site.
   Future<void> setPin(String pin) async {
     try {
       final userId = state.userId;
@@ -397,12 +418,6 @@ class AuthNotifier extends Notifier<AuthContext> {
         ),
       );
 
-      // Invited staff already have a business context by this point (their
-      // _switchContextAndLock() ran during _checkOnboarding(), before Set
-      // PIN) — cache their role/business now that the profile row above
-      // satisfies CachedPermissions' FK. A fresh owner has neither yet
-      // (they onboard after this), so there is nothing to cache here for
-      // them — see createBusinessAndOnboard() for their write site.
       if (state.selectedBusinessId != null && state.selectedStoreId != null) {
         await _cachePermissions(
           userId: userId,

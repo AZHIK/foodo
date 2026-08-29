@@ -52,7 +52,7 @@ async def _seed_sale(
     payment_method: str = "cash",
     occurred_at: datetime | None = None,
     total: str = "100.00",
-    business_location_id: UUID | None = None,
+    store_id: UUID | None = None,
     is_time_suspect: bool = False,
     voided_at: datetime | None = None,
     refunded_at: datetime | None = None,
@@ -63,7 +63,7 @@ async def _seed_sale(
 
     sale = Sale(
         business_id=business_id,
-        business_location_id=business_location_id or uuid4(),
+        store_id=store_id or uuid4(),
         client_sale_id=client_sale_id,
         status=SS(status),
         subtotal=Decimal(total),
@@ -206,25 +206,25 @@ class TestListSalesEndpoint:
         assert data["total"] == 1
         assert data["items"][0]["payment_method"] == "card"
 
-    async def test_filter_by_business_location(
+    async def test_filter_by_store(
         self, client: AsyncClient, db_session: AsyncSession,
     ) -> None:
         business_id = uuid4()
         loc_a = uuid4()
         loc_b = uuid4()
-        await _seed_sale(db_session, business_id, "loc-a", business_location_id=loc_a)
-        await _seed_sale(db_session, business_id, "loc-b", business_location_id=loc_b)
+        await _seed_sale(db_session, business_id, "loc-a", store_id=loc_a)
+        await _seed_sale(db_session, business_id, "loc-b", store_id=loc_b)
 
         headers = _auth_header(business_id=business_id)
         resp = await client.get(
             LIST_URL.format(business_id=business_id),
             headers=headers,
-            params={"business_location_id": str(loc_a)},
+            params={"store_id": str(loc_a)},
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["total"] == 1
-        assert data["items"][0]["business_location_id"] == str(loc_a)
+        assert data["items"][0]["store_id"] == str(loc_a)
 
     async def test_response_includes_is_time_suspect(
         self, client: AsyncClient, db_session: AsyncSession,

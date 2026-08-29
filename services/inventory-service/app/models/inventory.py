@@ -4,9 +4,9 @@
 CROSS-SERVICE REFERENCE CONVENTION
 ═══════════════════════════════════════════════════════════════════════════
 
-Columns named ``business_id`` and ``business_location_id`` store UUIDs that
+Columns named ``business_id`` and ``store_id`` store UUIDs that
 reference rows in Identity Service's database (``businesses`` and
-``business_locations`` tables).  These are stored as **plain indexed UUID
+``store`` tables).  These are stored as **plain indexed UUID
 columns with no foreign key constraint** because the referenced tables live
 in a separate database (the Identity Service's Postgres instance).
 
@@ -142,9 +142,9 @@ def _enum_db_values(enum_class: type[PyEnum]) -> list[str]:
 class Item(SQLModel, table=True):
     """Master record for a single stock-keeping unit (SKU).
 
-    ``business_id`` and ``business_location_id`` are cross-service
+    ``business_id`` and ``store_id`` are cross-service
     references to Identity Service's ``businesses`` and
-    ``business_locations`` tables (see module docstring for rationale).
+    ``store`` tables (see module docstring for rationale).
     """
 
     id: UUID = Field(
@@ -158,7 +158,7 @@ class Item(SQLModel, table=True):
         index=True,
         sa_type=PG_UUID,
     )
-    business_location_id: UUID = Field(
+    store_id: UUID = Field(
         nullable=False,
         index=True,
         sa_type=PG_UUID,
@@ -252,9 +252,9 @@ class RecipeComponent(SQLModel, table=True):
 
 
 class StockLevel(SQLModel, table=True):
-    """Current stock quantity for an item at a specific location.
+    """Current stock quantity for an item at a specific store.
 
-    The (item_id, business_location_id) unique constraint is load-bearing
+    The (item_id, store_id) unique constraint is load-bearing
     for the upsert logic in Stage 5 — it enables an INSERT ... ON CONFLICT
     pattern that atomically creates-or-updates stock levels without a
     separate select-then-insert round trip.
@@ -263,8 +263,8 @@ class StockLevel(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint(
             "item_id",
-            "business_location_id",
-            name="uq_stock_levels_item_location",
+            "store_id",
+            name="uq_stock_levels_item_store",
         ),
     )
 
@@ -281,7 +281,7 @@ class StockLevel(SQLModel, table=True):
             nullable=False,
         ),
     )
-    business_location_id: UUID = Field(
+    store_id: UUID = Field(
         nullable=False,
         index=True,
         sa_type=PG_UUID,
@@ -327,7 +327,7 @@ class StockMovement(SQLModel, table=True):
         index=True,
         sa_type=PG_UUID,
     )
-    business_location_id: UUID = Field(
+    store_id: UUID = Field(
         nullable=False,
         index=True,
         sa_type=PG_UUID,

@@ -50,7 +50,7 @@ async def _create_sale(
     sale_input = {
         "client_sale_id": overrides.get("client_sale_id", str(uuid4())),
         "status": overrides.get("status", "completed"),
-        "business_location_id": str(overrides.get("business_location_id", uuid4())),
+        "store_id": str(overrides.get("store_id", uuid4())),
         "line_items": overrides.get(
             "line_items",
             [{"item_id": str(uuid4()), "quantity": "1", "unit_price": "10.00"}],
@@ -101,7 +101,7 @@ class TestSyncEndpoint:
         sale_input = {
             "client_sale_id": "dup-test",
             "status": "completed",
-            "business_location_id": str(uuid4()),
+            "store_id": str(uuid4()),
             "line_items": [{"item_id": str(uuid4()), "quantity": "1", "unit_price": "10.00"}],
             "discount_amount": "0",
             "payment_method": "cash",
@@ -143,7 +143,7 @@ class TestSyncEndpoint:
                 {
                     "client_sale_id": first_id,
                     "status": "completed",
-                    "business_location_id": str(uuid4()),
+                    "store_id": str(uuid4()),
                     "line_items": [
                         {"item_id": str(uuid4()), "quantity": "2", "unit_price": "5.00"},
                     ],
@@ -154,7 +154,7 @@ class TestSyncEndpoint:
                 {
                     "client_sale_id": second_id,
                     "status": "completed",
-                    "business_location_id": str(uuid4()),
+                    "store_id": str(uuid4()),
                     "line_items": [
                         {"item_id": str(uuid4()), "quantity": "1", "unit_price": "3.00"},
                     ],
@@ -208,7 +208,7 @@ class TestSyncEndpoint:
                 {
                     "client_sale_id": "no-perm",
                     "status": "completed",
-                    "business_location_id": str(uuid4()),
+                    "store_id": str(uuid4()),
                     "line_items": [
                         {"item_id": str(uuid4()), "quantity": "1", "unit_price": "5.00"},
                     ],
@@ -236,7 +236,7 @@ class TestSyncEndpoint:
                 {
                     "client_sale_id": "cross-biz",
                     "status": "completed",
-                    "business_location_id": str(uuid4()),
+                    "store_id": str(uuid4()),
                     "line_items": [
                         {"item_id": str(uuid4()), "quantity": "1", "unit_price": "5.00"},
                     ],

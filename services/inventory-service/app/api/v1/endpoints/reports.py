@@ -15,7 +15,7 @@ card without a second round-trip per item.
 The join is implemented here (the endpoint layer) rather than in a service
 function because the endpoint is read-only — it doesn't need transactional
 wrapping, and keeping the join visible at the API boundary makes it easy
-to optimise later (e.g. add ``business_location_name`` when cross-service
+to optimise later (e.g. add ``store_name`` when cross-service
 lookups land).
 
 ═══════════════════════════════════════════════════════════════════════════
@@ -58,7 +58,7 @@ router = APIRouter(prefix="/businesses/{business_id}", tags=["reports"])
 
 
 class StockLevelFilters(BaseModel):
-    business_location_id: UUID | None = None
+    store_id: UUID | None = None
     category: str | None = None
     below_threshold: bool | None = None
 
@@ -81,7 +81,7 @@ async def get_stock_levels(
         description="Sort field — name, current_quantity, or category",
     ),
 ) -> list[StockLevelRead]:
-    """Current stock levels for the business, one row per item/location.
+    """Current stock levels for the business, one row per item/store.
 
     Item details (name, unit_of_measure, category, reorder_threshold,
     item_type) are joined in so callers don't need a second round-trip
@@ -102,8 +102,8 @@ async def get_stock_levels(
         .where(Item.business_id == business_id)
     )
 
-    if filters.business_location_id is not None:
-        stmt = stmt.where(StockLevel.business_location_id == filters.business_location_id)
+    if filters.store_id is not None:
+        stmt = stmt.where(StockLevel.store_id == filters.store_id)
     if filters.category is not None:
         stmt = stmt.where(Item.category == filters.category)
     if filters.below_threshold:
@@ -123,7 +123,7 @@ async def get_stock_levels(
     levels: list[StockLevelRead] = [
         StockLevelRead(
             item_id=sl.item_id,
-            business_location_id=sl.business_location_id,
+            store_id=sl.store_id,
             current_quantity=sl.current_quantity,
             updated_at=sl.updated_at,
             item_name=item.name,
@@ -160,7 +160,7 @@ async def get_item_movements(
     from_date: date | None = Query(default=None, alias="from", description="Start date (inclusive)"),
     to_date: date | None = Query(default=None, alias="to", description="End date (inclusive)"),
     movement_type: MovementType | None = Query(default=None, description="Filter by movement type"),
-    business_location_id: UUID | None = Query(default=None, description="Filter by location"),
+    store_id: UUID | None = Query(default=None, description="Filter by store"),
 ) -> list[StockMovementRead]:
     """Paginated movement history for one item, most recent first."""
     result = await session.exec(
@@ -185,8 +185,8 @@ async def get_item_movements(
         stmt = stmt.where(StockMovement.created_at <= dt)
     if movement_type is not None:
         stmt = stmt.where(StockMovement.movement_type == movement_type)
-    if business_location_id is not None:
-        stmt = stmt.where(StockMovement.business_location_id == business_location_id)
+    if store_id is not None:
+        stmt = stmt.where(StockMovement.store_id == store_id)
 
     stmt = stmt.order_by(StockMovement.created_at.desc())
     stmt = stmt.offset(offset).limit(limit)

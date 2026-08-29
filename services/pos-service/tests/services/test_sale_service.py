@@ -67,7 +67,7 @@ class TestDetectTimeDrift:
 def _sale_input(
     client_sale_id: str = "test-1",
     status: str = "completed",
-    business_location_id: UUID | None = None,
+    store_id: UUID | None = None,
     line_items: list[SaleLineItemInput] | None = None,
     discount_amount: Decimal = Decimal("0"),
     payment_method: str = "cash",
@@ -77,7 +77,7 @@ def _sale_input(
     return SaleSyncInput(
         client_sale_id=client_sale_id,
         status=status,
-        business_location_id=business_location_id or uuid4(),
+        store_id=store_id or uuid4(),
         line_items=line_items or [
             SaleLineItemInput(
                 item_id=uuid4(),
@@ -225,10 +225,10 @@ class TestSyncSaleBatch:
     async def test_idempotency_within_batch(self, db_session: AsyncSession) -> None:
         loc_id = uuid4()
         sales = [
-            _sale_input(client_sale_id="dup-key", business_location_id=loc_id),
+            _sale_input(client_sale_id="dup-key", store_id=loc_id),
             _sale_input(
                 client_sale_id="dup-key",
-                business_location_id=uuid4(),
+                store_id=uuid4(),
                 payment_method="card",
             ),
         ]
@@ -359,7 +359,7 @@ class TestSyncSaleBatch:
         assert payload["event_id"] == str(sale.id)
         assert payload["sale_id"] == str(sale.id)
         assert payload["business_id"] == str(sale.business_id)
-        assert payload["business_location_id"] == str(sale.business_location_id)
+        assert payload["store_id"] == str(sale.store_id)
         assert payload["line_items"] == [
             {"item_id": str(item_id), "quantity": "2"},
         ]

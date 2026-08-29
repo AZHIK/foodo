@@ -98,10 +98,10 @@ class PermissionCode(StrEnum):
     USER_BUSINESS_ROLES_ASSIGN = "user_business_roles.assign"
     USER_BUSINESS_ROLES_REVOKE = "user_business_roles.revoke"
 
-    # --- User Business Location Role Assignment ---
-    USER_BUSINESS_LOCATION_ROLES_VIEW = "user_business_location_roles.view"
-    USER_BUSINESS_LOCATION_ROLES_ASSIGN = "user_business_location_roles.assign"
-    USER_BUSINESS_LOCATION_ROLES_REVOKE = "user_business_location_roles.revoke"
+    # --- User Store Role Assignment ---
+    USER_STORE_ROLES_VIEW = "user_store_roles.view"
+    USER_STORE_ROLES_ASSIGN = "user_store_roles.assign"
+    USER_STORE_ROLES_REVOKE = "user_store_roles.revoke"
 
     # --- User Business Permission Overrides ---
     USER_BUSINESS_PERMISSIONS_VIEW = "user_business_permissions.view"

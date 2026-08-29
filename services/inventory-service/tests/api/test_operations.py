@@ -89,8 +89,8 @@ def _build_token(
 
 BUSINESS_ID = UUID("00000000-0000-0000-0000-000000000001")
 OTHER_BUSINESS_ID = UUID("00000000-0000-0000-0000-000000000099")
-LOCATION_ID = UUID("00000000-0000-0000-0000-000000000010")
-LOCATION_ID_2 = UUID("00000000-0000-0000-0000-000000000020")
+STORE_ID = UUID("00000000-0000-0000-0000-000000000010")
+STORE_ID_2 = UUID("00000000-0000-0000-0000-000000000020")
 AUTH_HEADER = {"Authorization": f"Bearer {_build_token()}"}
 API_PREFIX = f"/api/v1/businesses/{BUSINESS_ID}/items"
 BIZ_PREFIX = f"/api/v1/businesses/{BUSINESS_ID}"
@@ -108,14 +108,14 @@ def _other_biz_header() -> dict[str, str]:
 async def _create_item(
     session: AsyncSession,
     name: str = "Test Item",
-    location_id: UUID = LOCATION_ID,
+    store_id: UUID = STORE_ID,
     item_type: ItemType = ItemType.BOTH,
     allow_negative_stock: bool = False,
     reorder_threshold: Decimal = Decimal("10.000"),
 ) -> Item:
     item = Item(
         business_id=BUSINESS_ID,
-        business_location_id=location_id,
+        store_id=store_id,
         name=name,
         unit_of_measure=UnitOfMeasure.KG,
         category="test",
@@ -133,12 +133,12 @@ async def _create_item(
 async def _create_stock_level(
     session: AsyncSession,
     item_id: UUID,
-    location_id: UUID = LOCATION_ID,
+    store_id: UUID = STORE_ID,
     quantity: Decimal = Decimal("10.000"),
 ) -> StockLevel:
     sl = StockLevel(
         item_id=item_id,
-        business_location_id=location_id,
+        store_id=store_id,
         current_quantity=quantity,
     )
     session.add(sl)
@@ -333,20 +333,20 @@ async def test_record_waste_no_permission_returns_403(
 
 
 @pytest.mark.asyncio
-async def test_transfer_moves_stock_between_locations(
+async def test_transfer_moves_stock_between_stores(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
-    item = await _create_item(db_session, name="Transferable Item", location_id=LOCATION_ID)
-    await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID, quantity=Decimal("10.000"))
-    await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID_2, quantity=Decimal("0.000"))
+    item = await _create_item(db_session, name="Transferable Item", store_id=STORE_ID)
+    await _create_stock_level(db_session, item_id=item.id, store_id=STORE_ID, quantity=Decimal("10.000"))
+    await _create_stock_level(db_session, item_id=item.id, store_id=STORE_ID_2, quantity=Decimal("0.000"))
 
     resp = await client.post(
         f"{BIZ_PREFIX}/transfer",
         json={
             "item_id": str(item.id),
-            "source_location_id": str(LOCATION_ID),
-            "destination_location_id": str(LOCATION_ID_2),
+            "source_store_id": str(STORE_ID),
+            "destination_store_id": str(STORE_ID_2),
             "quantity": 4.0,
         },
         headers=AUTH_HEADER,
@@ -366,7 +366,7 @@ async def test_transfer_moves_stock_between_locations(
     result = await db_session.exec(
         select(StockLevel).where(
             StockLevel.item_id == item.id,
-            StockLevel.business_location_id == LOCATION_ID,
+            StockLevel.store_id == STORE_ID,
         )
     )
     sl_src = result.one()
@@ -375,7 +375,7 @@ async def test_transfer_moves_stock_between_locations(
     result = await db_session.exec(
         select(StockLevel).where(
             StockLevel.item_id == item.id,
-            StockLevel.business_location_id == LOCATION_ID_2,
+            StockLevel.store_id == STORE_ID_2,
         )
     )
     sl_dst = result.one()
@@ -396,15 +396,15 @@ async def test_transfer_insufficient_stock_raises_409(
     db_session: AsyncSession,
 ) -> None:
     item = await _create_item(db_session, allow_negative_stock=False)
-    await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID, quantity=Decimal("1.000"))
-    await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID_2, quantity=Decimal("0.000"))
+    await _create_stock_level(db_session, item_id=item.id, store_id=STORE_ID, quantity=Decimal("1.000"))
+    await _create_stock_level(db_session, item_id=item.id, store_id=STORE_ID_2, quantity=Decimal("0.000"))
 
     resp = await client.post(
         f"{BIZ_PREFIX}/transfer",
         json={
             "item_id": str(item.id),
-            "source_location_id": str(LOCATION_ID),
-            "destination_location_id": str(LOCATION_ID_2),
+            "source_store_id": str(STORE_ID),
+            "destination_store_id": str(STORE_ID_2),
             "quantity": 5.0,
         },
         headers=AUTH_HEADER,
@@ -418,7 +418,7 @@ async def test_transfer_insufficient_stock_raises_409(
 
 
 @pytest.mark.asyncio
-async def test_transfer_same_location_rejected(
+async def test_transfer_same_store_rejected(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
@@ -428,8 +428,8 @@ async def test_transfer_same_location_rejected(
         f"{BIZ_PREFIX}/transfer",
         json={
             "item_id": str(item.id),
-            "source_location_id": str(LOCATION_ID),
-            "destination_location_id": str(LOCATION_ID),
+            "source_store_id": str(STORE_ID),
+            "destination_store_id": str(STORE_ID),
             "quantity": 1.0,
         },
         headers=AUTH_HEADER,
@@ -449,8 +449,8 @@ async def test_transfer_no_permission_returns_403(
         f"{BIZ_PREFIX}/transfer",
         json={
             "item_id": str(item.id),
-            "source_location_id": str(LOCATION_ID),
-            "destination_location_id": str(LOCATION_ID_2),
+            "source_store_id": str(STORE_ID),
+            "destination_store_id": str(STORE_ID_2),
             "quantity": 1.0,
         },
         headers=restricted,
@@ -466,9 +466,9 @@ async def test_transfer_atomicity_rolls_back_on_failure(
 ) -> None:
     """If the second record_movement (transfer_in) fails, the first
     (transfer_out) must also be rolled back — no partial transfer."""
-    item = await _create_item(db_session, name="Atomic Item", location_id=LOCATION_ID)
-    await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID, quantity=Decimal("50.000"))
-    await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID_2, quantity=Decimal("0.000"))
+    item = await _create_item(db_session, name="Atomic Item", store_id=STORE_ID)
+    await _create_stock_level(db_session, item_id=item.id, store_id=STORE_ID, quantity=Decimal("50.000"))
+    await _create_stock_level(db_session, item_id=item.id, store_id=STORE_ID_2, quantity=Decimal("0.000"))
 
     from app.api.v1.endpoints import operations as ops_endpoints
 
@@ -492,8 +492,8 @@ async def test_transfer_atomicity_rolls_back_on_failure(
             f"{BIZ_PREFIX}/transfer",
             json={
                 "item_id": str(item.id),
-                "source_location_id": str(LOCATION_ID),
-                "destination_location_id": str(LOCATION_ID_2),
+                "source_store_id": str(STORE_ID),
+                "destination_store_id": str(STORE_ID_2),
                 "quantity": 10.0,
             },
             headers=AUTH_HEADER,
@@ -502,7 +502,7 @@ async def test_transfer_atomicity_rolls_back_on_failure(
     result = await db_session.exec(
         select(StockLevel).where(
             StockLevel.item_id == item.id,
-            StockLevel.business_location_id == LOCATION_ID,
+            StockLevel.store_id == STORE_ID,
         )
     )
     sl_src = result.one()
@@ -541,41 +541,41 @@ async def test_adjust_wrong_business_rejected(
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Stage 8.5 — Gap 2: Location-scoping known limitation
+# Stage 8.5 — Gap 2: Store-scoping known limitation
 # ═══════════════════════════════════════════════════════════════════════
 
 
 @pytest.mark.asyncio
-async def test_KNOWN_GAP_location_scoping_not_enforced(
+async def test_KNOWN_GAP_store_scoping_not_enforced(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
-    """Document that location-scoping is NOT enforced (token has no location claims).
+    """Document that store-scoping is NOT enforced (token has no store claims).
 
     This test explicitly asserts the current (undesired) behavior so that
-    when Identity Service extends tokens with per-location claims and this
+    when Identity Service extends tokens with per-store claims and this
     gap is closed, this test starts failing as a signal to finish the work.
     """
-    item = await _create_item(db_session, name="Location Gap Item", location_id=LOCATION_ID)
-    await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID, quantity=Decimal("10.000"))
+    item = await _create_item(db_session, name="Store Gap Item", store_id=STORE_ID)
+    await _create_stock_level(db_session, item_id=item.id, store_id=STORE_ID, quantity=Decimal("10.000"))
 
-    # The token has NO location-scoped permissions — any location works.
+    # The token has NO store-scoped permissions — any store works.
     resp = await client.post(
         f"{BIZ_PREFIX}/transfer",
         json={
             "item_id": str(item.id),
-            "source_location_id": str(LOCATION_ID),
-            "destination_location_id": str(LOCATION_ID_2),
+            "source_store_id": str(STORE_ID),
+            "destination_store_id": str(STORE_ID_2),
             "quantity": 1.0,
         },
         headers=AUTH_HEADER,
     )
-    # Current behavior: succeeds because location scoping is not enforced.
-    # If this test starts failing, it means location-scoped enforcement was
+    # Current behavior: succeeds because store scoping is not enforced.
+    # If this test starts failing, it means store-scoped enforcement was
     # added — verify it's intentional and update the tests accordingly.
     assert resp.status_code == 201, (
-        "KNOWN GAP: Location scoping is not enforced. "
-        "Token has no location claims, so any location is accepted. "
+        "KNOWN GAP: Store scoping is not enforced. "
+        "Token has no store claims, so any store is accepted. "
         f"Got {resp.status_code}: {resp.text}"
     )
 
@@ -613,16 +613,16 @@ async def test_transfer_requires_transfer_perm(
 ) -> None:
     """Token with old INVENTORY_ADJUST (but not transfer) is rejected."""
     item = await _create_item(db_session)
-    await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID, quantity=Decimal("10.000"))
-    await _create_stock_level(db_session, item_id=item.id, location_id=LOCATION_ID_2, quantity=Decimal("0.000"))
+    await _create_stock_level(db_session, item_id=item.id, store_id=STORE_ID, quantity=Decimal("10.000"))
+    await _create_stock_level(db_session, item_id=item.id, store_id=STORE_ID_2, quantity=Decimal("0.000"))
 
     old_token = _auth_header(permissions=["inventory.view", "inventory.adjust"])
     resp = await client.post(
         f"{BIZ_PREFIX}/transfer",
         json={
             "item_id": str(item.id),
-            "source_location_id": str(LOCATION_ID),
-            "destination_location_id": str(LOCATION_ID_2),
+            "source_store_id": str(STORE_ID),
+            "destination_store_id": str(STORE_ID_2),
             "quantity": 1.0,
         },
         headers=old_token,

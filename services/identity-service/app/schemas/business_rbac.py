@@ -133,10 +133,10 @@ class UserBusinessRoleRead(BaseModel):
     business_role_id: UUID
 
 
-# ── UserBusinessLocationRole (employee-at-store mapping — pure join table) ──
+# ── UserStoreRole (employee-at-store mapping — pure join table) ─────────────
 
 
-class UserBusinessLocationRoleCreate(BaseModel):
+class UserStoreRoleCreate(BaseModel):
     """Fields required to assign a business role to a user at a specific store.
 
     This is a pure many-to-many join — no Update schema.
@@ -148,7 +148,7 @@ class UserBusinessLocationRoleCreate(BaseModel):
     business_role_id: UUID
 
 
-class UserBusinessLocationRoleRead(BaseModel):
+class UserStoreRoleRead(BaseModel):
     """User–store–role association as returned by the API."""
 
     model_config = ConfigDict(from_attributes=True)

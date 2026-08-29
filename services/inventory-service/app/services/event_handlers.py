@@ -68,7 +68,7 @@ async def handle_sale_completed(
         {
             "event_id": str,           # unique event identifier
             "business_id": str|UUID,
-            "business_location_id": str|UUID,
+            "store_id": str|UUID,
             "sale_id": str|UUID,
             "line_items": [
                 {"item_id": str|UUID, "quantity": Decimal|float},
@@ -111,7 +111,7 @@ async def handle_order_confirmed(
         {
             "event_id": str,
             "business_id": str|UUID,
-            "business_location_id": str|UUID,
+            "store_id": str|UUID,
             "order_id": str|UUID,
             "line_items": [
                 {"item_id": str|UUID, "quantity": Decimal|float},
@@ -155,7 +155,7 @@ async def handle_sale_voided(
         {
             "event_id": str,
             "business_id": str|UUID,
-            "business_location_id": str|UUID,
+            "store_id": str|UUID,
             "sale_id": str|UUID,
             "line_items": [
                 {"item_id": str|UUID, "quantity": Decimal|float},
@@ -227,7 +227,7 @@ async def handle_purchase_received(
         {
             "event_id": str,
             "business_id": str|UUID,
-            "business_location_id": str|UUID,
+            "store_id": str|UUID,
             "purchase_order_id": str|UUID,
             "line_items": [
                 {"item_id": str|UUID, "quantity": Decimal|float},
@@ -272,7 +272,7 @@ async def _process_line_items(
     """
     event_id: str = event_payload["event_id"]
     business_id = UUID(str(event_payload["business_id"]))
-    business_location_id = UUID(str(event_payload["business_location_id"]))
+    store_id = UUID(str(event_payload["store_id"]))
     reference_id = UUID(str(event_payload[reference_id_key]))
     line_items: list[dict[str, Any]] = event_payload["line_items"]
 
@@ -287,7 +287,7 @@ async def _process_line_items(
             db=db,
             item_id=item_id,
             business_id=business_id,
-            business_location_id=business_location_id,
+            store_id=store_id,
             quantity_delta=Decimal(sign) * quantity,
             movement_type=movement_type,
             reference_type=reference_type,

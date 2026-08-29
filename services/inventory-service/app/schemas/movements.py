@@ -25,7 +25,7 @@ class StockMovementRead(BaseModel):
     id: UUID
     item_id: UUID
     business_id: UUID
-    business_location_id: UUID
+    store_id: UUID
     quantity_delta: Decimal
     movement_type: MovementType
     reference_type: str | None = None

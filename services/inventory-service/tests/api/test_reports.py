@@ -89,8 +89,8 @@ def _build_token(
 
 BUSINESS_ID = UUID("00000000-0000-0000-0000-000000000001")
 OTHER_BUSINESS_ID = UUID("00000000-0000-0000-0000-000000000099")
-LOCATION_ID = UUID("00000000-0000-0000-0000-000000000010")
-LOCATION_ID_2 = UUID("00000000-0000-0000-0000-000000000020")
+STORE_ID = UUID("00000000-0000-0000-0000-000000000010")
+STORE_ID_2 = UUID("00000000-0000-0000-0000-000000000020")
 AUTH_HEADER = {"Authorization": f"Bearer {_build_token()}"}
 STOCK_URL = f"/api/v1/businesses/{BUSINESS_ID}/stock"
 
@@ -107,14 +107,14 @@ def _other_biz_header() -> dict[str, str]:
 async def _create_item(
     session: AsyncSession,
     name: str = "Test Item",
-    location_id: UUID = LOCATION_ID,
+    store_id: UUID = STORE_ID,
     item_type: ItemType = ItemType.BOTH,
     category: str | None = "produce",
     reorder_threshold: Decimal = Decimal("10.000"),
 ) -> Item:
     item = Item(
         business_id=BUSINESS_ID,
-        business_location_id=location_id,
+        store_id=store_id,
         name=name,
         unit_of_measure=UnitOfMeasure.KG,
         category=category,
@@ -152,7 +152,7 @@ async def test_stock_levels_after_movements(
         db=db_session,
         item_id=item_a.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("10.000"),
         movement_type=MovementType.MANUAL_ADJUSTMENT,
         actor_type=ActorType.USER.value,
@@ -162,7 +162,7 @@ async def test_stock_levels_after_movements(
         db=db_session,
         item_id=item_b.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("5.000"),
         movement_type=MovementType.MANUAL_ADJUSTMENT,
         actor_type=ActorType.USER.value,
@@ -172,7 +172,7 @@ async def test_stock_levels_after_movements(
         db=db_session,
         item_id=item_a.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("-3.000"),
         movement_type=MovementType.MANUAL_ADJUSTMENT,
         actor_type=ActorType.USER.value,
@@ -213,7 +213,7 @@ async def test_stock_below_threshold(
         db=db_session,
         item_id=item_a.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("5.000"),
         movement_type=MovementType.MANUAL_ADJUSTMENT,
         actor_type=ActorType.USER.value,
@@ -222,7 +222,7 @@ async def test_stock_below_threshold(
         db=db_session,
         item_id=item_b.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("15.000"),
         movement_type=MovementType.MANUAL_ADJUSTMENT,
         actor_type=ActorType.USER.value,
@@ -253,7 +253,7 @@ async def test_stock_includes_item_details(
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("10.000"),
         movement_type=MovementType.MANUAL_ADJUSTMENT,
         actor_type=ActorType.USER.value,
@@ -272,7 +272,7 @@ async def test_stock_includes_item_details(
     assert row["item_type"] == "sellable"
     assert row["current_quantity"] is not None
     assert row["item_id"] == str(item.id)
-    assert row["business_location_id"] == str(LOCATION_ID)
+    assert row["store_id"] == str(STORE_ID)
 
 
 @pytest.mark.asyncio
@@ -287,7 +287,7 @@ async def test_stock_filters_by_category(
             db=db_session,
             item_id=i.id,
             business_id=BUSINESS_ID,
-            business_location_id=LOCATION_ID,
+            store_id=STORE_ID,
             quantity_delta=Decimal("10.000"),
             movement_type=MovementType.MANUAL_ADJUSTMENT,
             actor_type=ActorType.USER.value,
@@ -301,28 +301,28 @@ async def test_stock_filters_by_category(
 
 
 @pytest.mark.asyncio
-async def test_stock_filters_by_location(
+async def test_stock_filters_by_store(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
-    item = await _create_item(db_session, name="Located Item", location_id=LOCATION_ID_2)
+    item = await _create_item(db_session, name="Located Item", store_id=STORE_ID_2)
     await record_movement(
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID_2,
+        store_id=STORE_ID_2,
         quantity_delta=Decimal("10.000"),
         movement_type=MovementType.MANUAL_ADJUSTMENT,
         actor_type=ActorType.USER.value,
     )
 
     resp = await client.get(
-        f"{STOCK_URL}?business_location_id={LOCATION_ID_2}", headers=AUTH_HEADER
+        f"{STOCK_URL}?store_id={STORE_ID_2}", headers=AUTH_HEADER
     )
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert len(data) == 1
-    assert data[0]["business_location_id"] == str(LOCATION_ID_2)
+    assert data[0]["store_id"] == str(STORE_ID_2)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -346,7 +346,7 @@ async def test_movements_filtered_by_date_range(
             db=db_session,
             item_id=item.id,
             business_id=BUSINESS_ID,
-            business_location_id=LOCATION_ID,
+            store_id=STORE_ID,
             quantity_delta=delta,
             movement_type=mtype,
             actor_type=ActorType.USER.value,
@@ -395,7 +395,7 @@ async def test_movements_filtered_by_movement_type(
             db=db_session,
             item_id=item.id,
             business_id=BUSINESS_ID,
-            business_location_id=LOCATION_ID,
+            store_id=STORE_ID,
             quantity_delta=delta,
             movement_type=mtype,
             actor_type=ActorType.USER.value,
@@ -421,7 +421,7 @@ async def test_movements_sorted_most_recent_first(
             db=db_session,
             item_id=item.id,
             business_id=BUSINESS_ID,
-            business_location_id=LOCATION_ID,
+            store_id=STORE_ID,
             quantity_delta=delta,
             movement_type=MovementType.MANUAL_ADJUSTMENT,
             actor_type=ActorType.USER.value,
@@ -448,29 +448,29 @@ async def test_movements_404_for_nonexistent_item(
 
 
 @pytest.mark.asyncio
-async def test_movements_filters_by_location(
+async def test_movements_filters_by_store(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
-    item = await _create_item(db_session, name="Location Filter Item")
+    item = await _create_item(db_session, name="Store Filter Item")
 
-    for lid in (LOCATION_ID, LOCATION_ID_2):
+    for lid in (STORE_ID, STORE_ID_2):
         await record_movement(
             db=db_session,
             item_id=item.id,
             business_id=BUSINESS_ID,
-            business_location_id=lid,
+            store_id=lid,
             quantity_delta=Decimal("10.000"),
             movement_type=MovementType.MANUAL_ADJUSTMENT,
             actor_type=ActorType.USER.value,
         )
 
     url = f"/api/v1/businesses/{BUSINESS_ID}/items/{item.id}/movements"
-    resp = await client.get(f"{url}?business_location_id={LOCATION_ID}", headers=AUTH_HEADER)
+    resp = await client.get(f"{url}?store_id={STORE_ID}", headers=AUTH_HEADER)
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert len(data) == 1
-    assert data[0]["business_location_id"] == str(LOCATION_ID)
+    assert data[0]["store_id"] == str(STORE_ID)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -489,7 +489,7 @@ async def test_stock_pagination(
             db=db_session,
             item_id=item.id,
             business_id=BUSINESS_ID,
-            business_location_id=LOCATION_ID,
+            store_id=STORE_ID,
             quantity_delta=Decimal("10.000"),
             movement_type=MovementType.MANUAL_ADJUSTMENT,
             actor_type=ActorType.USER.value,
@@ -519,7 +519,7 @@ async def test_movements_pagination(
             db=db_session,
             item_id=item.id,
             business_id=BUSINESS_ID,
-            business_location_id=LOCATION_ID,
+            store_id=STORE_ID,
             quantity_delta=Decimal(f"{i+1}.000"),
             movement_type=MovementType.MANUAL_ADJUSTMENT,
             actor_type=ActorType.USER.value,

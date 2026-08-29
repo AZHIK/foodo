@@ -125,37 +125,38 @@ Important columns:
 Relationships:
 
 - Belongs to an optional `organization`.
-- Has many `business_locations`.
+- Has many `store`.
 - Has many `business_roles`.
 - Has many user role assignments through `user_business_roles`.
 - Has direct permission overrides through `user_business_permissions`.
 
-### `business_locations`
+### `store`
 
 Represents a branch, kitchen, warehouse, farm, depot, or head office belonging
-to a business.
+to a business. A "business location" and a "store" are the same concept —
+this table used to be named `business_locations`.
 
 Important columns:
 
 - `business_id`: parent business.
-- `name`: location name.
+- `name`: store name.
 - `location_type`: `head_office`, `restaurant_branch`, `kitchen`, `warehouse`,
   `farm`, or `depot`.
-- `country_code`: location country.
-- `city`: location city.
+- `country_code`: store country.
+- `city`: store city.
 - `address`: optional physical address.
-- `timezone`: location timezone.
-- `is_primary`: marks the main location.
+- `timezone`: store timezone.
+- `is_primary`: marks the main store.
 
 Constraints:
 
-- A business cannot have two locations with the same `name`.
+- A business cannot have two stores with the same `name`.
 
 Relationships:
 
 - Belongs to `businesses`.
-- Can have location-scoped role assignments through
-  `user_business_location_roles`.
+- Can have store-scoped role assignments through
+  `user_store_roles`.
 
 ## Permission Catalog And Global RBAC
 
@@ -366,9 +367,9 @@ Constraints:
 
 - A user cannot receive the same role in the same business more than once.
 
-### `user_business_location_roles`
+### `user_store_roles`
 
-Assigns a user to a business role for one specific location.
+Assigns a user to a business role for one specific store.
 
 This supports cases such as a manager who only manages one restaurant branch,
 warehouse, farm, kitchen, or depot.
@@ -377,12 +378,12 @@ Important columns:
 
 - `user_id`: user.
 - `business_id`: business.
-- `business_location_id`: location.
+- `store_id`: store.
 - `business_role_id`: role.
 
 Constraints:
 
-- A user cannot receive the same role at the same location more than once.
+- A user cannot receive the same role at the same store more than once.
 
 ### `user_business_permissions`
 
@@ -604,7 +605,7 @@ The main relationship chain is:
 users
   -> organizations
   -> businesses
-  -> business_locations
+  -> store
 ```
 
 Access control is layered:
@@ -626,13 +627,13 @@ permissions
   -> business_role_permissions (cloned at business creation)
   -> business_roles
   -> user_business_roles
-  -> user_business_location_roles
+  -> user_store_roles
 
 permissions
   -> business_role_permissions
   -> business_roles
   -> user_business_roles
-  -> user_business_location_roles
+  -> user_store_roles
 
 permissions
   -> user_business_permissions
@@ -663,7 +664,7 @@ The current schema registers 26 database tables:
 1. `users`
 2. `organizations`
 3. `businesses`
-4. `business_locations`
+4. `store`
 5. `permissions`
 6. `groups`
 7. `roles`
@@ -676,7 +677,7 @@ The current schema registers 26 database tables:
 14. `business_roles`
 15. `business_role_permissions`
 16. `user_business_roles`
-17. `user_business_location_roles`
+17. `user_store_roles`
 18. `user_business_permissions`
 19. `role_templates`
 20. `role_template_permissions`

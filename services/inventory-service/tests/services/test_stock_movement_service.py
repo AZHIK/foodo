@@ -31,8 +31,8 @@ from app.services.stock_movement_service import (
 )
 
 BUSINESS_ID = UUID("00000000-0000-0000-0000-000000000001")
-LOCATION_ID = UUID("00000000-0000-0000-0000-000000000010")
-LOCATION_ID_2 = UUID("00000000-0000-0000-0000-000000000020")
+STORE_ID = UUID("00000000-0000-0000-0000-000000000010")
+STORE_ID_2 = UUID("00000000-0000-0000-0000-000000000020")
 
 
 async def _create_item(
@@ -46,7 +46,7 @@ async def _create_item(
 ) -> Item:
     item = Item(
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         name=name,
         unit_of_measure=UnitOfMeasure.KG,
         reorder_threshold=reorder_threshold,
@@ -76,7 +76,7 @@ async def test_normal_movement_updates_both_tables(db_session: AsyncSession) -> 
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("50.000"),
         movement_type=MovementType.PURCHASE_RECEIVED,
         actor_type="system",
@@ -89,7 +89,7 @@ async def test_normal_movement_updates_both_tables(db_session: AsyncSession) -> 
     result = await db_session.exec(
         select(StockLevel).where(
             StockLevel.item_id == item.id,
-            StockLevel.business_location_id == LOCATION_ID,
+            StockLevel.store_id == STORE_ID,
         )
     )
     sl = result.one()
@@ -112,7 +112,7 @@ async def test_sale_on_raw_material_raises_item_type_mismatch(db_session: AsyncS
             db=db_session,
             item_id=item.id,
             business_id=BUSINESS_ID,
-            business_location_id=LOCATION_ID,
+            store_id=STORE_ID,
             quantity_delta=Decimal("-10.000"),
             movement_type=MovementType.SALE,
         )
@@ -133,7 +133,7 @@ async def test_purchase_received_on_sellable_raises_item_type_mismatch(
             db=db_session,
             item_id=item.id,
             business_id=BUSINESS_ID,
-            business_location_id=LOCATION_ID,
+            store_id=STORE_ID,
             quantity_delta=Decimal("20.000"),
             movement_type=MovementType.PURCHASE_RECEIVED,
         )
@@ -151,7 +151,7 @@ async def test_sale_on_sellable_succeeds(db_session: AsyncSession) -> None:
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("30.000"),
         movement_type=MovementType.MANUAL_ADJUSTMENT,
     )
@@ -160,7 +160,7 @@ async def test_sale_on_sellable_succeeds(db_session: AsyncSession) -> None:
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("-10.000"),
         movement_type=MovementType.SALE,
     )
@@ -180,7 +180,7 @@ async def test_purchase_received_on_both_succeeds(db_session: AsyncSession) -> N
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("100.000"),
         movement_type=MovementType.PURCHASE_RECEIVED,
     )
@@ -192,7 +192,7 @@ async def test_purchase_received_on_both_succeeds(db_session: AsyncSession) -> N
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("-30.000"),
         movement_type=MovementType.SALE,
     )
@@ -212,7 +212,7 @@ async def test_waste_on_raw_material_succeeds(db_session: AsyncSession) -> None:
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("50.000"),
         movement_type=MovementType.PURCHASE_RECEIVED,
     )
@@ -221,7 +221,7 @@ async def test_waste_on_raw_material_succeeds(db_session: AsyncSession) -> None:
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("-5.000"),
         movement_type=MovementType.WASTE,
     )
@@ -245,7 +245,7 @@ async def test_negative_stock_disallowed_raises_error(db_session: AsyncSession) 
             db=db_session,
             item_id=item.id,
             business_id=BUSINESS_ID,
-            business_location_id=LOCATION_ID,
+            store_id=STORE_ID,
             quantity_delta=Decimal("-1.000"),
             movement_type=MovementType.MANUAL_ADJUSTMENT,
         )
@@ -269,7 +269,7 @@ async def test_negative_stock_allowed_succeeds(db_session: AsyncSession) -> None
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("-5.000"),
         movement_type=MovementType.MANUAL_ADJUSTMENT,
     )
@@ -294,7 +294,7 @@ async def test_first_movement_creates_stock_level_row(db_session: AsyncSession) 
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("25.000"),
         movement_type=MovementType.PURCHASE_RECEIVED,
     )
@@ -319,7 +319,7 @@ async def test_duplicate_event_id_skips_second_movement(db_session: AsyncSession
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("30.000"),
         movement_type=MovementType.PURCHASE_RECEIVED,
         event_id=event_id,
@@ -331,7 +331,7 @@ async def test_duplicate_event_id_skips_second_movement(db_session: AsyncSession
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("100.000"),
         movement_type=MovementType.PURCHASE_RECEIVED,
         event_id=event_id,
@@ -362,7 +362,7 @@ async def test_no_event_id_does_not_create_processed_event(db_session: AsyncSess
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("10.000"),
         movement_type=MovementType.PURCHASE_RECEIVED,
     )
@@ -370,18 +370,18 @@ async def test_no_event_id_does_not_create_processed_event(db_session: AsyncSess
     assert await _count_rows(db_session, ProcessedEvent) == 0
 
 
-# ── Different locations get independent stock_levels ─────────────────────────
+# ── Different stores get independent stock_levels ─────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_different_locations_independent_stock(db_session: AsyncSession) -> None:
+async def test_different_stores_independent_stock(db_session: AsyncSession) -> None:
     item = await _create_item(db_session, item_type=ItemType.BOTH)
 
     await record_movement(
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("10.000"),
         movement_type=MovementType.PURCHASE_RECEIVED,
     )
@@ -390,12 +390,12 @@ async def test_different_locations_independent_stock(db_session: AsyncSession) -
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID_2,
+        store_id=STORE_ID_2,
         quantity_delta=Decimal("20.000"),
         movement_type=MovementType.PURCHASE_RECEIVED,
     )
 
-    result = await db_session.exec(select(StockLevel).order_by(StockLevel.business_location_id))
+    result = await db_session.exec(select(StockLevel).order_by(StockLevel.store_id))
     levels = result.all()
     assert len(levels) == 2
     assert levels[0].current_quantity == Decimal("10.000")
@@ -407,7 +407,7 @@ async def test_different_locations_independent_stock(db_session: AsyncSession) -
 
 @pytest.mark.asyncio
 async def test_concurrent_movements_no_lost_update(db_session: AsyncSession) -> None:
-    """Two concurrent movements against the same item/location must both apply.
+    """Two concurrent movements against the same item/store must both apply.
     Each call uses its own session to simulate real concurrent HTTP requests."""
     item = await _create_item(db_session, item_type=ItemType.BOTH, allow_negative_stock=False)
     item_id = item.id
@@ -420,7 +420,7 @@ async def test_concurrent_movements_no_lost_update(db_session: AsyncSession) -> 
                 db=sess,
                 item_id=item_id,
                 business_id=BUSINESS_ID,
-                business_location_id=LOCATION_ID,
+                store_id=STORE_ID,
                 quantity_delta=Decimal("50.000"),
                 movement_type=MovementType.PURCHASE_RECEIVED,
             )
@@ -431,7 +431,7 @@ async def test_concurrent_movements_no_lost_update(db_session: AsyncSession) -> 
                 db=sess,
                 item_id=item_id,
                 business_id=BUSINESS_ID,
-                business_location_id=LOCATION_ID,
+                store_id=STORE_ID,
                 quantity_delta=Decimal("30.000"),
                 movement_type=MovementType.PURCHASE_RECEIVED,
             )
@@ -469,7 +469,7 @@ async def test_movement_with_valid_data_does_not_raise(db_session: AsyncSession)
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("5.000"),
         movement_type=MovementType.MANUAL_ADJUSTMENT,
     )
@@ -492,7 +492,7 @@ async def test_nonexistent_item_raises_value_error(db_session: AsyncSession) -> 
             db=db_session,
             item_id=fake_id,
             business_id=BUSINESS_ID,
-            business_location_id=LOCATION_ID,
+            store_id=STORE_ID,
             quantity_delta=Decimal("10.000"),
             movement_type=MovementType.PURCHASE_RECEIVED,
         )
@@ -506,7 +506,7 @@ async def test_zero_delta_movement_succeeds(db_session: AsyncSession) -> None:
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("0.000"),
         movement_type=MovementType.MANUAL_ADJUSTMENT,
     )
@@ -527,7 +527,7 @@ async def test_sale_on_both_with_negative_stock_allowed(db_session: AsyncSession
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("-10.000"),
         movement_type=MovementType.SALE,
     )
@@ -555,7 +555,7 @@ async def test_skip_negative_check_bypasses_insufficient_stock(db_session: Async
         db=db_session,
         item_id=item.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("-5.000"),
         movement_type=MovementType.SALE,
         skip_negative_check=True,
@@ -580,7 +580,7 @@ async def test_skip_negative_check_default_false_still_raises(db_session: AsyncS
             db=db_session,
             item_id=item.id,
             business_id=BUSINESS_ID,
-            business_location_id=LOCATION_ID,
+            store_id=STORE_ID,
             quantity_delta=Decimal("-1.000"),
             movement_type=MovementType.MANUAL_ADJUSTMENT,
         )

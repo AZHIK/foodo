@@ -17,10 +17,10 @@ class TestItemCreate:
             item_type="both",
             reorder_threshold=10.0,
             reorder_quantity=50.0,
-            business_location_id=UUID("22222222-2222-2222-2222-222222222222"),
+            store_id=UUID("22222222-2222-2222-2222-222222222222"),
         )
         assert data.name == "Fresh Tomatoes"
-        assert data.business_location_id == UUID("22222222-2222-2222-2222-222222222222")
+        assert data.store_id == UUID("22222222-2222-2222-2222-222222222222")
         assert data.selling_price is None
 
     def test_valid_create_with_selling_price_succeeds(self) -> None:
@@ -31,7 +31,7 @@ class TestItemCreate:
             reorder_threshold=10.0,
             reorder_quantity=50.0,
             selling_price=25.5,
-            business_location_id=UUID("22222222-2222-2222-2222-222222222222"),
+            store_id=UUID("22222222-2222-2222-2222-222222222222"),
         )
         assert data.selling_price == 25.5
 
@@ -43,7 +43,7 @@ class TestItemCreate:
                 reorder_threshold=5.0,
                 reorder_quantity=20.0,
                 business_id=UUID("11111111-1111-1111-1111-111111111111"),
-                business_location_id=UUID("22222222-2222-2222-2222-222222222222"),
+                store_id=UUID("22222222-2222-2222-2222-222222222222"),
             )
 
     def test_rejects_invalid_item_type(self) -> None:
@@ -55,7 +55,7 @@ class TestItemCreate:
                 reorder_threshold=5.0,
                 reorder_quantity=20.0,
                 business_id=UUID("11111111-1111-1111-1111-111111111111"),
-                business_location_id=UUID("22222222-2222-2222-2222-222222222222"),
+                store_id=UUID("22222222-2222-2222-2222-222222222222"),
             )
 
 
@@ -64,9 +64,9 @@ class TestItemUpdate:
         data = ItemUpdate()
         assert data.model_dump(exclude_unset=True) == {}
 
-    def test_excludes_business_id_and_location_id(self) -> None:
+    def test_excludes_business_id_and_store_id(self) -> None:
         assert not hasattr(ItemUpdate.model_fields, "business_id")
-        assert not hasattr(ItemUpdate.model_fields, "business_location_id")
+        assert not hasattr(ItemUpdate.model_fields, "store_id")
 
     def test_partial_update_works(self) -> None:
         data = ItemUpdate(name="Renamed Item")

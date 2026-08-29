@@ -33,7 +33,7 @@ from app.services.event_handlers import (
 from app.services.stock_movement_service import ItemTypeMismatchError
 
 BUSINESS_ID = UUID("00000000-0000-0000-0000-000000000001")
-LOCATION_ID = UUID("00000000-0000-0000-0000-000000000010")
+STORE_ID = UUID("00000000-0000-0000-0000-000000000010")
 
 
 async def _create_item(
@@ -45,7 +45,7 @@ async def _create_item(
 ) -> Item:
     item = Item(
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         name=name,
         unit_of_measure=UnitOfMeasure.KG,
         category="test",
@@ -67,7 +67,7 @@ async def _create_stock_level(
 ) -> StockLevel:
     sl = StockLevel(
         item_id=item_id,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         current_quantity=quantity,
     )
     db.add(sl)
@@ -89,7 +89,7 @@ async def test_sale_completed_multi_item(db_session: AsyncSession) -> None:
     payload = {
         "event_id": "sale-evt-001",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "sale_id": "00000000-0000-0000-0000-000000000100",
         "line_items": [
             {"item_id": str(item_a.id), "quantity": Decimal("3.000")},
@@ -124,7 +124,7 @@ async def test_sale_completed_bypasses_negative_stock(db_session: AsyncSession) 
     payload = {
         "event_id": "sale-evt-negative",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "sale_id": "00000000-0000-0000-0000-000000000200",
         "line_items": [
             {"item_id": str(item.id), "quantity": Decimal("5.000")},
@@ -153,7 +153,7 @@ async def test_sale_completed_full_event_idempotency(db_session: AsyncSession) -
     payload = {
         "event_id": "sale-evt-idem",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "sale_id": "00000000-0000-0000-0000-000000000300",
         "line_items": [
             {"item_id": str(item_a.id), "quantity": Decimal("10.000")},
@@ -214,7 +214,7 @@ async def test_sale_completed_partial_retry_idempotency(db_session: AsyncSession
         db=db_session,
         item_id=item_a.id,
         business_id=BUSINESS_ID,
-        business_location_id=LOCATION_ID,
+        store_id=STORE_ID,
         quantity_delta=Decimal("-10.000"),
         movement_type=MovementType.SALE,
         reference_type="sale",
@@ -229,7 +229,7 @@ async def test_sale_completed_partial_retry_idempotency(db_session: AsyncSession
     payload = {
         "event_id": event_id,
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "sale_id": str(sale_id),
         "line_items": [
             {"item_id": str(item_a.id), "quantity": Decimal("10.000")},
@@ -265,7 +265,7 @@ async def test_sale_completed_on_raw_material_raises_item_type_mismatch(
     payload = {
         "event_id": "sale-evt-typeerr",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "sale_id": "00000000-0000-0000-0000-000000000500",
         "line_items": [
             {"item_id": str(item.id), "quantity": Decimal("1.000")},
@@ -288,7 +288,7 @@ async def test_order_confirmed_behaves_like_sale(db_session: AsyncSession) -> No
     payload = {
         "event_id": "order-evt-001",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "order_id": "00000000-0000-0000-0000-000000000600",
         "line_items": [
             {"item_id": str(item.id), "quantity": Decimal("7.000")},
@@ -316,7 +316,7 @@ async def test_order_confirmed_bypasses_negative_stock(db_session: AsyncSession)
     payload = {
         "event_id": "order-evt-negative",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "order_id": "00000000-0000-0000-0000-000000000700",
         "line_items": [
             {"item_id": str(item.id), "quantity": Decimal("3.000")},
@@ -343,7 +343,7 @@ async def test_purchase_received_increases_stock(db_session: AsyncSession) -> No
     payload = {
         "event_id": "purchase-evt-001",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "purchase_order_id": "00000000-0000-0000-0000-000000000800",
         "line_items": [
             {"item_id": str(item.id), "quantity": Decimal("25.000")},
@@ -372,7 +372,7 @@ async def test_purchase_received_on_sellable_raises_item_type_mismatch(
     payload = {
         "event_id": "purchase-evt-typeerr",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "purchase_order_id": "00000000-0000-0000-0000-000000000900",
         "line_items": [
             {"item_id": str(item.id), "quantity": Decimal("10.000")},
@@ -405,7 +405,7 @@ async def test_sale_voided_increases_stock(db_session: AsyncSession) -> None:
     payload = {
         "event_id": "void-evt-001",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "sale_id": "00000000-0000-0000-0000-000000001000",
         "line_items": [
             {"item_id": str(item_a.id), "quantity": Decimal("3.000")},
@@ -445,7 +445,7 @@ async def test_sale_voided_on_raw_material_succeeds(db_session: AsyncSession) ->
     payload = {
         "event_id": "void-evt-raw",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "sale_id": "00000000-0000-0000-0000-000000001010",
         "line_items": [
             {"item_id": str(item.id), "quantity": Decimal("4.000")},
@@ -471,7 +471,7 @@ async def test_sale_voided_on_sellable_succeeds(db_session: AsyncSession) -> Non
     payload = {
         "event_id": "void-evt-sell",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "sale_id": "00000000-0000-0000-0000-000000001020",
         "line_items": [
             {"item_id": str(item.id), "quantity": Decimal("2.000")},
@@ -496,7 +496,7 @@ async def test_sale_voided_idempotency(db_session: AsyncSession) -> None:
     payload = {
         "event_id": "void-evt-idem",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "sale_id": "00000000-0000-0000-0000-000000001030",
         "line_items": [
             {"item_id": str(item.id), "quantity": Decimal("15.000")},
@@ -530,7 +530,7 @@ async def test_sale_refunded_increases_stock(db_session: AsyncSession) -> None:
     payload = {
         "event_id": "refund-evt-001",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "sale_id": "00000000-0000-0000-0000-000000001100",
         "line_items": [
             {"item_id": str(item.id), "quantity": Decimal("7.000")},
@@ -558,7 +558,7 @@ async def test_sale_refunded_on_raw_material_succeeds(db_session: AsyncSession) 
     payload = {
         "event_id": "refund-evt-raw",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "sale_id": "00000000-0000-0000-0000-000000001110",
         "line_items": [
             {"item_id": str(item.id), "quantity": Decimal("3.000")},
@@ -585,7 +585,7 @@ async def test_sale_refunded_idempotency(db_session: AsyncSession) -> None:
     payload = {
         "event_id": "refund-evt-idem",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "sale_id": "00000000-0000-0000-0000-000000001120",
         "line_items": [
             {"item_id": str(item.id), "quantity": Decimal("10.000")},
@@ -624,7 +624,7 @@ async def test_sale_completed_then_voided_fully_reverses(db_session: AsyncSessio
     complete_payload = {
         "event_id": "lifecycle-sale-001",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "sale_id": sale_id,
         "line_items": [
             {"item_id": str(item.id), "quantity": Decimal("20.000")},
@@ -641,7 +641,7 @@ async def test_sale_completed_then_voided_fully_reverses(db_session: AsyncSessio
     void_payload = {
         "event_id": "lifecycle-void-001",
         "business_id": str(BUSINESS_ID),
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
         "sale_id": sale_id,
         "line_items": [
             {"item_id": str(item.id), "quantity": Decimal("20.000")},

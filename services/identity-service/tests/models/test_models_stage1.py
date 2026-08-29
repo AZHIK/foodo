@@ -31,7 +31,7 @@ from app.models import (
     Store,
     StoreSetting,
     User,
-    UserBusinessLocationRole,
+    UserStoreRole,
     UserBusinessPermission,
     UserBusinessRole,
     UserCategory,
@@ -198,8 +198,8 @@ class TestUserBusinessRoleModel:
         assert isinstance(ubr.id, UUID)
         assert ubr.user_id != ubr.business_id
 
-    def test_create_user_business_location_role(self) -> None:
-        assignment = UserBusinessLocationRole(
+    def test_create_user_store_role(self) -> None:
+        assignment = UserStoreRole(
             user_id=UUID("00000000-0000-0000-0000-000000000001"),
             business_id=UUID("00000000-0000-0000-0000-000000000002"),
             store_id=UUID("00000000-0000-0000-0000-000000000003"),

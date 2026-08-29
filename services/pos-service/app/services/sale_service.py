@@ -150,7 +150,7 @@ async def _create_sale_internal(
 
     sale = Sale(
         business_id=business_id,
-        business_location_id=sale_input.business_location_id,
+        store_id=sale_input.store_id,
         client_sale_id=sale_input.client_sale_id,
         status=status,
         subtotal=subtotal,
@@ -202,7 +202,7 @@ async def _publish_sale_events(
             {
                 "event_id": str(sale.id),
                 "business_id": str(sale.business_id),
-                "business_location_id": str(sale.business_location_id),
+                "store_id": str(sale.store_id),
                 "sale_id": str(sale.id),
                 "line_items": [
                     {"item_id": str(li.item_id), "quantity": str(li.quantity)}
@@ -285,7 +285,7 @@ async def void_or_refund_sale(
     event_payload = {
         "event_id": request.client_action_id,
         "business_id": str(sale.business_id),
-        "business_location_id": str(sale.business_location_id),
+        "store_id": str(sale.store_id),
         "sale_id": str(sale.id),
             "line_items": [
                 {

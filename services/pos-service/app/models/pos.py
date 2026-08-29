@@ -4,7 +4,7 @@
 CROSS-SERVICE REFERENCE CONVENTION
 ═══════════════════════════════════════════════════════════════════════════
 
-Columns named ``business_id``, ``business_location_id``, ``actor_id``, and
+Columns named ``business_id``, ``store_id``, ``actor_id``, and
 ``item_id`` store UUIDs that reference rows in other services' databases.
 These are stored as **plain indexed UUID columns with no foreign key
 constraint** because the referenced tables live in separate databases.
@@ -114,7 +114,7 @@ class Sale(SQLModel, table=True):
         index=True,
         sa_type=PG_UUID,
     )
-    business_location_id: UUID = Field(
+    store_id: UUID = Field(
         nullable=False,
         index=True,
         sa_type=PG_UUID,
@@ -213,7 +213,7 @@ class SaleLineItem(SQLModel, table=True):
 
     ``item_id`` is a cross-service reference to Inventory Service's
     ``items`` table — no FK constraint, same discipline as
-    ``business_id`` / ``business_location_id``.
+    ``business_id`` / ``store_id``.
 
     ``unit_price`` is captured at the time of sale and never dynamically
     looked up, ensuring historical accuracy regardless of future price

@@ -72,10 +72,10 @@ class PermissionCode(StrEnum):
     BUSINESSES_DELETE = "businesses.delete"
     BUSINESSES_ASSIGN_TO_ORGANIZATION = "businesses.assign_to_organization"
 
-    BUSINESS_LOCATIONS_VIEW = "business_locations.view"
-    BUSINESS_LOCATIONS_CREATE = "business_locations.create"
-    BUSINESS_LOCATIONS_UPDATE = "business_locations.update"
-    BUSINESS_LOCATIONS_DELETE = "business_locations.delete"
+    STORES_VIEW = "stores.view"
+    STORES_CREATE = "stores.create"
+    STORES_UPDATE = "stores.update"
+    STORES_DELETE = "stores.delete"
 
     BUSINESS_ROLES_VIEW = "business_roles.view"
     BUSINESS_ROLES_CREATE = "business_roles.create"
@@ -88,9 +88,9 @@ class PermissionCode(StrEnum):
     USER_BUSINESS_ROLES_ASSIGN = "user_business_roles.assign"
     USER_BUSINESS_ROLES_REVOKE = "user_business_roles.revoke"
 
-    USER_BUSINESS_LOCATION_ROLES_VIEW = "user_business_location_roles.view"
-    USER_BUSINESS_LOCATION_ROLES_ASSIGN = "user_business_location_roles.assign"
-    USER_BUSINESS_LOCATION_ROLES_REVOKE = "user_business_location_roles.revoke"
+    USER_STORE_ROLES_VIEW = "user_store_roles.view"
+    USER_STORE_ROLES_ASSIGN = "user_store_roles.assign"
+    USER_STORE_ROLES_REVOKE = "user_store_roles.revoke"
 
     USER_BUSINESS_PERMISSIONS_VIEW = "user_business_permissions.view"
     USER_BUSINESS_PERMISSIONS_GRANT = "user_business_permissions.grant"

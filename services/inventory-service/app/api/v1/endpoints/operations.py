@@ -16,14 +16,14 @@ resulting ``StockMovementRead``.
 │ (``require_business_permission``), not per-endpoint.                    │
 │                                                                          │
 │ ╔══════════════════════════════════════════════════════════════════════╗  │
-│ ║ KNOWN MVP LIMITATION — Location-scoped enforcement (Stage 8.5 Gap  │  │
-│ ║ 2).  The JWT token currently carries no location-scoped roles or    │  │
+│ ║ KNOWN MVP LIMITATION — Store-scoped enforcement (Stage 8.5 Gap 2).  │  │
+│ ║ The JWT token currently carries no store-scoped roles or             │  │
 │ ║ permissions.  Anyone with business-level INVENTORY_ADJUST /         │  │
-│ ║ INVENTORY_WASTE_RECORD / INVENTORY_TRANSFER can act at ANY location │  │
+│ ║ INVENTORY_WASTE_RECORD / INVENTORY_TRANSFER can act at ANY store    │  │
 │ ║ within the business.  Closing this requires Identity Service to     │  │
 │ ║ first include scoped permissions in issued tokens.                  │  │
-│ ║ TODO-LOCATION-SCOPING: revisit when Identity Service extends token  │  │
-│ ║ shape to include ``business_location_ids`` or per-location          │  │
+│ ║ TODO-STORE-SCOPING: revisit when Identity Service extends token     │  │
+│ ║ shape to include ``store_ids`` or per-store                         │  │
 │ ║ permission claims.                                                  │  │
 │ ╚══════════════════════════════════════════════════════════════════════╝  │
 └──────────────────────────────────────────────────────────────────────────┘
@@ -85,7 +85,7 @@ async def _get_item_or_404(
 async def _call_movement(
     db: AsyncSession,
     business_id: UUID,
-    business_location_id: UUID,
+    store_id: UUID,
     item_id: UUID,
     quantity_delta: Decimal,
     movement_type: MovementType,
@@ -101,7 +101,7 @@ async def _call_movement(
             db=db,
             item_id=item_id,
             business_id=business_id,
-            business_location_id=business_location_id,
+            store_id=store_id,
             quantity_delta=quantity_delta,
             movement_type=movement_type,
             actor_type=ActorType.USER.value,
@@ -136,7 +136,7 @@ async def adjust_stock(
     movement = await _call_movement(
         db=session,
         business_id=business_id,
-        business_location_id=item.business_location_id,
+        store_id=item.store_id,
         item_id=item_id,
         quantity_delta=body.quantity_delta,
         movement_type=MovementType.MANUAL_ADJUSTMENT,
@@ -169,7 +169,7 @@ async def record_waste(
     movement = await _call_movement(
         db=session,
         business_id=business_id,
-        business_location_id=item.business_location_id,
+        store_id=item.store_id,
         item_id=item_id,
         quantity_delta=-body.quantity,
         movement_type=MovementType.WASTE,
@@ -195,7 +195,7 @@ async def transfer_stock(
     _jwt_biz_id: Annotated[str, Depends(require_business_permission("inventory.transfer"))],
     claims: Annotated[dict[str, Any], Depends(get_current_claims)],
 ) -> Any:
-    """Transfer stock from one location to another within the same business.
+    """Transfer stock from one store to another within the same business.
 
     Both movements (TRANSFER_OUT at source, TRANSFER_IN at destination)
     happen in a single transaction so that a failure in either leg rolls
@@ -210,24 +210,24 @@ async def transfer_stock(
             db=session,
             item_id=body.item_id,
             business_id=business_id,
-            business_location_id=body.source_location_id,
+            store_id=body.source_store_id,
             quantity_delta=-body.quantity,
             movement_type=MovementType.TRANSFER_OUT,
             actor_type=ActorType.USER.value,
             actor_id=actor_id,
-            reason=f"Transfer to location {body.destination_location_id}",
+            reason=f"Transfer to store {body.destination_store_id}",
             commit=False,
         )
         movement_in = await record_movement(
             db=session,
             item_id=body.item_id,
             business_id=business_id,
-            business_location_id=body.destination_location_id,
+            store_id=body.destination_store_id,
             quantity_delta=body.quantity,
             movement_type=MovementType.TRANSFER_IN,
             actor_type=ActorType.USER.value,
             actor_id=actor_id,
-            reason=f"Transfer from location {body.source_location_id}",
+            reason=f"Transfer from store {body.source_store_id}",
             commit=False,
         )
         await session.commit()
@@ -254,8 +254,8 @@ async def transfer_stock(
         item_id=str(body.item_id),
         business_id=str(business_id),
         quantity=str(body.quantity),
-        source=str(body.source_location_id),
-        destination=str(body.destination_location_id),
+        source=str(body.source_store_id),
+        destination=str(body.destination_store_id),
     )
 
     return [movement_out, movement_in]

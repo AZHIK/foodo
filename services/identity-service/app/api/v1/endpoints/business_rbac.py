@@ -20,8 +20,8 @@ from app.models.business import (
     Business,
     BusinessRole,
     BusinessRolePermission,
-    UserBusinessLocationRole,
     UserBusinessRole,
+    UserStoreRole,
 )
 from app.models.user import User, UserCategory, UserStatus
 from app.schemas.business_rbac import (
@@ -200,19 +200,19 @@ async def delete_business_role(
                 ),
             )
 
-        active_location_roles = (
+        active_store_roles = (
             await db.exec(
-                select(UserBusinessLocationRole).where(
-                    UserBusinessLocationRole.business_role_id == role_id
+                select(UserStoreRole).where(
+                    UserStoreRole.business_role_id == role_id
                 )
             )
         ).all()
-        if active_location_roles:
+        if active_store_roles:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
-                    "Cannot delete role with active location-level user assignments. "
-                    "Remove all location-based assignments first."
+                    "Cannot delete role with active store-level user assignments. "
+                    "Remove all store-based assignments first."
                 ),
             )
 

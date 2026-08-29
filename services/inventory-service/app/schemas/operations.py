@@ -57,15 +57,15 @@ class RecordWasteRequest(BaseModel):
 
 
 class TransferStockRequest(BaseModel):
-    """Request to transfer stock between two locations.
+    """Request to transfer stock between two stores.
 
-    source_location_id and destination_location_id must differ — a
+    source_store_id and destination_store_id must differ — a
     self-transfer is rejected at the schema level.
     """
 
     item_id: UUID
-    source_location_id: UUID
-    destination_location_id: UUID
+    source_store_id: UUID
+    destination_store_id: UUID
     quantity: Decimal
 
     @field_validator("quantity")
@@ -75,9 +75,9 @@ class TransferStockRequest(BaseModel):
             raise ValueError("Quantity must be a positive number")
         return v
 
-    @field_validator("destination_location_id")
+    @field_validator("destination_store_id")
     @classmethod
     def destination_must_differ_from_source(cls, v: UUID, info: ValidationInfo) -> UUID:
-        if "source_location_id" in info.data and v == info.data["source_location_id"]:
-            raise ValueError("Source and destination locations must be different")
+        if "source_store_id" in info.data and v == info.data["source_store_id"]:
+            raise ValueError("Source and destination stores must be different")
         return v

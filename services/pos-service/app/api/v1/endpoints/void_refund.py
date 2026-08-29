@@ -74,7 +74,7 @@ async def void_or_refund(
     return SaleRead(
         id=sale.id,
         business_id=sale.business_id,
-        business_location_id=sale.business_location_id,
+        store_id=sale.store_id,
         client_sale_id=sale.client_sale_id,
         status=sale.status.value,
         subtotal=sale.subtotal,

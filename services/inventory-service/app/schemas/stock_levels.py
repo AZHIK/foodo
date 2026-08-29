@@ -21,12 +21,12 @@ from app.models.inventory import ItemType
 
 
 class StockLevelRead(BaseModel):
-    """Current stock level for an item at a specific location, with denormalized item info."""
+    """Current stock level for an item at a specific store, with denormalized item info."""
 
     model_config = ConfigDict(from_attributes=True)
 
     item_id: UUID
-    business_location_id: UUID
+    store_id: UUID
     current_quantity: Decimal
     updated_at: datetime
     item_name: str

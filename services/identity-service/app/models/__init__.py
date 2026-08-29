@@ -32,7 +32,7 @@ __all__ = [
     "StoreSetting",
     "User",
     "UserBusinessPermission",
-    "UserBusinessLocationRole",
+    "UserStoreRole",
     "UserBusinessRole",
     "UserCategory",
     "UserGroup",
@@ -69,9 +69,9 @@ from app.models.business import (
     PermissionType,
     Store,
     StoreSetting,
-    UserBusinessLocationRole,
     UserBusinessPermission,
     UserBusinessRole,
+    UserStoreRole,
 )
 from app.models.internal import (
     Group,

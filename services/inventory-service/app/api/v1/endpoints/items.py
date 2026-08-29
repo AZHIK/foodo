@@ -61,8 +61,8 @@ async def _build_list_query(
         stmt = stmt.where(Item.category == filters.category)
     if filters.is_active is not None:
         stmt = stmt.where(Item.is_active == filters.is_active)
-    if filters.business_location_id is not None:
-        stmt = stmt.where(Item.business_location_id == filters.business_location_id)
+    if filters.store_id is not None:
+        stmt = stmt.where(Item.store_id == filters.store_id)
     if filters.below_threshold:
         stmt = (
             select(Item)
@@ -72,8 +72,8 @@ async def _build_list_query(
                 StockLevel.current_quantity <= Item.reorder_threshold,
             )
         )
-        if filters.business_location_id is not None:
-            stmt = stmt.where(StockLevel.business_location_id == filters.business_location_id)
+        if filters.store_id is not None:
+            stmt = stmt.where(StockLevel.store_id == filters.store_id)
 
     stmt = stmt.order_by(Item.created_at.desc())
     return stmt
@@ -92,19 +92,19 @@ async def create_item(
     CROSS-SERVICE VALIDATION GAP (deferred)
     ═══════════════════════════════════════════════════════════════════
 
-    ``business_location_id`` is accepted as-given without verifying that
-    the location actually belongs to ``business_id``.  Ideally this
-    endpoint would call Identity Service's ``GET /business-locations/:id``
-    (or equivalent) to confirm the location is valid for this business,
+    ``store_id`` is accepted as-given without verifying that
+    the store actually belongs to ``business_id``.  Ideally this
+    endpoint would call Identity Service's ``GET /businesses/{business_id}/stores/{store_id}``
+    (or equivalent) to confirm the store is valid for this business,
     but that cross-service call is out of scope for this stage.
 
     For now we trust the caller (who is already authenticated and
     authorized via JWT).  A follow-up should add a gRPC or HTTP call to
-    Identity Service to validate the location before persisting.
+    Identity Service to validate the store before persisting.
     """
     item = Item(
         business_id=business_id,
-        business_location_id=body.business_location_id,
+        store_id=body.store_id,
         name=body.name,
         unit_of_measure=body.unit_of_measure,
         category=body.category,
@@ -122,7 +122,7 @@ async def create_item(
         "item.created",
         item_id=str(item.id),
         business_id=str(business_id),
-        business_location_id=str(body.business_location_id),
+        store_id=str(body.store_id),
         name=item.name,
         item_type=str(item.item_type),
     )
@@ -177,7 +177,7 @@ async def update_item(
 ) -> Item:
     """Update an item's mutable fields.
 
-    ``business_id`` and ``business_location_id`` cannot be changed via
+    ``business_id`` and ``store_id`` cannot be changed via
     this endpoint (``ItemUpdate`` excludes them by design).  Relocating
     an item is a transfer operation handled in a later stage.
     """

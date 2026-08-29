@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -30,6 +31,42 @@ import 'package:restaurant_pos/widgets/auth/auth_aside.dart';
 import 'test_helpers/fake_identity_backend.dart';
 
 const _widths = <double>[360, 400, 768, 1024, 1440, 1920];
+
+/// `TokenStorage` (used by `AuthNotifier`, real in every build — there's no
+/// Riverpod seam to inject a fake) talks to `flutter_secure_storage`'s
+/// platform channel directly, which has no built-in test double. Any test
+/// reaching `_switchContextAndLock` (real OTP login, business onboarding)
+/// needs this backed by something, so call this once per test — from
+/// `pumpSession` or directly — to install an in-memory stand-in.
+void mockSecureStorage() {
+  const channel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+  final values = <String, String>{};
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(channel, (call) async {
+    final args = (call.arguments as Map?)?.cast<String, dynamic>() ?? const {};
+    switch (call.method) {
+      case 'write':
+        values[args['key'] as String] = args['value'] as String;
+        return null;
+      case 'read':
+        return values[args['key'] as String];
+      case 'delete':
+        values.remove(args['key'] as String);
+        return null;
+      case 'deleteAll':
+        values.clear();
+        return null;
+      case 'readAll':
+        return Map<String, String>.from(values);
+      case 'containsKey':
+        return values.containsKey(args['key'] as String);
+      default:
+        return null;
+    }
+  });
+  addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(channel, null));
+}
 
 /// A local staff profile to seed into the in-memory database before a test
 /// pumps the app — the record `LocalProfileRepository`/`PinUnlockScreen`'s
@@ -64,6 +101,7 @@ Future<ProviderContainer> pumpSession(
 }) async {
   tester.view.physicalSize = size * tester.view.devicePixelRatio;
   addTearDown(tester.view.reset);
+  mockSecureStorage();
 
   // `authProvider`'s build() reaches `appDatabaseProvider` (via
   // `localProfileRepositoryProvider`) to restore any saved local profile —
@@ -849,46 +887,72 @@ void main() {
   group('First-login local caching', () {
     /// Same fake backend pattern as 'OTP login' / 'Business onboarding'.
     ///
-    /// These tests drive `authProvider`'s notifier methods directly rather
-    /// than through the OTP/onboarding screens: the write logic under test
-    /// lives entirely in `auth_provider.dart` (see `setPin` and
-    /// `createBusinessAndOnboard`), and going through the real widgets would
-    /// pull in unrelated form validation and layout that aren't part of what
-    /// these tests are checking.
+    /// These tests drive `authProvider`'s notifier methods directly against
+    /// a bare `ProviderContainer` — no `pumpWidget` — rather than through the
+    /// OTP/onboarding screens: the write logic under test lives entirely in
+    /// `auth_provider.dart` (see `setPin` and `createBusinessAndOnboard`),
+    /// so mounting the real app here would add nothing but risk (the brand
+    /// panel's `google_fonts` calls do real network I/O the moment any
+    /// widget builds, which has nothing to do with what's under test).
     List<Override> fakeBackend(FakeIdentityBackendState state) => [
       identityServiceDioProvider.overrideWithValue(
         Dio()..httpClientAdapter = FakeIdentityAdapter(state),
       ),
     ];
 
+    /// Starts [action], pumps until nothing's pending, then awaits the
+    /// result — awaiting [action] directly can deadlock forever in
+    /// `testWidgets`' FakeAsync zone: nothing ever prompts it to drain the
+    /// microtasks/timers the action itself is waiting on, since pumping
+    /// only happens *after* the (never-completing) await returns.
+    Future<T> pumped<T>(WidgetTester tester, Future<T> Function() action) async {
+      final future = action();
+      await tester.pumpAndSettle();
+      return future;
+    }
+
+    /// A bare container wired the same way `pumpSession` wires
+    /// `appDatabaseProvider`, minus mounting any widget.
+    ProviderContainer bareContainer(List<Override> overrides) {
+      mockSecureStorage();
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final container = ProviderContainer(
+        overrides: [appDatabaseProvider.overrideWithValue(database), ...overrides],
+      );
+      addTearDown(container.dispose);
+      return container;
+    }
+
     testWidgets(
       'an invited staff member caches business/role/permissions only once they set a PIN',
       (tester) async {
+        // setPin() caches from the access token's roles/permissions claims
+        // (see auth_provider.dart's doc comment on setPin for why: the two
+        // RBAC lookup endpoints require admin-level permissions an ordinary
+        // invited staff member's own role won't have). The fake backend's
+        // /auth/context/switch always returns roles:['owner'],
+        // permissions:['*'] once a businessId is set — a simplification,
+        // not tied to any real role/permission set — so that's what a
+        // signed-in invited staff member's token carries here too.
         final state = FakeIdentityBackendState()
           ..needsOnboarding = false
           ..businessId = 'biz-1'
           ..businessName = 'The Copper Fig';
 
-        final container = await pumpSession(
-          tester,
-          size: const Size(1440, 900),
-          session: const SessionState(bootstrapped: true),
-          overrides: fakeBackend(state),
-        );
+        final container = bareContainer(fakeBackend(state));
         final db = container.read(appDatabaseProvider);
         final notifier = container.read(authProvider.notifier);
 
-        await tester.runAsync(() async {
-          await notifier.requestOtp('712345678');
-          await notifier.verifyOtp(fakeOtpCode);
-        });
+        await pumped(tester, () => notifier.requestOtp('712345678'));
+        await pumped(tester, () => notifier.verifyOtp(fakeOtpCode));
 
         // Signed in and context-switched (device provisioned to biz-1
         // already), but Set PIN hasn't run yet — nothing about this staff
         // member should be cached locally until it does.
         expect(await db.select(db.cachedPermissions).get(), isEmpty);
 
-        await tester.runAsync(() => notifier.setPin('135790'));
+        await pumped(tester, () => notifier.setPin('135790'));
 
         final cached = await db.select(db.cachedPermissions).get();
         expect(cached, hasLength(1));
@@ -902,30 +966,26 @@ void main() {
     testWidgets(
       'a new owner caches business/role/permissions as soon as their business is saved',
       (tester) async {
-        final container = await pumpSession(
-          tester,
-          size: const Size(1440, 900),
-          session: const SessionState(bootstrapped: true),
-          overrides: fakeBackend(FakeIdentityBackendState()),
-        );
+        final container = bareContainer(fakeBackend(FakeIdentityBackendState()));
         final db = container.read(appDatabaseProvider);
         final notifier = container.read(authProvider.notifier);
 
-        await tester.runAsync(() async {
-          await notifier.requestOtp('712345678');
-          await notifier.verifyOtp(fakeOtpCode);
-          await notifier.setPin('135790');
-        });
+        await pumped(tester, () => notifier.requestOtp('712345678'));
+        await pumped(tester, () => notifier.verifyOtp(fakeOtpCode));
+        await pumped(tester, () => notifier.setPin('135790'));
 
         // Set PIN runs before onboarding for a fresh owner (no business
         // exists yet), so nothing should be cached from this alone.
         expect(await db.select(db.cachedPermissions).get(), isEmpty);
 
-        await tester.runAsync(() => notifier.createBusinessAndOnboard(
-              name: 'The Brass Olive',
-              address: '12 Harbour Rd',
-              phone: '',
-            ));
+        await pumped(
+          tester,
+          () => notifier.createBusinessAndOnboard(
+            name: 'The Brass Olive',
+            address: '12 Harbour Rd',
+            phone: '',
+          ),
+        );
 
         final ownerId = container.read(authProvider).userId;
         expect(ownerId, isNotNull);

@@ -81,8 +81,8 @@ def _build_token(
 
 BUSINESS_ID = UUID("00000000-0000-0000-0000-000000000001")
 OTHER_BUSINESS_ID = UUID("00000000-0000-0000-0000-000000000099")
-LOCATION_ID = UUID("00000000-0000-0000-0000-000000000010")
-LOCATION_ID_2 = UUID("00000000-0000-0000-0000-000000000020")
+STORE_ID = UUID("00000000-0000-0000-0000-000000000010")
+STORE_ID_2 = UUID("00000000-0000-0000-0000-000000000020")
 AUTH_HEADER = {"Authorization": f"Bearer {_build_token()}"}
 API_PREFIX = f"/api/v1/businesses/{BUSINESS_ID}/items"
 
@@ -103,14 +103,14 @@ def _other_biz_header() -> dict[str, str]:
 async def _create_test_item(
     session: AsyncSession,
     name: str = "Test Item",
-    location_id: UUID = LOCATION_ID,
+    store_id: UUID = STORE_ID,
     reorder_threshold: Decimal = Decimal("10.000"),
     reorder_quantity: Decimal = Decimal("20.000"),
     item_type: ItemType = ItemType.BOTH,
 ) -> Item:
     item = Item(
         business_id=BUSINESS_ID,
-        business_location_id=location_id,
+        store_id=store_id,
         name=name,
         unit_of_measure=UnitOfMeasure.KG,
         reorder_threshold=reorder_threshold,
@@ -126,12 +126,12 @@ async def _create_test_item(
 async def _create_stock_level(
     session: AsyncSession,
     item_id: UUID,
-    location_id: UUID = LOCATION_ID,
+    store_id: UUID = STORE_ID,
     quantity: Decimal = Decimal("5.000"),
 ) -> StockLevel:
     sl = StockLevel(
         item_id=item_id,
-        business_location_id=location_id,
+        store_id=store_id,
         current_quantity=quantity,
     )
     session.add(sl)
@@ -157,7 +157,7 @@ async def test_full_crud_cycle(client: AsyncClient, db_session: AsyncSession) ->
         "reorder_quantity": 50.0,
         "allow_negative_stock": False,
         "item_type": "raw_material",
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
     }
     resp = await client.post(API_PREFIX, json=create_payload, headers=AUTH_HEADER)
     assert resp.status_code == 201, resp.text
@@ -204,7 +204,7 @@ async def test_create_item_with_selling_price(client: AsyncClient) -> None:
         "reorder_threshold": 10.0,
         "reorder_quantity": 50.0,
         "selling_price": 25.5,
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
     }
     resp = await client.post(API_PREFIX, json=payload, headers=AUTH_HEADER)
     assert resp.status_code == 201, resp.text
@@ -222,7 +222,7 @@ async def test_create_item_without_selling_price_succeeds(client: AsyncClient) -
         "item_type": "raw_material",
         "reorder_threshold": 10.0,
         "reorder_quantity": 50.0,
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
     }
     resp = await client.post(API_PREFIX, json=payload, headers=AUTH_HEADER)
     assert resp.status_code == 201, resp.text
@@ -260,7 +260,7 @@ async def test_selling_price_round_trips_without_drift(client: AsyncClient) -> N
         "reorder_threshold": 10.0,
         "reorder_quantity": 50.0,
         "selling_price": "0.30",
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
     }
     resp = await client.post(API_PREFIX, json=payload, headers=AUTH_HEADER)
     assert resp.status_code == 201, resp.text
@@ -289,7 +289,7 @@ async def test_item_type_omitted_is_rejected(client: AsyncClient) -> None:
         "unit_of_measure": "unit",
         "reorder_threshold": 5.0,
         "reorder_quantity": 10.0,
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
     }
     resp = await client.post(API_PREFIX, json=payload, headers=AUTH_HEADER)
     assert resp.status_code == 422, resp.text
@@ -349,7 +349,7 @@ async def test_create_no_adjust_perm_returns_403(client: AsyncClient) -> None:
         "reorder_threshold": 1.0,
         "reorder_quantity": 2.0,
         "item_type": "both",
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
     }
     restricted = _auth_header(permissions=["inventory.view"])
     resp = await client.post(API_PREFIX, json=payload, headers=restricted)
@@ -460,7 +460,7 @@ async def test_wrong_business_rejected_for_create(
         "reorder_threshold": 1.0,
         "reorder_quantity": 2.0,
         "item_type": "both",
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
     }
     resp = await client.post(wrong_url, json=payload, headers=AUTH_HEADER)
     assert resp.status_code == 403
@@ -478,7 +478,7 @@ async def test_create_requires_items_create_perm(client: AsyncClient) -> None:
         "reorder_threshold": 1.0,
         "reorder_quantity": 2.0,
         "item_type": "both",
-        "business_location_id": str(LOCATION_ID),
+        "store_id": str(STORE_ID),
     }
     old_token = _auth_header(permissions=["inventory.view", "inventory.adjust"])
     resp = await client.post(API_PREFIX, json=payload, headers=old_token)

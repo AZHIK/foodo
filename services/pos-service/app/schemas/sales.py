@@ -47,7 +47,7 @@ class SaleSyncInput(BaseModel):
 
     client_sale_id: str
     status: Literal["completed", "voided", "refunded"]
-    business_location_id: UUID
+    store_id: UUID
     line_items: list[SaleLineItemInput] = Field(min_length=1)
     discount_amount: Decimal = Field(default=Decimal("0"), ge=Decimal("0"))
     payment_method: Literal["cash", "mobile_money", "card", "other"]
@@ -103,7 +103,7 @@ class SaleRead(BaseModel):
 
     id: UUID
     business_id: UUID
-    business_location_id: UUID
+    store_id: UUID
     client_sale_id: str
     status: str
     subtotal: Decimal
@@ -128,7 +128,7 @@ class SaleListItem(BaseModel):
 
     id: UUID
     business_id: UUID
-    business_location_id: UUID
+    store_id: UUID
     client_sale_id: str
     status: str
     subtotal: Decimal
@@ -188,4 +188,4 @@ class SaleListFilters(BaseModel):
     to_date: datetime | None = None
     status: Literal["completed", "voided", "refunded"] | None = None
     payment_method: Literal["cash", "mobile_money", "card", "other"] | None = None
-    business_location_id: UUID | None = None
+    store_id: UUID | None = None

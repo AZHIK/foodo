@@ -156,7 +156,7 @@ class Store(UUIDMixin, TimestampMixin, SoftDeleteMixin, SQLModel, table=True):
     __table_args__ = (UniqueConstraint("business_id", "name"),)
 
     business: Business = Relationship(back_populates="stores")
-    user_location_roles: list["UserBusinessLocationRole"] = Relationship(back_populates="store")
+    user_store_roles: list["UserStoreRole"] = Relationship(back_populates="store")
     settings: "StoreSetting" = Relationship(
         back_populates="store",
         sa_relationship_kwargs={"uselist": False},
@@ -209,8 +209,8 @@ class StoreSetting(UUIDMixin, TimestampMixin, SoftDeleteMixin, SQLModel, table=T
 # Who can do what inside a business: custom roles (BusinessRole) carry a set
 # of permission codes (BusinessRolePermission); users are assigned to a role
 # at the business level (UserBusinessRole) or at a specific store
-# (UserBusinessLocationRole — this is the EMPLOYEE-at-store mapping, preserved
-# as-is; no separate employee table is needed). UserBusinessPermission records
+# (UserStoreRole — this is the EMPLOYEE-at-store mapping, preserved as-is;
+# no separate employee table is needed). UserBusinessPermission records
 # per-user grant/deny overrides.
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -259,14 +259,14 @@ class UserBusinessRole(UUIDMixin, SoftDeleteMixin, SQLModel, table=True):
     business_role: BusinessRole = Relationship(back_populates="user_assignments")
 
 
-class UserBusinessLocationRole(UUIDMixin, SoftDeleteMixin, SQLModel, table=True):
+class UserStoreRole(UUIDMixin, SoftDeleteMixin, SQLModel, table=True):
     """EMPLOYEE-at-store mapping: a user assigned a role at a specific store.
 
     This is the employee concept for this system — preserved as-is, not
     duplicated into a new table. ``store_id`` points at the (renamed) store.
     """
 
-    __tablename__ = "user_business_location_roles"
+    __tablename__ = "user_store_roles"
 
     user_id: UUID = Field(foreign_key="users.id")
     business_id: UUID = Field(foreign_key="businesses.id")
@@ -281,7 +281,7 @@ class UserBusinessLocationRole(UUIDMixin, SoftDeleteMixin, SQLModel, table=True)
         ),
     )
 
-    store: Store = Relationship(back_populates="user_location_roles")
+    store: Store = Relationship(back_populates="user_store_roles")
 
 
 class UserBusinessPermission(UUIDMixin, TimestampMixin, SoftDeleteMixin, SQLModel, table=True):

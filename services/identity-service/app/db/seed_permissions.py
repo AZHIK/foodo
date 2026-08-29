@@ -287,21 +287,21 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
         "Revoke user business role",
         "Remove a business role assignment from a user.",
     ),
-    # User Business Location Role Assignment
+    # User Store Role Assignment
     PermissionSeed(
-        PermissionCode.USER_BUSINESS_LOCATION_ROLES_VIEW,
-        "View user business location roles",
-        "List and view location-scoped role assignments for users.",
+        PermissionCode.USER_STORE_ROLES_VIEW,
+        "View user store roles",
+        "List and view store-scoped role assignments for users.",
     ),
     PermissionSeed(
-        PermissionCode.USER_BUSINESS_LOCATION_ROLES_ASSIGN,
-        "Assign user location role",
-        "Assign a business location role to a user.",
+        PermissionCode.USER_STORE_ROLES_ASSIGN,
+        "Assign user store role",
+        "Assign a store role to a user.",
     ),
     PermissionSeed(
-        PermissionCode.USER_BUSINESS_LOCATION_ROLES_REVOKE,
-        "Revoke user location role",
-        "Remove a business location role assignment from a user.",
+        PermissionCode.USER_STORE_ROLES_REVOKE,
+        "Revoke user store role",
+        "Remove a store role assignment from a user.",
     ),
     # User Business Permission Overrides
     PermissionSeed(
@@ -469,7 +469,7 @@ DEFAULT_PLATFORM_ROLE_PERMISSIONS: dict[str, list[PermissionCode]] = {
     # "admin" = platform-wide operational/administrative oversight.  Confirmed
     # during the default-groups-and-roles seeding work: it aligns to the
     # internal "Super Admin" resource set (Groups/Roles/PlatformRoles/Orgs/
-    # Businesses/Locations/RoleTemplates/Users) plus every business/value-chain
+    # Businesses/Stores/RoleTemplates/Users) plus every business/value-chain
     # code.  Across the whole PermissionCode surface that resolves to every
     # member of the (reconciled) enum.
     "admin": list(PermissionCode),

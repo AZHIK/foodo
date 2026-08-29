@@ -46,7 +46,7 @@ async def _create_completed_sale(
     sale_input = {
         "client_sale_id": str(uuid4()),
         "status": "completed",
-        "business_location_id": str(uuid4()),
+        "store_id": str(uuid4()),
         "line_items": [{"item_id": str(uuid4()), "quantity": "2", "unit_price": "5.00"}],
         "discount_amount": "0",
         "payment_method": "cash",

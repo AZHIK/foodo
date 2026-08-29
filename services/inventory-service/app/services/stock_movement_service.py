@@ -170,7 +170,7 @@ async def record_movement(
     db: AsyncSession,
     item_id: UUID,
     business_id: UUID,
-    business_location_id: UUID,
+    store_id: UUID,
     quantity_delta: Decimal,
     movement_type: MovementType,
     reference_type: str | None = None,
@@ -195,7 +195,7 @@ async def record_movement(
     business_id : UUID
         Explicitly required — callers always have this from the URL path or
         event payload.  Not inferred from the item row to avoid an extra query.
-    business_location_id : UUID
+    store_id : UUID
     quantity_delta : Decimal
         Positive for increases, negative for decreases.
     movement_type : MovementType
@@ -250,13 +250,13 @@ async def record_movement(
                 item_id=str(item_id),
                 movement_type=movement_type.value,
             )
-            # Return the most recent movement for this item/location as a
+            # Return the most recent movement for this item/store as a
             # convenience so callers don't have to handle a None return
             result = await db.exec(
                 select(StockMovement)
                 .where(
                     StockMovement.item_id == item_id,
-                    StockMovement.business_location_id == business_location_id,
+                    StockMovement.store_id == store_id,
                 )
                 .order_by(StockMovement.created_at.desc())
                 .limit(1)
@@ -279,7 +279,7 @@ async def record_movement(
         select(StockLevel)
         .where(
             StockLevel.item_id == item_id,
-            StockLevel.business_location_id == business_location_id,
+            StockLevel.store_id == store_id,
         )
         .with_for_update()
     )
@@ -288,7 +288,7 @@ async def record_movement(
     if stock_level is None:
         stock_level = StockLevel(
             item_id=item_id,
-            business_location_id=business_location_id,
+            store_id=store_id,
             current_quantity=Decimal("0.000"),
         )
         db.add(stock_level)
@@ -299,8 +299,8 @@ async def record_movement(
     # ── Step 4: Negative stock check ────────────────────────────────
     if not skip_negative_check and new_quantity < Decimal("0.000") and not item.allow_negative_stock:
         raise InsufficientStockError(
-            f"Insufficient stock for item '{item_id}' at location "
-            f"'{business_location_id}': current={old_quantity}, "
+            f"Insufficient stock for item '{item_id}' at store "
+            f"'{store_id}': current={old_quantity}, "
             f"requested_delta={quantity_delta}, new_quantity={new_quantity} would be negative "
             f"and item does not allow negative stock"
         )
@@ -314,7 +314,7 @@ async def record_movement(
     movement = StockMovement(
         item_id=item_id,
         business_id=business_id,
-        business_location_id=business_location_id,
+        store_id=store_id,
         quantity_delta=quantity_delta,
         movement_type=movement_type,
         reference_type=reference_type,
@@ -339,7 +339,7 @@ async def record_movement(
         payload: dict[str, Any] = {
             "item_id": str(item_id),
             "business_id": str(business_id),
-            "business_location_id": str(business_location_id),
+            "store_id": str(store_id),
             "movement_type": movement_type.value,
             "quantity_delta": str(quantity_delta),
             "new_quantity": str(new_quantity),
@@ -353,7 +353,7 @@ async def record_movement(
             low_payload = {
                 "item_id": str(item_id),
                 "business_id": str(business_id),
-                "business_location_id": str(business_location_id),
+                "store_id": str(store_id),
                 "current_quantity": str(new_quantity),
                 "reorder_threshold": str(item.reorder_threshold),
             }

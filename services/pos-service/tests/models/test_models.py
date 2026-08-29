@@ -19,7 +19,7 @@ class TestSaleModel:
     async def test_create_sale_with_required_fields(self, db_session: AsyncSession) -> None:
         sale = Sale(
             business_id=uuid4(),
-            business_location_id=uuid4(),
+            store_id=uuid4(),
             client_sale_id="req-fields-test",
             status=SaleStatus.COMPLETED,
             subtotal=Decimal("100.00"),
@@ -39,7 +39,7 @@ class TestSaleModel:
     async def test_client_sale_id_uniqueness(self, db_session: AsyncSession) -> None:
         sale1 = Sale(
             business_id=uuid4(),
-            business_location_id=uuid4(),
+            store_id=uuid4(),
             client_sale_id="unique-test-id",
             status=SaleStatus.COMPLETED,
             subtotal=Decimal("50.00"),
@@ -52,7 +52,7 @@ class TestSaleModel:
 
         sale2 = Sale(
             business_id=uuid4(),
-            business_location_id=uuid4(),
+            store_id=uuid4(),
             client_sale_id="unique-test-id",
             status=SaleStatus.COMPLETED,
             subtotal=Decimal("75.00"),
@@ -67,7 +67,7 @@ class TestSaleModel:
     async def test_decimal_round_trip(self, db_session: AsyncSession) -> None:
         original = Sale(
             business_id=uuid4(),
-            business_location_id=uuid4(),
+            store_id=uuid4(),
             client_sale_id="decimal-rt",
             status=SaleStatus.COMPLETED,
             subtotal=Decimal("99.99"),
@@ -93,7 +93,7 @@ class TestSaleModel:
         now = datetime.now(UTC)
         sale = Sale(
             business_id=uuid4(),
-            business_location_id=uuid4(),
+            store_id=uuid4(),
             client_sale_id="voided-sale",
             status=SaleStatus.VOIDED,
             subtotal=Decimal("0.00"),
@@ -118,7 +118,7 @@ class TestSaleLineItemModel:
     async def test_create_line_item(self, db_session: AsyncSession) -> None:
         sale = Sale(
             business_id=uuid4(),
-            business_location_id=uuid4(),
+            store_id=uuid4(),
             client_sale_id="li-parent-sale",
             status=SaleStatus.COMPLETED,
             subtotal=Decimal("50.00"),
@@ -163,7 +163,7 @@ class TestSaleLineItemModel:
         """
         sale = Sale(
             business_id=uuid4(),
-            business_location_id=uuid4(),
+            store_id=uuid4(),
             client_sale_id="no-fk-item",
             status=SaleStatus.COMPLETED,
             subtotal=Decimal("30.00"),

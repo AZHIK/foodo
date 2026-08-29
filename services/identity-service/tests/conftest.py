@@ -71,7 +71,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         await conn.execute(
             text("""
             TRUNCATE TABLE
-                user_business_location_roles,
+                user_store_roles,
                 user_business_permissions,
                 user_business_roles,
                 business_role_permissions,
@@ -110,7 +110,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         await conn.execute(
             text("""
             TRUNCATE TABLE
-                user_business_location_roles,
+                user_store_roles,
                 user_business_permissions,
                 user_business_roles,
                 business_role_permissions,

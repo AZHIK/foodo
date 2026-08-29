@@ -66,7 +66,7 @@ class TestSaleSyncInput:
             SaleSyncInput(
                 client_sale_id="void-no-reason",
                 status="voided",
-                business_location_id=uuid4(),
+                store_id=uuid4(),
                 line_items=[
                     SaleLineItemInput(
                         item_id=uuid4(),
@@ -83,7 +83,7 @@ class TestSaleSyncInput:
             SaleSyncInput(
                 client_sale_id="refund-no-reason",
                 status="refunded",
-                business_location_id=uuid4(),
+                store_id=uuid4(),
                 line_items=[
                     SaleLineItemInput(
                         item_id=uuid4(),
@@ -100,7 +100,7 @@ class TestSaleSyncInput:
             SaleSyncInput(
                 client_sale_id="empty-line-items",
                 status="completed",
-                business_location_id=uuid4(),
+                store_id=uuid4(),
                 line_items=[],
                 payment_method="cash",
                 occurred_at=datetime.now(UTC),
@@ -111,7 +111,7 @@ class TestSaleSyncInput:
         sale = SaleSyncInput(
             client_sale_id="pre-voided",
             status="voided",
-            business_location_id=uuid4(),
+            store_id=uuid4(),
             line_items=[
                 SaleLineItemInput(
                     item_id=uuid4(),
@@ -130,7 +130,7 @@ class TestSaleSyncInput:
         sale = SaleSyncInput(
             client_sale_id="valid-sale",
             status="completed",
-            business_location_id=uuid4(),
+            store_id=uuid4(),
             line_items=[
                 SaleLineItemInput(
                     item_id=uuid4(),

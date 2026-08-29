@@ -54,8 +54,8 @@ class TestTransferStockRequest:
     def test_valid_request_succeeds(self) -> None:
         req = TransferStockRequest(
             item_id=UUID("11111111-1111-1111-1111-111111111111"),
-            source_location_id=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-            destination_location_id=UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+            source_store_id=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            destination_store_id=UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
             quantity=50.0,
         )
         assert req.quantity == 50.0
@@ -65,8 +65,8 @@ class TestTransferStockRequest:
         with pytest.raises(ValidationError) as exc:
             TransferStockRequest(
                 item_id=UUID("11111111-1111-1111-1111-111111111111"),
-                source_location_id=loc,
-                destination_location_id=loc,
+                source_store_id=loc,
+                destination_store_id=loc,
                 quantity=10.0,
             )
         errors = exc.value.errors()
@@ -76,8 +76,8 @@ class TestTransferStockRequest:
         with pytest.raises(ValidationError):
             TransferStockRequest(
                 item_id=UUID("11111111-1111-1111-1111-111111111111"),
-                source_location_id=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-                destination_location_id=UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                source_store_id=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                destination_store_id=UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
                 quantity=0,
             )
 
@@ -85,7 +85,7 @@ class TestTransferStockRequest:
         with pytest.raises(ValidationError):
             TransferStockRequest(
                 item_id=UUID("11111111-1111-1111-1111-111111111111"),
-                source_location_id=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-                destination_location_id=UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                source_store_id=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                destination_store_id=UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
                 quantity=-1,
             )

@@ -14,9 +14,13 @@ if TYPE_CHECKING:
 
 class UserCategory(StrEnum):
     PLATFORM_STAFF = "platform_staff"
-    BUSINESS_USER = "business_user"
+    BUSINESS_STAFF = "business_staff"
+    BUSINESS_STORE_STAFF = "business_store_staff"
     DRIVER = "driver"
     CONSUMER = "consumer"
+    FARMER = "farmer"
+    LOGISTICS_PROVIDER = "logistics_provider"
+    QA = "qa"
 
 
 class UserStatus(StrEnum):
