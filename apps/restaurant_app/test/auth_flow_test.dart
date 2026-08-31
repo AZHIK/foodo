@@ -767,7 +767,8 @@ void main() {
       await tester.tap(find.byKey(OnboardingKeys.next));
       await tester.pumpAndSettle();
 
-      expect(container.read(businessProfileProvider).name, 'The Brass Olive');
+      final profile = container.read(businessProfileProvider);
+      expect(profile?.name, 'The Brass Olive');
       expect(container.read(storeNameProvider), 'The Brass Olive');
 
       // Step 2 — the business's first location, into the same list Store

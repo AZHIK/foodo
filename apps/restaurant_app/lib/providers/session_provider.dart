@@ -292,14 +292,17 @@ class SessionNotifier extends Notifier<SessionState> {
       state = state.copyWith(twoFactorEnabled: enabled);
 
   /// Removes a profile from this device — the account still exists, it just
-  /// stops being offered on the picker.
-  void forgetProfile(String staffId) {
+  /// stops being offered on the picker. Also deletes the local profile record
+  /// and its associated cached permissions.
+  Future<void> forgetProfile(String staffId) async {
     state = state.copyWith(
       savedProfileIds: [
         for (final id in state.savedProfileIds)
           if (id != staffId) id,
       ],
     );
+    // Delete the profile from database; cascade will also delete CachedPermissions.
+    await _profileRepo.deleteProfile(staffId);
   }
 
   /// Adds [staffId] to the saved list, newest first, without duplicating it.

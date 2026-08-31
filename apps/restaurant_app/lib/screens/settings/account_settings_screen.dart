@@ -535,10 +535,12 @@ class _DangerZone extends ConsumerWidget {
     if (id != null) {
       // The backend has no self-deactivate endpoint yet — this can only
       // forget the device profile and sign out, not flip a real status.
-      ref.read(sessionProvider.notifier).forgetProfile(id);
+      await ref.read(sessionProvider.notifier).forgetProfile(id);
     }
     // Signing out is what makes the deactivation real from here: the guard
     // sees no session and puts the front door back up.
-    ref.read(sessionProvider.notifier).signOut();
+    if (context.mounted) {
+      ref.read(sessionProvider.notifier).signOut();
+    }
   }
 }

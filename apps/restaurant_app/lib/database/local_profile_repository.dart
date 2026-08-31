@@ -101,6 +101,13 @@ class LocalProfileRepository {
     return _db.into(_db.cachedPermissions).insertOnConflictUpdate(permissions);
   }
 
+  /// Retrieves the cached permissions for a staff member, or null if none exist.
+  Future<CachedPermission?> getPermissions(String userId) {
+    return (_db.select(_db.cachedPermissions)
+          ..where((row) => row.userId.equals(userId)))
+        .getSingleOrNull();
+  }
+
   /// Gets all cached business roles for a business.
   Future<List<CachedBusinessRole>> getCachedRoles(String businessId) {
     return (_db.select(_db.cachedBusinessRoles)
