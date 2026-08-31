@@ -239,3 +239,36 @@ async def create_business(
         default_store_id=default_store.id,
         default_store_setting_id=default_store_setting.id,
     )
+
+
+async def update_business(
+    db: AsyncSession,
+    *,
+    business_id: UUID,
+    values: dict,
+    actor_user_id: UUID,
+) -> Business | None:
+    """Partial-update a business. `values` is already `model_dump(exclude_unset=True)`
+    from BusinessUpdate — only keys present are applied. Returns None if not found.
+    """
+    business = None
+    async with db.begin():
+        business = await db.get(Business, business_id)
+        if business is None:
+            return None
+        for field, value in values.items():
+            setattr(business, field, value)
+        db.add(business)
+
+    await db.refresh(business)
+
+    await publish_audit_recorded(
+        actor_id=actor_user_id,
+        actor_type="user",
+        business_id=business.id,
+        action="business.updated",
+        resource_type="business",
+        resource_id=business.id,
+        details={"updated_fields": list(values.keys())},
+    )
+    return business

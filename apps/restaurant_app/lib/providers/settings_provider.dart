@@ -1,11 +1,10 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/business_profile.dart';
 import '../models/order.dart';
 import '../models/store_settings.dart';
+import 'business_api_provider.dart';
 
 /// App-wide theme mode.
 ///
@@ -35,24 +34,26 @@ final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(
 // Business identity
 // ---------------------------------------------------------------------------
 
-/// The venue's own details. Mutable because the Business Profile screen edits
-/// them; everything that displays store identity reads through this.
-class BusinessProfileNotifier extends Notifier<BusinessProfile> {
+class BusinessProfileNotifier extends Notifier<BusinessProfile?> {
   @override
-  BusinessProfile build() => BusinessProfile.seed;
+  BusinessProfile? build() {
+    final currentBusiness = ref.watch(currentBusinessProvider);
+
+    return currentBusiness.when(
+      data: (business) {
+        if (business != null) return BusinessProfile.fromDto(business);
+        return null;
+      },
+      loading: () => null,
+      error: (_, __) => null,
+    );
+  }
 
   void save(BusinessProfile profile) => state = profile;
-
-  void setLogo(String name, Uint8List bytes) =>
-      state = state.copyWith(logoName: name, logoBytes: bytes);
-
-  void clearLogo() => state = state.copyWith(clearLogo: true);
-
-  void setBrandColor(Color color) => state = state.copyWith(brandColor: color);
 }
 
 final businessProfileProvider =
-    NotifierProvider<BusinessProfileNotifier, BusinessProfile>(
+    NotifierProvider<BusinessProfileNotifier, BusinessProfile?>(
       BusinessProfileNotifier.new,
     );
 
@@ -61,7 +62,10 @@ final businessProfileProvider =
 /// Still its own provider so the header rebuilds only when the *name* changes,
 /// not on every edit to an address or a receipt footer.
 final storeNameProvider = Provider<String>(
-  (ref) => ref.watch(businessProfileProvider.select((p) => p.name)),
+  (ref) {
+    final profile = ref.watch(businessProfileProvider);
+    return profile?.name ?? 'Restaurant';
+  },
 );
 
 /// The thank-you line printed at the bottom of every receipt.
@@ -70,12 +74,18 @@ final storeNameProvider = Provider<String>(
 /// prints rather than on the whole profile — and so no receipt ever ships with
 /// a hardcoded message again.
 final receiptFooterProvider = Provider<String>(
-  (ref) => ref.watch(businessProfileProvider.select((p) => p.receiptFooter)),
+  (ref) {
+    final profile = ref.watch(businessProfileProvider);
+    return profile?.formattedAddress ?? '';
+  },
 );
 
 /// The business's accent colour, for receipts and customer-facing surfaces.
 final brandColorProvider = Provider<Color>(
-  (ref) => ref.watch(businessProfileProvider.select((p) => p.brandColor)),
+  (ref) {
+    final profile = ref.watch(businessProfileProvider);
+    return profile?.brandColor ?? const Color(0xFF0B6B57);
+  },
 );
 
 // ---------------------------------------------------------------------------

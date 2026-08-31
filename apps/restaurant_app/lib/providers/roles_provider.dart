@@ -1,11 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:drift/drift.dart';
+import 'dart:convert';
 
 import '../auth/staff_rbac_api.dart';
 import '../auth/staff_rbac_dtos.dart';
+import '../database/app_database.dart';
 import '../models/business_role.dart';
 import '../models/table_query.dart';
 import 'auth_provider.dart';
+import 'database_providers.dart';
 import 'permissions_provider.dart';
 import 'staff_provider.dart';
 import 'table_query_provider.dart';
@@ -45,8 +49,61 @@ class RolesNotifier extends AsyncNotifier<List<BusinessRole>> {
     final businessId = ref.watch(currentBusinessIdProvider);
     if (businessId == null) return const [];
 
-    final roles = await _api.listRoles(businessId: businessId);
-    return Future.wait(roles.map((dto) => _withPermissions(businessId, dto)));
+    try {
+      // Try to load from API
+      final roles = await _api.listRoles(businessId: businessId);
+      final loadedRoles = await Future.wait(roles.map((dto) => _withPermissions(businessId, dto)));
+
+      // Cache the roles to database
+      await _cacheRoles(businessId, loadedRoles);
+
+      return loadedRoles;
+    } catch (e) {
+      // If API fails, try to load from cache
+      return await _loadFromCache(businessId);
+    }
+  }
+
+  Future<void> _cacheRoles(String businessId, List<BusinessRole> roles) async {
+    try {
+      final repo = ref.read(localProfileRepositoryProvider);
+      final companions = roles.map((role) {
+        return CachedBusinessRolesCompanion(
+          businessId: Value(businessId),
+          roleId: Value(role.id),
+          name: Value(role.name),
+          description: Value(role.description),
+          isProtected: Value(role.isProtected),
+          permissionCodes: Value(jsonEncode(role.permissionIds.toList())),
+          cachedAt: Value(DateTime.now()),
+        );
+      }).toList();
+      await repo.setCachedRoles(businessId, companions);
+    } catch (e) {
+      // Cache save failed, but we still have the API response so return it.
+      // The cache will be repopulated on the next successful API call.
+    }
+  }
+
+  Future<List<BusinessRole>> _loadFromCache(String businessId) async {
+    try {
+      final repo = ref.read(localProfileRepositoryProvider);
+      final cached = await repo.getCachedRoles(businessId);
+      return cached.map((row) {
+        final permissionIds = (jsonDecode(row.permissionCodes) as List<dynamic>)
+            .map((e) => e.toString())
+            .toSet();
+        return BusinessRole(
+          id: row.roleId,
+          name: row.name,
+          description: row.description,
+          permissionIds: permissionIds,
+          isProtected: row.isProtected,
+        );
+      }).toList();
+    } catch (e) {
+      return const [];
+    }
   }
 
   Future<BusinessRole> _withPermissions(String businessId, BusinessRoleDto dto) async {

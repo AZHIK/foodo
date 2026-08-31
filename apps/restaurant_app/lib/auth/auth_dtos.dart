@@ -184,16 +184,135 @@ class BusinessCreateInput {
   }
 }
 
+/// Request body for PATCH /api/v1/businesses/{id} (partial update).
+/// Mirrors backend BusinessUpdate — every field optional; toJson() emits
+/// only the fields that were actually set, so unset fields are left alone.
+class BusinessUpdateInput {
+  final String? name;
+  final String? businessType;
+  final String? email;
+  final String? phone;
+  final String? address;
+  final String? city;
+  final String? countryCode;
+  final String? timezone;
+  final String? taxId;
+  final String? registrationNumber;
+  final String? cuisineType;
+  final String? logo;
+  final String? licenseDocumentUrl;
+  final String? status;
+
+  BusinessUpdateInput({
+    this.name,
+    this.businessType,
+    this.email,
+    this.phone,
+    this.address,
+    this.city,
+    this.countryCode,
+    this.timezone,
+    this.taxId,
+    this.registrationNumber,
+    this.cuisineType,
+    this.logo,
+    this.licenseDocumentUrl,
+    this.status,
+  });
+
+  Map<String, dynamic> toJson() => {
+        if (name != null) 'name': name,
+        if (businessType != null) 'business_type': businessType,
+        if (email != null) 'email': email,
+        if (phone != null) 'phone': phone,
+        if (address != null) 'address': address,
+        if (city != null) 'city': city,
+        if (countryCode != null) 'country_code': countryCode,
+        if (timezone != null) 'timezone': timezone,
+        if (taxId != null) 'tax_id': taxId,
+        if (registrationNumber != null) 'registration_number': registrationNumber,
+        if (cuisineType != null) 'cuisine_type': cuisineType,
+        if (logo != null) 'logo': logo,
+        if (licenseDocumentUrl != null) 'license_document_url': licenseDocumentUrl,
+        if (status != null) 'status': status,
+      };
+}
+
+/// Full business data from GET /businesses/{id}.
+class BusinessReadDto {
+  final String id;
+  final String name;
+  final String businessType;
+  final String? email;
+  final String? phone;
+  final String? address;
+  final String? city;
+  final String countryCode;
+  final String timezone;
+  final String? taxId;
+  final String? registrationNumber;
+  final String? cuisineType;
+  final String? logo;
+  final String? licenseDocumentUrl;
+  final String status;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  BusinessReadDto({
+    required this.id,
+    required this.name,
+    required this.businessType,
+    this.email,
+    this.phone,
+    this.address,
+    this.city,
+    required this.countryCode,
+    required this.timezone,
+    this.taxId,
+    this.registrationNumber,
+    this.cuisineType,
+    this.logo,
+    this.licenseDocumentUrl,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory BusinessReadDto.fromJson(Map<String, dynamic> json) {
+    return BusinessReadDto(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      businessType: json['business_type'] as String,
+      email: json['email'] as String?,
+      phone: json['phone'] as String?,
+      address: json['address'] as String?,
+      city: json['city'] as String?,
+      countryCode: json['country_code'] as String? ?? 'TZ',
+      timezone: json['timezone'] as String? ?? 'Africa/Dar_es_Salaam',
+      taxId: json['tax_id'] as String?,
+      registrationNumber: json['registration_number'] as String?,
+      cuisineType: json['cuisine_type'] as String?,
+      logo: json['logo'] as String?,
+      licenseDocumentUrl: json['license_document_url'] as String?,
+      status: json['status'] as String? ?? 'active',
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
+  }
+}
+
 /// Response from POST /api/v1/businesses.
 /// The full response body has nested `business`, `roles_created`, `owner_role_name`, `note`.
 /// We extract the key fields we need for app flow.
 class BusinessCreateOutput {
   final String businessId;
   final String ownerRoleName;
+  final BusinessReadDto business;
 
   BusinessCreateOutput({
     required this.businessId,
     required this.ownerRoleName,
+    required this.business,
   });
 
   factory BusinessCreateOutput.fromJson(Map<String, dynamic> json) {
@@ -201,11 +320,126 @@ class BusinessCreateOutput {
     return BusinessCreateOutput(
       businessId: business['id'] as String,
       ownerRoleName: json['owner_role_name'] as String? ?? 'Owner',
+      business: BusinessReadDto.fromJson(business),
     );
   }
 }
 
-/// One store returned from GET /api/v1/businesses/{id}/stores.
+/// Full store data from GET /api/v1/businesses/{id}/stores/{store_id}.
+class StoreReadDto {
+  final String id;
+  final String businessId;
+  final String name;
+  final String token;
+  final String locationType;
+  final String status;
+  final String countryCode;
+  final String? city;
+  final String? address;
+  final String timezone;
+  final bool isPrimary;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  StoreReadDto({
+    required this.id,
+    required this.businessId,
+    required this.name,
+    required this.token,
+    required this.locationType,
+    required this.status,
+    required this.countryCode,
+    this.city,
+    this.address,
+    required this.timezone,
+    required this.isPrimary,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory StoreReadDto.fromJson(Map<String, dynamic> json) {
+    return StoreReadDto(
+      id: json['id'] as String,
+      businessId: json['business_id'] as String,
+      name: json['name'] as String,
+      token: json['token'] as String,
+      locationType: json['location_type'] as String,
+      status: json['status'] as String? ?? 'active',
+      countryCode: json['country_code'] as String? ?? 'TZ',
+      city: json['city'] as String?,
+      address: json['address'] as String?,
+      timezone: json['timezone'] as String? ?? 'Africa/Dar_es_Salaam',
+      isPrimary: json['is_primary'] as bool? ?? false,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
+  }
+}
+
+/// Store settings data from GET /api/v1/businesses/{id}/stores/{store_id}/settings.
+class StoreSettingReadDto {
+  final String id;
+  final String storeId;
+  final bool active;
+  final String? address;
+  final double? latitude;
+  final double? longitude;
+  final String? email;
+  final String? phone;
+  final String preferredCurrency;
+  final double? amount;
+  final int? maxPaymentTimeMinutes;
+  final String? logo;
+  final bool offerRetail;
+  final bool offerWholesale;
+  final bool displayPricesInclusiveOfTax;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  StoreSettingReadDto({
+    required this.id,
+    required this.storeId,
+    required this.active,
+    this.address,
+    this.latitude,
+    this.longitude,
+    this.email,
+    this.phone,
+    required this.preferredCurrency,
+    this.amount,
+    this.maxPaymentTimeMinutes,
+    this.logo,
+    required this.offerRetail,
+    required this.offerWholesale,
+    required this.displayPricesInclusiveOfTax,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory StoreSettingReadDto.fromJson(Map<String, dynamic> json) {
+    return StoreSettingReadDto(
+      id: json['id'] as String,
+      storeId: json['store_id'] as String,
+      active: json['active'] as bool? ?? true,
+      address: json['address'] as String?,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      email: json['email'] as String?,
+      phone: json['phone'] as String?,
+      preferredCurrency: json['preferred_currency'] as String? ?? 'TZS',
+      amount: (json['amount'] as num?)?.toDouble(),
+      maxPaymentTimeMinutes: json['max_payment_time_minutes'] as int?,
+      logo: json['logo'] as String?,
+      offerRetail: json['offer_retail'] as bool? ?? true,
+      offerWholesale: json['offer_wholesale'] as bool? ?? false,
+      displayPricesInclusiveOfTax: json['display_prices_inclusive_of_tax'] as bool? ?? false,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
+  }
+}
+
+/// One store returned from GET /api/v1/businesses/{id}/stores (list).
 class StoreDto {
   final String id;
   final bool isPrimary;

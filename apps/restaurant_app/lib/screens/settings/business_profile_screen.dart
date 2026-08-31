@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../auth/auth_dtos.dart';
 import '../../models/business_profile.dart';
+import '../../providers/business_api_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
@@ -17,31 +19,22 @@ import '../../widgets/image_upload_field.dart';
 import '../../widgets/labeled_form_field.dart';
 
 /// Widget keys for the profile form's controls.
-///
-/// The labels sit outside the inputs, so there is no `labelText` for a test to
-/// find a field by — the same reason [ItemFormKeys] and [StockDialogKeys]
-/// exist.
 abstract final class BusinessProfileKeys {
   static const name = Key('businessProfile.name');
-  static const legalName = Key('businessProfile.legalName');
   static const type = Key('businessProfile.type');
   static const email = Key('businessProfile.email');
-  static const website = Key('businessProfile.website');
+  static const phone = Key('businessProfile.phone');
+  static const address = Key('businessProfile.address');
+  static const city = Key('businessProfile.city');
   static const taxId = Key('businessProfile.taxId');
-  static const receiptFooter = Key('businessProfile.receiptFooter');
+  static const registrationNumber = Key('businessProfile.registrationNumber');
+  static const cuisineType = Key('businessProfile.cuisineType');
+  static const licenseDocumentUrl = Key('businessProfile.licenseDocumentUrl');
   static const brandColor = Key('businessProfile.brandColor');
   static const save = Key('businessProfile.save');
 }
 
-/// Edits who the venue *is* — the name, marks and contact details that appear
-/// on receipts and any customer-facing surface.
-///
-/// A screen rather than a dialog: this is a dozen fields across three concerns,
-/// and a modal that tall stops being a modal. It keeps the detail-page shell so
-/// it still reads as part of the same app, and so the Save button rides in the
-/// pinned header rather than at the bottom of a form nobody scrolls back up.
-///
-/// How the store *behaves* — tax, currency, hours — is Store Settings' job.
+/// Edits business identity: name, type, and contact details synced with backend.
 class BusinessProfileScreen extends ConsumerStatefulWidget {
   const BusinessProfileScreen({super.key});
 
@@ -54,24 +47,18 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _name = TextEditingController();
-  final _legalName = TextEditingController();
   final _email = TextEditingController();
   final _phone = TextEditingController();
-  final _website = TextEditingController();
-  final _address1 = TextEditingController();
-  final _address2 = TextEditingController();
+  final _address = TextEditingController();
   final _city = TextEditingController();
-  final _postcode = TextEditingController();
-  final _country = TextEditingController();
   final _taxId = TextEditingController();
-  final _receiptFooter = TextEditingController();
+  final _registrationNumber = TextEditingController();
+  final _cuisineType = TextEditingController();
+  final _licenseDocumentUrl = TextEditingController();
 
-  BusinessType _type = BusinessType.restaurant;
+  late BusinessType _type;
   bool _seeded = false;
-
-  /// Set on the first edit, so the Save button is inert until something has
-  /// actually changed — a form that always looks saveable teaches people to
-  /// press Save without reading.
+  bool _saving = false;
   bool _dirty = false;
 
   @override
@@ -81,36 +68,34 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
     _seeded = true;
 
     final profile = ref.read(businessProfileProvider);
-    _name.text = profile.name;
-    _legalName.text = profile.legalName;
-    _email.text = profile.email;
-    _phone.text = profile.phone;
-    _website.text = profile.website;
-    _address1.text = profile.addressLine1;
-    _address2.text = profile.addressLine2;
-    _city.text = profile.city;
-    _postcode.text = profile.postcode;
-    _country.text = profile.country;
-    _taxId.text = profile.taxId;
-    _receiptFooter.text = profile.receiptFooter;
-    _type = profile.type;
+    if (profile != null) {
+      _name.text = profile.name;
+      _email.text = profile.email ?? '';
+      _phone.text = profile.phone ?? '';
+      _address.text = profile.address ?? '';
+      _city.text = profile.city ?? '';
+      _taxId.text = profile.taxId ?? '';
+      _registrationNumber.text = profile.registrationNumber ?? '';
+      _cuisineType.text = profile.cuisineType ?? '';
+      _licenseDocumentUrl.text = profile.licenseDocumentUrl ?? '';
+      _type = profile.businessType;
+    } else {
+      _type = BusinessType.restaurant;
+    }
   }
 
   @override
   void dispose() {
     for (final controller in [
       _name,
-      _legalName,
       _email,
       _phone,
-      _website,
-      _address1,
-      _address2,
+      _address,
       _city,
-      _postcode,
-      _country,
       _taxId,
-      _receiptFooter,
+      _registrationNumber,
+      _cuisineType,
+      _licenseDocumentUrl,
     ]) {
       controller.dispose();
     }
@@ -121,39 +106,64 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
     if (!_dirty) setState(() => _dirty = true);
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_saving) return;
 
-    final existing = ref.read(businessProfileProvider);
-    ref
-        .read(businessProfileProvider.notifier)
-        .save(
-          existing.copyWith(
-            name: _name.text.trim(),
-            legalName: _legalName.text.trim(),
-            type: _type,
-            email: _email.text.trim(),
-            phone: _phone.text.trim(),
-            website: _website.text.trim(),
-            addressLine1: _address1.text.trim(),
-            addressLine2: _address2.text.trim(),
-            city: _city.text.trim(),
-            postcode: _postcode.text.trim(),
-            country: _country.text.trim(),
-            taxId: _taxId.text.trim(),
-            receiptFooter: _receiptFooter.text.trim(),
-          ),
+    final profile = ref.read(businessProfileProvider);
+
+    if (profile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No business profile loaded')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      final input = BusinessUpdateInput(
+        name: _name.text.trim(),
+        businessType: _type.backendValue,
+        email: _email.text.trim().isEmpty ? null : _email.text.trim(),
+        phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+        address: _address.text.trim().isEmpty ? null : _address.text.trim(),
+        city: _city.text.trim().isEmpty ? null : _city.text.trim(),
+        taxId: _taxId.text.trim().isEmpty ? null : _taxId.text.trim(),
+        registrationNumber:
+            _registrationNumber.text.trim().isEmpty ? null : _registrationNumber.text.trim(),
+        cuisineType: _cuisineType.text.trim().isEmpty ? null : _cuisineType.text.trim(),
+        licenseDocumentUrl: _licenseDocumentUrl.text.trim().isEmpty
+            ? null
+            : _licenseDocumentUrl.text.trim(),
+      );
+      await ref.read(businessProfileNotifierProvider).update(profile.id, input);
+
+      if (mounted) {
+        setState(() => _dirty = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Business profile saved')),
         );
-
-    setState(() => _dirty = false);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Business profile saved')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving profile: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(businessProfileProvider);
+
+    if (profile == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Form(
       key: _formKey,
@@ -163,47 +173,45 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
         maxContentWidth: 1080,
         header: DetailPageHeader(
           title: 'Business profile',
-          subtitle:
-              'Appears on receipts and every customer-facing surface',
+          subtitle: 'Identity and contact details synced with backend',
           onBack: () => context.canPop()
               ? context.pop()
               : context.goNamed(AppRoute.settingsName),
           actions: [
             FilledButton.icon(
               key: BusinessProfileKeys.save,
-              onPressed: _dirty ? _save : null,
-              icon: const Icon(Icons.check_rounded, size: 18),
-              label: const Text('Save changes'),
+              onPressed: (!_dirty || _saving) ? null : _save,
+              icon: _saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check_rounded, size: 18),
+              label: Text(_saving ? 'Saving...' : 'Save changes'),
             ),
           ],
         ),
-        // Branding leads the stacked order on mobile: the logo is the one part
-        // of this screen someone opens it specifically to change.
         sidePanel: [
           _BrandingPanel(
             profile: profile,
-            onLogoPicked: (fileName, bytes) {
-              ref
-                  .read(businessProfileProvider.notifier)
-                  .setLogo(fileName, bytes);
-              _touch();
-            },
-            onLogoRemoved: () {
-              ref.read(businessProfileProvider.notifier).clearLogo();
-              _touch();
-            },
-            onColorPicked: (color) {
-              ref.read(businessProfileProvider.notifier).setBrandColor(color);
-              _touch();
-            },
-          ),
-          const _ReceiptPreview(),
+            onLogoPicked: (fileName, bytes) => _touch(),
+            onLogoRemoved: () => _touch(),
+            onColorPicked: (color) => _touch(),
+          )
         ],
         children: [
           _DetailsPanel(
+            profile: profile,
             name: _name,
-            legalName: _legalName,
+            email: _email,
+            phone: _phone,
+            address: _address,
+            city: _city,
             taxId: _taxId,
+            registrationNumber: _registrationNumber,
+            cuisineType: _cuisineType,
+            licenseDocumentUrl: _licenseDocumentUrl,
             type: _type,
             onTypeChanged: (value) {
               setState(() {
@@ -211,18 +219,7 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                 _dirty = true;
               });
             },
-          ),
-          _ContactPanel(
-            email: _email,
-            phone: _phone,
-            website: _website,
-            address1: _address1,
-            address2: _address2,
-            city: _city,
-            postcode: _postcode,
-            country: _country,
-          ),
-          _ReceiptFooterPanel(controller: _receiptFooter),
+          )
         ],
       ),
     );
@@ -250,8 +247,6 @@ class _BrandingPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The panel is a full-width block on a phone, where a 140px square looks
-    // marooned; in the side column it is the panel's whole subject.
     final compact = context.isMobile;
     final logoSize = compact ? 100.0 : 140.0;
 
@@ -267,7 +262,7 @@ class _BrandingPanel extends StatelessWidget {
               image: profile.logoBytes,
               size: logoSize,
               label: 'Add logo',
-              hint: '',
+              hint: 'Preview only — not yet saved',
               onPicked: onLogoPicked,
               onRemoved: onLogoRemoved,
             ),
@@ -504,281 +499,206 @@ class _BrandPreviewStrip extends StatelessWidget {
 
 class _DetailsPanel extends StatelessWidget {
   const _DetailsPanel({
+    required this.profile,
     required this.name,
-    required this.legalName,
+    required this.email,
+    required this.phone,
+    required this.address,
+    required this.city,
     required this.taxId,
+    required this.registrationNumber,
+    required this.cuisineType,
+    required this.licenseDocumentUrl,
     required this.type,
     required this.onTypeChanged,
   });
 
+  final BusinessProfile profile;
   final TextEditingController name;
-  final TextEditingController legalName;
+  final TextEditingController email;
+  final TextEditingController phone;
+  final TextEditingController address;
+  final TextEditingController city;
   final TextEditingController taxId;
+  final TextEditingController registrationNumber;
+  final TextEditingController cuisineType;
+  final TextEditingController licenseDocumentUrl;
   final BusinessType type;
   final ValueChanged<BusinessType> onTypeChanged;
 
   @override
   Widget build(BuildContext context) {
-    return DetailPanel(
-      title: 'Business details',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          LabeledFormField(
-            label: 'Business name',
-            isRequired: true,
-            helper: 'Shown in the sidebar and on receipts',
-            child: TextFormField(
-              key: BusinessProfileKeys.name,
-              controller: name,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(hintText: 'The Copper Fig'),
-              validator: (value) => (value ?? '').trim().isEmpty
-                  ? 'The business needs a name'
-                  : null,
-            ),
-          ),
-          const SizedBox(height: Insets.lg),
-          FieldPair(
-            left: LabeledFormField(
-              label: 'Business type',
-              child: DropdownButtonFormField<BusinessType>(
-                key: BusinessProfileKeys.type,
-                initialValue: type,
-                isExpanded: true,
-                items: [
-                  for (final option in BusinessType.values)
-                    DropdownMenuItem(
-                      value: option,
-                      child: Row(
-                        children: [
-                          Icon(option.icon, size: 17),
-                          const SizedBox(width: Insets.sm),
-                          Flexible(
-                            child: Text(
-                              option.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value != null) onTypeChanged(value);
-                },
-              ),
-            ),
-            right: LabeledFormField(
-              label: 'Tax ID',
-              helper: 'Printed on receipts where required',
-              child: TextFormField(
-                key: BusinessProfileKeys.taxId,
-                controller: taxId,
-                textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(hintText: 'Optional'),
-              ),
-            ),
-          ),
-          const SizedBox(height: Insets.lg),
-          // Secondary to the trading name above: most venues never fill it in,
-          // and the smaller label keeps it from reading as a second required
-          // field.
-          LabeledFormField(
-            label: 'Legal / registered name',
-            helper: 'Only if it differs from the business name',
-            child: TextFormField(
-              key: BusinessProfileKeys.legalName,
-              controller: legalName,
-              textCapitalization: TextCapitalization.words,
-              style: context.text.bodySmall,
-              decoration: const InputDecoration(
-                hintText: 'Copper Fig Hospitality Ltd',
-                isDense: true,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ContactPanel extends StatelessWidget {
-  const _ContactPanel({
-    required this.email,
-    required this.phone,
-    required this.website,
-    required this.address1,
-    required this.address2,
-    required this.city,
-    required this.postcode,
-    required this.country,
-  });
-
-  final TextEditingController email;
-  final TextEditingController phone;
-  final TextEditingController website;
-  final TextEditingController address1;
-  final TextEditingController address2;
-  final TextEditingController city;
-  final TextEditingController postcode;
-  final TextEditingController country;
-
-  @override
-  Widget build(BuildContext context) {
-    return DetailPanel(
-      title: 'Contact & location',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FieldPair(
-            left: LabeledFormField(
-              label: 'Phone',
-              child: TextFormField(
-                controller: phone,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(hintText: '+1 415 555 0100'),
-              ),
-            ),
-            right: LabeledFormField(
-              label: 'Email',
-              child: TextFormField(
-                key: BusinessProfileKeys.email,
-                controller: email,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  hintText: 'hello@example.com',
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        DetailPanel(
+          title: 'Business details',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              LabeledFormField(
+                label: 'Business name',
+                isRequired: true,
+                helper: 'Displayed in the app and on receipts',
+                child: TextFormField(
+                  key: BusinessProfileKeys.name,
+                  controller: name,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(hintText: 'My Restaurant'),
+                  validator: (value) => (value ?? '').trim().isEmpty
+                      ? 'Business name is required'
+                      : null,
                 ),
-                validator: (value) {
-                  final text = (value ?? '').trim();
-                  if (text.isEmpty) return null;
-                  return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(text)
-                      ? null
-                      : 'Enter a valid email address';
-                },
               ),
-            ),
-          ),
-          const SizedBox(height: Insets.lg),
-          LabeledFormField(
-            label: 'Website',
-            child: TextFormField(
-              key: BusinessProfileKeys.website,
-              controller: website,
-              keyboardType: TextInputType.url,
-              decoration: const InputDecoration(hintText: 'Optional'),
-            ),
-          ),
-          const SizedBox(height: Insets.lg),
-          LabeledFormField(
-            label: 'Address',
-            child: TextFormField(
-              controller: address1,
-              // Multiline, because a street address is not reliably one line
-              // and a single-line field forces people to abbreviate.
-              maxLines: 2,
-              minLines: 2,
-              textCapitalization: TextCapitalization.words,
-              decoration: _multilineDecoration(
-                context,
-                hint: '84 Riverside Walk',
+              const SizedBox(height: Insets.lg),
+              FieldPair(
+                left: LabeledFormField(
+                  label: 'Business type',
+                  child: DropdownButtonFormField<BusinessType>(
+                    key: BusinessProfileKeys.type,
+                    initialValue: type,
+                    isExpanded: true,
+                    items: [
+                      for (final option in BusinessType.values)
+                        DropdownMenuItem(
+                          value: option,
+                          child: Row(
+                            children: [
+                              Icon(option.icon, size: 17),
+                              const SizedBox(width: Insets.sm),
+                              Flexible(
+                                child: Text(
+                                  option.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) onTypeChanged(value);
+                    },
+                  ),
+                ),
+                right: LabeledFormField(
+                  label: 'Cuisine type',
+                  helper: 'Optional',
+                  child: TextFormField(
+                    key: BusinessProfileKeys.cuisineType,
+                    controller: cuisineType,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(hintText: 'e.g., Italian, Thai'),
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: Insets.lg),
-          LabeledFormField(
-            label: 'Address line 2',
-            child: TextFormField(
-              controller: address2,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(hintText: 'Optional'),
-            ),
-          ),
-          const SizedBox(height: Insets.lg),
-          FieldPair(
-            left: LabeledFormField(
-              label: 'City',
-              child: TextFormField(
-                controller: city,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(hintText: 'San Francisco'),
-              ),
-            ),
-            right: LabeledFormField(
-              label: 'Postal code',
-              child: TextFormField(
-                controller: postcode,
-                textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(hintText: 'CA 94107'),
-              ),
-            ),
-          ),
-          const SizedBox(height: Insets.lg),
-          LabeledFormField(
-            label: 'Country',
-            child: TextFormField(
-              controller: country,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(hintText: 'United States'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ReceiptFooterPanel extends StatelessWidget {
-  const _ReceiptFooterPanel({required this.controller});
-
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return DetailPanel(
-      title: 'Receipt footer',
-      child: LabeledFormField(
-        label: 'Thank-you message',
-        helper: 'Printed at the bottom of every receipt',
-        child: TextFormField(
-          key: BusinessProfileKeys.receiptFooter,
-          controller: controller,
-          maxLines: 2,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: _multilineDecoration(
-            context,
-            hint: 'Thank you for dining with us!',
+            ],
           ),
         ),
-      ),
+        const SizedBox(height: Insets.xl),
+        DetailPanel(
+          title: 'Registration & compliance',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FieldPair(
+                left: LabeledFormField(
+                  label: 'Tax ID',
+                  helper: 'VAT/GST number',
+                  child: TextFormField(
+                    key: BusinessProfileKeys.taxId,
+                    controller: taxId,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(hintText: 'Optional'),
+                  ),
+                ),
+                right: LabeledFormField(
+                  label: 'Registration number',
+                  helper: 'Business license / registration ID',
+                  child: TextFormField(
+                    key: BusinessProfileKeys.registrationNumber,
+                    controller: registrationNumber,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(hintText: 'Optional'),
+                  ),
+                ),
+              ),
+              const SizedBox(height: Insets.lg),
+              LabeledFormField(
+                label: 'License / registration document',
+                helper: 'Optional — paste a link to where it\'s hosted',
+                child: TextFormField(
+                  key: BusinessProfileKeys.licenseDocumentUrl,
+                  controller: licenseDocumentUrl,
+                  keyboardType: TextInputType.url,
+                  decoration: const InputDecoration(hintText: 'https://…'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: Insets.xl),
+        DetailPanel(
+          title: 'Contact information',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FieldPair(
+                left: LabeledFormField(
+                  label: 'Email',
+                  helper: 'Business contact email',
+                  child: TextFormField(
+                    key: BusinessProfileKeys.email,
+                    controller: email,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(hintText: 'contact@business.com'),
+                  ),
+                ),
+                right: LabeledFormField(
+                  label: 'Phone',
+                  helper: 'Contact number',
+                  child: TextFormField(
+                    key: BusinessProfileKeys.phone,
+                    controller: phone,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(hintText: '+255 ...'),
+                  ),
+                ),
+              ),
+              const SizedBox(height: Insets.lg),
+              LabeledFormField(
+                label: 'Address',
+                helper: 'Physical business address',
+                child: TextFormField(
+                  key: BusinessProfileKeys.address,
+                  controller: address,
+                  maxLines: 2,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(hintText: 'Street address'),
+                ),
+              ),
+              const SizedBox(height: Insets.lg),
+              LabeledFormField(
+                label: 'City',
+                helper: 'City or locality',
+                child: TextFormField(
+                  key: BusinessProfileKeys.city,
+                  controller: city,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(hintText: 'e.g., Dar es Salaam'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
-}
-
-/// The theme's input decoration is a pill, which looks wrong wrapped around two
-/// lines of text — these fields square it off without restating the rest.
-InputDecoration _multilineDecoration(
-  BuildContext context, {
-  required String hint,
-}) {
-  return InputDecoration(
-    hintText: hint,
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(Radii.md),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(Radii.md),
-      borderSide: BorderSide(color: context.semantic.hairline),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(Radii.md),
-      borderSide: BorderSide(color: context.colors.primary, width: 1.5),
-    ),
-  );
 }
 
 /// A live receipt header, so the effect of an address, accent or footer edit is
@@ -787,158 +707,3 @@ InputDecoration _multilineDecoration(
 /// Reads the profile and the store's tax settings from their own providers
 /// rather than taking them as arguments: this is the same pair of sources the
 /// real receipt reads, so a preview that agrees with it here agrees with it on
-/// paper.
-class _ReceiptPreview extends ConsumerWidget {
-  const _ReceiptPreview();
-
-  /// A plausible ticket, purely so the totals block has numbers to show.
-  static const _subtotal = 48.00;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(businessProfileProvider);
-    final settings = ref.watch(storeSettingsProvider);
-    final colors = context.colors;
-    final muted = context.text.bodySmall?.copyWith(
-      color: colors.onSurfaceVariant,
-    );
-
-    final service = _subtotal * settings.serviceChargeRate;
-    final tax = _subtotal * settings.taxRate;
-    final total = settings.taxInclusive
-        ? _subtotal + service
-        : _subtotal + service + tax;
-
-    return DetailPanel(
-      title: 'Receipt preview',
-      child: Container(
-        padding: const EdgeInsets.all(Insets.lg),
-        decoration: BoxDecoration(
-          color: colors.surfaceContainerHigh.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(Radii.sm),
-          border: Border.all(color: context.semantic.hairline),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // The accent rule is where the brand colour actually lands on a
-            // printed receipt, so the preview shows it there and nowhere else.
-            Container(
-              height: 4,
-              width: 54,
-              decoration: BoxDecoration(
-                color: profile.brandColor,
-                borderRadius: BorderRadius.circular(Radii.pill),
-              ),
-            ),
-            const SizedBox(height: Insets.md),
-            if (profile.logoBytes case final bytes?) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(Radii.sm),
-                child: Image.memory(bytes, height: 44, fit: BoxFit.contain),
-              ),
-              const SizedBox(height: Insets.sm),
-            ],
-            Text(
-              profile.name,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: context.text.titleSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            if (profile.hasAddress) ...[
-              const SizedBox(height: 2),
-              Text(
-                profile.formattedAddress,
-                textAlign: TextAlign.center,
-                style: muted,
-              ),
-            ],
-            if (profile.phone.trim().isNotEmpty)
-              Text(profile.phone, textAlign: TextAlign.center, style: muted),
-            if (profile.website.trim().isNotEmpty)
-              Text(profile.website, textAlign: TextAlign.center, style: muted),
-            if (profile.taxId.trim().isNotEmpty)
-              Text(
-                'Tax ID ${profile.taxId}',
-                textAlign: TextAlign.center,
-                style: muted,
-              ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: Insets.md),
-              child: Divider(height: 1),
-            ),
-            _PreviewLine(label: 'Subtotal', value: Fmt.money(_subtotal)),
-            if (settings.serviceChargeRate > 0)
-              _PreviewLine(
-                label: 'Service (${Fmt.percent(settings.serviceChargeRate)})',
-                value: Fmt.money(service),
-              ),
-            _PreviewLine(
-              label: settings.taxInclusive
-                  ? 'Tax included (${Fmt.percent(settings.taxRate)})'
-                  : 'Tax (${Fmt.percent(settings.taxRate)})',
-              value: Fmt.money(tax),
-            ),
-            const SizedBox(height: Insets.sm),
-            _PreviewLine(
-              label: 'Total',
-              value: Fmt.money(total),
-              emphasised: true,
-            ),
-            if (profile.receiptFooter.trim().isNotEmpty) ...[
-              const SizedBox(height: Insets.md),
-              Text(
-                profile.receiptFooter,
-                textAlign: TextAlign.center,
-                style: muted?.copyWith(fontStyle: FontStyle.italic),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PreviewLine extends StatelessWidget {
-  const _PreviewLine({
-    required this.label,
-    required this.value,
-    this.emphasised = false,
-  });
-
-  final String label;
-  final String value;
-  final bool emphasised;
-
-  @override
-  Widget build(BuildContext context) {
-    final style = emphasised
-        ? context.text.bodyMedium?.copyWith(fontWeight: FontWeight.w800)
-        : context.text.bodySmall?.copyWith(
-            color: context.colors.onSurfaceVariant,
-          );
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: style,
-            ),
-          ),
-          const SizedBox(width: Insets.sm),
-          Text(value, maxLines: 1, style: style),
-        ],
-      ),
-    );
-  }
-}

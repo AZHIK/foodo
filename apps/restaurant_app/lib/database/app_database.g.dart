@@ -4474,6 +4474,505 @@ class CachedStockLevelsCompanion extends UpdateCompanion<CachedStockLevel> {
   }
 }
 
+class $CachedBusinessRolesTable extends CachedBusinessRoles
+    with TableInfo<$CachedBusinessRolesTable, CachedBusinessRole> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedBusinessRolesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _roleIdMeta = const VerificationMeta('roleId');
+  @override
+  late final GeneratedColumn<String> roleId = GeneratedColumn<String>(
+    'role_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isProtectedMeta = const VerificationMeta(
+    'isProtected',
+  );
+  @override
+  late final GeneratedColumn<bool> isProtected = GeneratedColumn<bool>(
+    'is_protected',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_protected" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _permissionCodesMeta = const VerificationMeta(
+    'permissionCodes',
+  );
+  @override
+  late final GeneratedColumn<String> permissionCodes = GeneratedColumn<String>(
+    'permission_codes',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    businessId,
+    roleId,
+    name,
+    description,
+    isProtected,
+    permissionCodes,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_business_roles';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedBusinessRole> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('role_id')) {
+      context.handle(
+        _roleIdMeta,
+        roleId.isAcceptableOrUnknown(data['role_id']!, _roleIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_descriptionMeta);
+    }
+    if (data.containsKey('is_protected')) {
+      context.handle(
+        _isProtectedMeta,
+        isProtected.isAcceptableOrUnknown(
+          data['is_protected']!,
+          _isProtectedMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_isProtectedMeta);
+    }
+    if (data.containsKey('permission_codes')) {
+      context.handle(
+        _permissionCodesMeta,
+        permissionCodes.isAcceptableOrUnknown(
+          data['permission_codes']!,
+          _permissionCodesMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_permissionCodesMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {businessId, roleId};
+  @override
+  CachedBusinessRole map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedBusinessRole(
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      roleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      )!,
+      isProtected: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_protected'],
+      )!,
+      permissionCodes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}permission_codes'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedBusinessRolesTable createAlias(String alias) {
+    return $CachedBusinessRolesTable(attachedDatabase, alias);
+  }
+}
+
+class CachedBusinessRole extends DataClass
+    implements Insertable<CachedBusinessRole> {
+  /// The business these roles belong to.
+  final String businessId;
+
+  /// Role UUID from the backend.
+  final String roleId;
+
+  /// Role display name (e.g., "Manager", "Cashier").
+  final String name;
+
+  /// Role description.
+  final String description;
+
+  /// Whether this role is protected (system-defined).
+  final bool isProtected;
+
+  /// JSON-encoded list of permission codes for this role.
+  final String permissionCodes;
+
+  /// When this role cache was last refreshed from the server.
+  final DateTime cachedAt;
+  const CachedBusinessRole({
+    required this.businessId,
+    required this.roleId,
+    required this.name,
+    required this.description,
+    required this.isProtected,
+    required this.permissionCodes,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['business_id'] = Variable<String>(businessId);
+    map['role_id'] = Variable<String>(roleId);
+    map['name'] = Variable<String>(name);
+    map['description'] = Variable<String>(description);
+    map['is_protected'] = Variable<bool>(isProtected);
+    map['permission_codes'] = Variable<String>(permissionCodes);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  CachedBusinessRolesCompanion toCompanion(bool nullToAbsent) {
+    return CachedBusinessRolesCompanion(
+      businessId: Value(businessId),
+      roleId: Value(roleId),
+      name: Value(name),
+      description: Value(description),
+      isProtected: Value(isProtected),
+      permissionCodes: Value(permissionCodes),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory CachedBusinessRole.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedBusinessRole(
+      businessId: serializer.fromJson<String>(json['businessId']),
+      roleId: serializer.fromJson<String>(json['roleId']),
+      name: serializer.fromJson<String>(json['name']),
+      description: serializer.fromJson<String>(json['description']),
+      isProtected: serializer.fromJson<bool>(json['isProtected']),
+      permissionCodes: serializer.fromJson<String>(json['permissionCodes']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'businessId': serializer.toJson<String>(businessId),
+      'roleId': serializer.toJson<String>(roleId),
+      'name': serializer.toJson<String>(name),
+      'description': serializer.toJson<String>(description),
+      'isProtected': serializer.toJson<bool>(isProtected),
+      'permissionCodes': serializer.toJson<String>(permissionCodes),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  CachedBusinessRole copyWith({
+    String? businessId,
+    String? roleId,
+    String? name,
+    String? description,
+    bool? isProtected,
+    String? permissionCodes,
+    DateTime? cachedAt,
+  }) => CachedBusinessRole(
+    businessId: businessId ?? this.businessId,
+    roleId: roleId ?? this.roleId,
+    name: name ?? this.name,
+    description: description ?? this.description,
+    isProtected: isProtected ?? this.isProtected,
+    permissionCodes: permissionCodes ?? this.permissionCodes,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  CachedBusinessRole copyWithCompanion(CachedBusinessRolesCompanion data) {
+    return CachedBusinessRole(
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      roleId: data.roleId.present ? data.roleId.value : this.roleId,
+      name: data.name.present ? data.name.value : this.name,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      isProtected: data.isProtected.present
+          ? data.isProtected.value
+          : this.isProtected,
+      permissionCodes: data.permissionCodes.present
+          ? data.permissionCodes.value
+          : this.permissionCodes,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedBusinessRole(')
+          ..write('businessId: $businessId, ')
+          ..write('roleId: $roleId, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('isProtected: $isProtected, ')
+          ..write('permissionCodes: $permissionCodes, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    businessId,
+    roleId,
+    name,
+    description,
+    isProtected,
+    permissionCodes,
+    cachedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedBusinessRole &&
+          other.businessId == this.businessId &&
+          other.roleId == this.roleId &&
+          other.name == this.name &&
+          other.description == this.description &&
+          other.isProtected == this.isProtected &&
+          other.permissionCodes == this.permissionCodes &&
+          other.cachedAt == this.cachedAt);
+}
+
+class CachedBusinessRolesCompanion extends UpdateCompanion<CachedBusinessRole> {
+  final Value<String> businessId;
+  final Value<String> roleId;
+  final Value<String> name;
+  final Value<String> description;
+  final Value<bool> isProtected;
+  final Value<String> permissionCodes;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const CachedBusinessRolesCompanion({
+    this.businessId = const Value.absent(),
+    this.roleId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.description = const Value.absent(),
+    this.isProtected = const Value.absent(),
+    this.permissionCodes = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedBusinessRolesCompanion.insert({
+    required String businessId,
+    required String roleId,
+    required String name,
+    required String description,
+    required bool isProtected,
+    required String permissionCodes,
+    required DateTime cachedAt,
+    this.rowid = const Value.absent(),
+  }) : businessId = Value(businessId),
+       roleId = Value(roleId),
+       name = Value(name),
+       description = Value(description),
+       isProtected = Value(isProtected),
+       permissionCodes = Value(permissionCodes),
+       cachedAt = Value(cachedAt);
+  static Insertable<CachedBusinessRole> custom({
+    Expression<String>? businessId,
+    Expression<String>? roleId,
+    Expression<String>? name,
+    Expression<String>? description,
+    Expression<bool>? isProtected,
+    Expression<String>? permissionCodes,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (businessId != null) 'business_id': businessId,
+      if (roleId != null) 'role_id': roleId,
+      if (name != null) 'name': name,
+      if (description != null) 'description': description,
+      if (isProtected != null) 'is_protected': isProtected,
+      if (permissionCodes != null) 'permission_codes': permissionCodes,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedBusinessRolesCompanion copyWith({
+    Value<String>? businessId,
+    Value<String>? roleId,
+    Value<String>? name,
+    Value<String>? description,
+    Value<bool>? isProtected,
+    Value<String>? permissionCodes,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedBusinessRolesCompanion(
+      businessId: businessId ?? this.businessId,
+      roleId: roleId ?? this.roleId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      isProtected: isProtected ?? this.isProtected,
+      permissionCodes: permissionCodes ?? this.permissionCodes,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (roleId.present) {
+      map['role_id'] = Variable<String>(roleId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (isProtected.present) {
+      map['is_protected'] = Variable<bool>(isProtected.value);
+    }
+    if (permissionCodes.present) {
+      map['permission_codes'] = Variable<String>(permissionCodes.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedBusinessRolesCompanion(')
+          ..write('businessId: $businessId, ')
+          ..write('roleId: $roleId, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('isProtected: $isProtected, ')
+          ..write('permissionCodes: $permissionCodes, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $PendingVoidsRefundsTable extends PendingVoidsRefunds
     with TableInfo<$PendingVoidsRefundsTable, PendingVoidsRefund> {
   @override
@@ -7911,6 +8410,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $CachedPermissionsTable(this);
   late final $CachedStockLevelsTable cachedStockLevels =
       $CachedStockLevelsTable(this);
+  late final $CachedBusinessRolesTable cachedBusinessRoles =
+      $CachedBusinessRolesTable(this);
   late final $PendingVoidsRefundsTable pendingVoidsRefunds =
       $PendingVoidsRefundsTable(this);
   late final $ExpenseEntriesTable expenseEntries = $ExpenseEntriesTable(this);
@@ -7929,6 +8430,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cachedItems,
     cachedPermissions,
     cachedStockLevels,
+    cachedBusinessRoles,
     pendingVoidsRefunds,
     expenseEntries,
     otherIncomeEntries,
@@ -10669,6 +11171,268 @@ typedef $$CachedStockLevelsTableProcessedTableManager =
       CachedStockLevel,
       PrefetchHooks Function()
     >;
+typedef $$CachedBusinessRolesTableCreateCompanionBuilder =
+    CachedBusinessRolesCompanion Function({
+      required String businessId,
+      required String roleId,
+      required String name,
+      required String description,
+      required bool isProtected,
+      required String permissionCodes,
+      required DateTime cachedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedBusinessRolesTableUpdateCompanionBuilder =
+    CachedBusinessRolesCompanion Function({
+      Value<String> businessId,
+      Value<String> roleId,
+      Value<String> name,
+      Value<String> description,
+      Value<bool> isProtected,
+      Value<String> permissionCodes,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedBusinessRolesTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedBusinessRolesTable> {
+  $$CachedBusinessRolesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get roleId => $composableBuilder(
+    column: $table.roleId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isProtected => $composableBuilder(
+    column: $table.isProtected,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get permissionCodes => $composableBuilder(
+    column: $table.permissionCodes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedBusinessRolesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedBusinessRolesTable> {
+  $$CachedBusinessRolesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get roleId => $composableBuilder(
+    column: $table.roleId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isProtected => $composableBuilder(
+    column: $table.isProtected,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get permissionCodes => $composableBuilder(
+    column: $table.permissionCodes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedBusinessRolesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedBusinessRolesTable> {
+  $$CachedBusinessRolesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get roleId =>
+      $composableBuilder(column: $table.roleId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isProtected => $composableBuilder(
+    column: $table.isProtected,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get permissionCodes => $composableBuilder(
+    column: $table.permissionCodes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$CachedBusinessRolesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedBusinessRolesTable,
+          CachedBusinessRole,
+          $$CachedBusinessRolesTableFilterComposer,
+          $$CachedBusinessRolesTableOrderingComposer,
+          $$CachedBusinessRolesTableAnnotationComposer,
+          $$CachedBusinessRolesTableCreateCompanionBuilder,
+          $$CachedBusinessRolesTableUpdateCompanionBuilder,
+          (
+            CachedBusinessRole,
+            BaseReferences<
+              _$AppDatabase,
+              $CachedBusinessRolesTable,
+              CachedBusinessRole
+            >,
+          ),
+          CachedBusinessRole,
+          PrefetchHooks Function()
+        > {
+  $$CachedBusinessRolesTableTableManager(
+    _$AppDatabase db,
+    $CachedBusinessRolesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedBusinessRolesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedBusinessRolesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$CachedBusinessRolesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> businessId = const Value.absent(),
+                Value<String> roleId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> description = const Value.absent(),
+                Value<bool> isProtected = const Value.absent(),
+                Value<String> permissionCodes = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedBusinessRolesCompanion(
+                businessId: businessId,
+                roleId: roleId,
+                name: name,
+                description: description,
+                isProtected: isProtected,
+                permissionCodes: permissionCodes,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String businessId,
+                required String roleId,
+                required String name,
+                required String description,
+                required bool isProtected,
+                required String permissionCodes,
+                required DateTime cachedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CachedBusinessRolesCompanion.insert(
+                businessId: businessId,
+                roleId: roleId,
+                name: name,
+                description: description,
+                isProtected: isProtected,
+                permissionCodes: permissionCodes,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedBusinessRolesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedBusinessRolesTable,
+      CachedBusinessRole,
+      $$CachedBusinessRolesTableFilterComposer,
+      $$CachedBusinessRolesTableOrderingComposer,
+      $$CachedBusinessRolesTableAnnotationComposer,
+      $$CachedBusinessRolesTableCreateCompanionBuilder,
+      $$CachedBusinessRolesTableUpdateCompanionBuilder,
+      (
+        CachedBusinessRole,
+        BaseReferences<
+          _$AppDatabase,
+          $CachedBusinessRolesTable,
+          CachedBusinessRole
+        >,
+      ),
+      CachedBusinessRole,
+      PrefetchHooks Function()
+    >;
 typedef $$PendingVoidsRefundsTableCreateCompanionBuilder =
     PendingVoidsRefundsCompanion Function({
       Value<int> id,
@@ -12366,6 +13130,8 @@ class $AppDatabaseManager {
       $$CachedPermissionsTableTableManager(_db, _db.cachedPermissions);
   $$CachedStockLevelsTableTableManager get cachedStockLevels =>
       $$CachedStockLevelsTableTableManager(_db, _db.cachedStockLevels);
+  $$CachedBusinessRolesTableTableManager get cachedBusinessRoles =>
+      $$CachedBusinessRolesTableTableManager(_db, _db.cachedBusinessRoles);
   $$PendingVoidsRefundsTableTableManager get pendingVoidsRefunds =>
       $$PendingVoidsRefundsTableTableManager(_db, _db.pendingVoidsRefunds);
   $$ExpenseEntriesTableTableManager get expenseEntries =>

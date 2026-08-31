@@ -100,4 +100,25 @@ class LocalProfileRepository {
   Future<void> upsertPermissions(CachedPermissionsCompanion permissions) {
     return _db.into(_db.cachedPermissions).insertOnConflictUpdate(permissions);
   }
+
+  /// Gets all cached business roles for a business.
+  Future<List<CachedBusinessRole>> getCachedRoles(String businessId) {
+    return (_db.select(_db.cachedBusinessRoles)
+          ..where((row) => row.businessId.equals(businessId)))
+        .get();
+  }
+
+  /// Replaces all cached business roles for a business (wholesale refresh).
+  Future<void> setCachedRoles(String businessId, List<CachedBusinessRolesCompanion> roles) {
+    return _db.transaction(() async {
+      // Delete old cache for this business
+      await (_db.delete(_db.cachedBusinessRoles)
+            ..where((row) => row.businessId.equals(businessId)))
+          .go();
+      // Insert new roles
+      for (final role in roles) {
+        await _db.into(_db.cachedBusinessRoles).insert(role);
+      }
+    });
+  }
 }

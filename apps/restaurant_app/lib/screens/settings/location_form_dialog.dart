@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:dio/dio.dart';
+
 import '../../models/staff_member.dart';
 import '../../models/store_location.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/staff_provider.dart';
+import '../../providers/store_api_provider_real.dart';
 import '../../providers/store_locations_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
@@ -15,6 +19,7 @@ import 'store_settings_screen.dart' show SettingSwitchTile;
 
 abstract final class LocationFormKeys {
   static const name = Key('locationForm.name');
+  static const locationType = Key('locationForm.locationType');
   static const address = Key('locationForm.address');
   static const phone = Key('locationForm.phone');
   static const manager = Key('locationForm.manager');
@@ -57,8 +62,10 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
   final _phone = TextEditingController();
   final _staffCount = TextEditingController();
 
+  late LocationType _locationType;
   String? _managerId;
   bool _isActive = true;
+  bool _saving = false;
 
   bool get _isEdit => widget.existing != null;
 
@@ -66,14 +73,15 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
   void initState() {
     super.initState();
     final existing = widget.existing;
+    _locationType = existing?.locationType ?? LocationType.restaurantBranch;
     if (existing == null) {
       _staffCount.text = '0';
       return;
     }
 
     _name.text = existing.name;
-    _address.text = existing.address;
-    _phone.text = existing.phone;
+    _address.text = existing.address ?? '';
+    _phone.text = existing.phone ?? '';
     _staffCount.text = '${existing.staffCount}';
     _managerId = existing.managerId;
     _isActive = existing.isActive;
@@ -98,39 +106,90 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
     return ref.read(storeLocationsProvider.notifier).canDeactivate(existing.id);
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_saving) return;
 
-    final notifier = ref.read(storeLocationsProvider.notifier);
-    final existing = widget.existing;
-    final staffCount = int.tryParse(_staffCount.text.trim()) ?? 0;
+    setState(() => _saving = true);
 
-    final location = (existing ?? StoreLocation(id: notifier.nextId(), name: ''))
-        .copyWith(
-          name: _name.text.trim(),
-          address: _address.text.trim(),
-          phone: _phone.text.trim(),
-          managerId: _managerId,
-          clearManager: _managerId == null,
-          staffCount: staffCount,
-          // The current store is always trading: the terminal running this
-          // screen is standing in it.
-          isActive: (existing?.isCurrent ?? false) ? true : _isActive,
+    try {
+      final auth = ref.read(authProvider);
+      final businessId = auth.selectedBusinessId;
+      if (businessId == null) {
+        throw Exception('No business context available');
+      }
+
+      final storeApi = ref.read(storeApiServiceProvider);
+      final existing = widget.existing;
+
+      final locationName = _name.text.trim();
+      final phone = _phone.text.trim();
+
+      final result;
+      if (existing == null) { // ignore: prefer_const_constructors
+        // Create new store
+        result = await storeApi.createStore(
+          businessId: businessId,
+          name: locationName,
+          locationType: _locationType.backendValue,
+          address: _address.text.trim().isEmpty ? null : _address.text.trim(),
+          status: _isActive ? 'active' : 'inactive',
         );
+      } else {
+        // Update existing store
+        result = await storeApi.updateStore(
+          businessId: businessId,
+          storeId: existing.id,
+          name: locationName,
+          locationType: _locationType.backendValue,
+          address: _address.text.trim().isEmpty ? null : _address.text.trim(),
+          status: (existing.isCurrent || _isActive) ? 'active' : 'inactive',
+        );
+      }
 
-    notifier.upsert(location);
+      // Update store settings (phone lives on StoreSetting, not Store)
+      if (phone.isNotEmpty) {
+        await storeApi.updateStoreSettings(
+          businessId: businessId,
+          storeId: result.id,
+          phone: phone,
+        );
+      }
 
-    final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context).pop();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          _isEdit
-              ? '${location.name} updated'
-              : '${location.name} added — it can now receive stock transfers',
-        ),
-      ),
-    );
+      // Refresh stores list
+      await refreshStores(ref);
+
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isEdit
+                  ? '$locationName updated'
+                  : '$locationName added — it can now receive stock transfers',
+            ),
+          ),
+        );
+      }
+    } on DioException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.response?.data?['detail']?.toString() ?? 'Could not save location',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving location: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -171,6 +230,29 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
                   final text = (value ?? '').trim();
                   if (text.isEmpty) return 'Give the location a name';
                   return _isNameTaken(text) ? 'That name is already used' : null;
+                },
+              ),
+            ),
+            const SizedBox(height: Insets.lg),
+            LabeledFormField(
+              label: 'Location type',
+              child: DropdownButtonFormField<LocationType>(
+                key: LocationFormKeys.locationType,
+                initialValue: _locationType,
+                isExpanded: true,
+                items: [
+                  for (final type in LocationType.values)
+                    DropdownMenuItem(
+                      value: type,
+                      child: Text(
+                        type.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _locationType = value);
                 },
               ),
             ),

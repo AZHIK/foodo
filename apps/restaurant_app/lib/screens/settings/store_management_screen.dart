@@ -236,7 +236,7 @@ List<DataColumnSpec<StoreLocation>> locationColumns(
     sortable: false,
     flex: 5,
     minTableWidth: 760,
-    value: (location) => location.address,
+    value: (location) => location.address ?? '—',
   ),
   DataColumnSpec(
     label: 'Manager',
@@ -289,9 +289,9 @@ class _NameCell extends StatelessWidget {
         Text(
           location.isCurrent
               ? 'This store'
-              : location.phone.isEmpty
+              : (location.phone ?? '').isEmpty
               ? '—'
-              : location.phone,
+              : location.phone!,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: context.text.bodySmall?.copyWith(

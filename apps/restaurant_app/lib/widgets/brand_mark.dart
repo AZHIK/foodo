@@ -20,7 +20,7 @@ class BrandMark extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final logo = ref.watch(
-      businessProfileProvider.select((profile) => profile.logoBytes),
+      businessProfileProvider.select((profile) => profile?.logoBytes),
     );
 
     return Container(

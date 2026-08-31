@@ -73,6 +73,7 @@ import 'tables/pending_sale_line_items.dart';
 import 'tables/cached_items.dart';
 import 'tables/cached_permissions.dart';
 import 'tables/cached_stock_levels.dart';
+import 'tables/cached_business_roles.dart';
 import 'tables/pending_voids_refunds.dart';
 import 'tables/expense_entries.dart';
 import 'tables/other_income_entries.dart';
@@ -89,6 +90,7 @@ part 'app_database.g.dart';
   CachedItems,
   CachedPermissions,
   CachedStockLevels,
+  CachedBusinessRoles,
   PendingVoidsRefunds,
   ExpenseEntries,
   OtherIncomeEntries,
@@ -99,7 +101,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.connection);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -110,12 +112,22 @@ class AppDatabase extends _$AppDatabase {
           localUserProfiles,
           localUserProfiles.lastRevocationCheckAt,
         );
+        await m.createTable(cachedBusinessRoles);
         await m.createTable(cachedPermissions);
         await m.createTable(cachedStockLevels);
         await m.createTable(pendingVoidsRefunds);
         await m.createTable(expenseEntries);
         await m.createTable(otherIncomeEntries);
         await m.createTable(localAuditLog);
+      }
+      if (from < 3) {
+        // v2→v3: Create CachedBusinessRoles if it wasn't created in v1→v2 upgrade
+        // (safety net for installations that upgraded v1→v2 before this fix)
+        try {
+          await m.createTable(cachedBusinessRoles);
+        } catch (e) {
+          // Table may already exist; ignore error
+        }
       }
     },
     beforeOpen: (details) async {

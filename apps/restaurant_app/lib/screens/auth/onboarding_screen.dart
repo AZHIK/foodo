@@ -148,17 +148,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     // step seeds, not just the first — a half-seeded wizard is worse than an
     // empty one, because the empty fields read as "we lost this".
     final profile = ref.read(businessProfileProvider);
-    _businessName.text = profile.name;
-    _businessType = profile.type;
-    _taxId.text = profile.taxId;
-    _logoBytes = profile.logoBytes;
-    _logoName = profile.logoName;
+    if (profile != null) {
+      _businessName.text = profile.name;
+      _businessType = profile.businessType;
+      _taxId.text = profile.taxId ?? '';
+      _logoBytes = profile.logoBytes;
+    }
 
     final store = ref.read(currentStoreProvider);
     if (store != null) {
       _locationName.text = store.name;
-      _address.text = store.address;
-      _phone.text = store.phone;
+      _address.text = store.address ?? '';
+      _phone.text = store.phone ?? '';
     }
 
     final settings = ref.read(storeSettingsProvider);
@@ -245,16 +246,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     switch (_step) {
       case 0:
         final profile = ref.read(businessProfileProvider);
-        ref
-            .read(businessProfileProvider.notifier)
-            .save(
-              profile.copyWith(
-                name: _businessName.text.trim(),
-                type: _businessType,
-                logoName: _logoName,
-                logoBytes: _logoBytes,
-              ),
-            );
+        if (profile != null) {
+          ref
+              .read(businessProfileProvider.notifier)
+              .save(
+                profile.copyWith(
+                  name: _businessName.text.trim(),
+                  businessType: _businessType,
+                  logoBytes: _logoBytes,
+                ),
+              );
+        }
       case 1:
         _saveFirstLocation();
       case 2:
@@ -269,11 +271,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     defaultOrderType: _orderType,
                   ),
             );
-        ref
-            .read(businessProfileProvider.notifier)
-            .save(
-              ref.read(businessProfileProvider).copyWith(taxId: _taxId.text.trim()),
-            );
+        final profile = ref.read(businessProfileProvider);
+        if (profile != null) {
+          ref
+              .read(businessProfileProvider.notifier)
+              .save(
+                profile.copyWith(taxId: _taxId.text.trim()),
+              );
+        }
         // The business (and its roles) has to exist before the team step
         // can offer real role choices — created here, at the boundary,
         // rather than at the very end of the wizard.
@@ -290,6 +295,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   /// auto-seeded server-side from role templates as part of creation, so
   /// this also loads them before returning — the team step that follows
   /// needs them for its role picker.
+  ///
+  /// Also assigns the owner role to the current user.
   Future<bool> _createBusiness() async {
     try {
       final phoneDigits = _phone.text.trim();
@@ -307,6 +314,26 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           );
 
       await ref.read(rolesProvider.future);
+
+      // Assign the owner role to the current user
+      final roles = ref.read(rolesProvider).valueOrNull ?? const <BusinessRole>[];
+      BusinessRole? ownerRole;
+      for (final role in roles) {
+        if (role.isProtected && role.name.toLowerCase().contains('owner')) {
+          ownerRole = role;
+          break;
+        }
+      }
+      ownerRole ??= roles.isNotEmpty ? roles.first : null;
+
+      if (ownerRole != null) {
+        final phoneWithCountry = phoneDigits.isEmpty ? '' : '+255$phoneDigits';
+        await ref.read(staffMembersProvider.notifier).assignRole(
+              phone: phoneWithCountry,
+              roleId: ownerRole.id,
+            );
+      }
+
       if (_team.isNotEmpty) {
         _team.first.roleId ??= _defaultRoleId;
       }
@@ -363,12 +390,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   void _saveFirstLocation() {
     final notifier = ref.read(storeLocationsProvider.notifier);
     final current = ref.read(currentStoreProvider);
+    final businessProfile = ref.read(businessProfileProvider);
 
+    final businessId = businessProfile?.id ?? 'temp-business-id';
     final location =
         (current ??
                 StoreLocation(
                   id: notifier.nextId(),
+                  businessId: businessId,
                   name: '',
+                  token: 'temp-token',
+                  locationType: LocationType.restaurantBranch,
+                  status: StoreStatus.active,
+                  countryCode: 'TZ',
+                  timezone: 'Africa/Dar_es_Salaam',
+                  isPrimary: true,
                   isCurrent: true,
                 ))
             .copyWith(

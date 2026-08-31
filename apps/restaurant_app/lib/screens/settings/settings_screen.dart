@@ -36,7 +36,7 @@ class SettingsScreen extends ConsumerWidget {
         icon: Icons.storefront_outlined,
         title: 'Business profile',
         subtitle: 'Name, logo, brand colour and contact details',
-        value: profile.name,
+        value: profile?.name ?? 'Loading...',
         onTap: () => context.goNamed(AppRoute.businessProfileName),
       ),
       _SettingsEntry(

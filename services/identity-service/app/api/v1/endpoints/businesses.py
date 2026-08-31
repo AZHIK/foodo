@@ -11,9 +11,9 @@ from app.core.permission_codes import PermissionCode
 from app.deps.auth import get_current_user_id
 from app.deps.permissions import require_business_permission
 from app.models.business import Business, BusinessRole
-from app.schemas.business import BusinessCreateRequest, BusinessCreateResponse, BusinessRead
+from app.schemas.business import BusinessCreateRequest, BusinessCreateResponse, BusinessRead, BusinessUpdate
 from app.schemas.business_rbac import BusinessRoleRead
-from app.services.business_service import create_business
+from app.services.business_service import create_business, update_business
 
 logger = structlog.get_logger(__name__)
 
@@ -84,6 +84,30 @@ async def get_business(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Business not found",
         )
+    return BusinessRead.model_validate(business)
+
+
+@router.patch("/{business_id}", response_model=BusinessRead)
+async def update_business_endpoint(
+    business_id: UUID,
+    body: BusinessUpdate,
+    db: AsyncSession = Depends(get_async_session),
+    caller_business_id: str = Depends(require_business_permission(PermissionCode.BUSINESSES_UPDATE)),
+    caller_user_id: str = Depends(get_current_user_id),
+) -> BusinessRead:
+    if str(business_id) != caller_business_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Token business context does not match the requested business",
+        )
+    business = await update_business(
+        db,
+        business_id=business_id,
+        values=body.model_dump(exclude_unset=True),
+        actor_user_id=UUID(caller_user_id),
+    )
+    if business is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Business not found")
     return BusinessRead.model_validate(business)
 
 

@@ -191,7 +191,7 @@ class _AsideBrand extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final logo = ref.watch(
-      businessProfileProvider.select((profile) => profile.logoBytes),
+      businessProfileProvider.select((profile) => profile?.logoBytes),
     );
     const size = 44.0;
 

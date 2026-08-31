@@ -2,155 +2,193 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-/// What kind of venue this is.
-///
-/// Recorded rather than inferred: it decides which defaults a future onboarding
-/// flow offers (a food truck has no tables, a bakery closes at noon) and prints
-/// on nothing, so it can be changed freely.
-enum BusinessType {
-  restaurant('Restaurant', Icons.restaurant_rounded),
-  cafe('Cafe', Icons.local_cafe_rounded),
-  foodTruck('Food truck', Icons.airport_shuttle_rounded),
-  bakery('Bakery', Icons.bakery_dining_rounded),
-  bar('Bar', Icons.local_bar_rounded),
-  other('Other', Icons.storefront_rounded);
+import '../auth/auth_dtos.dart';
 
-  const BusinessType(this.label, this.icon);
+/// Business types from backend.
+enum BusinessType {
+  restaurant('Restaurant', Icons.restaurant_rounded, 'restaurant'),
+  supplier('Supplier', Icons.local_shipping_rounded, 'supplier'),
+  farmer('Farmer', Icons.agriculture_rounded, 'farmer'),
+  distributor('Distributor', Icons.warehouse_rounded, 'distributor'),
+  platformOperator('Platform Operator', Icons.public_rounded, 'platform_operator'),
+  other('Other', Icons.storefront_rounded, 'restaurant'); // default fallback
+
+  const BusinessType(this.label, this.icon, this.backendValue);
 
   final String label;
   final IconData icon;
+  final String backendValue;
+
+  static BusinessType fromBackend(String value) {
+    return values.firstWhere(
+      (type) => type.backendValue == value,
+      orElse: () => BusinessType.restaurant,
+    );
+  }
+}
+
+/// Business status from backend.
+enum BusinessStatus {
+  active,
+  inactive,
+  suspended;
+
+  bool get isActive => this == BusinessStatus.active;
+  bool get isInactive => this == BusinessStatus.inactive;
+  bool get isSuspended => this == BusinessStatus.suspended;
+
+  static BusinessStatus fromString(String value) {
+    return values.firstWhere(
+      (status) => status.name == value,
+      orElse: () => BusinessStatus.active,
+    );
+  }
 }
 
 /// The venue's own identity: who it is, where it is, and how it presents
 /// itself on anything a customer sees.
 ///
-/// One object rather than a scatter of individual providers, because these are
-/// edited together on one screen and saved together — a half-applied profile
-/// (new address, old logo) is not a state the app should be able to reach.
-///
-/// Operational rules — tax, currency, opening hours — deliberately live in
-/// [StoreSettings] instead. Identity and behaviour are edited by different
-/// people on different days, and keeping them apart is what lets Store Settings
-/// be the single source of truth for a tax rate without also owning the logo.
+/// Synced from the backend Business model. All fields mirror the backend schema.
 @immutable
 class BusinessProfile {
   const BusinessProfile({
+    required this.id,
     required this.name,
-    this.legalName = '',
-    this.type = BusinessType.restaurant,
-    this.email = '',
-    this.phone = '',
-    this.website = '',
-    this.addressLine1 = '',
-    this.addressLine2 = '',
-    this.city = '',
-    this.postcode = '',
-    this.country = '',
-    this.taxId = '',
-    this.receiptFooter = '',
+    required this.businessType,
+    required this.status,
+    required this.countryCode,
+    required this.timezone,
+    this.email,
+    this.phone,
+    this.address,
+    this.city,
+    this.taxId,
+    this.registrationNumber,
+    this.cuisineType,
+    this.logo,
+    this.licenseDocumentUrl,
     this.brandColor = const Color(0xFF0B6B57),
-    this.logoName,
     this.logoBytes,
   });
 
-  /// Trading name — what the nav header and receipts show.
+  /// Unique identifier from backend.
+  final String id;
+
+  /// Trading name.
   final String name;
 
-  /// Registered name, when it differs. Printed on invoices, not receipts.
-  final String legalName;
+  /// Business type (restaurant, supplier, farmer, etc).
+  final BusinessType businessType;
 
-  final BusinessType type;
+  /// Business status (active, inactive, suspended).
+  final BusinessStatus status;
 
-  final String email;
-  final String phone;
-  final String website;
+  /// Contact email.
+  final String? email;
 
-  final String addressLine1;
-  final String addressLine2;
-  final String city;
-  final String postcode;
-  final String country;
+  /// Contact phone.
+  final String? phone;
 
-  /// VAT/GST registration number, printed on receipts where required.
-  final String taxId;
+  /// Physical address.
+  final String? address;
 
-  /// Free text at the bottom of every receipt.
-  final String receiptFooter;
+  /// City or locality.
+  final String? city;
 
-  /// The accent a receipt header and any customer-facing surface is tinted
-  /// with. Stored on the profile rather than the theme because it belongs to
-  /// the business, not to this terminal's light/dark preference.
+  /// Country code (ISO 3166-1 alpha-2).
+  final String countryCode;
+
+  /// IANA timezone identifier.
+  final String timezone;
+
+  /// VAT/GST registration number.
+  final String? taxId;
+
+  /// Business registration number.
+  final String? registrationNumber;
+
+  /// Cuisine type (for restaurants).
+  final String? cuisineType;
+
+  /// Logo URL/path from backend.
+  final String? logo;
+
+  /// License document URL/path from backend.
+  final String? licenseDocumentUrl;
+
+  /// Brand color for receipts and UI.
   final Color brandColor;
 
-  /// Bytes rather than a path, for the same reason item photos are — the app
-  /// runs on web, where `dart:io` is unavailable.
-  final String? logoName;
+  /// Logo bytes for local editing.
   final Uint8List? logoBytes;
 
-  /// The address as a receipt would print it, blank lines dropped.
+  /// The address as a receipt would print it.
   String get formattedAddress => [
-    addressLine1,
-    addressLine2,
-    [city, postcode].where((p) => p.trim().isNotEmpty).join(' '),
-    country,
-  ].where((line) => line.trim().isNotEmpty).join('\n');
+    address,
+    [city, countryCode].where((p) => (p?.trim().isNotEmpty ?? false)).join(' '),
+  ].where((line) => (line?.trim().isNotEmpty ?? false)).join('\n');
 
   bool get hasAddress => formattedAddress.isNotEmpty;
 
   BusinessProfile copyWith({
+    String? id,
     String? name,
-    String? legalName,
-    BusinessType? type,
+    BusinessType? businessType,
+    BusinessStatus? status,
     String? email,
     String? phone,
-    String? website,
-    String? addressLine1,
-    String? addressLine2,
+    String? address,
     String? city,
-    String? postcode,
-    String? country,
+    String? countryCode,
+    String? timezone,
     String? taxId,
-    String? receiptFooter,
+    String? registrationNumber,
+    String? cuisineType,
+    String? logo,
+    String? licenseDocumentUrl,
     Color? brandColor,
-    String? logoName,
     Uint8List? logoBytes,
-    // `logoBytes: null` cannot mean "remove it" when null already means "leave
-    // it alone", so clearing needs its own flag.
-    bool clearLogo = false,
+    bool clearLogoBytes = false,
   }) {
     return BusinessProfile(
+      id: id ?? this.id,
       name: name ?? this.name,
-      legalName: legalName ?? this.legalName,
-      type: type ?? this.type,
+      businessType: businessType ?? this.businessType,
+      status: status ?? this.status,
       email: email ?? this.email,
       phone: phone ?? this.phone,
-      website: website ?? this.website,
-      addressLine1: addressLine1 ?? this.addressLine1,
-      addressLine2: addressLine2 ?? this.addressLine2,
+      address: address ?? this.address,
       city: city ?? this.city,
-      postcode: postcode ?? this.postcode,
-      country: country ?? this.country,
+      countryCode: countryCode ?? this.countryCode,
+      timezone: timezone ?? this.timezone,
       taxId: taxId ?? this.taxId,
-      receiptFooter: receiptFooter ?? this.receiptFooter,
+      registrationNumber: registrationNumber ?? this.registrationNumber,
+      cuisineType: cuisineType ?? this.cuisineType,
+      logo: logo ?? this.logo,
+      licenseDocumentUrl: licenseDocumentUrl ?? this.licenseDocumentUrl,
       brandColor: brandColor ?? this.brandColor,
-      logoName: clearLogo ? null : (logoName ?? this.logoName),
-      logoBytes: clearLogo ? null : (logoBytes ?? this.logoBytes),
+      logoBytes: clearLogoBytes ? null : (logoBytes ?? this.logoBytes),
     );
   }
 
-  /// The venue this build ships with.
-  static const seed = BusinessProfile(
-    name: 'The Copper Fig',
-    legalName: 'Copper Fig Hospitality Ltd',
-    type: BusinessType.restaurant,
-    email: 'hello@copperfig.com',
-    phone: '+1 415 555 0100',
-    website: 'copperfig.com',
-    addressLine1: '84 Riverside Walk',
-    city: 'San Francisco',
-    postcode: 'CA 94107',
-    country: 'United States',
-    taxId: 'US-TAX-4471902',
-    receiptFooter: 'Thank you for dining with us — see you soon!',
-  );
+  /// Create a BusinessProfile from a backend BusinessReadDto.
+  factory BusinessProfile.fromDto(BusinessReadDto dto) {
+    return BusinessProfile(
+      id: dto.id,
+      name: dto.name,
+      businessType: BusinessType.fromBackend(dto.businessType),
+      status: BusinessStatus.fromString(dto.status),
+      email: dto.email,
+      phone: dto.phone,
+      address: dto.address,
+      city: dto.city,
+      countryCode: dto.countryCode,
+      timezone: dto.timezone,
+      taxId: dto.taxId,
+      registrationNumber: dto.registrationNumber,
+      cuisineType: dto.cuisineType,
+      logo: dto.logo,
+      licenseDocumentUrl: dto.licenseDocumentUrl,
+    );
+  }
 }

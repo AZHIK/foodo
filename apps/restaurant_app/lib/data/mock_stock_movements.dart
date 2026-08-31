@@ -40,7 +40,7 @@ abstract final class MockStockMovements {
   static List<StockMovement> forItem(InventoryItem item) {
     final rand = _randomFor(item.id);
     final handlers = MockStaff.stockHandlerNames(MockStaff.roles);
-    final destinations = MockStores.transferTargets;
+    final destinations = <StoreLocation>[]; // No mock stores available
 
     // Sets the size of a plausible movement for this line: a 210-egg item
     // moves in dozens, a 3-wheel parmesan line moves in ones.

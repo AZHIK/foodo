@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/store_location.dart';
 import '../models/table_query.dart';
 import 'staff_provider.dart';
+import 'store_api_provider_real.dart';
 import 'table_query_provider.dart';
 
 abstract final class LocationSort {
@@ -15,12 +16,23 @@ abstract final class LocationSort {
 
 /// The single source of truth for where this business trades.
 ///
-/// Store Management edits this list and the stock transfer dialog reads it, so
-/// a site added on the management screen is a transfer destination immediately
-/// — not after a restart, and not because anything was copied across.
+/// Loaded from the backend on startup. Store Management edits this list and
+/// the stock transfer dialog reads it, so a site added on the management screen
+/// is a transfer destination immediately.
 class StoreLocationsNotifier extends Notifier<List<StoreLocation>> {
   @override
-  List<StoreLocation> build() => MockStores.locations;
+  List<StoreLocation> build() {
+    // Load stores from backend provider
+    final stores = ref.watch(storesProvider);
+    return stores.maybeWhen(
+      data: (data) => data
+          .map((store) => StoreLocation.fromDto(store))
+          .toList(),
+      loading: () => [],
+      error: (_, __) => [],
+      orElse: () => [],
+    );
+  }
 
   void upsert(StoreLocation location) {
     final index = state.indexWhere((l) => l.id == location.id);
@@ -53,7 +65,7 @@ class StoreLocationsNotifier extends Notifier<List<StoreLocation>> {
     if (location == null) return false;
     if (location.isActive && !canDeactivate(id)) return false;
 
-    upsert(location.copyWith(isActive: !location.isActive));
+    upsert(location.toggleStatus());
     return true;
   }
 
