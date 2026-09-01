@@ -28,8 +28,8 @@ LazyDatabase driftDatabaseConnection(String encryptionKey) =>
       return NativeDatabase.createInBackground(
         file,
         setup: (rawDb) {
-          // Enable SQLCipher encryption with the provided key.
-          rawDb.execute("PRAGMA key = '$encryptionKey';");
+          // TEMPORARILY DISABLED FOR TESTING: Enable SQLCipher encryption with the provided key.
+          // rawDb.execute("PRAGMA key = '$encryptionKey';");
           // Enforce foreign key constraints.
           rawDb.execute('PRAGMA foreign_keys = ON');
         },

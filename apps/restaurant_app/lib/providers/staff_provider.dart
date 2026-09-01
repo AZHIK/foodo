@@ -45,6 +45,26 @@ StaffMember _fromDto(StaffMemberDto dto) => StaffMember(
   joinedAt: DateTime.now(),
 );
 
+/// Parses roleLabel (cached comma-separated role names) back into StaffRoleAssignment objects.
+///
+/// During onboarding, roleLabel is cached from JWT claims as a display-only string.
+/// When loading saved profiles offline, we reconstruct the roles list from this cached label
+/// so the profile picker can display the role without needing an API call.
+///
+/// The roleId is not available locally (only the name is cached), so we use the name
+/// as a placeholder. Full role data comes from the roles list on reconnect.
+List<StaffRoleAssignment> _parseRolesFromLabel(String? label) {
+  if (label == null || label.trim().isEmpty) return const [];
+
+  return [
+    for (final name in label.split(','))
+      StaffRoleAssignment(
+        roleId: name.trim(), // Use name as placeholder; full roleId comes from API
+        roleName: name.trim(),
+      ),
+  ];
+}
+
 /// The single source of truth for staff, backed by the real
 /// `GET /businesses/{id}/staff` endpoint.
 ///
@@ -137,20 +157,32 @@ final localSavedStaffProvider = FutureProvider<List<StaffMember>>((ref) async {
 
     return [
       for (final profile in profiles)
-        StaffMember(
-          id: profile.id as String,
-          name: profile.displayName as String,
-          email: '',
-          phone: '',
-          roles: const [],
-          status: StaffStatus.active,
-          joinedAt: profile.createdAt as DateTime,
+        _debugLogProfile(
+          StaffMember(
+            id: profile.id as String,
+            name: profile.displayName as String,
+            email: '',
+            phone: '',
+            // Reconstruct roles from cached roleLabel (comma-separated role names).
+            // roleLabel is cached during onboarding from JWT claims, e.g., "Owner" or "Manager, Cashier".
+            roles: _parseRolesFromLabel(profile.roleLabel as String?),
+            status: StaffStatus.active,
+            joinedAt: profile.createdAt as DateTime,
+          ),
+          profile.roleLabel as String?,
         ),
     ];
-  } catch (_) {
+  } catch (e) {
+    print('ERROR loading local staff: $e');
     return [];
   }
 });
+
+/// Debug helper to log what's being loaded from the database.
+StaffMember _debugLogProfile(StaffMember member, String? roleLabel) {
+  // Loaded from database
+  return member;
+}
 
 // ---------------------------------------------------------------------------
 // Search / sort / pagination

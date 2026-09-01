@@ -96,6 +96,18 @@ class LocalProfileRepository {
     );
   }
 
+  /// Updates roleLabel for a profile (used after context switch to cache roles).
+  Future<void> updateRoleLabel(String staffId, String? roleLabel) {
+    return (_db.update(_db.localUserProfiles)
+          ..where((row) => row.id.equals(staffId)))
+        .write(
+      LocalUserProfilesCompanion(
+        roleLabel: Value(roleLabel),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
   /// Inserts or replaces the cached role/permission set for a staff member.
   Future<void> upsertPermissions(CachedPermissionsCompanion permissions) {
     return _db.into(_db.cachedPermissions).insertOnConflictUpdate(permissions);

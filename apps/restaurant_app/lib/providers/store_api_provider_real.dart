@@ -4,6 +4,7 @@ import '../auth/auth_dtos.dart';
 import '../services/store_api_service.dart';
 import 'auth_provider.dart';
 import 'database_providers.dart';
+import 'session_provider.dart';
 
 /// Provides access to the store API service.
 final storeApiServiceProvider = Provider<StoreApiService>((ref) {
@@ -14,9 +15,14 @@ final storeApiServiceProvider = Provider<StoreApiService>((ref) {
 /// Fetches all stores for the current business from the backend.
 ///
 /// This is an async provider that loads the full store details from the backend.
+/// Skips fetching during onboarding to avoid token context issues.
 final storesProvider = FutureProvider<List<StoreReadDto>>((ref) async {
   try {
+    final session = ref.watch(sessionProvider);
     final auth = ref.watch(authProvider);
+
+    // Don't fetch during onboarding — context switch is still settling in.
+    if (!session.hasCompletedOnboarding) return [];
     if (auth.selectedBusinessId == null) return [];
 
     final storeApi = ref.watch(storeApiServiceProvider);

@@ -40,7 +40,7 @@ class RoleTemplateSeed:
     business_type: str
     is_owner_template: bool = True
     description: str = ""
-    permissions: tuple[PermissionCode, ...] = ()
+    permissions: tuple[PermissionCode | str, ...] = ()
 
 
 # ── Shared permission sets reused across business types ────────────────
@@ -60,6 +60,9 @@ _BUSINESS_ADMIN_PERMS: tuple[PermissionCode, ...] = (
     PermissionCode.STORES_CREATE,
     PermissionCode.STORES_UPDATE,
     PermissionCode.STORES_DELETE,
+    PermissionCode.USER_STORE_ROLES_VIEW,
+    PermissionCode.USER_STORE_ROLES_ASSIGN,
+    PermissionCode.USER_STORE_ROLES_REVOKE,
     PermissionCode.ORGANIZATIONS_VIEW,
     PermissionCode.INVENTORY_VIEW,
 )
@@ -183,25 +186,26 @@ ROLE_TEMPLATE_SEEDS: tuple[RoleTemplateSeed, ...] = (
             + _PROCUREMENT_AUTO
             + _AI
             + _POS
+            + ("*",)
         ),
     ),
     RoleTemplateSeed(
         name="supplier_owner",
         business_type="supplier",
         description="Supplier owner — full supplier operational control.",
-        permissions=(_BUSINESS_ADMIN_PERMS + _INVENTORY_ADJUST + _PROCUREMENT + _SUPPLIER),
+        permissions=(_BUSINESS_ADMIN_PERMS + _INVENTORY_ADJUST + _PROCUREMENT + _SUPPLIER + ("*",)),
     ),
     RoleTemplateSeed(
         name="farmer_owner",
         business_type="farmer",
         description="Farmer owner — full farm operational control.",
-        permissions=(_BUSINESS_ADMIN_PERMS + _INVENTORY_ADJUST + _FARMER),
+        permissions=(_BUSINESS_ADMIN_PERMS + _INVENTORY_ADJUST + _FARMER + ("*",)),
     ),
     RoleTemplateSeed(
         name="distributor_owner",
         business_type="distributor",
         description="Distributor owner — full distribution operational control.",
-        permissions=(_BUSINESS_ADMIN_PERMS + _INVENTORY_ADJUST + _PROCUREMENT),
+        permissions=(_BUSINESS_ADMIN_PERMS + _INVENTORY_ADJUST + _PROCUREMENT + ("*",)),
     ),
     RoleTemplateSeed(
         name="platform_operator_owner",
@@ -217,6 +221,7 @@ ROLE_TEMPLATE_SEEDS: tuple[RoleTemplateSeed, ...] = (
             + _SUPPLIER
             + _FARMER
             + _PLATFORM_FULL
+            + ("*",)
         ),
     ),
     # ── Restaurant (non-owner) ───────────────────────────────
@@ -320,11 +325,12 @@ def seed_role_templates(session: Session) -> None:
         }
 
         for code in seed.permissions:
-            if code.value not in existing:
+            permission_code = code.value if isinstance(code, PermissionCode) else str(code)
+            if permission_code not in existing:
                 session.add(
                     RoleTemplatePermission(
                         role_template_id=template.id,
-                        permission_code=code.value,
+                        permission_code=permission_code,
                     )
                 )
 

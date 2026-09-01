@@ -356,6 +356,16 @@ class AuthNotifier extends Notifier<AuthContext> {
         ),
       );
 
+      // Update profile roleLabel with new roles from business-scoped token.
+      // setPin() saved the profile with empty roles (pre-context-switch);
+      // now that we have switched context, update it with actual role names.
+      final newClaims = decodeAccessToken(switchOutput.accessToken);
+      final newRoleLabel = newClaims.roles.isNotEmpty ? newClaims.roles.join(', ') : null;
+      await _profileRepo.updateRoleLabel(state.userId!, newRoleLabel);
+
+      // Update auth state AFTER all persistence is complete.
+      // Updating state triggers providers that watch authProvider (like storesProvider)
+      // to re-run, so they must see the new token already in TokenStorage.
       state = state.copyWith(
         state: AuthState.complete,
         accessToken: switchOutput.accessToken,
@@ -406,13 +416,14 @@ class AuthNotifier extends Notifier<AuthContext> {
 
       // Create or update the profile.
       final name = state.fullName;
+      final roleLabel = claims.roles.isNotEmpty ? claims.roles.join(', ') : null;
       await _profileRepo.upsertProfile(
         LocalUserProfilesCompanion(
           id: Value(userId),
           displayName: Value(name != null && name.isNotEmpty ? name : 'Staff Member'),
           pinHash: Value(pinHash),
           pinSalt: Value(salt),
-          roleLabel: Value(claims.roles.isNotEmpty ? claims.roles.join(', ') : null),
+          roleLabel: Value(roleLabel),
           createdAt: Value(now),
           updatedAt: Value(now),
         ),

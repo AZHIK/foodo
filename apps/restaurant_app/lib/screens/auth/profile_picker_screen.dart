@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../models/business_role.dart';
 import '../../models/staff_member.dart';
-import '../../providers/roles_provider.dart';
 import '../../providers/session_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
@@ -140,7 +140,18 @@ class _ProfileTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final role = ref.watch(roleByIdProvider(member.roleId));
+    // Get role from local saved profile data (via StaffRoleAssignment).
+    // This doesn't require the API or rolesProvider to load — the role name
+    // is already denormalized in the profile. No network call needed.
+    final role = member.primaryRole == null
+        ? null
+        : BusinessRole(
+            id: member.primaryRole!.roleId,
+            name: member.primaryRole!.roleName,
+            description: '',
+            permissionIds: const {},
+            isProtected: false,
+          );
 
     return Material(
       color: context.colors.surfaceContainerLowest,
