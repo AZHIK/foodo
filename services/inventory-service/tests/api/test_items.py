@@ -281,6 +281,42 @@ async def test_selling_price_round_trips_without_drift(client: AsyncClient) -> N
     assert Decimal(resp.json()["selling_price"]) == Decimal("0.10")
 
 
+# ── Unit cost (add-unit_cost task) ──────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_create_item_with_unit_cost(client: AsyncClient) -> None:
+    """Creating an item with unit_cost stores and returns it, independent of
+    selling_price."""
+    payload = {
+        "name": "Raw Flour",
+        "unit_of_measure": "kg",
+        "item_type": "raw_material",
+        "reorder_threshold": 10.0,
+        "reorder_quantity": 50.0,
+        "unit_cost": "2.4500",
+        "store_id": str(STORE_ID),
+    }
+    resp = await client.post(API_PREFIX, json=payload, headers=AUTH_HEADER)
+    assert resp.status_code == 201, resp.text
+    data = resp.json()
+    assert Decimal(data["unit_cost"]) == Decimal("2.4500")
+    assert data["selling_price"] is None
+
+
+@pytest.mark.asyncio
+async def test_update_unit_cost_via_patch(client: AsyncClient, db_session: AsyncSession) -> None:
+    """PATCH unit_cost updates the stored value."""
+    item = await _create_test_item(db_session)
+    resp = await client.patch(
+        f"{API_PREFIX}/{item.id}",
+        json={"unit_cost": "3.1000"},
+        headers=AUTH_HEADER,
+    )
+    assert resp.status_code == 200, resp.text
+    assert Decimal(resp.json()["unit_cost"]) == Decimal("3.1000")
+
+
 @pytest.mark.asyncio
 async def test_item_type_omitted_is_rejected(client: AsyncClient) -> None:
     """Confirm the Stage 2 follow-up is enforced all the way through the API."""

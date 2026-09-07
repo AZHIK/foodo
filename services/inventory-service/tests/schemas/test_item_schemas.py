@@ -35,6 +35,18 @@ class TestItemCreate:
         )
         assert data.selling_price == 25.5
 
+    def test_valid_create_with_unit_cost_succeeds(self) -> None:
+        data = ItemCreate(
+            name="Flour",
+            unit_of_measure="kg",
+            item_type="raw_material",
+            reorder_threshold=10.0,
+            reorder_quantity=50.0,
+            unit_cost=2.45,
+            store_id=UUID("22222222-2222-2222-2222-222222222222"),
+        )
+        assert data.unit_cost == 2.45
+
     def test_rejects_invalid_unit_of_measure(self) -> None:
         with pytest.raises(ValidationError):
             ItemCreate(
@@ -79,6 +91,11 @@ class TestItemUpdate:
         assert data.selling_price == Decimal("29.99")
         assert "selling_price" in data.model_dump(exclude_unset=True)
 
+    def test_update_unit_cost_works(self) -> None:
+        data = ItemUpdate(unit_cost=Decimal("2.4500"))
+        assert data.unit_cost == Decimal("2.4500")
+        assert "unit_cost" in data.model_dump(exclude_unset=True)
+
 
 class TestItemRead:
     def test_iterface_fields(self) -> None:
@@ -88,6 +105,7 @@ class TestItemRead:
         assert "business_id" in fields
         assert "name" in fields
         assert "selling_price" in fields
+        assert "unit_cost" in fields
         assert "is_active" in fields
         assert "created_at" in fields
         assert "updated_at" in fields

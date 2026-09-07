@@ -189,6 +189,13 @@ class Item(SQLModel, table=True):
         default=None,
         sa_type=Numeric(precision=12, scale=2),
     )
+    # Cost basis for the "inventory value" reporting metric (stock * unit_cost).
+    # Distinct from selling_price (retail) — a raw_material item typically has
+    # a cost but no selling_price, and the two can differ for a `both` item.
+    unit_cost: Decimal | None = Field(
+        default=None,
+        sa_type=Numeric(precision=12, scale=4),
+    )
     allow_negative_stock: bool = Field(default=False, nullable=False)
     item_type: ItemType = Field(
         sa_column=Column(

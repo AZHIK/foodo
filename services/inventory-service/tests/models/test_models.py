@@ -51,6 +51,7 @@ class TestItemModel:
         assert item.unit_of_measure == UnitOfMeasure.KG
         assert item.reorder_threshold == Decimal("10.000")
         assert item.selling_price is None
+        assert item.unit_cost is None
         assert item.allow_negative_stock is False
         assert item.item_type == ItemType.BOTH
         assert item.is_active is True
@@ -85,6 +86,22 @@ class TestItemModel:
         )
         assert item.item_type == ItemType.RAW_MATERIAL
         assert item.selling_price == Decimal("5.50")
+
+    def test_create_item_with_unit_cost(self) -> None:
+        """unit_cost is independent of selling_price — a raw_material item can
+        carry a cost with no retail price at all."""
+        item = Item(
+            business_id=UUID("00000000-0000-0000-0000-000000000001"),
+            store_id=UUID("00000000-0000-0000-0000-000000000002"),
+            name="Flour",
+            unit_of_measure=UnitOfMeasure.KG,
+            item_type=ItemType.RAW_MATERIAL,
+            reorder_threshold=Decimal("10.000"),
+            reorder_quantity=Decimal("50.000"),
+            unit_cost=Decimal("2.4500"),
+        )
+        assert item.unit_cost == Decimal("2.4500")
+        assert item.selling_price is None
 
     def test_item_type_enum_values(self) -> None:
         assert ItemType.SELLABLE.value == "sellable"
