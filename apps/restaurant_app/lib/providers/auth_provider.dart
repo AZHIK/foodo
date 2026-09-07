@@ -11,6 +11,7 @@
 /// 6. Persist tokens & profile
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,10 +24,14 @@ import '../auth/jwt_decoder.dart';
 import '../auth/permissions_cache_sync.dart';
 import '../auth/token_refresh_interceptor.dart';
 import '../auth/token_storage.dart';
+import '../config/api_config.dart';
 import '../database/app_database.dart';
 import '../database/local_profile_repository.dart';
+import '../sync/catalog_sync_service.dart';
+import '../sync/http_inventory_catalog_api.dart';
 import '../utils/pin_hasher.dart';
 import 'database_providers.dart';
+import 'inventory_api_provider.dart';
 import 'permissions_cache_tick_provider.dart';
 
 /// Auth flow state machine.
@@ -556,6 +561,28 @@ class AuthNotifier extends Notifier<AuthContext> {
       ),
     );
     ref.read(permissionsCacheTickProvider.notifier).state++;
+
+    // Warm the inventory cache as soon as a business/store context exists.
+    // Fire-and-forget: `InventoryNotifier.build()` does its own
+    // stale-while-revalidate refresh regardless, so a failure here (offline,
+    // no `inventory.view` permission) just means the first inventory screen
+    // visit does the sync instead — never worth failing login over.
+    //
+    // Built directly here rather than via `catalogSyncServiceProvider` —
+    // that provider resolves its business id through `currentBusinessIdProvider`,
+    // which itself watches `authProvider`. Reading it from inside
+    // `AuthNotifier` (this class) while its own build/state-change is still
+    // in flight is a circular read Riverpod rejects outright, so this
+    // constructs the sync service from providers that don't loop back here.
+    unawaited(
+      CatalogSyncService(
+        db: ref.read(appDatabaseProvider),
+        api: HttpInventoryCatalogApi(
+          dio: ref.read(inventoryServiceDioProvider),
+          businessId: businessId,
+        ),
+      ).syncAll(businessId: businessId, storeId: businessLocationId),
+    );
   }
 
   /// Reset state for next login.
@@ -573,7 +600,7 @@ final authProvider = NotifierProvider<AuthNotifier, AuthContext>(
 /// Public (not `_dioClientProvider`) so tests can override it with a fake
 /// `HttpClientAdapter` instead of hitting a live backend.
 final identityServiceDioProvider = Provider<Dio>((ref) {
-  const baseUrl = 'http://localhost:8009/api/v1';
+  const baseUrl = ApiConfig.identityServiceBaseUrl;
 
   final dio = Dio(BaseOptions(
     baseUrl: baseUrl,

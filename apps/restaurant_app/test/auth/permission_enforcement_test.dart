@@ -86,9 +86,12 @@ void main() {
       test('Inventory feature requires inventory permissions', () {
         const inventoryPerms = [
           AppPermissions.inventoryView,
-          AppPermissions.inventoryEdit,
           AppPermissions.inventoryAdjust,
-          AppPermissions.inventoryDelete,
+          AppPermissions.inventoryItemsCreate,
+          AppPermissions.inventoryItemsUpdate,
+          AppPermissions.inventoryItemsDeactivate,
+          AppPermissions.inventoryWasteRecord,
+          AppPermissions.inventoryTransfer,
         ];
 
         for (final perm in inventoryPerms) {
@@ -160,7 +163,7 @@ void main() {
 
         expect(cashierPerms.length, equals(1));
         expect(cashierPerms, contains(AppPermissions.posAccess));
-        expect(cashierPerms, isNot(contains(AppPermissions.inventoryEdit)));
+        expect(cashierPerms, isNot(contains(AppPermissions.inventoryItemsUpdate)));
       });
     });
 
@@ -183,7 +186,7 @@ void main() {
       test('Modifying a feature requires multiple permissions', () {
         // Edit usually requires view + edit
         const editPerms = [
-          AppPermissions.inventoryEdit,
+          AppPermissions.inventoryItemsUpdate,
           AppPermissions.inventoryAdjust,
         ];
 
@@ -241,9 +244,12 @@ void main() {
           AppPermissions.posDiscount,
           AppPermissions.posRefund,
           AppPermissions.inventoryView,
-          AppPermissions.inventoryEdit,
           AppPermissions.inventoryAdjust,
-          AppPermissions.inventoryDelete,
+          AppPermissions.inventoryItemsCreate,
+          AppPermissions.inventoryItemsUpdate,
+          AppPermissions.inventoryItemsDeactivate,
+          AppPermissions.inventoryWasteRecord,
+          AppPermissions.inventoryTransfer,
           AppPermissions.salesView,
           AppPermissions.salesExport,
           AppPermissions.reportsView,
@@ -263,13 +269,15 @@ void main() {
 
         for (final code in allCodes) {
           expect(code, contains('.'));
-          expect(code.split('.').length, equals(2)); // category.action format
+          // category.action, or category.subcategory.action for the
+          // fine-grained inventory codes.
+          expect(code.split('.').length, inInclusiveRange(2, 3));
         }
       });
 
       test('Permission labels are descriptive', () {
         final posLabel = AppPermissions.labelFor(AppPermissions.posAccess);
-        final inventoryLabel = AppPermissions.labelFor(AppPermissions.inventoryEdit);
+        final inventoryLabel = AppPermissions.labelFor(AppPermissions.inventoryItemsUpdate);
         final staffLabel = AppPermissions.labelFor(AppPermissions.staffView);
 
         expect(posLabel, isNotEmpty);

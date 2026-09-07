@@ -232,13 +232,16 @@ class InventoryScreen extends ConsumerWidget {
     );
 
     if (confirmed != true || !context.mounted) return;
-    ref.read(inventoryItemsProvider.notifier).delete(item.id);
-    // The ledger goes with the item — orphaned movements would keep counting
-    // against a line that no longer exists.
-    ref.read(stockMovementsProvider.notifier).clearForItem(item.id);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('${item.name} deleted')));
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(inventoryItemsProvider.notifier).delete(item.id);
+      // The ledger goes with the item — orphaned movements would keep counting
+      // against a line that no longer exists.
+      ref.read(stockMovementsProvider.notifier).clearForItem(item.id);
+      messenger.showSnackBar(SnackBar(content: Text('${item.name} deleted')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not delete: $e')));
+    }
   }
 
   /// Records on the exported file which view produced it — an unqualified
@@ -250,7 +253,8 @@ class InventoryScreen extends ConsumerWidget {
       if (filters.statuses.isNotEmpty)
         filters.statuses.map((s) => s.label).join(', '),
       if (filters.hasStockRange)
-        'stock ${filters.minStock ?? 0}–${filters.maxStock ?? 'any'}',
+        'stock ${filters.minStock != null ? Fmt.quantity(filters.minStock!) : 0}'
+            '–${filters.maxStock != null ? Fmt.quantity(filters.maxStock!) : 'any'}',
       if (search.trim().isNotEmpty) 'matching "${search.trim()}"',
     ];
 
@@ -284,7 +288,7 @@ final inventoryColumns = <DataColumnSpec<InventoryItem>>[
     field: InventorySort.stock,
     flex: 2,
     numeric: true,
-    value: (item) => '${item.stock} ${item.unit}',
+    value: (item) => '${Fmt.quantity(item.stock)} ${item.unit}',
     cellBuilder: (context, item) => _StockCell(item: item),
   ),
   DataColumnSpec(
@@ -387,7 +391,7 @@ class _StockCell extends StatelessWidget {
       children: [
         Flexible(
           child: Text(
-            '${item.stock}',
+            Fmt.quantity(item.stock),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: context.text.bodyMedium?.copyWith(

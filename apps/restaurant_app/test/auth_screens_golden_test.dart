@@ -16,6 +16,7 @@ import 'package:restaurant_pos/screens/auth/onboarding_screen.dart';
 import 'package:restaurant_pos/screens/auth/otp_login_screen.dart';
 
 import 'test_helpers/fake_identity_backend.dart';
+import 'test_helpers/test_container.dart';
 
 /// Renders the auth and onboarding screens so their layout can be reviewed as
 /// images rather than inferred from widget assertions.
@@ -60,8 +61,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final container = ProviderContainer(overrides: overrides);
-    addTearDown(container.dispose);
+    final container = newTestContainer(extraOverrides: overrides);
     container.read(themeModeProvider.notifier).set(mode);
     if (session != null) {
       container.read(sessionProvider.notifier).state = session;

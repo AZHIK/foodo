@@ -23,8 +23,8 @@ class StockMovementsNotifier extends Notifier<List<StockMovement>> {
   StockMovement record({
     required String itemId,
     required StockMovementType type,
-    required int delta,
-    required int balanceAfter,
+    required double delta,
+    required double balanceAfter,
     required String actor,
     String? note,
   }) {

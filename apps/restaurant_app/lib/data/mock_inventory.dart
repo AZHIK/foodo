@@ -104,8 +104,8 @@ abstract final class MockInventory {
     String name,
     String categoryId,
     String emoji,
-    int stock,
-    int reorderLevel,
+    double stock,
+    double reorderLevel,
     double unitCost,
     String unit, [
     // Optional and genuinely empty for most lines — a real catalogue is

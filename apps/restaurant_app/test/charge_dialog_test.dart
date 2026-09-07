@@ -13,6 +13,8 @@ import 'package:restaurant_pos/widgets/pos/charge_dialog.dart';
 import 'package:restaurant_pos/widgets/pos/menu_item_card.dart';
 import 'package:restaurant_pos/widgets/selectable_option_card.dart';
 
+import 'test_helpers/test_container.dart';
+
 void main() {
   /// Pumps the POS screen at [size] with one item already rung up, and opens
   /// the take-payment dialog.
@@ -21,8 +23,7 @@ void main() {
     tester.view.physicalSize = size * tester.view.devicePixelRatio;
     tester.view.devicePixelRatio = tester.view.devicePixelRatio;
 
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
+    final container = newTestContainer();
 
     await tester.pumpWidget(
       UncontrolledProviderScope(

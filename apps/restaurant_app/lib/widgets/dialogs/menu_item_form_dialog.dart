@@ -261,7 +261,7 @@ class _MenuItemFormDialogState extends ConsumerState<MenuItemFormDialog> {
                   value: null,
                   child: Text('None'),
                 ),
-                for (final item in ref.watch(inventoryItemsProvider))
+                for (final item in ref.watch(inventoryItemsListProvider))
                   DropdownMenuItem(
                     value: item.id,
                     child: Text(

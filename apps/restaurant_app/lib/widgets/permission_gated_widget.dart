@@ -19,7 +19,7 @@ import '../models/user_permissions.dart';
 /// Usage:
 /// ```dart
 /// PermissionGatedWidget(
-///   requiredPermission: AppPermissions.inventoryEdit,
+///   requiredPermission: AppPermissions.inventoryItemsUpdate,
 ///   child: EditInventoryButton(),
 ///   onDenied: (reason) => Text('Cannot edit: $reason'),
 /// )
@@ -186,7 +186,7 @@ class PermissionGatedButton extends ConsumerWidget {
 /// Usage:
 /// ```dart
 /// PermissionGatedScreen(
-///   requiredPermission: AppPermissions.inventoryEdit,
+///   requiredPermission: AppPermissions.inventoryItemsUpdate,
 ///   child: EditInventoryScreen(),
 ///   onDenied: (reason) => PermissionDeniedScreen(reason),
 /// )

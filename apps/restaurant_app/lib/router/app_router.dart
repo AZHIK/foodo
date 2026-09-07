@@ -16,7 +16,7 @@ import '../screens/customers/customer_detail_screen.dart';
 import '../screens/dashboard/dashboard_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/order_detail/order_detail_screen.dart';
-import '../screens/inventory/inventory_screen.dart';
+import '../screens/inventory/inventory_screen_gated.dart';
 import '../screens/insights/ai_insights_screen.dart';
 import '../screens/inventory/item_detail_screen.dart';
 import '../screens/inventory/reorders_screen.dart';
@@ -416,7 +416,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoute.inventoryPath,
                 name: AppRoute.inventoryName,
-                builder: (context, state) => const InventoryScreen(),
+                builder: (context, state) => const InventoryScreenGated(),
                 routes: [
                   GoRoute(
                     path: AppRoute.itemDetailPath,

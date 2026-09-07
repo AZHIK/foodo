@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../utils/formatters.dart';
 import '../widgets/data_page/status_badge.dart';
 
 /// Why a stock number changed.
@@ -60,10 +61,10 @@ class StockMovement {
   final StockMovementType type;
 
   /// Signed change. Negative for sales, waste and transfers out.
-  final int delta;
+  final double delta;
 
   /// Stock level immediately after this movement.
-  final int balance;
+  final double balance;
 
   /// Who performed it — a staff member's name, or "System" for automatic
   /// deductions such as a POS sale.
@@ -73,5 +74,6 @@ class StockMovement {
   final String? note;
 
   /// "+12" / "−6", with a true minus sign rather than a hyphen.
-  String get deltaLabel => delta >= 0 ? '+$delta' : '−${delta.abs()}';
+  String get deltaLabel =>
+      delta >= 0 ? '+${Fmt.quantity(delta)}' : '−${Fmt.quantity(delta.abs())}';
 }

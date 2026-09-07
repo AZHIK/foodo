@@ -1,7 +1,9 @@
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:restaurant_pos/database/app_database.dart';
 import 'package:restaurant_pos/main.dart';
 import 'package:restaurant_pos/models/ai_insight.dart';
 import 'package:restaurant_pos/models/inventory_item.dart';
@@ -10,6 +12,7 @@ import 'package:restaurant_pos/models/store_location.dart';
 import 'package:restaurant_pos/models/store_settings.dart';
 import 'package:restaurant_pos/providers/ai_insights_provider.dart';
 import 'package:restaurant_pos/providers/cart_provider.dart';
+import 'package:restaurant_pos/providers/database_providers.dart';
 import 'package:restaurant_pos/providers/inventory_provider.dart';
 import 'package:restaurant_pos/providers/order_session_provider.dart';
 import 'package:restaurant_pos/providers/preferences_provider.dart';
@@ -32,7 +35,15 @@ Future<ProviderContainer> pumpAt(
   tester.view.physicalSize = size * tester.view.devicePixelRatio;
   addTearDown(tester.view.reset);
 
-  final container = ProviderContainer();
+  // The insights route reads inventory data, and InventoryNotifier now
+  // watches authProvider (via currentStoreIdProvider), which needs a working
+  // database even with no business/store context seeded.
+  final database = AppDatabase(NativeDatabase.memory());
+  addTearDown(database.close);
+
+  final container = ProviderContainer(
+    overrides: [appDatabaseProvider.overrideWithValue(database)],
+  );
   addTearDown(container.dispose);
 
   await tester.pumpWidget(
@@ -482,12 +493,12 @@ void main() {
 
       // Restock everything; the urgent insight has to disappear on its own.
       final restocked = [
-        for (final item in container.read(inventoryItemsProvider))
+        for (final item in container.read(inventoryItemsListProvider))
           item.copyWith(stock: item.reorderLevel + 100),
       ];
       final notifier = container.read(inventoryItemsProvider.notifier);
       for (final item in restocked) {
-        notifier.upsert(item);
+        await notifier.upsert(item);
       }
 
       final healthy = container.read(aiInsightsProvider);
@@ -517,7 +528,7 @@ void main() {
       final container = await pumpAt(tester, const Size(1440, 900), '/insights');
 
       final out = container
-          .read(inventoryItemsProvider)
+          .read(inventoryItemsListProvider)
           .where((i) => i.status == StockStatus.outOfStock)
           .toList();
       expect(out, isNotEmpty, reason: 'fixture should include empty lines');

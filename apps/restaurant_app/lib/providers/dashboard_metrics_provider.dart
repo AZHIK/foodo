@@ -108,7 +108,7 @@ const Duration _onShiftWindow = Duration(hours: 12);
 
 final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
   final orders = ref.watch(ordersProvider);
-  final items = ref.watch(inventoryItemsProvider);
+  final items = ref.watch(inventoryItemsListProvider);
   final expenses = ref.watch(otherExpensesProvider);
   final incomes = ref.watch(otherIncomesProvider);
   final staff = ref.watch(staffMembersProvider).valueOrNull ?? const [];

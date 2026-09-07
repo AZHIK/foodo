@@ -1,10 +1,13 @@
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:restaurant_pos/database/app_database.dart';
 import 'package:restaurant_pos/main.dart';
 import 'package:restaurant_pos/models/inventory_item.dart';
 import 'package:restaurant_pos/providers/dashboard_metrics_provider.dart';
+import 'package:restaurant_pos/providers/database_providers.dart';
 import 'package:restaurant_pos/providers/inventory_provider.dart';
 import 'package:restaurant_pos/providers/orders_provider.dart';
 import 'package:restaurant_pos/router/app_router.dart';
@@ -20,7 +23,15 @@ Future<ProviderContainer> pumpDashboard(
   tester.view.physicalSize = size * tester.view.devicePixelRatio;
   addTearDown(tester.view.reset);
 
-  final container = ProviderContainer();
+  // The dashboard reads inventory metrics, and InventoryNotifier now watches
+  // authProvider (via currentStoreIdProvider), which needs a working database
+  // even with no business/store context seeded.
+  final database = AppDatabase(NativeDatabase.memory());
+  addTearDown(database.close);
+
+  final container = ProviderContainer(
+    overrides: [appDatabaseProvider.overrideWithValue(database)],
+  );
   addTearDown(container.dispose);
 
   await tester.pumpWidget(
@@ -192,14 +203,19 @@ void main() {
       tester,
     ) async {
       final container = await pumpDashboard(tester, const Size(1440, 900));
+      // pumpAndSettle can return before InventoryNotifier's own build()
+      // future has resolved if nothing in the mounted tree forced it first —
+      // wait for it explicitly so `restocked` is built from the real catalog,
+      // not a momentary empty loading snapshot.
+      await container.read(inventoryItemsProvider.future);
 
       final restocked = [
-        for (final item in container.read(inventoryItemsProvider))
+        for (final item in container.read(inventoryItemsListProvider))
           item.copyWith(stock: item.reorderLevel + 100),
       ];
       final notifier = container.read(inventoryItemsProvider.notifier);
       for (final item in restocked) {
-        notifier.upsert(item);
+        await notifier.upsert(item);
       }
       await tester.pumpAndSettle();
 

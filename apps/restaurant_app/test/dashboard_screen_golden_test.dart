@@ -9,6 +9,8 @@ import 'package:restaurant_pos/main.dart';
 import 'package:restaurant_pos/providers/settings_provider.dart';
 import 'package:restaurant_pos/router/app_router.dart';
 
+import 'test_helpers/test_container.dart';
+
 /// Renders the assembled dashboard so its layout can be reviewed as an image.
 ///
 /// Run with
@@ -56,8 +58,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
+    final container = newTestContainer();
     container.read(themeModeProvider.notifier).set(mode);
 
     await tester.pumpWidget(

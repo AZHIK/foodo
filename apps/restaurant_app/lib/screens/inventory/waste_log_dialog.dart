@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/inventory_item.dart';
-import '../../models/stock_movement.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
+import '../../utils/formatters.dart';
 import '../../widgets/image_upload_field.dart';
 import '../../widgets/labeled_form_field.dart';
 import '../../widgets/responsive_form_dialog.dart';
@@ -59,10 +59,12 @@ class _WasteLogDialogState extends ConsumerState<WasteLogDialog> {
     super.dispose();
   }
 
-  int? get _amount => parseQuantity(_quantity.text);
+  bool _submitting = false;
 
-  int get _newLevel =>
-      (widget.item.stock - (_amount ?? 0)).clamp(0, 1 << 31);
+  double? get _amount => parseQuantity(_quantity.text);
+
+  double get _newLevel =>
+      (widget.item.stock - (_amount ?? 0)).clamp(0, double.infinity);
 
   /// Waste cannot exceed what is on the shelf: you cannot throw away stock you
   /// do not have, and a count that says otherwise is a mis-key.
@@ -71,15 +73,16 @@ class _WasteLogDialogState extends ConsumerState<WasteLogDialog> {
     if (amount == null) return null;
     if (amount == 0) return 'Enter an amount greater than zero';
     if (amount > widget.item.stock) {
-      return 'Only ${widget.item.stock} ${widget.item.unit} in stock';
+      return 'Only ${Fmt.quantity(widget.item.stock)} ${widget.item.unit} in stock';
     }
     return null;
   }
 
-  bool get _canSubmit => _amount != null && _amount! > 0 && _error == null;
+  bool get _canSubmit => !_submitting && _amount != null && _amount! > 0 && _error == null;
 
-  void _submit() {
+  Future<void> _submit() async {
     final note = _notes.text.trim();
+    final amount = _amount ?? 0;
     final parts = <String>[
       _reason.label,
       if (note.isNotEmpty) note,
@@ -88,25 +91,27 @@ class _WasteLogDialogState extends ConsumerState<WasteLogDialog> {
       if (_photoName != null) 'Photo: $_photoName',
     ];
 
-    applyStockMovement(
-      ref: ref,
-      item: widget.item,
-      delta: -(_amount ?? 0),
-      type: StockMovementType.waste,
-      note: parts.join(' · '),
-    );
-
     final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context).pop();
+    final amountLabel = '${Fmt.quantity(amount)} ${widget.item.unit}';
 
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          '$_amount ${widget.item.unit} of ${widget.item.name} '
-          'logged as waste',
-        ),
-      ),
-    );
+    setState(() => _submitting = true);
+    try {
+      await applyWaste(
+        ref: ref,
+        item: widget.item,
+        quantity: amount,
+        reason: parts.join(' · '),
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      messenger.showSnackBar(
+        SnackBar(content: Text('$amountLabel of ${widget.item.name} logged as waste')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      messenger.showSnackBar(SnackBar(content: Text('Could not log waste: $e')));
+    }
   }
 
   @override
@@ -152,7 +157,7 @@ class _WasteLogDialogState extends ConsumerState<WasteLogDialog> {
 
           StockPreviewLine(
             label: 'Remaining after waste',
-            value: '$_newLevel ${item.unit}',
+            value: '${Fmt.quantity(_newLevel)} ${item.unit}',
             tone: semantic.warning,
             icon: Icons.trending_down_rounded,
           ),

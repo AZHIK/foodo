@@ -1,10 +1,13 @@
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:restaurant_pos/database/app_database.dart';
 import 'package:restaurant_pos/models/cart.dart';
 import 'package:restaurant_pos/models/menu_item.dart';
 import 'package:restaurant_pos/providers/cart_provider.dart';
+import 'package:restaurant_pos/providers/database_providers.dart';
 import 'package:restaurant_pos/providers/menu_providers.dart';
 import 'package:restaurant_pos/main.dart';
 
@@ -119,7 +122,22 @@ void main() {
       tester.view.devicePixelRatio = tester.view.devicePixelRatio;
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(const ProviderScope(child: RestaurantPosApp()));
+      // The shell lands on the dashboard, which reads inventory data —
+      // InventoryNotifier now watches authProvider (via currentStoreIdProvider),
+      // which needs a working database even with no context seeded.
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final container = ProviderContainer(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const RestaurantPosApp(),
+        ),
+      );
       await tester.pumpAndSettle();
     }
 

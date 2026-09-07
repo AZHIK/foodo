@@ -56,6 +56,27 @@ final currentBusinessIdProvider = Provider<String?>((ref) {
   return ref.watch(_deviceBusinessIdProvider).valueOrNull;
 });
 
+/// This device's locked store, read from local `DeviceConfig` — the
+/// offline-safe fallback for [currentStoreIdProvider], same rationale as
+/// [_deviceBusinessIdProvider].
+final _deviceStoreIdProvider = FutureProvider<String?>((ref) async {
+  final repo = ref.watch(localProfileRepositoryProvider);
+  final device = await repo.currentDevice();
+  return device?.businessLocationId as String?;
+});
+
+/// The store the current session is scoped to. Unlike
+/// [currentBusinessIdProvider], this isn't a JWT claim to cross-check
+/// against (inventory-service scopes writes by `business_id` alone; `store_id`
+/// is just a data parameter, not part of `require_business_permission`), so
+/// `AuthContext.selectedStoreId` — set at login/context-switch — is the
+/// live source, with the device's locked store as the offline fallback.
+final currentStoreIdProvider = Provider<String?>((ref) {
+  final live = ref.watch(authProvider.select((s) => s.selectedStoreId));
+  if (live != null) return live;
+  return ref.watch(_deviceStoreIdProvider).valueOrNull;
+});
+
 /// Effective permission codes for UI gating: always the local
 /// `CachedPermissions` cache (via [currentUserPermissionsProvider]), never
 /// the live token directly — so buttons/nav items read from the same

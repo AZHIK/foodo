@@ -7,6 +7,8 @@ import 'package:restaurant_pos/providers/cart_provider.dart';
 import 'package:restaurant_pos/router/app_router.dart';
 import 'package:restaurant_pos/widgets/pos/menu_item_card.dart';
 
+import 'test_helpers/test_container.dart';
+
 /// Every route the sweep drags through. Detail routes use ids from the mock
 /// data, so they render a real screen rather than the not-found state — which
 /// would pass the sweep without ever laying the screen out.
@@ -38,8 +40,7 @@ void main() {
 
   testWidgets('dragging a window edge never throws', (tester) async {
     addTearDown(tester.view.reset);
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
+    final container = newTestContainer();
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -75,8 +76,7 @@ void main() {
 
   testWidgets('crossing a breakpoint with the cart sheet open', (tester) async {
     addTearDown(tester.view.reset);
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
+    final container = newTestContainer();
 
     tester.view.physicalSize =
         const Size(390, 844) * tester.view.devicePixelRatio;
@@ -112,8 +112,7 @@ void main() {
 
   testWidgets('crossing a breakpoint with the nav drawer open', (tester) async {
     addTearDown(tester.view.reset);
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
+    final container = newTestContainer();
 
     tester.view.physicalSize =
         const Size(768, 1024) * tester.view.devicePixelRatio;
@@ -141,8 +140,7 @@ void main() {
 
   testWidgets('shrinking height never throws', (tester) async {
     addTearDown(tester.view.reset);
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
+    final container = newTestContainer();
 
     await tester.pumpWidget(
       UncontrolledProviderScope(

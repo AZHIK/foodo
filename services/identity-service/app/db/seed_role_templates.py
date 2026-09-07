@@ -20,17 +20,7 @@ from dataclasses import dataclass
 from sqlmodel import Session, select
 
 from app.core.permission_codes import PermissionCode
-from app.db.seed_mappings import (
-    INVENTORY_ITEMS_CREATE,
-    INVENTORY_ITEMS_DEACTIVATE,
-    INVENTORY_ITEMS_UPDATE,
-    INVENTORY_TRANSFER,
-    INVENTORY_WASTE_RECORD,
-    POS_SALES_LIST,
-    POS_SALES_SYNC,
-    POS_SALES_VIEW,
-    uniq,
-)
+from app.db.seed_mappings import POS_SALES_LIST, POS_SALES_SYNC, POS_SALES_VIEW, uniq
 from app.models import RoleTemplate, RoleTemplatePermission
 
 
@@ -116,8 +106,9 @@ _PLATFORM_FULL: tuple[PermissionCode, ...] = (
 
 # ── Non-owner (deferred) template permission sets ─────────────────────
 
-# Restaurant "Manager" — the POS / inventory / staff codes requested, resolved
-# onto the existing enum (see seed_mappings.py).
+# Restaurant "Manager" — the POS codes requested are resolved onto the existing
+# POS_WRITE enum member (see seed_mappings.py); the inventory codes are now
+# first-class PermissionCode members and are referenced directly.
 _MANAGER: tuple[PermissionCode, ...] = (
     POS_SALES_SYNC,
     POS_SALES_VIEW,
@@ -125,11 +116,11 @@ _MANAGER: tuple[PermissionCode, ...] = (
     PermissionCode.POS_REFUND,
     PermissionCode.INVENTORY_VIEW,
     PermissionCode.INVENTORY_ADJUST,
-    INVENTORY_WASTE_RECORD,
-    INVENTORY_TRANSFER,
-    INVENTORY_ITEMS_CREATE,
-    INVENTORY_ITEMS_UPDATE,
-    INVENTORY_ITEMS_DEACTIVATE,
+    PermissionCode.INVENTORY_WASTE_RECORD,
+    PermissionCode.INVENTORY_TRANSFER,
+    PermissionCode.INVENTORY_ITEMS_CREATE,
+    PermissionCode.INVENTORY_ITEMS_UPDATE,
+    PermissionCode.INVENTORY_ITEMS_DEACTIVATE,
     PermissionCode.USER_BUSINESS_ROLES_VIEW,
     PermissionCode.USER_BUSINESS_ROLES_ASSIGN,
 )
@@ -142,16 +133,16 @@ _CASHIER: tuple[PermissionCode, ...] = (
 
 _KITCHEN_STAFF: tuple[PermissionCode, ...] = (
     PermissionCode.INVENTORY_VIEW,
-    INVENTORY_WASTE_RECORD,
+    PermissionCode.INVENTORY_WASTE_RECORD,
 )
 
 _STOCK_CONTROLLER: tuple[PermissionCode, ...] = (
     PermissionCode.INVENTORY_VIEW,
     PermissionCode.INVENTORY_ADJUST,
-    INVENTORY_WASTE_RECORD,
-    INVENTORY_TRANSFER,
-    INVENTORY_ITEMS_CREATE,
-    INVENTORY_ITEMS_UPDATE,
+    PermissionCode.INVENTORY_WASTE_RECORD,
+    PermissionCode.INVENTORY_TRANSFER,
+    PermissionCode.INVENTORY_ITEMS_CREATE,
+    PermissionCode.INVENTORY_ITEMS_UPDATE,
 )
 
 _SALES_ADMIN: tuple[PermissionCode, ...] = (
@@ -163,7 +154,7 @@ _SALES_ADMIN: tuple[PermissionCode, ...] = (
 _WAREHOUSE_STAFF: tuple[PermissionCode, ...] = (
     PermissionCode.INVENTORY_VIEW,
     PermissionCode.INVENTORY_ADJUST,
-    INVENTORY_TRANSFER,
+    PermissionCode.INVENTORY_TRANSFER,
 )
 
 _FARM_COORDINATOR: tuple[PermissionCode, ...] = (

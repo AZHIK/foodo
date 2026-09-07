@@ -1,9 +1,12 @@
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:restaurant_pos/database/app_database.dart';
 import 'package:restaurant_pos/main.dart';
 import 'package:restaurant_pos/models/inventory_item.dart';
+import 'package:restaurant_pos/providers/database_providers.dart';
 import 'package:restaurant_pos/providers/inventory_provider.dart';
 import 'package:restaurant_pos/providers/item_form_provider.dart';
 import 'package:restaurant_pos/router/app_router.dart';
@@ -17,7 +20,14 @@ Future<ProviderContainer> pumpInventory(WidgetTester tester, Size size) async {
   tester.view.physicalSize = size * tester.view.devicePixelRatio;
   addTearDown(tester.view.reset);
 
-  final container = ProviderContainer();
+  // See inventory_screen_test.dart's pumpInventory for why this override is
+  // required now that InventoryNotifier watches authProvider.
+  final database = AppDatabase(NativeDatabase.memory());
+  addTearDown(database.close);
+
+  final container = ProviderContainer(
+    overrides: [appDatabaseProvider.overrideWithValue(database)],
+  );
   addTearDown(container.dispose);
 
   await tester.pumpWidget(
@@ -234,13 +244,13 @@ void main() {
       await tester.pumpAndSettle();
 
       final updated = container
-          .read(inventoryItemsProvider)
+          .read(inventoryItemsListProvider)
           .firstWhere((item) => item.id == target.id);
       expect(updated.name, 'Renamed Item');
       expect(updated.unitCost, 99.00);
       // Same id in place, not a duplicate row.
       expect(
-        container.read(inventoryItemsProvider).where((i) => i.id == target.id),
+        container.read(inventoryItemsListProvider).where((i) => i.id == target.id),
         hasLength(1),
       );
       expect(find.byType(ResponsiveFormDialog), findsNothing);
@@ -299,7 +309,7 @@ void main() {
       await tester.tap(find.byKey(ItemFormKeys.submit));
       await tester.pumpAndSettle();
 
-      final saved = container.read(inventoryItemsProvider).first;
+      final saved = container.read(inventoryItemsListProvider).first;
       expect(saved.name, 'Retired Line');
       expect(saved.isArchived, isTrue);
       expect(saved.sku, startsWith('RET-'), reason: 'SKU generated from name');
@@ -317,7 +327,7 @@ void main() {
 
       expect(
         container
-            .read(inventoryItemsProvider)
+            .read(inventoryItemsListProvider)
             .firstWhere((i) => i.id == target.id)
             .name,
         target.name,
@@ -335,7 +345,7 @@ void main() {
 
     testWidgets('adding on mobile reaches the same provider', (tester) async {
       final container = await pumpInventory(tester, const Size(390, 844));
-      final before = container.read(inventoryItemsProvider).length;
+      final before = container.read(inventoryItemsListProvider).length;
 
       await openAddForm(tester);
       await tester.enterText(find.byKey(ItemFormKeys.name), 'Pocket Item');
@@ -346,7 +356,7 @@ void main() {
       await tester.tap(find.byKey(ItemFormKeys.submit));
       await tester.pumpAndSettle();
 
-      final items = container.read(inventoryItemsProvider);
+      final items = container.read(inventoryItemsListProvider);
       expect(items, hasLength(before + 1));
       expect(items.first.name, 'Pocket Item');
       expect(items.first.categoryId, 'drinks');

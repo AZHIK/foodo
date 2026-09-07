@@ -47,6 +47,9 @@ class CachedItems extends Table {
   /// Selling price (optional).
   TextColumn get sellingPrice => text().map(const DecimalConverter()).nullable()();
 
+  /// Cost basis for the inventory-value metric (optional).
+  TextColumn get unitCost => text().map(const DecimalConverter()).nullable()();
+
   /// Whether negative stock is allowed.
   BoolColumn get allowNegativeStock =>
       boolean().withDefault(const Constant(false))();

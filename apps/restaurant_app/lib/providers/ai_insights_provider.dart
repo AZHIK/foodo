@@ -20,7 +20,7 @@ import 'stock_movement_provider.dart';
 /// shape of the output is the same either way, which is the point of putting
 /// the derivation behind a provider.
 final aiInsightsProvider = Provider<List<AiInsight>>((ref) {
-  final items = ref.watch(inventoryItemsProvider);
+  final items = ref.watch(inventoryItemsListProvider);
   final movements = ref.watch(stockMovementsProvider);
   final summary = ref.watch(dashboardSummaryProvider);
 
@@ -87,8 +87,8 @@ List<AiInsight> _stockInsights(Ref ref, List<InventoryItem> items) {
       id: 'stock-reorder',
       title: '${worst.name} is the most urgent reorder',
       body:
-          'It is at ${worst.stock} ${worst.unit} against a threshold of '
-          '${worst.reorderLevel}. Restocking to threshold costs about '
+          'It is at ${Fmt.quantity(worst.stock)} ${worst.unit} against a threshold of '
+          '${Fmt.quantity(worst.reorderLevel)}. Restocking to threshold costs about '
           '${Fmt.money((worst.reorderLevel - worst.stock).clamp(0, 1 << 30) * worst.unitCost)} '
           'at cost.',
       category: InsightCategory.stock,
@@ -96,8 +96,8 @@ List<AiInsight> _stockInsights(Ref ref, List<InventoryItem> items) {
           ? InsightPriority.urgent
           : InsightPriority.advisory,
       evidence: [
-        (label: 'On hand', value: '${worst.stock} ${worst.unit}'),
-        (label: 'Threshold', value: '${worst.reorderLevel} ${worst.unit}'),
+        (label: 'On hand', value: '${Fmt.quantity(worst.stock)} ${worst.unit}'),
+        (label: 'Threshold', value: '${Fmt.quantity(worst.reorderLevel)} ${worst.unit}'),
         (label: 'Unit cost', value: Fmt.money(worst.unitCost)),
       ],
       actionLabel: 'View item',
@@ -119,7 +119,7 @@ List<AiInsight> _wasteInsights(
   final costById = {for (final item in items) item.id: item.unitCost};
   final nameById = {for (final item in items) item.id: item.name};
 
-  final wastedUnits = <String, int>{};
+  final wastedUnits = <String, double>{};
   var totalCost = 0.0;
 
   for (final movement in movements) {
@@ -174,7 +174,7 @@ List<AiInsight> _wasteInsights(
       evidence: [
         (label: 'This line', value: Fmt.money(worstCost)),
         (label: 'All waste, 30d', value: Fmt.money(totalCost)),
-        (label: 'Units lost', value: '${wastedUnits[worstId]}'),
+        (label: 'Units lost', value: Fmt.quantity(wastedUnits[worstId] ?? 0)),
       ],
       actionLabel: 'View item',
       actionRoute: AppRoute.itemDetailName,

@@ -36,8 +36,8 @@ void main() {
       expect(database != null, true);
     });
 
-    test('schema version is 2', () async {
-      expect(database.schemaVersion, 2);
+    test('schema version is 4', () async {
+      expect(database.schemaVersion, 4);
     });
 
     test('LocalUserProfiles table exists and can be queried', () async {

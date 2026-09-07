@@ -29,7 +29,7 @@ class Reorder {
 
   final String id;
   final String inventoryItemId;
-  final int quantity;
+  final double quantity;
   final String unit;
   final double unitCost;
   final String supplier;
@@ -42,7 +42,7 @@ class Reorder {
   double get total => quantity * unitCost;
 
   Reorder copyWith({
-    int? quantity,
+    double? quantity,
     DateTime? expectedAt,
     DateTime? receivedAt,
     ReorderStatus? status,

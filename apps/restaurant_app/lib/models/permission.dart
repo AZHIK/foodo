@@ -69,9 +69,12 @@ abstract final class AppPermissions {
   static const posRefund = 'pos.refund';
 
   static const inventoryView = 'inventory.view';
-  static const inventoryEdit = 'inventory.edit';
   static const inventoryAdjust = 'inventory.adjust';
-  static const inventoryDelete = 'inventory.delete';
+  static const inventoryItemsCreate = 'inventory.items.create';
+  static const inventoryItemsUpdate = 'inventory.items.update';
+  static const inventoryItemsDeactivate = 'inventory.items.deactivate';
+  static const inventoryWasteRecord = 'inventory.waste.record';
+  static const inventoryTransfer = 'inventory.transfer';
 
   static const salesView = 'sales.view';
   static const salesExport = 'sales.export';
@@ -131,19 +134,34 @@ abstract final class AppPermissions {
           description: 'See stock levels and item details',
         ),
         Permission(
-          id: inventoryEdit,
-          label: 'Add & edit items',
-          description: 'Create items and change costs or thresholds',
+          id: inventoryItemsCreate,
+          label: 'Add items',
+          description: 'Create new items in the catalog',
+        ),
+        Permission(
+          id: inventoryItemsUpdate,
+          label: 'Edit items',
+          description: "Change an item's name, category, costs or thresholds",
         ),
         Permission(
           id: inventoryAdjust,
           label: 'Adjust stock',
-          description: 'Record restocks, waste and transfers',
+          description: 'Record recounts and manual corrections',
         ),
         Permission(
-          id: inventoryDelete,
+          id: inventoryWasteRecord,
+          label: 'Log waste',
+          description: 'Record spoiled or wasted stock',
+        ),
+        Permission(
+          id: inventoryTransfer,
+          label: 'Transfer stock',
+          description: 'Move stock between store locations',
+        ),
+        Permission(
+          id: inventoryItemsDeactivate,
           label: 'Delete items',
-          description: 'Permanently remove an item and its history',
+          description: 'Remove an item from active inventory',
         ),
       ],
     ),

@@ -61,6 +61,10 @@
 /// an audit trail outbox (`LocalAuditLog`), and one new nullable column on
 /// `LocalUserProfiles` (`lastRevocationCheckAt`). No existing table is
 /// dropped, renamed, or has a column removed.
+///
+/// v4 adds one nullable column, `CachedItems.unitCost`, mirroring
+/// Inventory Service's `Item.unit_cost` (the cost basis behind the
+/// inventory-value reporting metric).
 library;
 
 import 'package:decimal/decimal.dart';
@@ -101,7 +105,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.connection);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -128,6 +132,9 @@ class AppDatabase extends _$AppDatabase {
         } catch (e) {
           // Table may already exist; ignore error
         }
+      }
+      if (from < 4) {
+        await m.addColumn(cachedItems, cachedItems.unitCost);
       }
     },
     beforeOpen: (details) async {

@@ -76,10 +76,13 @@ class InventoryItem {
   /// Stands in for product photography, keeping the UI fully offline.
   final String emoji;
 
-  final int stock;
+  /// On-hand quantity. A `double`, not an `int` — Inventory Service tracks
+  /// quantities to 3 decimal places so weight/volume units (kg, L) don't get
+  /// truncated.
+  final double stock;
 
   /// At or below this, the item needs reordering.
-  final int reorderLevel;
+  final double reorderLevel;
 
   final double unitCost;
 
@@ -129,8 +132,8 @@ class InventoryItem {
     String? name,
     String? categoryId,
     String? emoji,
-    int? stock,
-    int? reorderLevel,
+    double? stock,
+    double? reorderLevel,
     double? unitCost,
     String? unit,
     String? supplier,

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
+import '../../utils/formatters.dart';
 
 /// A labelled group inside a filter panel.
 class FilterSection extends StatelessWidget {
@@ -86,12 +87,12 @@ class NumberRangeField extends StatefulWidget {
     this.ceiling,
   });
 
-  final int? min;
-  final int? max;
-  final void Function(int? min, int? max) onChanged;
+  final double? min;
+  final double? max;
+  final void Function(double? min, double? max) onChanged;
 
   /// Shown as the upper hint, so the user knows the scale of the data.
-  final int? ceiling;
+  final double? ceiling;
 
   @override
   State<NumberRangeField> createState() => _NumberRangeFieldState();
@@ -104,8 +105,8 @@ class _NumberRangeFieldState extends State<NumberRangeField> {
   @override
   void initState() {
     super.initState();
-    _min = TextEditingController(text: widget.min?.toString() ?? '');
-    _max = TextEditingController(text: widget.max?.toString() ?? '');
+    _min = TextEditingController(text: widget.min != null ? Fmt.quantity(widget.min!) : '');
+    _max = TextEditingController(text: widget.max != null ? Fmt.quantity(widget.max!) : '');
   }
 
   @override
@@ -116,8 +117,8 @@ class _NumberRangeFieldState extends State<NumberRangeField> {
   }
 
   void _emit() {
-    final min = int.tryParse(_min.text.trim());
-    final max = int.tryParse(_max.text.trim());
+    final min = double.tryParse(_min.text.trim());
+    final max = double.tryParse(_max.text.trim());
     widget.onChanged(min, max);
   }
 
@@ -130,7 +131,9 @@ class _NumberRangeFieldState extends State<NumberRangeField> {
           padding: EdgeInsets.symmetric(horizontal: Insets.md),
           child: Text('–'),
         ),
-        Expanded(child: _field(_max, 'Max', widget.ceiling?.toString() ?? '')),
+        Expanded(
+          child: _field(_max, 'Max', widget.ceiling != null ? Fmt.quantity(widget.ceiling!) : ''),
+        ),
       ],
     );
   }
@@ -138,8 +141,8 @@ class _NumberRangeFieldState extends State<NumberRangeField> {
   Widget _field(TextEditingController controller, String label, String hint) {
     return TextField(
       controller: controller,
-      keyboardType: TextInputType.number,
-      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$'))],
       onChanged: (_) => _emit(),
       decoration: InputDecoration(labelText: label, hintText: hint),
     );

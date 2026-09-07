@@ -43,11 +43,13 @@ abstract final class MockStockMovements {
     final destinations = <StoreLocation>[]; // No mock stores available
 
     // Sets the size of a plausible movement for this line: a 210-egg item
-    // moves in dozens, a 3-wheel parmesan line moves in ones.
-    final scale = math.max(2, item.reorderLevel);
+    // moves in dozens, a 3-wheel parmesan line moves in ones. Rounded to an
+    // int purely for this generator's internal math — real (fractional)
+    // quantities come from the backend, not this mock ledger.
+    final scale = math.max(2, item.reorderLevel.round());
 
     final movements = <StockMovement>[];
-    var balance = item.stock;
+    var balance = item.stock.round();
     var at = DateTime.now().subtract(
       Duration(hours: 2 + rand.nextInt(20), minutes: rand.nextInt(60)),
     );
@@ -79,8 +81,8 @@ abstract final class MockStockMovements {
           itemId: item.id,
           at: at,
           type: type,
-          delta: delta,
-          balance: balance,
+          delta: delta.toDouble(),
+          balance: balance.toDouble(),
           actor: type == StockMovementType.sale
               // POS deductions are automatic; naming a person for them would
               // imply someone counted the shelf.

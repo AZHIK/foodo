@@ -102,7 +102,7 @@ class _ReorderTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(inventoryItemsProvider);
+    final items = ref.watch(inventoryItemsListProvider);
     final item = items.where((i) => i.id == reorder.inventoryItemId).firstOrNull;
     final tone = switch (reorder.status) {
       ReorderStatus.pending => StatusTone.warning,
@@ -125,7 +125,7 @@ class _ReorderTile extends ConsumerWidget {
                   children: [
                     Text(item?.name ?? 'Unknown', style: context.text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                     const SizedBox(height: Insets.xs),
-                    Text('${reorder.quantity} ${reorder.unit} from ${reorder.supplier}', style: context.text.bodySmall?.copyWith(color: context.colors.onSurfaceVariant)),
+                    Text('${Fmt.quantity(reorder.quantity)} ${reorder.unit} from ${reorder.supplier}', style: context.text.bodySmall?.copyWith(color: context.colors.onSurfaceVariant)),
                   ],
                 ),
               ),

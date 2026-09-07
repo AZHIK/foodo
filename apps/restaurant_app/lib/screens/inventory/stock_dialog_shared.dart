@@ -9,6 +9,7 @@ import '../../providers/staff_provider.dart';
 import '../../providers/stock_movement_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
+import '../../utils/formatters.dart';
 import '../../widgets/labeled_form_field.dart';
 
 /// Width the three stock dialogs share. Narrower than the item form, which has
@@ -84,7 +85,7 @@ class StockItemContext extends StatelessWidget {
                   style: context.text.titleSmall,
                 ),
                 Text(
-                  '${item.sku} · ${item.stock} ${item.unit} in stock',
+                  '${item.sku} · ${Fmt.quantity(item.stock)} ${item.unit} in stock',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: context.text.bodySmall?.copyWith(
@@ -137,8 +138,8 @@ class StockQuantityField extends StatelessWidget {
         key: StockDialogKeys.quantity,
         controller: controller,
         autofocus: autofocus,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$'))],
         onChanged: onChanged,
         decoration: InputDecoration(
           hintText: '0',
@@ -256,28 +257,80 @@ class StockPreviewLine extends StatelessWidget {
   }
 }
 
-/// Applies a stock change and records it in the ledger, in that order.
+/// Applies a manual stock adjustment (add/remove/recount) and records it in
+/// the ledger, in that order — the one place the two providers are written
+/// together for this operation. Doing it anywhere else risks a count that
+/// moved without a movement to explain it, which is exactly the discrepancy
+/// the ledger exists to make impossible.
 ///
-/// The one place the two providers are written together. Doing it anywhere else
-/// risks a count that moved without a movement to explain it, which is exactly
-/// the discrepancy the ledger exists to make impossible.
-///
-/// Returns the item's stock level after the change — read back from the
-/// provider rather than computed, because [InventoryNotifier.adjustStock]
-/// clamps at zero and the ledger has to record what actually happened.
-int applyStockMovement({
+/// [reason] is sent to the backend when a real store context exists, and
+/// must be at least 3 characters (the backend rejects anything shorter) —
+/// every dialog that calls this always has a non-empty reason label to fall
+/// back on, so this is never user-triggerable.
+Future<void> applyAdjustment({
   required WidgetRef ref,
   required InventoryItem item,
-  required int delta,
+  required double delta,
+  required StockMovementType type,
+  required String reason,
+}) async {
+  final before = ref.read(inventoryItemsProvider.notifier).byId(item.id)?.stock ?? item.stock;
+  await ref.read(inventoryItemsProvider.notifier).adjustStock(item.id, delta, reason: reason);
+  await _recordLedgerDelta(ref: ref, item: item, before: before, type: type, note: reason);
+}
+
+/// Records wasted/spoiled stock. Same shape as [applyAdjustment] but goes
+/// through `inventory.waste.record`, the backend's distinct permission for
+/// this action.
+Future<void> applyWaste({
+  required WidgetRef ref,
+  required InventoryItem item,
+  required double quantity,
+  required String reason,
+}) async {
+  final before = ref.read(inventoryItemsProvider.notifier).byId(item.id)?.stock ?? item.stock;
+  await ref.read(inventoryItemsProvider.notifier).recordWaste(item.id, quantity, reason: reason);
+  await _recordLedgerDelta(
+    ref: ref,
+    item: item,
+    before: before,
+    type: StockMovementType.waste,
+    note: reason,
+  );
+}
+
+/// Transfers stock from the current store to [destinationStoreId]. Unlike
+/// the mock-only ledger this used to write, the real endpoint credits the
+/// destination store's stock too (one atomic transaction server-side) — this
+/// only has to record the local, single-store ledger's "out" half.
+Future<void> applyTransfer({
+  required WidgetRef ref,
+  required InventoryItem item,
+  required double quantity,
+  required String destinationStoreId,
+  required String note,
+}) async {
+  final before = ref.read(inventoryItemsProvider.notifier).byId(item.id)?.stock ?? item.stock;
+  await ref
+      .read(inventoryItemsProvider.notifier)
+      .transferStock(item.id, quantity, destinationStoreId: destinationStoreId);
+  await _recordLedgerDelta(
+    ref: ref,
+    item: item,
+    before: before,
+    type: StockMovementType.transfer,
+    note: note,
+  );
+}
+
+Future<void> _recordLedgerDelta({
+  required WidgetRef ref,
+  required InventoryItem item,
+  required double before,
   required StockMovementType type,
   String? note,
-}) {
-  ref.read(inventoryItemsProvider.notifier).adjustStock(item.id, delta);
-
-  final updated = ref
-      .read(inventoryItemsProvider)
-      .firstWhere((i) => i.id == item.id, orElse: () => item);
-
+}) async {
+  final after = ref.read(inventoryItemsProvider.notifier).byId(item.id)?.stock ?? before;
   ref
       .read(stockMovementsProvider.notifier)
       .record(
@@ -285,19 +338,17 @@ int applyStockMovement({
         type: type,
         // The recorded delta is the effective one: asking to remove 10 from a
         // shelf holding 4 removes 4, and the ledger says 4.
-        delta: updated.stock - item.stock,
-        balanceAfter: updated.stock,
+        delta: after - before,
+        balanceAfter: after,
         actor: ref.read(currentUserNameProvider),
         note: note,
       );
-
-  return updated.stock;
 }
 
 /// Parses a quantity field. Null for empty or unparseable input, which the
 /// dialogs treat as "not yet valid" rather than as zero.
-int? parseQuantity(String raw) {
+double? parseQuantity(String raw) {
   final trimmed = raw.trim();
   if (trimmed.isEmpty) return null;
-  return int.tryParse(trimmed);
+  return double.tryParse(trimmed);
 }

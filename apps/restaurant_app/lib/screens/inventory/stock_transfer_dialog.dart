@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/inventory_item.dart';
-import '../../models/stock_movement.dart';
 import '../../models/store_location.dart';
 import '../../providers/store_locations_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
+import '../../utils/formatters.dart';
 import '../../widgets/labeled_form_field.dart';
 import '../../widgets/responsive_form_dialog.dart';
 import 'stock_dialog_shared.dart';
@@ -67,53 +67,58 @@ class _StockTransferDialogState extends ConsumerState<StockTransferDialog> {
     super.dispose();
   }
 
-  int? get _amount => parseQuantity(_quantity.text);
+  bool _submitting = false;
 
-  int get _newLevel => (widget.item.stock - (_amount ?? 0)).clamp(0, 1 << 31);
+  double? get _amount => parseQuantity(_quantity.text);
+
+  double get _newLevel => (widget.item.stock - (_amount ?? 0)).clamp(0, double.infinity);
 
   String? get _error {
     final amount = _amount;
     if (amount == null) return null;
     if (amount == 0) return 'Enter an amount greater than zero';
     if (amount > widget.item.stock) {
-      return 'Only ${widget.item.stock} ${widget.item.unit} in stock';
+      return 'Only ${Fmt.quantity(widget.item.stock)} ${widget.item.unit} in stock';
     }
     return null;
   }
 
   bool _canSubmit(StoreLocation? destination) =>
+      !_submitting &&
       destination != null &&
       _amount != null &&
       _amount! > 0 &&
       _error == null;
 
-  void _submit(StoreLocation destination) {
+  Future<void> _submit(StoreLocation destination) async {
     final note = _notes.text.trim();
-
-    applyStockMovement(
-      ref: ref,
-      item: widget.item,
-      // Transfer-out only. The destination site keeps its own inventory, and
-      // crediting it is out of scope until multi-location stock exists — so
-      // this records the half of the move that actually happened here.
-      delta: -(_amount ?? 0),
-      type: StockMovementType.transfer,
-      note: note.isEmpty
-          ? 'To ${destination.name}'
-          : 'To ${destination.name} · $note',
-    );
-
+    final amount = _amount ?? 0;
     final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context).pop();
+    final amountLabel = '${Fmt.quantity(amount)} ${widget.item.unit}';
 
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          '$_amount ${widget.item.unit} of ${widget.item.name} '
-          'transferred to ${destination.name}',
+    setState(() => _submitting = true);
+    try {
+      // The real endpoint credits the destination store's stock too (one
+      // atomic transaction server-side) — this call only has to ask for it.
+      await applyTransfer(
+        ref: ref,
+        item: widget.item,
+        quantity: amount,
+        destinationStoreId: destination.id,
+        note: note.isEmpty ? 'To ${destination.name}' : 'To ${destination.name} · $note',
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('$amountLabel of ${widget.item.name} transferred to ${destination.name}'),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      messenger.showSnackBar(SnackBar(content: Text('Could not transfer stock: $e')));
+    }
   }
 
   @override
@@ -184,7 +189,7 @@ class _StockTransferDialogState extends ConsumerState<StockTransferDialog> {
 
           StockPreviewLine(
             label: 'Remaining at this store',
-            value: '$_newLevel ${item.unit}',
+            value: '${Fmt.quantity(_newLevel)} ${item.unit}',
             tone: context.semantic.warning,
             icon: Icons.swap_horiz_rounded,
           ),

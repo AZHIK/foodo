@@ -5,6 +5,7 @@ import '../../models/inventory_item.dart';
 import '../../models/stock_movement.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
+import '../../utils/formatters.dart';
 import '../../widgets/labeled_form_field.dart';
 import '../../widgets/responsive_form_dialog.dart';
 import '../../widgets/selectable_option_card.dart';
@@ -50,6 +51,7 @@ class _StockAdjustDialogState extends ConsumerState<StockAdjustDialog> {
 
   bool _adding = true;
   AdjustReason _reason = AdjustReason.restock;
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -58,11 +60,11 @@ class _StockAdjustDialogState extends ConsumerState<StockAdjustDialog> {
     super.dispose();
   }
 
-  int? get _amount => parseQuantity(_quantity.text);
+  double? get _amount => parseQuantity(_quantity.text);
 
-  int get _delta => _adding ? (_amount ?? 0) : -(_amount ?? 0);
+  double get _delta => _adding ? (_amount ?? 0) : -(_amount ?? 0);
 
-  int get _newLevel => (widget.item.stock + _delta).clamp(0, 1 << 31);
+  double get _newLevel => (widget.item.stock + _delta).clamp(0, double.infinity);
 
   /// Removing more than is on the shelf is a data-entry mistake, not a
   /// negative stock level. The provider would clamp it silently; catching it
@@ -73,35 +75,38 @@ class _StockAdjustDialogState extends ConsumerState<StockAdjustDialog> {
     if (amount == null) return null;
     if (amount == 0) return 'Enter an amount greater than zero';
     if (!_adding && amount > widget.item.stock) {
-      return 'Only ${widget.item.stock} ${widget.item.unit} in stock';
+      return 'Only ${Fmt.quantity(widget.item.stock)} ${widget.item.unit} in stock';
     }
     return null;
   }
 
   bool get _canSubmit =>
-      _amount != null && _amount! > 0 && _error == null;
+      !_submitting && _amount != null && _amount! > 0 && _error == null;
 
-  void _submit() {
+  Future<void> _submit() async {
     final note = _notes.text.trim();
-
-    applyStockMovement(
-      ref: ref,
-      item: widget.item,
-      delta: _delta,
-      type: _reason.movementType,
-      note: note.isEmpty ? _reason.label : '${_reason.label} · $note',
-    );
-
     final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context).pop();
+    final newLevelLabel = '${Fmt.quantity(_newLevel)} ${widget.item.unit}';
 
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          '${widget.item.name} adjusted to $_newLevel ${widget.item.unit}',
-        ),
-      ),
-    );
+    setState(() => _submitting = true);
+    try {
+      await applyAdjustment(
+        ref: ref,
+        item: widget.item,
+        delta: _delta,
+        type: _reason.movementType,
+        reason: note.isEmpty ? _reason.label : '${_reason.label} · $note',
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      messenger.showSnackBar(
+        SnackBar(content: Text('${widget.item.name} adjusted to $newLevelLabel')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      messenger.showSnackBar(SnackBar(content: Text('Could not adjust stock: $e')));
+    }
   }
 
   @override
@@ -164,7 +169,7 @@ class _StockAdjustDialogState extends ConsumerState<StockAdjustDialog> {
 
           StockPreviewLine(
             label: 'New stock level',
-            value: '$_newLevel ${item.unit}',
+            value: '${Fmt.quantity(_newLevel)} ${item.unit}',
             tone: _delta == 0
                 ? null
                 : (_delta > 0

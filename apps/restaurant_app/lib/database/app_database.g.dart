@@ -2732,6 +2732,15 @@ class $CachedItemsTable extends CachedItems
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       ).withConverter<Decimal?>($CachedItemsTable.$convertersellingPricen);
+  @override
+  late final GeneratedColumnWithTypeConverter<Decimal?, String> unitCost =
+      GeneratedColumn<String>(
+        'unit_cost',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      ).withConverter<Decimal?>($CachedItemsTable.$converterunitCostn);
   static const VerificationMeta _allowNegativeStockMeta =
       const VerificationMeta('allowNegativeStock');
   @override
@@ -2829,6 +2838,7 @@ class $CachedItemsTable extends CachedItems
     reorderThreshold,
     reorderQuantity,
     sellingPrice,
+    unitCost,
     allowNegativeStock,
     itemType,
     isActive,
@@ -3016,6 +3026,12 @@ class $CachedItemsTable extends CachedItems
           data['${effectivePrefix}selling_price'],
         ),
       ),
+      unitCost: $CachedItemsTable.$converterunitCostn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}unit_cost'],
+        ),
+      ),
       allowNegativeStock: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}allow_negative_stock'],
@@ -3060,6 +3076,10 @@ class $CachedItemsTable extends CachedItems
       const DecimalConverter();
   static TypeConverter<Decimal?, String?> $convertersellingPricen =
       NullAwareTypeConverter.wrap($convertersellingPrice);
+  static TypeConverter<Decimal, String> $converterunitCost =
+      const DecimalConverter();
+  static TypeConverter<Decimal?, String?> $converterunitCostn =
+      NullAwareTypeConverter.wrap($converterunitCost);
 }
 
 class CachedItem extends DataClass implements Insertable<CachedItem> {
@@ -3089,6 +3109,9 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
 
   /// Selling price (optional).
   final Decimal? sellingPrice;
+
+  /// Cost basis for the inventory-value metric (optional).
+  final Decimal? unitCost;
 
   /// Whether negative stock is allowed.
   final bool allowNegativeStock;
@@ -3122,6 +3145,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
     required this.reorderThreshold,
     required this.reorderQuantity,
     this.sellingPrice,
+    this.unitCost,
     required this.allowNegativeStock,
     required this.itemType,
     required this.isActive,
@@ -3156,6 +3180,11 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
         $CachedItemsTable.$convertersellingPricen.toSql(sellingPrice),
       );
     }
+    if (!nullToAbsent || unitCost != null) {
+      map['unit_cost'] = Variable<String>(
+        $CachedItemsTable.$converterunitCostn.toSql(unitCost),
+      );
+    }
     map['allow_negative_stock'] = Variable<bool>(allowNegativeStock);
     map['item_type'] = Variable<String>(itemType);
     map['is_active'] = Variable<bool>(isActive);
@@ -3181,6 +3210,9 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
       sellingPrice: sellingPrice == null && nullToAbsent
           ? const Value.absent()
           : Value(sellingPrice),
+      unitCost: unitCost == null && nullToAbsent
+          ? const Value.absent()
+          : Value(unitCost),
       allowNegativeStock: Value(allowNegativeStock),
       itemType: Value(itemType),
       isActive: Value(isActive),
@@ -3208,6 +3240,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
       reorderThreshold: serializer.fromJson<Decimal>(json['reorderThreshold']),
       reorderQuantity: serializer.fromJson<Decimal>(json['reorderQuantity']),
       sellingPrice: serializer.fromJson<Decimal?>(json['sellingPrice']),
+      unitCost: serializer.fromJson<Decimal?>(json['unitCost']),
       allowNegativeStock: serializer.fromJson<bool>(json['allowNegativeStock']),
       itemType: serializer.fromJson<String>(json['itemType']),
       isActive: serializer.fromJson<bool>(json['isActive']),
@@ -3230,6 +3263,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
       'reorderThreshold': serializer.toJson<Decimal>(reorderThreshold),
       'reorderQuantity': serializer.toJson<Decimal>(reorderQuantity),
       'sellingPrice': serializer.toJson<Decimal?>(sellingPrice),
+      'unitCost': serializer.toJson<Decimal?>(unitCost),
       'allowNegativeStock': serializer.toJson<bool>(allowNegativeStock),
       'itemType': serializer.toJson<String>(itemType),
       'isActive': serializer.toJson<bool>(isActive),
@@ -3250,6 +3284,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
     Decimal? reorderThreshold,
     Decimal? reorderQuantity,
     Value<Decimal?> sellingPrice = const Value.absent(),
+    Value<Decimal?> unitCost = const Value.absent(),
     bool? allowNegativeStock,
     String? itemType,
     bool? isActive,
@@ -3267,6 +3302,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
     reorderThreshold: reorderThreshold ?? this.reorderThreshold,
     reorderQuantity: reorderQuantity ?? this.reorderQuantity,
     sellingPrice: sellingPrice.present ? sellingPrice.value : this.sellingPrice,
+    unitCost: unitCost.present ? unitCost.value : this.unitCost,
     allowNegativeStock: allowNegativeStock ?? this.allowNegativeStock,
     itemType: itemType ?? this.itemType,
     isActive: isActive ?? this.isActive,
@@ -3298,6 +3334,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
       sellingPrice: data.sellingPrice.present
           ? data.sellingPrice.value
           : this.sellingPrice,
+      unitCost: data.unitCost.present ? data.unitCost.value : this.unitCost,
       allowNegativeStock: data.allowNegativeStock.present
           ? data.allowNegativeStock.value
           : this.allowNegativeStock,
@@ -3330,6 +3367,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
           ..write('reorderThreshold: $reorderThreshold, ')
           ..write('reorderQuantity: $reorderQuantity, ')
           ..write('sellingPrice: $sellingPrice, ')
+          ..write('unitCost: $unitCost, ')
           ..write('allowNegativeStock: $allowNegativeStock, ')
           ..write('itemType: $itemType, ')
           ..write('isActive: $isActive, ')
@@ -3352,6 +3390,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
     reorderThreshold,
     reorderQuantity,
     sellingPrice,
+    unitCost,
     allowNegativeStock,
     itemType,
     isActive,
@@ -3373,6 +3412,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
           other.reorderThreshold == this.reorderThreshold &&
           other.reorderQuantity == this.reorderQuantity &&
           other.sellingPrice == this.sellingPrice &&
+          other.unitCost == this.unitCost &&
           other.allowNegativeStock == this.allowNegativeStock &&
           other.itemType == this.itemType &&
           other.isActive == this.isActive &&
@@ -3392,6 +3432,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
   final Value<Decimal> reorderThreshold;
   final Value<Decimal> reorderQuantity;
   final Value<Decimal?> sellingPrice;
+  final Value<Decimal?> unitCost;
   final Value<bool> allowNegativeStock;
   final Value<String> itemType;
   final Value<bool> isActive;
@@ -3410,6 +3451,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
     this.reorderThreshold = const Value.absent(),
     this.reorderQuantity = const Value.absent(),
     this.sellingPrice = const Value.absent(),
+    this.unitCost = const Value.absent(),
     this.allowNegativeStock = const Value.absent(),
     this.itemType = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -3429,6 +3471,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
     required Decimal reorderThreshold,
     required Decimal reorderQuantity,
     this.sellingPrice = const Value.absent(),
+    this.unitCost = const Value.absent(),
     this.allowNegativeStock = const Value.absent(),
     required String itemType,
     this.isActive = const Value.absent(),
@@ -3459,6 +3502,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
     Expression<String>? reorderThreshold,
     Expression<String>? reorderQuantity,
     Expression<String>? sellingPrice,
+    Expression<String>? unitCost,
     Expression<bool>? allowNegativeStock,
     Expression<String>? itemType,
     Expression<bool>? isActive,
@@ -3479,6 +3523,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
       if (reorderThreshold != null) 'reorder_threshold': reorderThreshold,
       if (reorderQuantity != null) 'reorder_quantity': reorderQuantity,
       if (sellingPrice != null) 'selling_price': sellingPrice,
+      if (unitCost != null) 'unit_cost': unitCost,
       if (allowNegativeStock != null)
         'allow_negative_stock': allowNegativeStock,
       if (itemType != null) 'item_type': itemType,
@@ -3501,6 +3546,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
     Value<Decimal>? reorderThreshold,
     Value<Decimal>? reorderQuantity,
     Value<Decimal?>? sellingPrice,
+    Value<Decimal?>? unitCost,
     Value<bool>? allowNegativeStock,
     Value<String>? itemType,
     Value<bool>? isActive,
@@ -3520,6 +3566,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
       reorderThreshold: reorderThreshold ?? this.reorderThreshold,
       reorderQuantity: reorderQuantity ?? this.reorderQuantity,
       sellingPrice: sellingPrice ?? this.sellingPrice,
+      unitCost: unitCost ?? this.unitCost,
       allowNegativeStock: allowNegativeStock ?? this.allowNegativeStock,
       itemType: itemType ?? this.itemType,
       isActive: isActive ?? this.isActive,
@@ -3571,6 +3618,11 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
         $CachedItemsTable.$convertersellingPricen.toSql(sellingPrice.value),
       );
     }
+    if (unitCost.present) {
+      map['unit_cost'] = Variable<String>(
+        $CachedItemsTable.$converterunitCostn.toSql(unitCost.value),
+      );
+    }
     if (allowNegativeStock.present) {
       map['allow_negative_stock'] = Variable<bool>(allowNegativeStock.value);
     }
@@ -3610,6 +3662,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
           ..write('reorderThreshold: $reorderThreshold, ')
           ..write('reorderQuantity: $reorderQuantity, ')
           ..write('sellingPrice: $sellingPrice, ')
+          ..write('unitCost: $unitCost, ')
           ..write('allowNegativeStock: $allowNegativeStock, ')
           ..write('itemType: $itemType, ')
           ..write('isActive: $isActive, ')
@@ -10164,6 +10217,7 @@ typedef $$CachedItemsTableCreateCompanionBuilder =
       required Decimal reorderThreshold,
       required Decimal reorderQuantity,
       Value<Decimal?> sellingPrice,
+      Value<Decimal?> unitCost,
       Value<bool> allowNegativeStock,
       required String itemType,
       Value<bool> isActive,
@@ -10184,6 +10238,7 @@ typedef $$CachedItemsTableUpdateCompanionBuilder =
       Value<Decimal> reorderThreshold,
       Value<Decimal> reorderQuantity,
       Value<Decimal?> sellingPrice,
+      Value<Decimal?> unitCost,
       Value<bool> allowNegativeStock,
       Value<String> itemType,
       Value<bool> isActive,
@@ -10248,6 +10303,12 @@ class $$CachedItemsTableFilterComposer
   ColumnWithTypeConverterFilters<Decimal?, Decimal, String> get sellingPrice =>
       $composableBuilder(
         column: $table.sellingPrice,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnWithTypeConverterFilters<Decimal?, Decimal, String> get unitCost =>
+      $composableBuilder(
+        column: $table.unitCost,
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
 
@@ -10341,6 +10402,11 @@ class $$CachedItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get unitCost => $composableBuilder(
+    column: $table.unitCost,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get allowNegativeStock => $composableBuilder(
     column: $table.allowNegativeStock,
     builder: (column) => ColumnOrderings(column),
@@ -10428,6 +10494,9 @@ class $$CachedItemsTableAnnotationComposer
         builder: (column) => column,
       );
 
+  GeneratedColumnWithTypeConverter<Decimal?, String> get unitCost =>
+      $composableBuilder(column: $table.unitCost, builder: (column) => column);
+
   GeneratedColumn<bool> get allowNegativeStock => $composableBuilder(
     column: $table.allowNegativeStock,
     builder: (column) => column,
@@ -10500,6 +10569,7 @@ class $$CachedItemsTableTableManager
                 Value<Decimal> reorderThreshold = const Value.absent(),
                 Value<Decimal> reorderQuantity = const Value.absent(),
                 Value<Decimal?> sellingPrice = const Value.absent(),
+                Value<Decimal?> unitCost = const Value.absent(),
                 Value<bool> allowNegativeStock = const Value.absent(),
                 Value<String> itemType = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -10518,6 +10588,7 @@ class $$CachedItemsTableTableManager
                 reorderThreshold: reorderThreshold,
                 reorderQuantity: reorderQuantity,
                 sellingPrice: sellingPrice,
+                unitCost: unitCost,
                 allowNegativeStock: allowNegativeStock,
                 itemType: itemType,
                 isActive: isActive,
@@ -10538,6 +10609,7 @@ class $$CachedItemsTableTableManager
                 required Decimal reorderThreshold,
                 required Decimal reorderQuantity,
                 Value<Decimal?> sellingPrice = const Value.absent(),
+                Value<Decimal?> unitCost = const Value.absent(),
                 Value<bool> allowNegativeStock = const Value.absent(),
                 required String itemType,
                 Value<bool> isActive = const Value.absent(),
@@ -10556,6 +10628,7 @@ class $$CachedItemsTableTableManager
                 reorderThreshold: reorderThreshold,
                 reorderQuantity: reorderQuantity,
                 sellingPrice: sellingPrice,
+                unitCost: unitCost,
                 allowNegativeStock: allowNegativeStock,
                 itemType: itemType,
                 isActive: isActive,

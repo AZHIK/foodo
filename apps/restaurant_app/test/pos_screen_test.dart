@@ -9,6 +9,8 @@ import 'package:restaurant_pos/widgets/pos/cart_bottom_sheet.dart';
 import 'package:restaurant_pos/widgets/pos/menu_item_card.dart';
 import 'package:restaurant_pos/widgets/pos/order_summary_panel.dart';
 
+import 'test_helpers/test_container.dart';
+
 /// Every width the brief calls out, plus the two breakpoint edges themselves.
 const _widths = <double>[360, 400, 599, 600, 768, 1023, 1024, 1280, 1440, 1920];
 
@@ -16,8 +18,7 @@ Future<ProviderContainer> pumpPos(WidgetTester tester, Size size) async {
   tester.view.physicalSize = size * tester.view.devicePixelRatio;
   addTearDown(tester.view.reset);
 
-  final container = ProviderContainer();
-  addTearDown(container.dispose);
+  final container = newTestContainer();
 
   await tester.pumpWidget(
     UncontrolledProviderScope(

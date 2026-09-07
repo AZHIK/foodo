@@ -97,6 +97,11 @@ def test_exact_permissions_for_every_template(session: Session) -> None:
             PermissionCode.POS_REFUND.value,
             PermissionCode.INVENTORY_VIEW.value,
             PermissionCode.INVENTORY_ADJUST.value,
+            PermissionCode.INVENTORY_WASTE_RECORD.value,
+            PermissionCode.INVENTORY_TRANSFER.value,
+            PermissionCode.INVENTORY_ITEMS_CREATE.value,
+            PermissionCode.INVENTORY_ITEMS_UPDATE.value,
+            PermissionCode.INVENTORY_ITEMS_DEACTIVATE.value,
             PermissionCode.USER_BUSINESS_ROLES_VIEW.value,
             PermissionCode.USER_BUSINESS_ROLES_ASSIGN.value,
         },
@@ -106,11 +111,15 @@ def test_exact_permissions_for_every_template(session: Session) -> None:
         },
         "Kitchen Staff": {
             PermissionCode.INVENTORY_VIEW.value,
-            PermissionCode.INVENTORY_ADJUST.value,
+            PermissionCode.INVENTORY_WASTE_RECORD.value,
         },
         "Stock Controller": {
             PermissionCode.INVENTORY_VIEW.value,
             PermissionCode.INVENTORY_ADJUST.value,
+            PermissionCode.INVENTORY_WASTE_RECORD.value,
+            PermissionCode.INVENTORY_TRANSFER.value,
+            PermissionCode.INVENTORY_ITEMS_CREATE.value,
+            PermissionCode.INVENTORY_ITEMS_UPDATE.value,
         },
         # supplier / distributor
         "Sales Admin": {
@@ -121,6 +130,7 @@ def test_exact_permissions_for_every_template(session: Session) -> None:
         "Warehouse Staff": {
             PermissionCode.INVENTORY_VIEW.value,
             PermissionCode.INVENTORY_ADJUST.value,
+            PermissionCode.INVENTORY_TRANSFER.value,
         },
         # farmer
         "Farm Coordinator": {

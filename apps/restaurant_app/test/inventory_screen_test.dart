@@ -1,9 +1,12 @@
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:restaurant_pos/database/app_database.dart';
 import 'package:restaurant_pos/main.dart';
 import 'package:restaurant_pos/models/inventory_item.dart';
+import 'package:restaurant_pos/providers/database_providers.dart';
 import 'package:restaurant_pos/providers/inventory_provider.dart';
 import 'package:restaurant_pos/providers/stock_movement_provider.dart';
 import 'package:restaurant_pos/router/app_router.dart';
@@ -18,7 +21,17 @@ Future<ProviderContainer> pumpInventory(WidgetTester tester, Size size) async {
   tester.view.physicalSize = size * tester.view.devicePixelRatio;
   addTearDown(tester.view.reset);
 
-  final container = ProviderContainer();
+  // No business/store context is seeded, so the inventory list falls back to
+  // `MockInventory` — but `InventoryNotifier` now watches `authProvider`
+  // (via `currentStoreIdProvider`) to know that, and `AuthNotifier.build()`
+  // unconditionally needs a working database, so a bare container without
+  // this override throws before the fallback branch is ever reached.
+  final database = AppDatabase(NativeDatabase.memory());
+  addTearDown(database.close);
+
+  final container = ProviderContainer(
+    overrides: [appDatabaseProvider.overrideWithValue(database)],
+  );
   addTearDown(container.dispose);
 
   await tester.pumpWidget(
@@ -68,14 +81,24 @@ void main() {
   });
 
   group('Inventory providers', () {
-    ProviderContainer container() {
-      final c = ProviderContainer();
+    // No business/store context is seeded, so `InventoryNotifier` falls back
+    // to `MockInventory` — but it's still an `AsyncNotifier`, so its first
+    // build resolves on a microtask even in that synchronous fallback path.
+    // Awaiting `.future` once up front lets every synchronous `c.read(...)`
+    // below see the resolved mock catalog instead of the initial loading state.
+    Future<ProviderContainer> container() async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final c = ProviderContainer(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+      );
       addTearDown(c.dispose);
+      await c.read(inventoryItemsProvider.future);
       return c;
     }
 
-    test('search matches name, sku and category', () {
-      final c = container();
+    test('search matches name, sku and category', () async {
+      final c = await container();
       c.read(inventoryQueryProvider.notifier).setSearch('salmon');
       expect(c.read(filteredInventoryProvider), hasLength(1));
 
@@ -85,8 +108,8 @@ void main() {
       expect(bySku.every((i) => i.sku.startsWith('BEV-')), isTrue);
     });
 
-    test('category and status filters compose', () {
-      final c = container();
+    test('category and status filters compose', () async {
+      final c = await container();
       c.read(inventoryFiltersProvider.notifier).toggleCategory('produce');
       c
           .read(inventoryFiltersProvider.notifier)
@@ -104,8 +127,8 @@ void main() {
       expect(c.read(inventoryFiltersProvider).activeCount, 2);
     });
 
-    test('stock range filter bounds both ends', () {
-      final c = container();
+    test('stock range filter bounds both ends', () async {
+      final c = await container();
       c.read(inventoryFiltersProvider.notifier).setStockRange(10, 30);
 
       final rows = c.read(filteredInventoryProvider);
@@ -114,8 +137,8 @@ void main() {
       expect(c.read(inventoryFiltersProvider).activeCount, 1);
     });
 
-    test('changing a filter returns to page one', () {
-      final c = container();
+    test('changing a filter returns to page one', () async {
+      final c = await container();
       c.read(inventoryQueryProvider.notifier).setPage(3);
       expect(c.read(inventoryQueryProvider).page, 3);
 
@@ -123,8 +146,8 @@ void main() {
       expect(c.read(inventoryQueryProvider).page, 0);
     });
 
-    test('sorting by stock orders ascending then descending', () {
-      final c = container();
+    test('sorting by stock orders ascending then descending', () async {
+      final c = await container();
       c
           .read(inventoryQueryProvider.notifier)
           .setSort(InventorySort.stock, ascending: true);
@@ -139,9 +162,9 @@ void main() {
       expect(down.first, greaterThanOrEqualTo(down.last));
     });
 
-    test('summary counts low and out-of-stock separately', () {
-      final c = container();
-      final items = c.read(inventoryItemsProvider);
+    test('summary counts low and out-of-stock separately', () async {
+      final c = await container();
+      final items = c.read(inventoryItemsListProvider);
       final summary = c.read(inventorySummaryProvider);
 
       expect(summary.totalItems, items.length);
@@ -156,13 +179,13 @@ void main() {
       expect(summary.totalValue, greaterThan(0));
     });
 
-    test('CRUD flows through the notifier', () {
-      final c = container();
+    test('CRUD flows through the notifier', () async {
+      final c = await container();
       final notifier = c.read(inventoryItemsProvider.notifier);
-      final before = c.read(inventoryItemsProvider).length;
+      final before = c.read(inventoryItemsListProvider).length;
 
       final id = notifier.nextId();
-      notifier.upsert(
+      await notifier.upsert(
         InventoryItem(
           id: id,
           sku: 'TST-1',
@@ -174,28 +197,28 @@ void main() {
           unitCost: 1.00,
         ),
       );
-      expect(c.read(inventoryItemsProvider), hasLength(before + 1));
+      expect(c.read(inventoryItemsListProvider), hasLength(before + 1));
 
-      notifier.adjustStock(id, 20);
+      await notifier.adjustStock(id, 20);
       final adjusted = c
-          .read(inventoryItemsProvider)
+          .read(inventoryItemsListProvider)
           .firstWhere((i) => i.id == id);
       expect(adjusted.stock, 25);
       expect(adjusted.status, StockStatus.inStock);
 
       // Stock can run out but must never go negative.
-      notifier.adjustStock(id, -999);
+      await notifier.adjustStock(id, -999);
       expect(
-        c.read(inventoryItemsProvider).firstWhere((i) => i.id == id).stock,
+        c.read(inventoryItemsListProvider).firstWhere((i) => i.id == id).stock,
         0,
       );
 
-      notifier.delete(id);
-      expect(c.read(inventoryItemsProvider), hasLength(before));
+      await notifier.delete(id);
+      expect(c.read(inventoryItemsListProvider), hasLength(before));
     });
 
-    test('pagination slices the filtered list', () {
-      final c = container();
+    test('pagination slices the filtered list', () async {
+      final c = await container();
       final total = c.read(filteredInventoryProvider).length;
       final slice = c.read(inventorySliceProvider);
 
@@ -271,7 +294,7 @@ void main() {
 
     testWidgets('adding an item puts it in the table', (tester) async {
       final container = await pumpInventory(tester, const Size(1440, 900));
-      final before = container.read(inventoryItemsProvider).length;
+      final before = container.read(inventoryItemsListProvider).length;
 
       await tester.tap(find.text('Add item'));
       await tester.pumpAndSettle();
@@ -290,7 +313,7 @@ void main() {
       await tester.tap(find.byKey(ItemFormKeys.submit));
       await tester.pumpAndSettle();
 
-      final items = container.read(inventoryItemsProvider);
+      final items = container.read(inventoryItemsListProvider);
       expect(items, hasLength(before + 1));
       expect(items.first.name, 'Smoked Paprika');
       expect(items.first.categoryId, 'dry');
@@ -302,7 +325,7 @@ void main() {
       tester,
     ) async {
       final container = await pumpInventory(tester, const Size(1440, 900));
-      final before = container.read(inventoryItemsProvider).length;
+      final before = container.read(inventoryItemsListProvider).length;
 
       await tester.tap(find.text('Add item'));
       await tester.pumpAndSettle();
@@ -330,12 +353,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(submit().onPressed, isNotNull);
-      expect(container.read(inventoryItemsProvider), hasLength(before));
+      expect(container.read(inventoryItemsListProvider), hasLength(before));
     });
 
     testWidgets('row action deletes after confirmation', (tester) async {
       final container = await pumpInventory(tester, const Size(1440, 900));
-      final before = container.read(inventoryItemsProvider).length;
+      final before = container.read(inventoryItemsListProvider).length;
       final target = container.read(inventorySliceProvider).items.first;
 
       await tester.tap(find.byTooltip('Row actions').first);
@@ -347,7 +370,7 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await tester.pumpAndSettle();
 
-      expect(container.read(inventoryItemsProvider), hasLength(before - 1));
+      expect(container.read(inventoryItemsListProvider), hasLength(before - 1));
     });
 
     testWidgets('adjust stock updates the count', (tester) async {
@@ -367,7 +390,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final updated = container
-          .read(inventoryItemsProvider)
+          .read(inventoryItemsListProvider)
           .firstWhere((item) => item.id == target.id);
       expect(updated.stock, target.stock + 1);
     });
@@ -393,7 +416,7 @@ void main() {
       // The ledger's newest balance has to equal the item's stock, or the
       // history is telling a different story from the table.
       final item = container
-          .read(inventoryItemsProvider)
+          .read(inventoryItemsListProvider)
           .firstWhere((i) => i.id == target.id);
       expect(history.first.balance, item.stock);
       expect(history.first.delta, 5);

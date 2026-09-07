@@ -44,7 +44,7 @@ class DashboardSummary {
 
 final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
   final orders = ref.watch(ordersProvider);
-  final items = ref.watch(inventoryItemsProvider);
+  final items = ref.watch(inventoryItemsListProvider);
   final expenses = ref.watch(otherExpensesProvider);
   final incomes = ref.watch(otherIncomesProvider);
 
@@ -103,7 +103,7 @@ final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
 
 final reorderListProvider = Provider<List<InventoryItem>>((ref) {
   final items = [
-    for (final item in ref.watch(inventoryItemsProvider))
+    for (final item in ref.watch(inventoryItemsListProvider))
       if (item.trackStock && item.status != StockStatus.inStock) item,
   ];
 
@@ -145,7 +145,8 @@ final businessActivityProvider = Provider<List<ActivityEntry>>((ref) {
 });
 
 String _movementTitle(StockMovement movement, Ref ref) {
-  final item = ref.read(inventoryItemsProvider).where((i) => i.id == movement.itemId).firstOrNull;
+  final item =
+      ref.read(inventoryItemsListProvider).where((i) => i.id == movement.itemId).firstOrNull;
   final name = item?.name ?? 'an item';
   return '${movement.type.label}: $name ${movement.deltaLabel}';
 }

@@ -39,7 +39,7 @@ class ItemDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final item = ref
-        .watch(inventoryItemsProvider)
+        .watch(inventoryItemsListProvider)
         .where((i) => i.id == itemId)
         .firstOrNull;
 
@@ -195,19 +195,23 @@ class _OverflowMenu extends ConsumerWidget {
     );
   }
 
-  void _toggleArchive(BuildContext context, WidgetRef ref) {
+  Future<void> _toggleArchive(BuildContext context, WidgetRef ref) async {
     final archived = !item.isArchived;
-    ref
-        .read(inventoryItemsProvider.notifier)
-        .upsert(item.copyWith(isArchived: archived));
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          archived ? '${item.name} archived' : '${item.name} restored',
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(inventoryItemsProvider.notifier)
+          .upsert(item.copyWith(isArchived: archived));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            archived ? '${item.name} archived' : '${item.name} restored',
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+    }
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
@@ -239,10 +243,13 @@ class _OverflowMenu extends ConsumerWidget {
     // existing, and popping afterwards would flash the not-found state.
     context.canPop() ? context.pop() : context.goNamed(AppRoute.inventoryName);
 
-    ref.read(inventoryItemsProvider.notifier).delete(item.id);
-    ref.read(stockMovementsProvider.notifier).clearForItem(item.id);
-
-    messenger.showSnackBar(SnackBar(content: Text('${item.name} deleted')));
+    try {
+      await ref.read(inventoryItemsProvider.notifier).delete(item.id);
+      ref.read(stockMovementsProvider.notifier).clearForItem(item.id);
+      messenger.showSnackBar(SnackBar(content: Text('${item.name} deleted')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not delete: $e')));
+    }
   }
 }
 
@@ -266,7 +273,7 @@ class _KeyStats extends StatelessWidget {
     final tiles = <Widget>[
       SummaryMetricCard(
         label: 'Current stock',
-        value: '${item.stock}',
+        value: Fmt.quantity(item.stock),
         trend: item.unit,
         icon: Icons.inventory_2_outlined,
         accent: item.status == StockStatus.inStock
@@ -288,7 +295,7 @@ class _KeyStats extends StatelessWidget {
       ),
       SummaryMetricCard(
         label: 'Low stock at',
-        value: item.trackStock ? '${item.reorderLevel}' : '—',
+        value: item.trackStock ? Fmt.quantity(item.reorderLevel) : '—',
         trend: item.trackStock ? 'Warn at or below' : 'Not tracked',
         icon: Icons.warning_amber_rounded,
         accent: semantic.warning,
@@ -477,7 +484,7 @@ class _StockHistoryPanelState extends State<_StockHistoryPanel> {
       numeric: true,
       flex: 2,
       minTableWidth: 560,
-      value: (m) => '${m.balance} ${item.unit}',
+      value: (m) => '${Fmt.quantity(m.balance)} ${item.unit}',
     ),
     DataColumnSpec(
       label: 'By',

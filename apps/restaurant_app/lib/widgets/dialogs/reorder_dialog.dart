@@ -41,7 +41,7 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
   @override
   void initState() {
     super.initState();
-    _quantity = TextEditingController(text: '${widget.item.reorderLevel}');
+    _quantity = TextEditingController(text: Fmt.quantity(widget.item.reorderLevel));
     _unitCost = TextEditingController(text: '${widget.item.unitCost}');
     _expectedDays = TextEditingController(text: '7');
     _notes = TextEditingController();
@@ -60,7 +60,7 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
     if (!_formKey.currentState!.validate()) return;
 
     final notifier = ref.read(reordersProvider.notifier);
-    final quantity = int.tryParse(_quantity.text.trim()) ?? 0;
+    final quantity = double.tryParse(_quantity.text.trim()) ?? 0;
     final unitCost = double.tryParse(_unitCost.text.trim()) ?? 0;
     final expectedDays = int.tryParse(_expectedDays.text.trim()) ?? 7;
 
@@ -85,7 +85,8 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          'Reorder created: $quantity ${widget.item.unit} of ${widget.item.name}',
+          'Reorder created: ${Fmt.quantity(quantity)} ${widget.item.unit} '
+          'of ${widget.item.name}',
         ),
       ),
     );
@@ -123,7 +124,7 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
                   borderRadius: BorderRadius.circular(Insets.md),
                 ),
                 child: Text(
-                  '${widget.item.stock} ${widget.item.unit}',
+                  '${Fmt.quantity(widget.item.stock)} ${widget.item.unit}',
                   style: context.text.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -136,16 +137,16 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
               isRequired: true,
               child: TextFormField(
                 controller: _quantity,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 textInputAction: TextInputAction.next,
                 decoration: InputDecoration(
-                  hintText: '${widget.item.reorderLevel}',
+                  hintText: Fmt.quantity(widget.item.reorderLevel),
                   suffixText: widget.item.unit,
                 ),
                 validator: (value) {
                   if ((value ?? '').trim().isEmpty) return 'Enter quantity';
-                  if (int.tryParse(value?.trim() ?? '') == null) {
-                    return 'Enter a whole number';
+                  if (double.tryParse(value?.trim() ?? '') == null) {
+                    return 'Enter a number';
                   }
                   return null;
                 },

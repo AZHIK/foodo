@@ -89,6 +89,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
   final _description = TextEditingController();
 
   bool _seeded = false;
+  bool _saving = false;
 
   AutoDisposeFamilyNotifierProvider<ItemFormNotifier, ItemFormState, String?>
   get _provider => itemFormProvider(widget.itemId);
@@ -127,25 +128,31 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
     super.dispose();
   }
 
-  void _save() {
+  Future<void> _save() async {
     // The button is already disabled on invalid state; this second pass is what
     // paints the inline errors if anything slipped through.
     if (!_formKey.currentState!.validate()) return;
 
     final isEdit = ref.read(_provider).isEdit;
-    final item = ref.read(_provider.notifier).save();
-
-    // Grabbed before the pop: the dialog's own context is defunct afterwards.
     final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context).pop();
 
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          isEdit ? '${item.name} updated' : '${item.name} added to inventory',
+    setState(() => _saving = true);
+    try {
+      final item = await ref.read(_provider.notifier).save();
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            isEdit ? '${item.name} updated' : '${item.name} added to inventory',
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+    }
   }
 
   @override
@@ -169,7 +176,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
           ),
           FilledButton(
             key: ItemFormKeys.submit,
-            onPressed: state.canSave ? _save : null,
+            onPressed: state.canSave && !_saving ? _save : null,
             child: Text(state.isEdit ? 'Save changes' : 'Add item'),
           ),
         ],

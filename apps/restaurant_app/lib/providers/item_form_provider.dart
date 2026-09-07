@@ -98,11 +98,13 @@ class ItemFormState {
   }
 
   /// Optional: an item with no threshold simply never reports as low.
+  /// A number, not necessarily a whole one — kg/L-tracked items reorder at
+  /// fractional thresholds too.
   static String? validateLowStockAlert(String? value) {
     final text = (value ?? '').trim();
     if (text.isEmpty) return null;
-    final parsed = int.tryParse(text);
-    if (parsed == null) return 'Enter a whole number';
+    final parsed = double.tryParse(text);
+    if (parsed == null) return 'Enter a number';
     if (parsed < 0) return 'Cannot be negative';
     return null;
   }
@@ -110,8 +112,8 @@ class ItemFormState {
   static String? validateStock(String? value) {
     final text = (value ?? '').trim();
     if (text.isEmpty) return null;
-    final parsed = int.tryParse(text);
-    if (parsed == null) return 'Enter a whole number';
+    final parsed = double.tryParse(text);
+    if (parsed == null) return 'Enter a number';
     if (parsed < 0) return 'Cannot be negative';
     return null;
   }
@@ -173,7 +175,7 @@ class ItemFormNotifier
 
     // `read`, not `watch`: the form is a snapshot taken when it opened. Watching
     // would reset half-typed edits the moment anything else touched the list.
-    for (final item in ref.read(inventoryItemsProvider)) {
+    for (final item in ref.read(inventoryItemsListProvider)) {
       if (item.id == itemId) return ItemFormState.from(item);
     }
     // The row was deleted from under the dialog; fall back to add mode rather
@@ -207,19 +209,19 @@ class ItemFormNotifier
   /// Fields the form does not expose — the emoji fallback, the supplier, the
   /// last count timestamp — are carried across from the stored item rather than
   /// reset, so editing a name cannot quietly wipe them.
-  InventoryItem save() {
+  Future<InventoryItem> save() async {
     final inventory = ref.read(inventoryItemsProvider.notifier);
 
     InventoryItem? existing;
     if (arg != null) {
-      for (final item in ref.read(inventoryItemsProvider)) {
+      for (final item in ref.read(inventoryItemsListProvider)) {
         if (item.id == arg) existing = item;
       }
     }
 
     final name = state.name.trim();
     final unitCost = double.tryParse(state.unitCost.trim()) ?? 0;
-    final reorderLevel = int.tryParse(state.lowStockAlert.trim()) ?? 0;
+    final reorderLevel = double.tryParse(state.lowStockAlert.trim()) ?? 0;
     final sku = state.sku.trim();
 
     final item = existing != null
@@ -244,7 +246,7 @@ class ItemFormNotifier
             name: name,
             categoryId: state.categoryId,
             emoji: '📦',
-            stock: int.tryParse(state.stock.trim()) ?? 0,
+            stock: double.tryParse(state.stock.trim()) ?? 0,
             reorderLevel: reorderLevel,
             unitCost: unitCost,
             unit: state.unit,
@@ -254,7 +256,7 @@ class ItemFormNotifier
             image: state.image,
           );
 
-    inventory.upsert(item);
+    await inventory.upsert(item);
     return item;
   }
 

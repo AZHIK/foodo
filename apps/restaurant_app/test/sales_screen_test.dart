@@ -10,14 +10,15 @@ import 'package:restaurant_pos/widgets/data_page/data_column_spec.dart';
 import 'package:restaurant_pos/widgets/data_page/data_row_card.dart';
 import 'package:restaurant_pos/widgets/data_page/summary_metric_card.dart';
 
+import 'test_helpers/test_container.dart';
+
 const _widths = <double>[360, 400, 768, 1024, 1440, 1920];
 
 Future<ProviderContainer> pumpSales(WidgetTester tester, Size size) async {
   tester.view.physicalSize = size * tester.view.devicePixelRatio;
   addTearDown(tester.view.reset);
 
-  final container = ProviderContainer();
-  addTearDown(container.dispose);
+  final container = newTestContainer();
 
   await tester.pumpWidget(
     UncontrolledProviderScope(

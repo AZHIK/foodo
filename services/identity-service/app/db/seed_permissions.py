@@ -44,6 +44,31 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
         "Manually adjust stock quantities.",
     ),
     PermissionSeed(
+        PermissionCode.INVENTORY_ITEMS_CREATE,
+        "Create inventory items",
+        "Add a new item to the inventory catalog.",
+    ),
+    PermissionSeed(
+        PermissionCode.INVENTORY_ITEMS_UPDATE,
+        "Update inventory items",
+        "Edit an existing inventory item's details.",
+    ),
+    PermissionSeed(
+        PermissionCode.INVENTORY_ITEMS_DEACTIVATE,
+        "Deactivate inventory items",
+        "Remove an item from active inventory.",
+    ),
+    PermissionSeed(
+        PermissionCode.INVENTORY_WASTE_RECORD,
+        "Record inventory waste",
+        "Log spoilage or waste against an inventory item.",
+    ),
+    PermissionSeed(
+        PermissionCode.INVENTORY_TRANSFER,
+        "Transfer inventory",
+        "Move stock between store locations.",
+    ),
+    PermissionSeed(
         PermissionCode.PROCUREMENT_CREATE,
         "Create procurement",
         "Create supplier purchase requests and purchase orders.",

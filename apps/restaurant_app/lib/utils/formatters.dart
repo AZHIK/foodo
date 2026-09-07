@@ -79,6 +79,12 @@ abstract final class Fmt {
   static String percent(double fraction) =>
       '${(fraction * 100).toStringAsFixed(fraction * 100 % 1 == 0 ? 0 : 2)}%';
 
+  static final _quantity = NumberFormat('#,##0.###');
+
+  /// A stock quantity: whole units print as `35`, fractional ones (kg/L
+  /// items) as `2.5` — never `35.0` or a long float tail.
+  static String quantity(double value) => _quantity.format(value);
+
   static String time(DateTime dt) => _time.format(dt);
 
   static String dayMonth(DateTime dt) => _dayMonth.format(dt);
