@@ -323,6 +323,50 @@ def require_business_permission(
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# 5b. require_any_business_permission — context + at least one of several
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def require_any_business_permission(
+    *permission_codes: str | PermissionCode,
+) -> Callable[..., Awaitable[str]]:
+    """Dependency factory: require a business context AND any of the codes.
+
+    Same shape as [require_business_permission], but for endpoints that
+    should be reachable by more than one role — e.g. the roles list is
+    needed both by someone managing roles (``business_roles.view``) and by
+    someone assigning a role to staff, who needs the list to populate a
+    picker but has no reason to hold the roles-management permission
+    (``user_business_roles.assign``).
+    """
+    validated = tuple(coerce_permission_code(c) for c in permission_codes)
+
+    async def _check_any_business_permission(
+        claims: Annotated[dict[str, Any], Depends(get_current_claims)],
+    ) -> str:
+        active_business_id: str | None = claims.get("active_business_id")
+        if not active_business_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "A valid business context is required. "
+                    "Switch to a business context first via POST /auth/context/switch."
+                ),
+            )
+
+        permissions: list[str] = claims.get("permissions", [])
+        if "*" not in permissions and not any(str(c) in permissions for c in validated):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"At least one of {[str(c) for c in validated]} is required",
+            )
+
+        return active_business_id
+
+    return _check_any_business_permission
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # 6. require_platform_staff — category-level gate
 # ═══════════════════════════════════════════════════════════════════════════
 

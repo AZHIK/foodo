@@ -1,16 +1,21 @@
 import 'dart:async' show unawaited;
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:restaurant_pos/database/app_database.dart';
+import 'package:restaurant_pos/database/local_profile_repository.dart';
 import 'package:restaurant_pos/main.dart';
 import 'package:restaurant_pos/models/business_role.dart';
 import 'package:restaurant_pos/models/permission.dart';
 import 'package:restaurant_pos/models/session.dart';
 import 'package:restaurant_pos/models/staff_member.dart';
 import 'package:restaurant_pos/providers/auth_provider.dart';
+import 'package:restaurant_pos/providers/database_providers.dart';
 import 'package:restaurant_pos/providers/roles_provider.dart';
 import 'package:restaurant_pos/providers/session_provider.dart';
 import 'package:restaurant_pos/providers/staff_provider.dart';
@@ -106,8 +111,41 @@ Future<ProviderContainer> pumpAt(
   addTearDown(tester.view.reset);
 
   final backendState = state ?? _seededState();
+
+  // The UI reads permissions from the local `CachedPermissions` cache, not
+  // the live token (see `effectivePermissionsProvider`), so this needs a
+  // real database to seed that cache into — the same reason
+  // `auth_flow_test.dart`'s `pumpSession` overrides this.
+  final database = AppDatabase(NativeDatabase.memory());
+  addTearDown(database.close);
+  final profileRepo = LocalProfileRepository(database);
+  const ownerId = 'stf-01';
+  final now = DateTime.now();
+  await profileRepo.upsertProfile(
+    LocalUserProfilesCompanion.insert(
+      id: ownerId,
+      displayName: 'Ava Mensah',
+      pinHash: '',
+      pinSalt: '',
+      createdAt: now,
+      updatedAt: now,
+    ),
+  );
+  await profileRepo.upsertPermissions(
+    CachedPermissionsCompanion.insert(
+      userId: ownerId,
+      businessId: backendState.businessId ?? _businessId,
+      businessName: backendState.businessName ?? 'Test Business',
+      businessLocationId: 'store-1',
+      roleName: 'Owner',
+      permissionCodes: jsonEncode(['*']),
+      cachedAt: now,
+    ),
+  );
+
   final container = ProviderContainer(
     overrides: [
+      appDatabaseProvider.overrideWithValue(database),
       identityServiceDioProvider.overrideWithValue(
         Dio()..httpClientAdapter = FakeIdentityAdapter(backendState),
       ),
@@ -123,7 +161,8 @@ Future<ProviderContainer> pumpAt(
   // need seeding or every route redirects to the login screen.
   container.read(authProvider.notifier).state = AuthContext(
     state: AuthState.complete,
-    accessToken: fakeScopedToken(userId: 'stf-01', businessId: backendState.businessId),
+    accessToken: fakeScopedToken(userId: ownerId, businessId: backendState.businessId),
+    userId: ownerId,
   );
   container.read(sessionProvider.notifier).state = const SessionState(
     activeStaffId: 'stf-01',

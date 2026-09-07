@@ -20,12 +20,14 @@ import 'package:drift/drift.dart';
 import '../auth/auth_dtos.dart';
 import '../auth/identity_service_api.dart';
 import '../auth/jwt_decoder.dart';
+import '../auth/permissions_cache_sync.dart';
 import '../auth/token_refresh_interceptor.dart';
 import '../auth/token_storage.dart';
 import '../database/app_database.dart';
 import '../database/local_profile_repository.dart';
 import '../utils/pin_hasher.dart';
 import 'database_providers.dart';
+import 'permissions_cache_tick_provider.dart';
 
 /// Auth flow state machine.
 enum AuthState {
@@ -111,21 +113,89 @@ class AuthNotifier extends Notifier<AuthContext> {
   }
 
   /// Checks if a valid session is already stored locally.
+  ///
+  /// An expired cached access token is the *normal* case here (short TTL,
+  /// app relaunched after any real idle period) — so this exchanges the
+  /// refresh token online for a fresh one instead of giving up. If that
+  /// exchange itself fails (offline, or the refresh token is expired/
+  /// revoked), this still restores the stale token rather than leaving the
+  /// app unauthenticated — a stale-but-decodable token is what lets the UI
+  /// keep showing the right permissions while offline; see
+  /// [restoreSessionViaRefresh], which PIN unlock uses for the same reason.
   Future<void> _checkStoredSession() async {
     try {
       final tokenSet = await _tokenStorage.getTokenSet();
-      if (tokenSet != null && !tokenSet.isExpired) {
-        // Session exists and is valid. Restore it.
-        state = state.copyWith(
-          state: AuthState.complete,
-          accessToken: tokenSet.accessToken,
-          refreshToken: tokenSet.refreshToken,
-          userId: tokenSet.userId,
-        );
+      if (tokenSet == null) return;
+      if (!tokenSet.isExpired) {
+        restoreSession(tokenSet);
+        return;
       }
+      await restoreSessionViaRefresh(tokenSet);
     } catch (_) {
-      // If storage read fails, continue without prior session.
+      // Storage read itself failed — continue unauthenticated; the router
+      // sends the user to login.
     }
+  }
+
+  /// Restores a session from a stored token set (used on device unlock).
+  /// Called when a user unlocks the device with their PIN.
+  void restoreSession(TokenSet tokenSet) {
+    state = state.copyWith(
+      state: AuthState.complete,
+      accessToken: tokenSet.accessToken,
+      refreshToken: tokenSet.refreshToken,
+      userId: tokenSet.userId,
+    );
+  }
+
+  /// Restores a session on PIN unlock by exchanging the stored refresh
+  /// token for a fresh access token online first.
+  ///
+  /// PIN unlock guards exactly the idle window where the cached access
+  /// token has very likely already expired — trusting it as-is (the old
+  /// behavior) hands the app a token the backend immediately rejects, and
+  /// every request comes back 401 until something else happens to trigger
+  /// a reactive refresh. This also re-points `TokenStorage`'s
+  /// current-session pointer at the unlocking profile, which a bare
+  /// [restoreSession] (in-memory only) never does.
+  Future<void> restoreSessionViaRefresh(TokenSet tokenSet) async {
+    try {
+      final fresh = await _refreshAndPersist(tokenSet);
+      restoreSession(fresh);
+    } catch (_) {
+      // Offline, or the refresh token itself is expired/revoked — fall
+      // back to the cached token so the app still works offline, or so
+      // the request interceptor's reactive refresh gets one more chance.
+      restoreSession(tokenSet);
+    }
+  }
+
+  /// Exchanges [tokenSet]'s refresh token for a fresh access token and
+  /// persists the result under the same user, rather than trusting a
+  /// cached token that may already be expired.
+  Future<TokenSet> _refreshAndPersist(TokenSet tokenSet) async {
+    final refreshed = await _api.refreshAccessToken(tokenSet.refreshToken);
+    final newTokenSet = TokenSet(
+      accessToken: refreshed.accessToken,
+      refreshToken: refreshed.refreshToken,
+      expiresAt: DateTime.now().add(const Duration(minutes: 15)),
+      userId: tokenSet.userId,
+    );
+    await _tokenStorage.saveTokenSet(newTokenSet);
+    await _syncPermissionsCache(newTokenSet);
+    return newTokenSet;
+  }
+
+  /// Writes this token's permissions to the local `CachedPermissions` table
+  /// — see `syncPermissionsCache` (shared with `TokenRefreshInterceptor`'s
+  /// background 401 refresh, the other place a fresh token appears).
+  Future<void> _syncPermissionsCache(TokenSet tokenSet) {
+    return syncPermissionsCache(
+      profileRepo: _profileRepo,
+      userId: tokenSet.userId,
+      accessToken: tokenSet.accessToken,
+      onSynced: () => ref.read(permissionsCacheTickProvider.notifier).state++,
+    );
   }
 
   /// Step 1: Request OTP code for a phone number.
@@ -207,6 +277,12 @@ class AuthNotifier extends Notifier<AuthContext> {
 
   /// Records the caller's own name/email — the first thing a phone-first
   /// (OTP-only) signup does, since /auth/otp/verify never collects one.
+  ///
+  /// Also saves the name to the local `LocalUserProfiles` row immediately
+  /// (creating it if this is the very first write for this user, since Set
+  /// PIN hasn't run yet) — the Profile Picker and PIN unlock read from that
+  /// table, not from this in-memory state, so without this the name would
+  /// only reach local storage once Set PIN incidentally happens to run.
   Future<void> completeProfile({
     required String fullName,
     String? email,
@@ -230,6 +306,11 @@ class AuthNotifier extends Notifier<AuthContext> {
           email: output.email,
         ),
       );
+
+      final userId = state.userId;
+      if (userId != null) {
+        await _profileRepo.upsertDisplayName(userId, output.fullName);
+      }
     } catch (e) {
       state = state.copyWith(error: e.toString());
       rethrow;
@@ -449,14 +530,21 @@ class AuthNotifier extends Notifier<AuthContext> {
   /// exists (FK, cascade-delete) — see the two call sites (`setPin` and
   /// `createBusinessAndOnboard`) for why that's guaranteed differently for
   /// each account type.
+  ///
+  /// Bumps `permissionsCacheTickProvider` on success — neither call site
+  /// changes `authProvider`'s token/claims as part of the same write (Set
+  /// PIN doesn't touch the token at all), so without this,
+  /// `currentUserPermissionsProvider` would have no signal that a fresh
+  /// cache row now exists and could stay stuck on whatever it last
+  /// resolved to (typically `Unknown()`, before this ever ran).
   Future<void> _cachePermissions({
     required String userId,
     required String businessId,
     required String businessLocationId,
     required String businessName,
     required JwtClaims claims,
-  }) {
-    return _profileRepo.upsertPermissions(
+  }) async {
+    await _profileRepo.upsertPermissions(
       CachedPermissionsCompanion.insert(
         userId: userId,
         businessId: businessId,
@@ -467,6 +555,7 @@ class AuthNotifier extends Notifier<AuthContext> {
         cachedAt: DateTime.now(),
       ),
     );
+    ref.read(permissionsCacheTickProvider.notifier).state++;
   }
 
   /// Reset state for next login.
@@ -501,6 +590,8 @@ final identityServiceDioProvider = Provider<Dio>((ref) {
   dio.interceptors.add(TokenRefreshInterceptor(
     tokenStorage: TokenStorage(),
     baseUrl: baseUrl,
+    profileRepo: ref.watch(localProfileRepositoryProvider),
+    onPermissionsSynced: () => ref.read(permissionsCacheTickProvider.notifier).state++,
   ));
 
   // Add logging for debugging.

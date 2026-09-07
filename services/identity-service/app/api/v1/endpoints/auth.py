@@ -147,6 +147,76 @@ async def _resolve_store_staff_context(
     return usr.business_id, usr.store_id, role_names, [str(p) for p in effective]
 
 
+async def _resolve_business_staff_context(
+    session: AsyncSession, user_id: UUID
+) -> tuple[UUID | None, list[str], list[str]]:
+    """Resolve (active_business_id, role_names, effective_permissions) for a
+    business_staff user from their UserBusinessRole assignments.
+
+    This is the same resolution `/auth/context/switch` does for an
+    explicitly requested business, used here because `/auth/refresh` has no
+    business_id in the request to switch to — it has to infer which
+    business the caller was already scoped to.
+
+    Single-business only: if the user holds roles at more than one
+    business, the first by id is used and a warning is logged, mirroring
+    `_resolve_store_staff_context`'s handling of multi-store staff. Returns
+    all-None/empty if the user has no UserBusinessRole yet.
+    """
+    result = await session.exec(
+        select(UserBusinessRole)
+        .where(UserBusinessRole.user_id == user_id)
+        .order_by(UserBusinessRole.id)
+    )
+    all_roles = result.all()
+    if not all_roles:
+        return None, [], []
+
+    business_id = all_roles[0].business_id
+    if any(r.business_id != business_id for r in all_roles[1:]):
+        logger.warning("user_has_roles_at_multiple_businesses", user_id=str(user_id))
+    roles = [r for r in all_roles if r.business_id == business_id]
+
+    role_names = []
+    role_permission_codes: list[str] = []
+    for ubr in roles:
+        role = await session.get(BusinessRole, ubr.business_role_id)
+        if role:
+            role_names.append(role.name)
+            perm_result = await session.exec(
+                select(BusinessRolePermission).where(
+                    BusinessRolePermission.business_role_id == role.id,
+                )
+            )
+            for rp in perm_result.all():
+                role_permission_codes.append(rp.permission_code)
+
+    grant_result = await session.exec(
+        select(UserBusinessPermission).where(
+            UserBusinessPermission.user_id == user_id,
+            UserBusinessPermission.business_id == business_id,
+            UserBusinessPermission.type == "grant",
+        )
+    )
+    deny_result = await session.exec(
+        select(UserBusinessPermission).where(
+            UserBusinessPermission.user_id == user_id,
+            UserBusinessPermission.business_id == business_id,
+            UserBusinessPermission.type == "deny",
+        )
+    )
+    grants = [p.permission_code for p in grant_result.all()]
+    denies = [p.permission_code for p in deny_result.all()]
+
+    effective = resolve_effective_permissions(
+        business_role_permissions=role_permission_codes,
+        location_role_permissions=[],
+        grants=grants,
+        denies=denies,
+    )
+    return business_id, role_names, [str(p) for p in effective]
+
+
 async def _issue_tokens(
     session: AsyncSession,
     user: User,
@@ -766,14 +836,32 @@ async def refresh(
             roles=role_names,
             permissions=perms,
         )
-    else:
+    elif user.user_category == UserCategory.BUSINESS_STAFF:
+        biz_id, role_names, perms = await _resolve_business_staff_context(db, user.id)
+
+        other_business_result = await db.exec(
+            select(UserBusinessRole).where(UserBusinessRole.user_id == user.id)
+        )
+        seen: set[UUID] = set()
+        other_businesses = []
+        for ubr in other_business_result.all():
+            if ubr.business_id not in seen and ubr.business_id != biz_id:
+                seen.add(ubr.business_id)
+                other_businesses.append({"id": str(ubr.business_id), "name": ""})
+
         access_token = create_access_token(
             subject=user_id_str,
             user_category=UserCategory.BUSINESS_STAFF.value,
-            active_business_id=None,
-            roles=[],
+            active_business_id=str(biz_id) if biz_id else None,
+            roles=role_names,
+            permissions=perms,
+            other_businesses=other_businesses,
+        )
+    else:
+        access_token = create_access_token(
+            subject=user_id_str,
+            user_category=user.user_category.value,
             permissions=[],
-            other_businesses=[],
         )
 
     return TokenResponse(access_token=access_token, refresh_token=rotated.raw_token)

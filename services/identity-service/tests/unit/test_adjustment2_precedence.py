@@ -111,6 +111,21 @@ def test_deny_override_removes_permission_present_via_role() -> None:
     assert result == set()
 
 
+def test_wildcard_business_role_permission_is_preserved() -> None:
+    """The owner role template seeds a literal "*" permission code (see
+    db/seed_role_templates.py) — it must survive resolution instead of
+    raising, since it is not a PermissionCode enum member.
+    """
+    result = resolve_effective_permissions(
+        business_role_permissions=["*", PermissionCode.POS_WRITE],
+        location_role_permissions=[],
+        grants=[],
+        denies=[],
+    )
+
+    assert result == {"*", PermissionCode.POS_WRITE}
+
+
 def test_deny_overrides_grant_for_same_code() -> None:
     result = resolve_effective_permissions(
         business_role_permissions=[],

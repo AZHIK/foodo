@@ -14,13 +14,32 @@ from app.models import (
 )
 
 
+_WILDCARD = "*"
+
+
+def _coerce_or_wildcard(code: str | PermissionCode) -> PermissionCode | str:
+    """Like `coerce_permission_code`, but lets the owner-role wildcard through.
+
+    `"*"` is seeded directly onto owner `BusinessRole`s (see
+    `db/seed_role_templates.py`) as a real, storable permission code — it is
+    not a `PermissionCode` member since it grants everything rather than one
+    thing, so coercing it through the enum raises. The consumption side
+    (`app/deps/permissions.py`) already treats a raw `"*"` in the permissions
+    list as an allow-everything sentinel; this just lets it survive resolution
+    so it reaches that check instead of crashing token issuance.
+    """
+    if code == _WILDCARD:
+        return _WILDCARD
+    return coerce_permission_code(code)
+
+
 def resolve_effective_permissions(
     *,
     business_role_permissions: Iterable[str | PermissionCode],
     location_role_permissions: Iterable[str | PermissionCode],
     grants: Iterable[str | PermissionCode],
     denies: Iterable[str | PermissionCode],
-) -> set[PermissionCode]:
+) -> set[PermissionCode | str]:
     """effective_permissions(user, business, location) =
           business_role_permissions(user, business)
         ∪ location_role_permissions(user, business, location)
@@ -34,10 +53,10 @@ def resolve_effective_permissions(
     for store-staff from their assigned BusinessRole via UserStoreRole.
     """
     role_permissions = {
-        coerce_permission_code(permission) for permission in business_role_permissions
-    } | {coerce_permission_code(permission) for permission in location_role_permissions}
-    granted_permissions = {coerce_permission_code(permission) for permission in grants}
-    denied_permissions = {coerce_permission_code(permission) for permission in denies}
+        _coerce_or_wildcard(permission) for permission in business_role_permissions
+    } | {_coerce_or_wildcard(permission) for permission in location_role_permissions}
+    granted_permissions = {_coerce_or_wildcard(permission) for permission in grants}
+    denied_permissions = {_coerce_or_wildcard(permission) for permission in denies}
     return (role_permissions | granted_permissions) - denied_permissions
 
 

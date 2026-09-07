@@ -8,6 +8,7 @@ import '../auth/token_storage.dart';
 import '../sync/sync_service.dart';
 import '../sync/fake_sync_api.dart';
 import 'database_providers.dart';
+import 'permissions_cache_tick_provider.dart';
 
 /// Sync status snapshot.
 class SyncStatusState {
@@ -48,6 +49,8 @@ final dioClientProvider = Provider<Dio>((ref) {
   dio.interceptors.add(TokenRefreshInterceptor(
     tokenStorage: tokenStorage,
     baseUrl: baseUrl,
+    profileRepo: ref.watch(localProfileRepositoryProvider),
+    onPermissionsSynced: () => ref.read(permissionsCacheTickProvider.notifier).state++,
   ));
 
   return dio;

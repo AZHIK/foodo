@@ -9,7 +9,7 @@ from app.core.database import get_async_session
 from app.core.exceptions import BusinessAlreadyExistsError
 from app.core.permission_codes import PermissionCode
 from app.deps.auth import get_current_user_id
-from app.deps.permissions import require_business_permission
+from app.deps.permissions import require_any_business_permission, require_business_permission
 from app.models.business import Business, BusinessRole
 from app.schemas.business import BusinessCreateRequest, BusinessCreateResponse, BusinessRead, BusinessUpdate
 from app.schemas.business_rbac import BusinessRoleRead
@@ -116,7 +116,10 @@ async def list_business_roles(
     business_id: UUID,
     db: AsyncSession = Depends(get_async_session),
     caller_business_id: str = Depends(
-        require_business_permission(PermissionCode.BUSINESS_ROLES_VIEW)
+        require_any_business_permission(
+            PermissionCode.BUSINESS_ROLES_VIEW,
+            PermissionCode.USER_BUSINESS_ROLES_ASSIGN,
+        )
     ),
 ) -> list[BusinessRoleRead]:
     if str(business_id) != caller_business_id:

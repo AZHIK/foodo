@@ -60,6 +60,35 @@ class LocalProfileRepository {
     return _db.into(_db.localUserProfiles).insertOnConflictUpdate(profile);
   }
 
+  /// Records [displayName] locally as soon as it's known — right after
+  /// Complete Profile, before a PIN exists — rather than waiting for Set
+  /// PIN to create the row. Creates a placeholder profile (empty PIN hash/
+  /// salt, filled in later by `setPin`) if one doesn't exist yet; otherwise
+  /// only refreshes the name, never touching an existing PIN.
+  Future<void> upsertDisplayName(String staffId, String displayName) async {
+    final existing = await getProfile(staffId);
+    final now = DateTime.now();
+    if (existing == null) {
+      await upsertProfile(
+        LocalUserProfilesCompanion.insert(
+          id: staffId,
+          displayName: displayName,
+          pinHash: '',
+          pinSalt: '',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+    } else {
+      await (_db.update(_db.localUserProfiles)..where((row) => row.id.equals(staffId))).write(
+        LocalUserProfilesCompanion(
+          displayName: Value(displayName),
+          updatedAt: Value(now),
+        ),
+      );
+    }
+  }
+
   /// Deletes a staff profile.
   Future<void> deleteProfile(String staffId) {
     return (_db.delete(_db.localUserProfiles)

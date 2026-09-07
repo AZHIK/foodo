@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/permission.dart';
 import '../providers/cart_provider.dart';
+import '../providers/permissions_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/breakpoints.dart';
@@ -16,11 +18,16 @@ class NavDestinationSpec {
     required this.label,
     required this.icon,
     required this.selectedIcon,
+    this.requiredPermission,
   });
 
   final String label;
   final IconData icon;
   final IconData selectedIcon;
+
+  /// Permission code gating this destination, or `null` if every signed-in
+  /// staff member should see it (no catalogue permission covers it yet).
+  final String? requiredPermission;
 }
 
 /// Width of the rail once extended. NavigationRail's API takes this as a
@@ -41,58 +48,84 @@ const _destinations = <NavDestinationSpec>[
     label: 'POS',
     icon: Icons.point_of_sale_outlined,
     selectedIcon: Icons.point_of_sale_rounded,
+    requiredPermission: AppPermissions.posAccess,
   ),
   NavDestinationSpec(
     label: 'Sales',
     icon: Icons.receipt_long_outlined,
     selectedIcon: Icons.receipt_long_rounded,
+    requiredPermission: AppPermissions.salesView,
   ),
   NavDestinationSpec(
     label: 'Customers',
     icon: Icons.people_alt_outlined,
     selectedIcon: Icons.people_alt_rounded,
+    requiredPermission: AppPermissions.customersView,
   ),
   NavDestinationSpec(
     label: 'Reorders',
     icon: Icons.shopping_cart_outlined,
     selectedIcon: Icons.shopping_cart_rounded,
+    requiredPermission: AppPermissions.reordersView,
   ),
   NavDestinationSpec(
     label: 'Couriers',
     icon: Icons.two_wheeler_outlined,
     selectedIcon: Icons.two_wheeler_rounded,
+    requiredPermission: AppPermissions.couriersView,
   ),
   NavDestinationSpec(
     label: 'Finance',
     icon: Icons.account_balance_wallet_outlined,
     selectedIcon: Icons.account_balance_wallet_rounded,
+    requiredPermission: AppPermissions.financeView,
   ),
   NavDestinationSpec(
     label: 'Reports',
     icon: Icons.insights_outlined,
     selectedIcon: Icons.insights_rounded,
+    requiredPermission: AppPermissions.reportsView,
   ),
   NavDestinationSpec(
     label: 'Insights',
     icon: Icons.auto_awesome_outlined,
     selectedIcon: Icons.auto_awesome_rounded,
+    requiredPermission: AppPermissions.insightsView,
   ),
   NavDestinationSpec(
     label: 'Inventory',
     icon: Icons.inventory_2_outlined,
     selectedIcon: Icons.inventory_2_rounded,
+    requiredPermission: AppPermissions.inventoryView,
   ),
   NavDestinationSpec(
     label: 'Staff',
     icon: Icons.groups_outlined,
     selectedIcon: Icons.groups_rounded,
+    requiredPermission: AppPermissions.staffView,
   ),
   NavDestinationSpec(
     label: 'Settings',
     icon: Icons.settings_outlined,
     selectedIcon: Icons.settings_rounded,
+    requiredPermission: AppPermissions.settingsStore,
   ),
 ];
+
+/// Destinations visible to the signed-in staff member, as indices into
+/// [_destinations] — a destination with no [NavDestinationSpec.requiredPermission]
+/// is always included; otherwise it needs that permission (or the `*`
+/// wildcard). Dashboard has no permission of its own, so this is never empty.
+final _visibleNavIndicesProvider = Provider<List<int>>((ref) {
+  final visible = <int>[];
+  for (var i = 0; i < _destinations.length; i++) {
+    final permission = _destinations[i].requiredPermission;
+    if (permission == null || ref.watch(hasPermissionProvider(permission))) {
+      visible.add(i);
+    }
+  }
+  return visible;
+});
 
 /// The POS tab carries the open-order badge. Second in the list, since the
 /// dashboard took the first slot.
@@ -199,7 +232,8 @@ class _ResponsiveScaffoldState extends ConsumerState<ResponsiveScaffold> {
 /// is what the bar can actually hold, so the four a counter uses hourly stay
 /// on it and the occasional ones move one tap further away.
 ///
-/// Indices into [_destinations]: Home, POS, Sales, Inventory.
+/// Indices into [_destinations]: Home, POS, Sales, Finance. Any of these the
+/// staff member lacks permission for drops out, same as the rest.
 const _mobilePrimary = <int>[0, 1, 2, 6];
 
 class _BottomNav extends ConsumerWidget {
@@ -208,17 +242,17 @@ class _BottomNav extends ConsumerWidget {
   final int currentIndex;
   final ValueChanged<int> onSelected;
 
-  /// Index of the "More" slot — always last on the bar.
-  int get _moreSlot => _mobilePrimary.length;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cartCount = ref.watch(cartItemCountProvider);
+    final visible = ref.watch(_visibleNavIndicesProvider);
+    final primary = [for (final i in _mobilePrimary) if (visible.contains(i)) i];
+    final moreSlot = primary.length;
 
     // A destination reached through "More" keeps that slot highlighted, so the
     // bar never shows nothing selected.
-    final slot = _mobilePrimary.indexOf(currentIndex);
-    final selected = slot == -1 ? _moreSlot : slot;
+    final slot = primary.indexOf(currentIndex);
+    final selected = slot == -1 ? moreSlot : slot;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -226,11 +260,11 @@ class _BottomNav extends ConsumerWidget {
       ),
       child: NavigationBar(
         selectedIndex: selected,
-        onDestinationSelected: (tapped) => tapped == _moreSlot
-            ? _openMore(context)
-            : onSelected(_mobilePrimary[tapped]),
+        onDestinationSelected: (tapped) => tapped == moreSlot
+            ? _openMore(context, visible)
+            : onSelected(primary[tapped]),
         destinations: [
-          for (final i in _mobilePrimary)
+          for (final i in primary)
             NavigationDestination(
               icon: _badged(Icon(_destinations[i].icon), i, cartCount),
               selectedIcon: _badged(
@@ -252,7 +286,7 @@ class _BottomNav extends ConsumerWidget {
     );
   }
 
-  Future<void> _openMore(BuildContext context) async {
+  Future<void> _openMore(BuildContext context, List<int> visible) async {
     final picked = await showModalBottomSheet<int>(
       context: context,
       showDragHandle: true,
@@ -279,9 +313,10 @@ class _BottomNav extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Every destination, not only the overflow ones — a menu that
-                    // hides where you already are is harder to orient in.
-                    for (var i = 0; i < _destinations.length; i++)
+                    // Every destination the staff member can see, not only the
+                    // overflow ones — a menu that hides where you already are
+                    // is harder to orient in.
+                    for (final i in visible)
                       ListTile(
                         leading: Icon(
                           i == currentIndex
@@ -319,16 +354,18 @@ class _NavDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cartCount = ref.watch(cartItemCountProvider);
+    final visible = ref.watch(_visibleNavIndicesProvider);
+    final selected = visible.indexOf(currentIndex);
 
     return NavigationDrawer(
-      selectedIndex: currentIndex,
-      onDestinationSelected: onSelected,
+      selectedIndex: selected == -1 ? 0 : selected,
+      onDestinationSelected: (position) => onSelected(visible[position]),
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(Insets.xl, Insets.xl, Insets.xl, Insets.sm),
           child: BrandLockup(),
         ),
-        for (var i = 0; i < _destinations.length; i++)
+        for (final i in visible)
           NavigationDrawerDestination(
             icon: _badged(Icon(_destinations[i].icon), i, cartCount),
             selectedIcon: _badged(
@@ -367,10 +404,12 @@ class _SideRail extends ConsumerWidget {
     final colors = context.colors;
     final cartCount = ref.watch(cartItemCountProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final visible = ref.watch(_visibleNavIndicesProvider);
+    final selected = visible.indexOf(currentIndex);
 
     return NavigationRail(
-      selectedIndex: currentIndex,
-      onDestinationSelected: onSelected,
+      selectedIndex: selected == -1 ? 0 : selected,
+      onDestinationSelected: (position) => onSelected(visible[position]),
       extended: extended,
       minWidth: _railCollapsedWidth,
       minExtendedWidth: _railExtendedWidth,
@@ -400,7 +439,7 @@ class _SideRail extends ConsumerWidget {
         ),
       ),
       destinations: [
-        for (var i = 0; i < _destinations.length; i++)
+        for (final i in visible)
           NavigationRailDestination(
             icon: _badged(Icon(_destinations[i].icon), i, cartCount),
             selectedIcon: _badged(

@@ -72,11 +72,18 @@ List<StaffRoleAssignment> _parseRolesFromLabel(String? label) {
 /// one notifier — an invite sent from the dialog appears in the table
 /// because `invite()` re-fetches this same list, not because anything was
 /// copied across.
+///
+/// Returns an empty list if the user lacks permission to view staff.
 class StaffNotifier extends AsyncNotifier<List<StaffMember>> {
   @override
   Future<List<StaffMember>> build() async {
     final businessId = ref.watch(currentBusinessIdProvider);
     if (businessId == null) return const [];
+
+    // Check if user has permission to view staff.
+    final canViewStaff = ref.watch(hasPermissionProvider('user_business_roles.view'));
+    if (!canViewStaff) return const [];
+
     final api = ref.read(staffRbacApiProvider);
     final dtos = await api.listStaff(businessId: businessId);
     return dtos.map(_fromDto).toList();

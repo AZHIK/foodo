@@ -8,13 +8,28 @@
 library;
 
 import 'package:dio/dio.dart';
+import '../database/local_profile_repository.dart';
 import 'identity_service_api.dart';
+import 'permissions_cache_sync.dart';
 import 'token_storage.dart';
 
 /// Handles silent token refresh on 401 responses.
 class TokenRefreshInterceptor extends Interceptor {
   final TokenStorage _tokenStorage;
   final String _baseUrl;
+
+  /// Optional: when given, a successful background refresh also updates
+  /// the local `CachedPermissions` table (see `syncPermissionsCache`) —
+  /// without this, a long session kept alive purely by this reactive
+  /// refresh (no PIN unlock, no cold start) would never pick up a
+  /// permission change an admin makes mid-session. Null in call sites that
+  /// have no database to write to (e.g. a bare pre-login Dio client).
+  final LocalProfileRepository? _profileRepo;
+
+  /// Called after a successful cache sync so a Riverpod-aware caller can
+  /// bump `permissionsCacheTickProvider` — this class has no `ref` of its
+  /// own to do that directly.
+  final void Function()? _onPermissionsSynced;
   late final IdentityServiceApi _api;
 
   /// Public endpoints whose own normal error path is a 401 unrelated to
@@ -34,8 +49,12 @@ class TokenRefreshInterceptor extends Interceptor {
   TokenRefreshInterceptor({
     required TokenStorage tokenStorage,
     required String baseUrl,
+    LocalProfileRepository? profileRepo,
+    void Function()? onPermissionsSynced,
   })  : _tokenStorage = tokenStorage,
-        _baseUrl = baseUrl {
+        _baseUrl = baseUrl,
+        _profileRepo = profileRepo,
+        _onPermissionsSynced = onPermissionsSynced {
     // Create a bare Dio instance (no interceptors) for refresh calls.
     // This prevents reentrancy if the refresh call itself fails.
     final bareDio = Dio(BaseOptions(
@@ -124,12 +143,29 @@ class TokenRefreshInterceptor extends Interceptor {
         Duration(seconds: 900), // Assume 15-min TTL (env config default)
       );
 
-      // Update BOTH access and refresh tokens (refresh is rotated).
-      await _tokenStorage.updateTokens(
-        output.accessToken,
-        output.refreshToken,
-        expiresAt,
-      );
+      // Get the current token set to extract the userId for per-user storage.
+      final currentTokenSet = await _tokenStorage.getTokenSet();
+      final userId = currentTokenSet?.userId;
+
+      if (userId != null) {
+        // Update per-user tokens.
+        await _tokenStorage.updateTokens(
+          userId,
+          output.accessToken,
+          output.refreshToken,
+          expiresAt,
+        );
+
+        final profileRepo = _profileRepo;
+        if (profileRepo != null) {
+          await syncPermissionsCache(
+            profileRepo: profileRepo,
+            userId: userId,
+            accessToken: output.accessToken,
+            onSynced: _onPermissionsSynced,
+          );
+        }
+      }
     } catch (e) {
       // If refresh fails, the session is lost. Clear tokens.
       await _tokenStorage.clearTokenSet();

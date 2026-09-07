@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
@@ -35,6 +36,12 @@ final staffRbacApiProvider = Provider<StaffRbacApi>(
 /// and joins them, so every other provider here still reads a plain
 /// `List<BusinessRole>` with `permissionIds` already populated, same as
 /// the pre-integration shape.
+///
+/// The UI always reads roles from the local cache — `build()` never blocks
+/// on the network. A live fetch runs in the background on every read to
+/// keep that cache current; if it fails (no permission, offline, a 401
+/// whose retry-with-refresh-token also fails) the screen just keeps
+/// showing whatever was last cached instead of going blank or erroring.
 class RolesNotifier extends AsyncNotifier<List<BusinessRole>> {
   StaffRbacApi get _api => ref.read(staffRbacApiProvider);
 
@@ -49,18 +56,32 @@ class RolesNotifier extends AsyncNotifier<List<BusinessRole>> {
     final businessId = ref.watch(currentBusinessIdProvider);
     if (businessId == null) return const [];
 
-    try {
-      // Try to load from API
-      final roles = await _api.listRoles(businessId: businessId);
-      final loadedRoles = await Future.wait(roles.map((dto) => _withPermissions(businessId, dto)));
+    // Fire-and-forget: updates `state` itself once it lands (or leaves the
+    // cached read below untouched if it fails). Sending this request goes
+    // through the shared dio client, whose `TokenRefreshInterceptor`
+    // transparently exchanges the refresh token if the access token has
+    // gone stale — this doesn't need to do that itself.
+    var disposed = false;
+    ref.onDispose(() => disposed = true);
+    unawaited(_refreshFromApi(businessId, isDisposed: () => disposed));
 
-      // Cache the roles to database
+    return _loadFromCache(businessId);
+  }
+
+  Future<void> _refreshFromApi(String businessId, {required bool Function() isDisposed}) async {
+    try {
+      final roles = await _api.listRoles(businessId: businessId);
+      final loadedRoles =
+          await Future.wait(roles.map((dto) => _withPermissions(businessId, dto)));
+
       await _cacheRoles(businessId, loadedRoles);
 
-      return loadedRoles;
-    } catch (e) {
-      // If API fails, try to load from cache
-      return await _loadFromCache(businessId);
+      if (!isDisposed()) {
+        state = AsyncData(loadedRoles);
+      }
+    } catch (_) {
+      // No permission, offline, or a transient failure — the cached read
+      // from `build()` is what the UI already shows; nothing more to do.
     }
   }
 

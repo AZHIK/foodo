@@ -21,6 +21,15 @@ class PermissionCode(StrEnum):
     SETTINGS_TAX = "settings.tax"
     SETTINGS_DEVICES = "settings.devices"
     SETTINGS_BILLING = "settings.billing"
+    # Not yet enforced by any endpoint — no customers/reorders/couriers/finance/
+    # insights resource exists in this service today. Added so the restaurant
+    # app's nav sidebar and a business owner's custom-role editor have a real
+    # code to gate/assign, same forward-declared pattern as SETTINGS_* above.
+    CUSTOMERS_VIEW = "customers.view"
+    REORDERS_VIEW = "reorders.view"
+    COURIERS_VIEW = "couriers.view"
+    FINANCE_VIEW = "finance.view"
+    INSIGHTS_VIEW = "insights.view"
     PROCUREMENT_CREATE = "procurement.create"
     PROCUREMENT_APPROVE = "procurement.approve"
     PROCUREMENT_AUTO_ORDER_ENABLE = "procurement.auto_order.enable"

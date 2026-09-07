@@ -16,10 +16,16 @@ final businessApiProvider = Provider<BusinessApiService>((ref) {
 /// This is an async provider that loads the full business details including
 /// all fields from the backend (logo, license_document_url, status, etc).
 /// Uses the JWT's activeBusinessId as the authoritative source.
+///
+/// Returns null if user lacks permission to view business data.
 final currentBusinessProvider = FutureProvider<BusinessReadDto?>((ref) async {
   try {
     final businessId = ref.watch(currentBusinessIdProvider);
     if (businessId == null) return null;
+
+    // Check if user has permission to view business.
+    final canViewBusiness = ref.watch(hasPermissionProvider('businesses.view'));
+    if (!canViewBusiness) return null;
 
     final businessApi = ref.watch(businessApiProvider);
     return await businessApi.getBusiness(businessId: businessId);

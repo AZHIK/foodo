@@ -77,6 +77,12 @@ abstract final class AppPermissions {
   static const salesExport = 'sales.export';
   static const reportsView = 'reports.view';
 
+  static const customersView = 'customers.view';
+  static const reordersView = 'reorders.view';
+  static const couriersView = 'couriers.view';
+  static const financeView = 'finance.view';
+  static const insightsView = 'insights.view';
+
   static const rolesView = 'business_roles.view';
   static const rolesCreate = 'business_roles.create';
   static const rolesUpdate = 'business_roles.update';
@@ -160,6 +166,38 @@ abstract final class AppPermissions {
           id: reportsView,
           label: 'View reports',
           description: 'Takings, item mix and staff performance',
+        ),
+      ],
+    ),
+    PermissionGroup(
+      id: 'operations',
+      label: 'Operations',
+      icon: Icons.dashboard_customize_outlined,
+      permissions: [
+        Permission(
+          id: customersView,
+          label: 'View customers',
+          description: 'Browse the customer list and profiles',
+        ),
+        Permission(
+          id: reordersView,
+          label: 'View reorders',
+          description: 'See standing and repeat orders',
+        ),
+        Permission(
+          id: couriersView,
+          label: 'View couriers',
+          description: 'Track delivery couriers and their assignments',
+        ),
+        Permission(
+          id: financeView,
+          label: 'View finance',
+          description: 'See revenue, payouts and financial summaries',
+        ),
+        Permission(
+          id: insightsView,
+          label: 'View insights',
+          description: 'Browse AI-generated business insights',
         ),
       ],
     ),

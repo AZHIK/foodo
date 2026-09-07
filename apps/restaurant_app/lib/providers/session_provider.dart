@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../auth/token_storage.dart';
 import '../database/local_profile_repository.dart';
 import '../models/session.dart';
 import '../models/staff_member.dart';
@@ -209,6 +210,9 @@ class SessionNotifier extends Notifier<SessionState> {
   /// animation — but the counting and the lockout happen here, not in the
   /// widget, so a second entry point could not skip them.
   ///
+  /// On successful unlock, also restores this user's stored access token so
+  /// API calls can be authenticated immediately.
+  ///
   /// Checks against LocalUserProfiles.pinHash (HMAC-SHA256 salted), not plaintext.
   /// Tracks lockout via LocalUserProfiles.lockedUntil, which persists across restarts.
   Future<bool> submitPin(String entered, {DateTime? now}) async {
@@ -229,6 +233,23 @@ class SessionNotifier extends Notifier<SessionState> {
       if (isCorrect) {
         // Clear lockout and unlock.
         await _profileRepo.updateLockout(staffId, 0, null);
+
+        // Restore the user's session for API authentication — online, via
+        // the refresh token, not by trusting whatever access token happens
+        // to be cached (PIN unlock guards the idle window where that token
+        // has very likely already expired).
+        try {
+          final tokenStorage = TokenStorage();
+          final tokenSet = await tokenStorage.getTokenSetForUser(staffId);
+          if (tokenSet != null) {
+            final auth = ref.read(authProvider.notifier);
+            await auth.restoreSessionViaRefresh(tokenSet);
+          }
+        } catch (_) {
+          // Token restoration failed, but unlock succeeded. Session will work
+          // in offline mode or with minimal API access.
+        }
+
         state = state.copyWith(
           isUnlocked: true,
           failedAttempts: 0,
