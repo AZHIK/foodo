@@ -401,11 +401,15 @@ class _QuickActions extends StatelessWidget {
         icon: const Icon(Icons.tune_rounded, size: 18),
         label: const Text('Adjust stock'),
       ),
-      OutlinedButton.icon(
-        onPressed: () => showReorderDialog(context, item),
-        icon: const Icon(Icons.shopping_cart_outlined, size: 18),
-        label: const Text('Create reorder'),
-      ),
+      // A sellable-only item can never be purchase-received (see
+      // `stock_movement_service.py`'s `_COMPATIBILITY_RULES`) — reordering
+      // it would always fail at receive time, so the action isn't offered.
+      if (item.itemType != 'sellable')
+        OutlinedButton.icon(
+          onPressed: () => showReorderDialog(context, item),
+          icon: const Icon(Icons.shopping_cart_outlined, size: 18),
+          label: const Text('Create reorder'),
+        ),
       OutlinedButton.icon(
         onPressed: item.stock == 0
             ? null

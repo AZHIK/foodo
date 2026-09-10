@@ -36,8 +36,8 @@ void main() {
       expect(database != null, true);
     });
 
-    test('schema version is 6', () async {
-      expect(database.schemaVersion, 6);
+    test('schema version is 8', () async {
+      expect(database.schemaVersion, 8);
     });
 
     test('LocalUserProfiles table exists and can be queried', () async {
@@ -373,6 +373,104 @@ void main() {
       expect(expenses.length, 1);
       expect(incomes.length, 1);
       expect(expenses.first.isDeleted, false);
+    });
+
+    test('CustomerEntries outbox and CachedCustomers cache tables exist', () async {
+      final now = DateTime.now();
+
+      await database.into(database.customerEntries).insert(
+            CustomerEntriesCompanion.insert(
+              customerId: 'cust-uuid-1',
+              businessId: 'biz-123',
+              name: 'Jane Doe',
+              phone: '+1-555-0100',
+              joinedAt: now,
+              actorUserId: 'test-staff-1',
+              createdAt: now,
+            ),
+          );
+      await database.into(database.cachedCustomers).insertOnConflictUpdate(
+            CachedCustomersCompanion.insert(
+              id: 'cust-uuid-1',
+              businessId: 'biz-123',
+              name: 'Jane Doe',
+              phone: '+1-555-0100',
+              joinedAt: now,
+              syncedAt: now,
+              updatedAt: now,
+              createdAt: now,
+              totalSpent: Decimal.parse('120.00'),
+              lastSyncedAt: now,
+            ),
+          );
+
+      final outbox = await database.select(database.customerEntries).get();
+      final cached = await database.select(database.cachedCustomers).get();
+      expect(outbox.length, 1);
+      expect(cached.length, 1);
+      // The outbox row's customerId and the cache row's id use the same
+      // value space — a customer's id is client-generated and IS its
+      // server primary key (see `customer_entries.dart`'s doc comment).
+      expect(outbox.first.customerId, cached.first.id);
+      expect(cached.first.totalOrders, 0); // withDefault
+      expect(cached.first.isDeleted, false);
+    });
+
+    test('CachedSuppliers and CachedReorders tables exist', () async {
+      final now = DateTime.now();
+
+      await database.into(database.cachedSuppliers).insertOnConflictUpdate(
+            CachedSuppliersCompanion.insert(
+              id: 'sup-uuid-1',
+              businessId: 'biz-123',
+              name: 'Acme Produce',
+              updatedAt: now,
+              createdAt: now,
+              lastSyncedAt: now,
+            ),
+          );
+      await database.into(database.cachedReorders).insertOnConflictUpdate(
+            CachedReordersCompanion.insert(
+              id: 'reorder-uuid-1',
+              businessId: 'biz-123',
+              storeId: 'store-1',
+              itemId: 'item-1',
+              supplierId: 'sup-uuid-1',
+              quantity: Decimal.parse('20.000'),
+              unit: 'kg',
+              unitCost: Decimal.parse('2.5000'),
+              status: 'pending',
+              orderedAt: now,
+              createdAt: now,
+              lastSyncedAt: now,
+            ),
+          );
+
+      final suppliers = await database.select(database.cachedSuppliers).get();
+      final reorders = await database.select(database.cachedReorders).get();
+      expect(suppliers.length, 1);
+      expect(reorders.length, 1);
+      expect(reorders.first.supplierId, suppliers.first.id);
+      expect(suppliers.first.isDeleted, false);
+      expect(reorders.first.status, 'pending');
+    });
+
+    test('PendingSales.customerId and CachedSales.customerId are nullable', () async {
+      final now = DateTime.now();
+
+      await database.into(database.pendingSales).insert(
+            PendingSalesCompanion.insert(
+              clientSaleId: 'sale-no-customer',
+              status: 'completed',
+              storeId: 'loc-456',
+              paymentMethod: 'cash',
+              occurredAt: now,
+              createdAt: now,
+            ),
+          );
+
+      final rows = await database.select(database.pendingSales).get();
+      expect(rows.first.customerId, null);
     });
 
     test('LocalAuditLog table exists', () async {

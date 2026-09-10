@@ -99,6 +99,7 @@ class SyncService {
               .toList(),
           discountAmount: row.discountAmount,
           paymentMethod: row.paymentMethod,
+          customerId: row.customerId,
           occurredAt: row.occurredAt,
           deviceSequence: row.deviceSequence,
           voidOrRefundReason: row.voidOrRefundReason,

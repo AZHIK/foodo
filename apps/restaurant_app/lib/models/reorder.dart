@@ -11,55 +11,64 @@ enum ReorderStatus {
 }
 
 /// A purchase order for restocking inventory.
+///
+/// `supplierId` links to a real `Supplier` record (see `models/supplier.dart`)
+/// — this used to be a free-text `supplier` string with no backend
+/// equivalent; promoted to a real FK alongside the rest of this module's
+/// backend connection.
 @immutable
 class Reorder {
   const Reorder({
     required this.id,
+    required this.storeId,
     required this.inventoryItemId,
     required this.quantity,
     required this.unit,
     required this.unitCost,
-    required this.supplier,
+    required this.supplierId,
     required this.orderedAt,
     this.expectedAt,
     this.receivedAt,
+    this.cancelledAt,
     this.status = ReorderStatus.pending,
     this.notes,
   });
 
   final String id;
+  final String storeId;
   final String inventoryItemId;
   final double quantity;
   final String unit;
   final double unitCost;
-  final String supplier;
+  final String supplierId;
   final DateTime orderedAt;
   final DateTime? expectedAt;
   final DateTime? receivedAt;
+  final DateTime? cancelledAt;
   final ReorderStatus status;
   final String? notes;
 
   double get total => quantity * unitCost;
 
   Reorder copyWith({
-    double? quantity,
-    DateTime? expectedAt,
     DateTime? receivedAt,
+    DateTime? cancelledAt,
     ReorderStatus? status,
-    String? notes,
   }) {
     return Reorder(
       id: id,
+      storeId: storeId,
       inventoryItemId: inventoryItemId,
-      quantity: quantity ?? this.quantity,
+      quantity: quantity,
       unit: unit,
       unitCost: unitCost,
-      supplier: supplier,
+      supplierId: supplierId,
       orderedAt: orderedAt,
-      expectedAt: expectedAt ?? this.expectedAt,
+      expectedAt: expectedAt,
       receivedAt: receivedAt ?? this.receivedAt,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
       status: status ?? this.status,
-      notes: notes ?? this.notes,
+      notes: notes,
     );
   }
 

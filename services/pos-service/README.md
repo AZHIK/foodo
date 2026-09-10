@@ -1,8 +1,9 @@
 # FoodLink POS Service
 
 Point-of-sale microservice for FoodLink Africa. Manages sales transactions,
-line items, payments, receipts, local tax configuration, and ad-hoc
-other-expense/other-income finance entries.
+line items, payments, receipts, local tax configuration, ad-hoc
+other-expense/other-income finance entries, and a business's customer
+ledger (sales may optionally be attributed to a customer via a real FK).
 
 - **Database**: dedicated `foodlink_pos` PostgreSQL instance (not shared).
 - **Auth**: verifies RS256 JWTs issued by Identity Service (never issues tokens).
@@ -48,9 +49,15 @@ uv run uvicorn app.main:app --reload
 | `DELETE` | `/businesses/{business_id}/other-incomes/{income_id}` | `finance.incomes.delete` | Soft-delete an income |
 | `POST` | `/businesses/{business_id}/finance/attachments` | `finance.attachments.upload` | Upload a receipt file |
 | `GET` | `/businesses/{business_id}/finance/attachments/{attachment_id}` | `finance.view` | Download a receipt file |
+| `POST` | `/businesses/{business_id}/customers/sync` | `customers.create` | Batch-sync offline-created customers |
+| `GET` | `/businesses/{business_id}/customers` | `customers.view` | List customers (paginated, searchable, server-computed totals) |
+| `PATCH` | `/businesses/{business_id}/customers/{customer_id}` | `customers.update` | Edit an already-synced customer |
+| `DELETE` | `/businesses/{business_id}/customers/{customer_id}` | `customers.delete` | Soft-delete a customer (sales keep their attribution) |
+| `GET` | `/businesses/{business_id}/customers/{customer_id}` | `customers.view` | Read single customer, with computed totals |
 
-All `pos.*`/`finance.*` endpoints enforce **business-context binding**: the
-URL path's `business_id` must match the JWT's `active_business_id` claim.
+All `pos.*`/`finance.*`/`customers.*` endpoints enforce **business-context
+binding**: the URL path's `business_id` must match the JWT's
+`active_business_id` claim.
 
 ---
 
@@ -73,6 +80,8 @@ Key locations:
 | Finance entries are mutable, sales are not | `app/models/finance.py:16-26` |
 | Category storage: VARCHAR, not a Postgres enum | `app/models/finance.py:28-37` |
 | Local-disk receipt storage (single-node/backup tradeoff) | `app/services/receipt_storage.py:1-24` |
+| `Customer.id` is client-generated and IS the server PK/FK | `app/models/customers.py:1-25` |
+| Customer totals computed on read, never stored counters | `app/services/customer_service.py:239-260` |
 
 ---
 
@@ -196,7 +205,7 @@ docker compose exec api-dev uv run pytest -v tests/
 uv run pytest -v tests/
 ```
 
-Full suite (138+ tests):
+Full suite (169+ tests):
 
 ```bash
 uv run pytest -v tests/ --tb=short

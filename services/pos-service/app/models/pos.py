@@ -16,6 +16,10 @@ already ties the caller to a specific business context).
 
 Do NOT add FK constraints to these columns.
 
+``customer_id`` on ``Sale`` is the one exception: ``customers`` (see
+``app/models/customers.py``) lives in this SAME database, so it IS a real
+foreign key, the same way ``SaleLineItem.sale_id`` is.
+
 ═══════════════════════════════════════════════════════════════════════════
 PROCESSED_SYNC_EVENTS — NOT CREATED (explanation)
 ═══════════════════════════════════════════════════════════════════════════
@@ -168,6 +172,15 @@ class Sale(SQLModel, table=True):
         default=None,
         index=True,
         sa_type=PG_UUID,
+    )
+    customer_id: UUID | None = Field(
+        default=None,
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("customers.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
     )
     occurred_at: datetime = Field(
         nullable=False,

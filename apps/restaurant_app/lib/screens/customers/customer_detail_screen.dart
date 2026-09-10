@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../models/customer.dart';
 import '../../models/order.dart';
+import '../../models/permission.dart';
 import '../../models/table_query.dart';
 import '../../providers/customers_provider.dart';
 import '../../providers/orders_provider.dart';
+import '../../providers/permissions_provider.dart';
 import '../../router/app_router.dart';
 import '../../screens/sales/sales_screen.dart' show salesColumns;
 import '../../theme/app_theme.dart';
@@ -46,13 +48,15 @@ class CustomerDetailScreen extends ConsumerWidget {
   }
 }
 
-class _Header extends StatelessWidget {
+class _Header extends ConsumerWidget {
   const _Header({required this.customer});
 
   final Customer customer;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final canUpdate = ref.watch(hasPermissionProvider(AppPermissions.customersUpdate));
+
     return DetailPageHeader(
       title: customer.name,
       subtitle: customer.phone,
@@ -60,12 +64,13 @@ class _Header extends StatelessWidget {
           ? context.pop()
           : context.goNamed(AppRoute.customersName),
       actions: [
-        OutlinedButton.icon(
-          onPressed: () => showCustomerFormDialog(context,
-              existingCustomer: customer),
-          icon: const Icon(Icons.edit_outlined, size: 18),
-          label: const Text('Edit'),
-        ),
+        if (canUpdate)
+          OutlinedButton.icon(
+            onPressed: () => showCustomerFormDialog(context,
+                existingCustomer: customer),
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            label: const Text('Edit'),
+          ),
       ],
     );
   }

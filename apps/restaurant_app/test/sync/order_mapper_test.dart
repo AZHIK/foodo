@@ -134,5 +134,33 @@ void main() {
       expect(order.status, OrderStatus.paid);
       expect(order.paymentType, PaymentType.cash);
     });
+
+    test('a sale with no customer attributed maps to a null customerId', () {
+      final order = orderFromCachedRow(sale: sale, lines: lines, itemsById: itemsById);
+      expect(order.customerId, null);
+    });
+
+    test('customerId carries through onto the mapped Order', () {
+      final attributedSale = CachedSale(
+        id: 'sale-server-2',
+        businessId: 'biz-1',
+        storeId: 'store-1',
+        clientSaleId: 'client-uuid-2',
+        customerId: 'cust-uuid-1',
+        status: 'completed',
+        subtotal: Decimal.parse('20.00'),
+        discountAmount: Decimal.parse('2.00'),
+        taxAmount: Decimal.parse('1.44'),
+        total: Decimal.parse('19.44'),
+        paymentMethod: 'cash',
+        occurredAt: DateTime(2026, 1, 2, 12),
+        syncedAt: DateTime(2026, 1, 2, 12, 1),
+        createdAt: DateTime(2026, 1, 2, 12),
+        lastSyncedAt: DateTime(2026, 1, 2, 12, 1),
+      );
+
+      final order = orderFromCachedRow(sale: attributedSale, lines: lines, itemsById: itemsById);
+      expect(order.customerId, 'cust-uuid-1');
+    });
   });
 }

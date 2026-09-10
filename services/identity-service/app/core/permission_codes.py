@@ -25,12 +25,10 @@ class PermissionCode(StrEnum):
     SETTINGS_TAX = "settings.tax"
     SETTINGS_DEVICES = "settings.devices"
     SETTINGS_BILLING = "settings.billing"
-    # Not yet enforced by any endpoint — no customers/reorders/couriers/
-    # insights resource exists in this service today. Added so the restaurant
-    # app's nav sidebar and a business owner's custom-role editor have a real
-    # code to gate/assign, same forward-declared pattern as SETTINGS_* above.
-    CUSTOMERS_VIEW = "customers.view"
-    REORDERS_VIEW = "reorders.view"
+    # Not yet enforced by any endpoint — no couriers/insights resource exists
+    # in this service today. Added so the restaurant app's nav sidebar and a
+    # business owner's custom-role editor have a real code to gate/assign,
+    # same forward-declared pattern as SETTINGS_* above.
     COURIERS_VIEW = "couriers.view"
     INSIGHTS_VIEW = "insights.view"
     # ── Finance (enforced by POS Service's other-expenses/other-incomes
@@ -43,6 +41,24 @@ class PermissionCode(StrEnum):
     FINANCE_INCOMES_UPDATE = "finance.incomes.update"
     FINANCE_INCOMES_DELETE = "finance.incomes.delete"
     FINANCE_ATTACHMENTS_UPLOAD = "finance.attachments.upload"
+    # ── Customers (enforced by POS Service's customers endpoints — see
+    # services/pos-service/app/api/v1/endpoints/customers.py) ─────────────
+    CUSTOMERS_VIEW = "customers.view"
+    CUSTOMERS_CREATE = "customers.create"
+    CUSTOMERS_UPDATE = "customers.update"
+    CUSTOMERS_DELETE = "customers.delete"
+    # ── Reorders / Suppliers (enforced by Inventory Service's reorders and
+    # suppliers endpoints — see services/inventory-service/app/api/v1/
+    # endpoints/{reorders,suppliers}.py). REORDERS_VIEW moved here from the
+    # forward-declared block above now that it's actually enforced. ────────
+    REORDERS_VIEW = "reorders.view"
+    REORDERS_CREATE = "reorders.create"
+    REORDERS_RECEIVE = "reorders.receive"
+    REORDERS_CANCEL = "reorders.cancel"
+    SUPPLIERS_VIEW = "suppliers.view"
+    SUPPLIERS_CREATE = "suppliers.create"
+    SUPPLIERS_UPDATE = "suppliers.update"
+    SUPPLIERS_DELETE = "suppliers.delete"
     PROCUREMENT_CREATE = "procurement.create"
     PROCUREMENT_APPROVE = "procurement.approve"
     PROCUREMENT_AUTO_ORDER_ENABLE = "procurement.auto_order.enable"

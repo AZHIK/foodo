@@ -8,12 +8,15 @@ import '../../widgets/labeled_form_field.dart';
 import '../../widgets/responsive_form_dialog.dart';
 import '../../widgets/section_label.dart';
 
-/// Opens the add/edit customer form dialog.
-Future<void> showCustomerFormDialog(
+/// Opens the add/edit customer form dialog. Returns the saved customer, or
+/// null if the dialog was dismissed without saving — the POS checkout
+/// picker uses the returned customer to immediately select whoever was
+/// just added.
+Future<Customer?> showCustomerFormDialog(
   BuildContext context, {
   Customer? existingCustomer,
 }) {
-  return showResponsiveFormDialog<void>(
+  return showResponsiveFormDialog<Customer>(
     context,
     builder: (_) => _CustomerFormDialog(customer: existingCustomer),
   );
@@ -35,6 +38,7 @@ class _CustomerFormDialogState extends ConsumerState<_CustomerFormDialog> {
   late final TextEditingController _phone;
   late final TextEditingController _email;
   late final TextEditingController _address;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -54,49 +58,52 @@ class _CustomerFormDialogState extends ConsumerState<_CustomerFormDialog> {
     super.dispose();
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
     final isEdit = widget.customer != null;
-    Customer? saved;
-
-    if (isEdit) {
-      final updated = widget.customer!.copyWith(
-        name: _name.text.trim(),
-        phone: _phone.text.trim(),
-        email: _email.text.trim(),
-        addressLine1: _address.text.trim(),
-      );
-      ref.read(customersProvider.notifier).upsert(updated);
-      saved = updated;
-    } else {
-      final notifier = ref.read(customersProvider.notifier);
-      final newCustomer = Customer(
-        id: notifier.nextId(),
-        name: _name.text.trim(),
-        phone: _phone.text.trim(),
-        email: _email.text.trim().isEmpty ? null : _email.text.trim(),
-        addressLine1:
-            _address.text.trim().isEmpty ? null : _address.text.trim(),
-        createdAt: DateTime.now(),
-        lastOrderAt: null,
-        totalOrders: 0,
-        totalSpent: 0,
-      );
-      notifier.upsert(newCustomer);
-      saved = newCustomer;
-    }
-
     final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context).pop();
+    setState(() => _saving = true);
 
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          isEdit ? '${saved.name} updated' : '${saved.name} added',
-        ),
-      ),
-    );
+    final name = _name.text.trim();
+    final phone = _phone.text.trim();
+    final email = _email.text.trim().isEmpty ? null : _email.text.trim();
+    final address = _address.text.trim().isEmpty ? null : _address.text.trim();
+
+    try {
+      final Customer saved;
+      final notifier = ref.read(customersProvider.notifier);
+      if (isEdit) {
+        saved = await notifier.edit(
+          widget.customer!,
+          name: name,
+          phone: phone,
+          email: email,
+          addressLine1: address,
+        );
+      } else {
+        saved = await notifier.create(
+          name: name,
+          phone: phone,
+          email: email,
+          addressLine1: address,
+        );
+      }
+
+      if (!mounted) return;
+      Navigator.of(context).pop(saved);
+      messenger.showSnackBar(
+        SnackBar(content: Text(isEdit ? '${saved.name} updated' : '${saved.name} added')),
+      );
+    } on CustomerOfflineMutationException catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+    }
   }
 
   @override
@@ -114,8 +121,14 @@ class _CustomerFormDialogState extends ConsumerState<_CustomerFormDialog> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: _save,
-            child: Text(isEdit ? 'Save changes' : 'Add customer'),
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(isEdit ? 'Save changes' : 'Add customer'),
           ),
         ],
         child: Column(

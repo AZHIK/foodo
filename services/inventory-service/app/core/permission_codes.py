@@ -26,6 +26,16 @@ class PermissionCode(StrEnum):
     INVENTORY_ITEMS_DEACTIVATE = "inventory.items.deactivate"
     INVENTORY_WASTE_RECORD = "inventory.waste.record"
     INVENTORY_TRANSFER = "inventory.transfer"
+    # ── Reorders / Suppliers (enforced here — see
+    # app/api/v1/endpoints/{reorders,suppliers}.py) ────────────────────────
+    REORDERS_VIEW = "reorders.view"
+    REORDERS_CREATE = "reorders.create"
+    REORDERS_RECEIVE = "reorders.receive"
+    REORDERS_CANCEL = "reorders.cancel"
+    SUPPLIERS_VIEW = "suppliers.view"
+    SUPPLIERS_CREATE = "suppliers.create"
+    SUPPLIERS_UPDATE = "suppliers.update"
+    SUPPLIERS_DELETE = "suppliers.delete"
     PROCUREMENT_CREATE = "procurement.create"
     PROCUREMENT_APPROVE = "procurement.approve"
     PROCUREMENT_AUTO_ORDER_ENABLE = "procurement.auto_order.enable"

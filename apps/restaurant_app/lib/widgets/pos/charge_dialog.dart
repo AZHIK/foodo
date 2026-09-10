@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/order.dart';
+import '../../models/permission.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_session_provider.dart';
 import '../../providers/orders_provider.dart';
+import '../../providers/permissions_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
@@ -17,6 +19,7 @@ import '../cash_tender_panel.dart';
 import '../payment_summary_panel.dart';
 import '../section_label.dart';
 import '../selectable_option_card.dart';
+import 'customer_picker.dart';
 
 /// Takes payment for the open order: pick a tender, count the cash, write the
 /// sale, reset the ticket.
@@ -50,7 +53,13 @@ Future<void> chargeOpenOrder(BuildContext context, WidgetRef ref) async {
         orderType: ref.read(orderTypeProvider),
         tableLabel: ref.read(tableLabelProvider),
         serverName: ref.read(currentStaffProvider),
+        customerId: ref.read(selectedCustomerIdProvider),
       );
+
+  // A new ticket must not silently inherit the last customer — only reset
+  // on a successful charge, never when the dialog is merely dismissed (see
+  // `selectedCustomerIdProvider`'s doc comment).
+  ref.read(selectedCustomerIdProvider.notifier).state = null;
 
   final change = order.payment.changeFor(order.totals);
 
@@ -140,6 +149,15 @@ class ChargeDialog extends ConsumerWidget {
                 // the amount due there.
                 child: PaymentBreakdown(totals: totals, compact: form.isMobile),
               ),
+              // Hidden without `customers.view` — a cashier who can't read
+              // the customer list has nothing to pick from, and the picker
+              // would only ever 403.
+              if (ref.watch(hasPermissionProvider(AppPermissions.customersView))) ...[
+                const SizedBox(height: Insets.lg),
+                const SectionLabel('Customer'),
+                const SizedBox(height: Insets.sm),
+                const CustomerPickerField(),
+              ],
               const SizedBox(height: Insets.lg),
               const SectionLabel('Payment method'),
               const SizedBox(height: Insets.sm),

@@ -43,7 +43,7 @@ void main() {
           );
     }
 
-    Order order({String itemId = 'item-1'}) => Order(
+    Order order({String itemId = 'item-1', String? customerId}) => Order(
           id: 'ORD-0001',
           lines: [
             OrderLine(
@@ -58,6 +58,7 @@ void main() {
           paymentType: PaymentType.cash,
           status: OrderStatus.paid,
           taxRate: 0.0825,
+          customerId: customerId,
         );
 
     test('writes a sale and its line items when every item resolves', () async {
@@ -119,6 +120,30 @@ void main() {
       );
 
       expect(written, isFalse);
+    });
+
+    test('carries customerId onto the written sale when present', () async {
+      await seedItem('item-1');
+
+      await PendingSaleWriter(database).writeIfMappable(
+        order(customerId: 'cust-uuid-1'),
+        storeId: 'store-1',
+      );
+
+      final sales = await database.select(database.pendingSales).get();
+      expect(sales.single.customerId, 'cust-uuid-1');
+    });
+
+    test('leaves customerId null when the order has no customer', () async {
+      await seedItem('item-1');
+
+      await PendingSaleWriter(database).writeIfMappable(
+        order(),
+        storeId: 'store-1',
+      );
+
+      final sales = await database.select(database.pendingSales).get();
+      expect(sales.single.customerId, null);
     });
   });
 }

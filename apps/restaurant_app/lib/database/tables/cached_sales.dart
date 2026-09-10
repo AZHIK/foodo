@@ -46,6 +46,10 @@ class CachedSales extends Table {
   /// Staff member who rang up the sale, if known.
   TextColumn get actorId => text().nullable()();
 
+  /// Customer this sale is attributed to, if any. Mirrors the backend's
+  /// `SaleRead.customer_id`.
+  TextColumn get customerId => text().nullable()();
+
   /// When the sale occurred (device-reported time, UTC) — the timestamp the
   /// backend sorts and filters the ledger by.
   DateTimeColumn get occurredAt => dateTime()();

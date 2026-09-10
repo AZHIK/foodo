@@ -24,6 +24,10 @@ class FakeSyncApi extends PosSyncApi {
   /// Overrides default behavior for specific IDs.
   final Map<String, SyncRowResult> overrides;
 
+  /// Every batch passed to [syncSales], in call order. Test-only hook for
+  /// asserting on what a `PendingSaleDto` looked like when it was built.
+  final List<List<PendingSaleDto>> capturedBatches = [];
+
   FakeSyncApi({
     this.alwaysSucceed = true,
     this.alwaysFail = false,
@@ -33,6 +37,7 @@ class FakeSyncApi extends PosSyncApi {
 
   @override
   Future<SyncBatchResult> syncSales(List<PendingSaleDto> batch) async {
+    capturedBatches.add(batch);
     if (throwsNetworkError) {
       throw NetworkException('Simulated network error');
     }

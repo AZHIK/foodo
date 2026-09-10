@@ -14,6 +14,7 @@ class PendingSaleDto {
   final List<PendingSaleLineItemDto> lineItems;
   final Decimal discountAmount;
   final String paymentMethod;
+  final String? customerId;
   final DateTime occurredAt;
   final int? deviceSequence;
   final String? voidOrRefundReason;
@@ -25,6 +26,7 @@ class PendingSaleDto {
     required this.lineItems,
     required this.discountAmount,
     required this.paymentMethod,
+    this.customerId,
     required this.occurredAt,
     this.deviceSequence,
     this.voidOrRefundReason,
@@ -37,6 +39,7 @@ class PendingSaleDto {
     'line_items': lineItems.map((li) => li.toJson()).toList(),
     'discount_amount': discountAmount.toString(),
     'payment_method': paymentMethod,
+    'customer_id': customerId,
     // `.toUtc()` first: `DateTime.now()` (what `placeOrder` stamps `Order`s
     // with) is local time, and `.toIso8601String()` on a non-UTC DateTime
     // carries no timezone marker at all — the backend then parses it as

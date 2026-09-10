@@ -51,6 +51,7 @@ class SaleSyncInput(BaseModel):
     line_items: list[SaleLineItemInput] = Field(min_length=1)
     discount_amount: Decimal = Field(default=Decimal("0"), ge=Decimal("0"))
     payment_method: Literal["cash", "mobile_money", "card", "other"]
+    customer_id: UUID | None = None
     occurred_at: datetime
     device_sequence: int | None = None
     void_or_refund_reason: str | None = None
@@ -128,6 +129,7 @@ class SaleRead(BaseModel):
     total: Decimal
     payment_method: str
     actor_id: UUID | None = None
+    customer_id: UUID | None = None
     occurred_at: datetime
     synced_at: datetime
     device_sequence: int | None = None
@@ -153,6 +155,7 @@ class SaleListItem(BaseModel):
     total: Decimal
     payment_method: str
     actor_id: UUID | None = None
+    customer_id: UUID | None = None
     occurred_at: datetime
     synced_at: datetime
     device_sequence: int | None = None

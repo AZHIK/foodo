@@ -10,9 +10,16 @@ import '../auth/token_refresh_interceptor.dart';
 import '../auth/token_storage.dart';
 import '../config/api_config.dart';
 import '../services/inventory_api_service.dart';
+import '../services/reorder_api_service.dart';
+import '../services/supplier_api_service.dart';
 import '../sync/catalog_sync_service.dart';
 import '../sync/http_inventory_catalog_api.dart';
+import '../sync/http_reorders_catalog_api.dart';
+import '../sync/http_suppliers_catalog_api.dart';
 import '../sync/inventory_catalog_api.dart';
+import '../sync/purchasing_sync_service.dart';
+import '../sync/reorders_catalog_api.dart';
+import '../sync/suppliers_catalog_api.dart';
 import 'auth_provider.dart';
 import 'database_providers.dart';
 import 'permissions_cache_tick_provider.dart';
@@ -69,4 +76,45 @@ final catalogSyncServiceProvider = Provider<CatalogSyncService>((ref) {
 /// transfer).
 final inventoryApiServiceProvider = Provider<InventoryApiService>(
   (ref) => InventoryApiService(dio: ref.watch(inventoryServiceDioProvider)),
+);
+
+/// The one real client for the read-side supplier directory pull.
+final suppliersCatalogApiProvider = Provider<SuppliersCatalogApi>((ref) {
+  final businessId = ref.watch(currentBusinessIdProvider);
+  if (businessId == null) throw StateError('No active business context');
+  return HttpSuppliersCatalogApi(
+    dio: ref.watch(inventoryServiceDioProvider),
+    businessId: businessId,
+  );
+});
+
+/// The one real client for the read-side reorders pull.
+final reordersCatalogApiProvider = Provider<ReordersCatalogApi>((ref) {
+  final businessId = ref.watch(currentBusinessIdProvider);
+  if (businessId == null) throw StateError('No active business context');
+  return HttpReordersCatalogApi(
+    dio: ref.watch(inventoryServiceDioProvider),
+    businessId: businessId,
+  );
+});
+
+/// Pulls suppliers/reorders into the local cache. Depends on
+/// [suppliersCatalogApiProvider]/[reordersCatalogApiProvider], so only read
+/// once a business context exists.
+final purchasingSyncServiceProvider = Provider<PurchasingSyncService>((ref) {
+  return PurchasingSyncService(
+    db: ref.watch(appDatabaseProvider),
+    suppliersApi: ref.watch(suppliersCatalogApiProvider),
+    reordersApi: ref.watch(reordersCatalogApiProvider),
+  );
+});
+
+/// The one real client for supplier CRUD.
+final supplierApiServiceProvider = Provider<SupplierApiService>(
+  (ref) => SupplierApiService(dio: ref.watch(inventoryServiceDioProvider)),
+);
+
+/// The one real client for reorder create/receive/cancel.
+final reorderApiServiceProvider = Provider<ReorderApiService>(
+  (ref) => ReorderApiService(dio: ref.watch(inventoryServiceDioProvider)),
 );

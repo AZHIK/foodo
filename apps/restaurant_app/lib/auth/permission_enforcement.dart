@@ -190,6 +190,10 @@ const Map<String, List<String>> _featureRequirements = {
   'settings_devices': [AppPermissions.settingsDevices],
   'settings_billing': [AppPermissions.settingsBilling],
   'finance_view': [AppPermissions.financeView],
+  'customers_view': [AppPermissions.customersView],
+  'customers_create': [AppPermissions.customersCreate],
+  'customers_update': [AppPermissions.customersUpdate],
+  'customers_delete': [AppPermissions.customersDelete],
   'finance_expenses_create': [AppPermissions.financeExpensesCreate],
   'finance_expenses_update': [AppPermissions.financeExpensesUpdate],
   'finance_expenses_delete': [AppPermissions.financeExpensesDelete],
@@ -197,6 +201,14 @@ const Map<String, List<String>> _featureRequirements = {
   'finance_incomes_update': [AppPermissions.financeIncomesUpdate],
   'finance_incomes_delete': [AppPermissions.financeIncomesDelete],
   'finance_attachments_upload': [AppPermissions.financeAttachmentsUpload],
+  'reorders_view': [AppPermissions.reordersView],
+  'reorders_create': [AppPermissions.reordersCreate],
+  'reorders_receive': [AppPermissions.reordersReceive],
+  'reorders_cancel': [AppPermissions.reordersCancel],
+  'suppliers_view': [AppPermissions.suppliersView],
+  'suppliers_create': [AppPermissions.suppliersCreate],
+  'suppliers_update': [AppPermissions.suppliersUpdate],
+  'suppliers_delete': [AppPermissions.suppliersDelete],
 };
 
 /// Provider for permission enforcement service.

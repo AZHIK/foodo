@@ -82,7 +82,17 @@ abstract final class AppPermissions {
   static const reportsView = 'reports.view';
 
   static const customersView = 'customers.view';
+  static const customersCreate = 'customers.create';
+  static const customersUpdate = 'customers.update';
+  static const customersDelete = 'customers.delete';
   static const reordersView = 'reorders.view';
+  static const reordersCreate = 'reorders.create';
+  static const reordersReceive = 'reorders.receive';
+  static const reordersCancel = 'reorders.cancel';
+  static const suppliersView = 'suppliers.view';
+  static const suppliersCreate = 'suppliers.create';
+  static const suppliersUpdate = 'suppliers.update';
+  static const suppliersDelete = 'suppliers.delete';
   static const couriersView = 'couriers.view';
   static const financeView = 'finance.view';
   static const financeExpensesCreate = 'finance.expenses.create';
@@ -203,12 +213,62 @@ abstract final class AppPermissions {
         Permission(
           id: customersView,
           label: 'View customers',
-          description: 'Browse the customer list and profiles',
+          description: 'Browse the customer list, profiles, and order history',
+        ),
+        Permission(
+          id: customersCreate,
+          label: 'Add customers',
+          description: 'Create a new customer record, including from the checkout flow',
+        ),
+        Permission(
+          id: customersUpdate,
+          label: 'Edit customers',
+          description: "Change a customer's name, phone, email, or address",
+        ),
+        Permission(
+          id: customersDelete,
+          label: 'Delete customers',
+          description: 'Remove a customer record',
         ),
         Permission(
           id: reordersView,
           label: 'View reorders',
-          description: 'See standing and repeat orders',
+          description: 'Browse purchase orders placed with suppliers to restock inventory',
+        ),
+        Permission(
+          id: reordersCreate,
+          label: 'Create reorders',
+          description: 'Place a new purchase order for a raw-material or dual-use item',
+        ),
+        Permission(
+          id: reordersReceive,
+          label: 'Receive reorders',
+          description: 'Mark a pending reorder received, adding the ordered quantity to stock',
+        ),
+        Permission(
+          id: reordersCancel,
+          label: 'Cancel reorders',
+          description: 'Cancel a pending reorder before it is received',
+        ),
+        Permission(
+          id: suppliersView,
+          label: 'View suppliers',
+          description: 'Browse the supplier list',
+        ),
+        Permission(
+          id: suppliersCreate,
+          label: 'Add suppliers',
+          description: 'Create a new supplier record, including from the reorder flow',
+        ),
+        Permission(
+          id: suppliersUpdate,
+          label: 'Edit suppliers',
+          description: "Change a supplier's name or contact details",
+        ),
+        Permission(
+          id: suppliersDelete,
+          label: 'Delete suppliers',
+          description: 'Remove a supplier record',
         ),
         Permission(
           id: couriersView,

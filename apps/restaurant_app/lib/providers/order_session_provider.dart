@@ -24,6 +24,17 @@ final orderTypeProvider = StateProvider<OrderType>(
 /// Table number for dine-in orders; `null` for counter, takeaway and delivery.
 final tableNumberProvider = StateProvider<int?>((ref) => 12);
 
+/// Customer this ticket will be attributed to; `null` means walk-in.
+///
+/// Ticket-level state, exactly like [tableNumberProvider] — it must survive
+/// a cart rebuild, and clearing the cart must not silently drop who the
+/// server was ringing this up for. Reset to `null` by `chargeOpenOrder`
+/// (in `charge_dialog.dart`) after a *successful* charge — a new ticket
+/// must not inherit the previous customer — but deliberately preserved
+/// when the charge dialog is dismissed: that's a mis-tap, not an
+/// intentional change of mind.
+final selectedCustomerIdProvider = StateProvider<String?>((ref) => null);
+
 /// Human label for the current ticket, e.g. "Table 12" — the form the [Order]
 /// model stores. Null unless the order type is actually seated.
 final tableLabelProvider = Provider<String?>((ref) {

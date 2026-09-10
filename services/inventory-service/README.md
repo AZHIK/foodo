@@ -15,6 +15,45 @@ This service is a **resource server** in the FoodLink ecosystem. It:
 - **Publishes and subscribes** to events via a shared RabbitMQ exchange
   (configured via `RABBITMQ_URL` and `EVENTS_EXCHANGE`).
 
+## Suppliers and Reorders
+
+Beyond items/stock/movements, this service also owns the **supplier
+directory** and **reorders** (purchase orders placed with a supplier to
+restock an item):
+
+| Method | Path | Permission | Purpose |
+|--------|------|------------|---------|
+| `POST` | `/businesses/{business_id}/suppliers` | `suppliers.create` | Add a supplier |
+| `GET` | `/businesses/{business_id}/suppliers` | `suppliers.view` | List suppliers (paginated, searchable) |
+| `GET` | `/businesses/{business_id}/suppliers/{supplier_id}` | `suppliers.view` | Read a single supplier |
+| `PATCH` | `/businesses/{business_id}/suppliers/{supplier_id}` | `suppliers.update` | Edit a supplier |
+| `DELETE` | `/businesses/{business_id}/suppliers/{supplier_id}` | `suppliers.delete` | Soft-delete a supplier (past reorders keep their attribution) |
+| `POST` | `/businesses/{business_id}/reorders` | `reorders.create` | Place a reorder (rejects `sellable`-type items — see below) |
+| `GET` | `/businesses/{business_id}/reorders` | `reorders.view` | List reorders (filter by status/item/store) |
+| `GET` | `/businesses/{business_id}/reorders/{reorder_id}` | `reorders.view` | Read a single reorder |
+| `POST` | `/businesses/{business_id}/reorders/{reorder_id}/receive` | `reorders.receive` | Mark received — credits stock via `record_movement` |
+| `POST` | `/businesses/{business_id}/reorders/{reorder_id}/cancel` | `reorders.cancel` | Cancel a pending reorder |
+
+Key design points:
+
+- **`receive_reorder` reuses the existing stock-movement engine** — it calls
+  `record_movement()` (`app/services/stock_movement_service.py`) with
+  `movement_type=purchase_received` and `reference_type="reorder"`, then
+  updates the `Reorder` row's status in the same transaction (`commit=False`
+  on the movement call, one `session.commit()` at the end) — the same
+  pattern `app/api/v1/endpoints/operations.py`'s `transfer_stock` uses for
+  its two-movement transfer.
+- **A `sellable`-type item can never be reordered** — `record_movement`
+  already rejects `purchase_received` for `item_type == sellable`
+  (`_COMPATIBILITY_RULES`), so `create_reorder` refuses it up front with a
+  clear 422 rather than deferring the same failure to receive time.
+- **`Reorder`/`Supplier` use real foreign keys** (`item_id`, `supplier_id`),
+  unlike `business_id`/`store_id` which stay plain cross-service UUIDs — see
+  `app/models/reorders.py`'s module docstring.
+- **No soft-delete on `Reorder`** — like `Sale` in pos-service, it's an
+  append-only purchase record with state transitions
+  (`pending -> received | cancelled`), not a mutable row.
+
 ## Cross-Service JWT Verification
 
 This service verifies tokens using the Identity Service's **public key**.
@@ -73,8 +112,8 @@ docker compose exec api alembic revision --autogenerate -m "description"
 
 ## Tests
 
-Run the full suite (98 tests covering CRUD, auth, schemas, movement engine,
-and operation endpoints) with a single command:
+Run the full suite (195 tests covering CRUD, auth, schemas, movement engine,
+operation endpoints, and supplier/reorder endpoints) with a single command:
 
 ```bash
 docker compose run --rm api-dev uv run pytest -v tests/

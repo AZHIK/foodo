@@ -13,6 +13,8 @@ class Customer {
     this.lastOrderAt,
     required this.totalOrders,
     required this.totalSpent,
+    this.serverId,
+    this.syncStatus = 'synced',
   });
 
   final String id;
@@ -25,6 +27,19 @@ class Customer {
   final int totalOrders;
   final double totalSpent;
 
+  /// Server-acknowledged id once this customer has synced. For a customer
+  /// this always equals [id] (the id is client-generated and IS the real
+  /// server primary key — see `lib/database/tables/customer_entries.dart`'s
+  /// doc comment) — this field exists purely as a "has the server
+  /// acknowledged this row?" signal, mirroring `OtherExpense.serverId`, so
+  /// `CustomersNotifier.edit`/`delete` can branch the same way.
+  final String? serverId;
+
+  /// `pending` | `syncing` | `failed` | `synced`. Demo-mode rows default to
+  /// `synced` so existing call sites that don't pass it keep behaving as
+  /// before.
+  final String syncStatus;
+
   Customer copyWith({
     String? name,
     String? phone,
@@ -36,6 +51,8 @@ class Customer {
     bool clearLastOrderAt = false,
     int? totalOrders,
     double? totalSpent,
+    String? serverId,
+    String? syncStatus,
   }) {
     return Customer(
       id: id,
@@ -48,6 +65,8 @@ class Customer {
       lastOrderAt: clearLastOrderAt ? null : (lastOrderAt ?? this.lastOrderAt),
       totalOrders: totalOrders ?? this.totalOrders,
       totalSpent: totalSpent ?? this.totalSpent,
+      serverId: serverId ?? this.serverId,
+      syncStatus: syncStatus ?? this.syncStatus,
     );
   }
 

@@ -44,6 +44,12 @@ class PendingSales extends Table {
   TextColumn get paymentMethod =>
       text()(); // cash|mobile_money|card|other
 
+  /// Customer this sale is attributed to, if any. Mirrors the backend's
+  /// `SaleSyncInput.customer_id` — a real FK to `customers.id` server-side,
+  /// resolvable offline because `Customer.id` is client-generated (see
+  /// `customer_entries.dart`'s doc comment).
+  TextColumn get customerId => text().nullable()();
+
   /// When the sale occurred (device time, UTC).
   DateTimeColumn get occurredAt => dateTime()();
 

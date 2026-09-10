@@ -51,6 +51,8 @@ APP_TABLES = (
     "stocklevel",
     "stockmovement",
     "processedevent",
+    "reorder",
+    "supplier",
 )
 
 
@@ -132,7 +134,8 @@ async def _clean_tables() -> AsyncGenerator[None, None]:
         await conn.execute(
             text(
                 "TRUNCATE TABLE item, recipecomponent, stocklevel, "
-                "stockmovement, processedevent RESTART IDENTITY CASCADE"
+                "stockmovement, processedevent, reorder, supplier "
+                "RESTART IDENTITY CASCADE"
             )
         )
     yield

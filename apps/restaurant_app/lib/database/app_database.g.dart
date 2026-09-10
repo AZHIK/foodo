@@ -1289,6 +1289,17 @@ class $PendingSalesTable extends PendingSales
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _customerIdMeta = const VerificationMeta(
+    'customerId',
+  );
+  @override
+  late final GeneratedColumn<String> customerId = GeneratedColumn<String>(
+    'customer_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _occurredAtMeta = const VerificationMeta(
     'occurredAt',
   );
@@ -1410,6 +1421,7 @@ class $PendingSalesTable extends PendingSales
     storeId,
     discountAmount,
     paymentMethod,
+    customerId,
     occurredAt,
     deviceSequence,
     voidOrRefundReason,
@@ -1473,6 +1485,12 @@ class $PendingSalesTable extends PendingSales
       );
     } else if (isInserting) {
       context.missing(_paymentMethodMeta);
+    }
+    if (data.containsKey('customer_id')) {
+      context.handle(
+        _customerIdMeta,
+        customerId.isAcceptableOrUnknown(data['customer_id']!, _customerIdMeta),
+      );
     }
     if (data.containsKey('occurred_at')) {
       context.handle(
@@ -1588,6 +1606,10 @@ class $PendingSalesTable extends PendingSales
         DriftSqlType.string,
         data['${effectivePrefix}payment_method'],
       )!,
+      customerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_id'],
+      ),
       occurredAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}occurred_at'],
@@ -1663,6 +1685,12 @@ class PendingSale extends DataClass implements Insertable<PendingSale> {
   /// Payment method used.
   final String paymentMethod;
 
+  /// Customer this sale is attributed to, if any. Mirrors the backend's
+  /// `SaleSyncInput.customer_id` — a real FK to `customers.id` server-side,
+  /// resolvable offline because `Customer.id` is client-generated (see
+  /// `customer_entries.dart`'s doc comment).
+  final String? customerId;
+
   /// When the sale occurred (device time, UTC).
   final DateTime occurredAt;
 
@@ -1703,6 +1731,7 @@ class PendingSale extends DataClass implements Insertable<PendingSale> {
     required this.storeId,
     required this.discountAmount,
     required this.paymentMethod,
+    this.customerId,
     required this.occurredAt,
     this.deviceSequence,
     this.voidOrRefundReason,
@@ -1727,6 +1756,9 @@ class PendingSale extends DataClass implements Insertable<PendingSale> {
       );
     }
     map['payment_method'] = Variable<String>(paymentMethod);
+    if (!nullToAbsent || customerId != null) {
+      map['customer_id'] = Variable<String>(customerId);
+    }
     map['occurred_at'] = Variable<DateTime>(occurredAt);
     if (!nullToAbsent || deviceSequence != null) {
       map['device_sequence'] = Variable<int>(deviceSequence);
@@ -1760,6 +1792,9 @@ class PendingSale extends DataClass implements Insertable<PendingSale> {
       storeId: Value(storeId),
       discountAmount: Value(discountAmount),
       paymentMethod: Value(paymentMethod),
+      customerId: customerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customerId),
       occurredAt: Value(occurredAt),
       deviceSequence: deviceSequence == null && nullToAbsent
           ? const Value.absent()
@@ -1797,6 +1832,7 @@ class PendingSale extends DataClass implements Insertable<PendingSale> {
       storeId: serializer.fromJson<String>(json['storeId']),
       discountAmount: serializer.fromJson<Decimal>(json['discountAmount']),
       paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
+      customerId: serializer.fromJson<String?>(json['customerId']),
       occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
       deviceSequence: serializer.fromJson<int?>(json['deviceSequence']),
       voidOrRefundReason: serializer.fromJson<String?>(
@@ -1821,6 +1857,7 @@ class PendingSale extends DataClass implements Insertable<PendingSale> {
       'storeId': serializer.toJson<String>(storeId),
       'discountAmount': serializer.toJson<Decimal>(discountAmount),
       'paymentMethod': serializer.toJson<String>(paymentMethod),
+      'customerId': serializer.toJson<String?>(customerId),
       'occurredAt': serializer.toJson<DateTime>(occurredAt),
       'deviceSequence': serializer.toJson<int?>(deviceSequence),
       'voidOrRefundReason': serializer.toJson<String?>(voidOrRefundReason),
@@ -1841,6 +1878,7 @@ class PendingSale extends DataClass implements Insertable<PendingSale> {
     String? storeId,
     Decimal? discountAmount,
     String? paymentMethod,
+    Value<String?> customerId = const Value.absent(),
     DateTime? occurredAt,
     Value<int?> deviceSequence = const Value.absent(),
     Value<String?> voidOrRefundReason = const Value.absent(),
@@ -1858,6 +1896,7 @@ class PendingSale extends DataClass implements Insertable<PendingSale> {
     storeId: storeId ?? this.storeId,
     discountAmount: discountAmount ?? this.discountAmount,
     paymentMethod: paymentMethod ?? this.paymentMethod,
+    customerId: customerId.present ? customerId.value : this.customerId,
     occurredAt: occurredAt ?? this.occurredAt,
     deviceSequence: deviceSequence.present
         ? deviceSequence.value
@@ -1889,6 +1928,9 @@ class PendingSale extends DataClass implements Insertable<PendingSale> {
       paymentMethod: data.paymentMethod.present
           ? data.paymentMethod.value
           : this.paymentMethod,
+      customerId: data.customerId.present
+          ? data.customerId.value
+          : this.customerId,
       occurredAt: data.occurredAt.present
           ? data.occurredAt.value
           : this.occurredAt,
@@ -1925,6 +1967,7 @@ class PendingSale extends DataClass implements Insertable<PendingSale> {
           ..write('storeId: $storeId, ')
           ..write('discountAmount: $discountAmount, ')
           ..write('paymentMethod: $paymentMethod, ')
+          ..write('customerId: $customerId, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('deviceSequence: $deviceSequence, ')
           ..write('voidOrRefundReason: $voidOrRefundReason, ')
@@ -1947,6 +1990,7 @@ class PendingSale extends DataClass implements Insertable<PendingSale> {
     storeId,
     discountAmount,
     paymentMethod,
+    customerId,
     occurredAt,
     deviceSequence,
     voidOrRefundReason,
@@ -1968,6 +2012,7 @@ class PendingSale extends DataClass implements Insertable<PendingSale> {
           other.storeId == this.storeId &&
           other.discountAmount == this.discountAmount &&
           other.paymentMethod == this.paymentMethod &&
+          other.customerId == this.customerId &&
           other.occurredAt == this.occurredAt &&
           other.deviceSequence == this.deviceSequence &&
           other.voidOrRefundReason == this.voidOrRefundReason &&
@@ -1987,6 +2032,7 @@ class PendingSalesCompanion extends UpdateCompanion<PendingSale> {
   final Value<String> storeId;
   final Value<Decimal> discountAmount;
   final Value<String> paymentMethod;
+  final Value<String?> customerId;
   final Value<DateTime> occurredAt;
   final Value<int?> deviceSequence;
   final Value<String?> voidOrRefundReason;
@@ -2004,6 +2050,7 @@ class PendingSalesCompanion extends UpdateCompanion<PendingSale> {
     this.storeId = const Value.absent(),
     this.discountAmount = const Value.absent(),
     this.paymentMethod = const Value.absent(),
+    this.customerId = const Value.absent(),
     this.occurredAt = const Value.absent(),
     this.deviceSequence = const Value.absent(),
     this.voidOrRefundReason = const Value.absent(),
@@ -2022,6 +2069,7 @@ class PendingSalesCompanion extends UpdateCompanion<PendingSale> {
     required String storeId,
     this.discountAmount = const Value.absent(),
     required String paymentMethod,
+    this.customerId = const Value.absent(),
     required DateTime occurredAt,
     this.deviceSequence = const Value.absent(),
     this.voidOrRefundReason = const Value.absent(),
@@ -2045,6 +2093,7 @@ class PendingSalesCompanion extends UpdateCompanion<PendingSale> {
     Expression<String>? storeId,
     Expression<String>? discountAmount,
     Expression<String>? paymentMethod,
+    Expression<String>? customerId,
     Expression<DateTime>? occurredAt,
     Expression<int>? deviceSequence,
     Expression<String>? voidOrRefundReason,
@@ -2063,6 +2112,7 @@ class PendingSalesCompanion extends UpdateCompanion<PendingSale> {
       if (storeId != null) 'store_id': storeId,
       if (discountAmount != null) 'discount_amount': discountAmount,
       if (paymentMethod != null) 'payment_method': paymentMethod,
+      if (customerId != null) 'customer_id': customerId,
       if (occurredAt != null) 'occurred_at': occurredAt,
       if (deviceSequence != null) 'device_sequence': deviceSequence,
       if (voidOrRefundReason != null)
@@ -2084,6 +2134,7 @@ class PendingSalesCompanion extends UpdateCompanion<PendingSale> {
     Value<String>? storeId,
     Value<Decimal>? discountAmount,
     Value<String>? paymentMethod,
+    Value<String?>? customerId,
     Value<DateTime>? occurredAt,
     Value<int?>? deviceSequence,
     Value<String?>? voidOrRefundReason,
@@ -2102,6 +2153,7 @@ class PendingSalesCompanion extends UpdateCompanion<PendingSale> {
       storeId: storeId ?? this.storeId,
       discountAmount: discountAmount ?? this.discountAmount,
       paymentMethod: paymentMethod ?? this.paymentMethod,
+      customerId: customerId ?? this.customerId,
       occurredAt: occurredAt ?? this.occurredAt,
       deviceSequence: deviceSequence ?? this.deviceSequence,
       voidOrRefundReason: voidOrRefundReason ?? this.voidOrRefundReason,
@@ -2137,6 +2189,9 @@ class PendingSalesCompanion extends UpdateCompanion<PendingSale> {
     }
     if (paymentMethod.present) {
       map['payment_method'] = Variable<String>(paymentMethod.value);
+    }
+    if (customerId.present) {
+      map['customer_id'] = Variable<String>(customerId.value);
     }
     if (occurredAt.present) {
       map['occurred_at'] = Variable<DateTime>(occurredAt.value);
@@ -2180,6 +2235,7 @@ class PendingSalesCompanion extends UpdateCompanion<PendingSale> {
           ..write('storeId: $storeId, ')
           ..write('discountAmount: $discountAmount, ')
           ..write('paymentMethod: $paymentMethod, ')
+          ..write('customerId: $customerId, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('deviceSequence: $deviceSequence, ')
           ..write('voidOrRefundReason: $voidOrRefundReason, ')
@@ -5136,6 +5192,17 @@ class $CachedSalesTable extends CachedSales
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _customerIdMeta = const VerificationMeta(
+    'customerId',
+  );
+  @override
+  late final GeneratedColumn<String> customerId = GeneratedColumn<String>(
+    'customer_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _occurredAtMeta = const VerificationMeta(
     'occurredAt',
   );
@@ -5226,6 +5293,7 @@ class $CachedSalesTable extends CachedSales
     total,
     paymentMethod,
     actorId,
+    customerId,
     occurredAt,
     syncedAt,
     voidedAt,
@@ -5301,6 +5369,12 @@ class $CachedSalesTable extends CachedSales
       context.handle(
         _actorIdMeta,
         actorId.isAcceptableOrUnknown(data['actor_id']!, _actorIdMeta),
+      );
+    }
+    if (data.containsKey('customer_id')) {
+      context.handle(
+        _customerIdMeta,
+        customerId.isAcceptableOrUnknown(data['customer_id']!, _customerIdMeta),
       );
     }
     if (data.containsKey('occurred_at')) {
@@ -5420,6 +5494,10 @@ class $CachedSalesTable extends CachedSales
         DriftSqlType.string,
         data['${effectivePrefix}actor_id'],
       ),
+      customerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_id'],
+      ),
       occurredAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}occurred_at'],
@@ -5492,6 +5570,10 @@ class CachedSale extends DataClass implements Insertable<CachedSale> {
   /// Staff member who rang up the sale, if known.
   final String? actorId;
 
+  /// Customer this sale is attributed to, if any. Mirrors the backend's
+  /// `SaleRead.customer_id`.
+  final String? customerId;
+
   /// When the sale occurred (device-reported time, UTC) — the timestamp the
   /// backend sorts and filters the ledger by.
   final DateTime occurredAt;
@@ -5519,6 +5601,7 @@ class CachedSale extends DataClass implements Insertable<CachedSale> {
     required this.total,
     required this.paymentMethod,
     this.actorId,
+    this.customerId,
     required this.occurredAt,
     required this.syncedAt,
     this.voidedAt,
@@ -5559,6 +5642,9 @@ class CachedSale extends DataClass implements Insertable<CachedSale> {
     if (!nullToAbsent || actorId != null) {
       map['actor_id'] = Variable<String>(actorId);
     }
+    if (!nullToAbsent || customerId != null) {
+      map['customer_id'] = Variable<String>(customerId);
+    }
     map['occurred_at'] = Variable<DateTime>(occurredAt);
     map['synced_at'] = Variable<DateTime>(syncedAt);
     if (!nullToAbsent || voidedAt != null) {
@@ -5590,6 +5676,9 @@ class CachedSale extends DataClass implements Insertable<CachedSale> {
       actorId: actorId == null && nullToAbsent
           ? const Value.absent()
           : Value(actorId),
+      customerId: customerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customerId),
       occurredAt: Value(occurredAt),
       syncedAt: Value(syncedAt),
       voidedAt: voidedAt == null && nullToAbsent
@@ -5623,6 +5712,7 @@ class CachedSale extends DataClass implements Insertable<CachedSale> {
       total: serializer.fromJson<Decimal>(json['total']),
       paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
       actorId: serializer.fromJson<String?>(json['actorId']),
+      customerId: serializer.fromJson<String?>(json['customerId']),
       occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
       syncedAt: serializer.fromJson<DateTime>(json['syncedAt']),
       voidedAt: serializer.fromJson<DateTime?>(json['voidedAt']),
@@ -5649,6 +5739,7 @@ class CachedSale extends DataClass implements Insertable<CachedSale> {
       'total': serializer.toJson<Decimal>(total),
       'paymentMethod': serializer.toJson<String>(paymentMethod),
       'actorId': serializer.toJson<String?>(actorId),
+      'customerId': serializer.toJson<String?>(customerId),
       'occurredAt': serializer.toJson<DateTime>(occurredAt),
       'syncedAt': serializer.toJson<DateTime>(syncedAt),
       'voidedAt': serializer.toJson<DateTime?>(voidedAt),
@@ -5671,6 +5762,7 @@ class CachedSale extends DataClass implements Insertable<CachedSale> {
     Decimal? total,
     String? paymentMethod,
     Value<String?> actorId = const Value.absent(),
+    Value<String?> customerId = const Value.absent(),
     DateTime? occurredAt,
     DateTime? syncedAt,
     Value<DateTime?> voidedAt = const Value.absent(),
@@ -5690,6 +5782,7 @@ class CachedSale extends DataClass implements Insertable<CachedSale> {
     total: total ?? this.total,
     paymentMethod: paymentMethod ?? this.paymentMethod,
     actorId: actorId.present ? actorId.value : this.actorId,
+    customerId: customerId.present ? customerId.value : this.customerId,
     occurredAt: occurredAt ?? this.occurredAt,
     syncedAt: syncedAt ?? this.syncedAt,
     voidedAt: voidedAt.present ? voidedAt.value : this.voidedAt,
@@ -5721,6 +5814,9 @@ class CachedSale extends DataClass implements Insertable<CachedSale> {
           ? data.paymentMethod.value
           : this.paymentMethod,
       actorId: data.actorId.present ? data.actorId.value : this.actorId,
+      customerId: data.customerId.present
+          ? data.customerId.value
+          : this.customerId,
       occurredAt: data.occurredAt.present
           ? data.occurredAt.value
           : this.occurredAt,
@@ -5753,6 +5849,7 @@ class CachedSale extends DataClass implements Insertable<CachedSale> {
           ..write('total: $total, ')
           ..write('paymentMethod: $paymentMethod, ')
           ..write('actorId: $actorId, ')
+          ..write('customerId: $customerId, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('syncedAt: $syncedAt, ')
           ..write('voidedAt: $voidedAt, ')
@@ -5777,6 +5874,7 @@ class CachedSale extends DataClass implements Insertable<CachedSale> {
     total,
     paymentMethod,
     actorId,
+    customerId,
     occurredAt,
     syncedAt,
     voidedAt,
@@ -5800,6 +5898,7 @@ class CachedSale extends DataClass implements Insertable<CachedSale> {
           other.total == this.total &&
           other.paymentMethod == this.paymentMethod &&
           other.actorId == this.actorId &&
+          other.customerId == this.customerId &&
           other.occurredAt == this.occurredAt &&
           other.syncedAt == this.syncedAt &&
           other.voidedAt == this.voidedAt &&
@@ -5821,6 +5920,7 @@ class CachedSalesCompanion extends UpdateCompanion<CachedSale> {
   final Value<Decimal> total;
   final Value<String> paymentMethod;
   final Value<String?> actorId;
+  final Value<String?> customerId;
   final Value<DateTime> occurredAt;
   final Value<DateTime> syncedAt;
   final Value<DateTime?> voidedAt;
@@ -5841,6 +5941,7 @@ class CachedSalesCompanion extends UpdateCompanion<CachedSale> {
     this.total = const Value.absent(),
     this.paymentMethod = const Value.absent(),
     this.actorId = const Value.absent(),
+    this.customerId = const Value.absent(),
     this.occurredAt = const Value.absent(),
     this.syncedAt = const Value.absent(),
     this.voidedAt = const Value.absent(),
@@ -5862,6 +5963,7 @@ class CachedSalesCompanion extends UpdateCompanion<CachedSale> {
     required Decimal total,
     required String paymentMethod,
     this.actorId = const Value.absent(),
+    this.customerId = const Value.absent(),
     required DateTime occurredAt,
     required DateTime syncedAt,
     this.voidedAt = const Value.absent(),
@@ -5896,6 +5998,7 @@ class CachedSalesCompanion extends UpdateCompanion<CachedSale> {
     Expression<String>? total,
     Expression<String>? paymentMethod,
     Expression<String>? actorId,
+    Expression<String>? customerId,
     Expression<DateTime>? occurredAt,
     Expression<DateTime>? syncedAt,
     Expression<DateTime>? voidedAt,
@@ -5917,6 +6020,7 @@ class CachedSalesCompanion extends UpdateCompanion<CachedSale> {
       if (total != null) 'total': total,
       if (paymentMethod != null) 'payment_method': paymentMethod,
       if (actorId != null) 'actor_id': actorId,
+      if (customerId != null) 'customer_id': customerId,
       if (occurredAt != null) 'occurred_at': occurredAt,
       if (syncedAt != null) 'synced_at': syncedAt,
       if (voidedAt != null) 'voided_at': voidedAt,
@@ -5941,6 +6045,7 @@ class CachedSalesCompanion extends UpdateCompanion<CachedSale> {
     Value<Decimal>? total,
     Value<String>? paymentMethod,
     Value<String?>? actorId,
+    Value<String?>? customerId,
     Value<DateTime>? occurredAt,
     Value<DateTime>? syncedAt,
     Value<DateTime?>? voidedAt,
@@ -5962,6 +6067,7 @@ class CachedSalesCompanion extends UpdateCompanion<CachedSale> {
       total: total ?? this.total,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       actorId: actorId ?? this.actorId,
+      customerId: customerId ?? this.customerId,
       occurredAt: occurredAt ?? this.occurredAt,
       syncedAt: syncedAt ?? this.syncedAt,
       voidedAt: voidedAt ?? this.voidedAt,
@@ -6017,6 +6123,9 @@ class CachedSalesCompanion extends UpdateCompanion<CachedSale> {
     if (actorId.present) {
       map['actor_id'] = Variable<String>(actorId.value);
     }
+    if (customerId.present) {
+      map['customer_id'] = Variable<String>(customerId.value);
+    }
     if (occurredAt.present) {
       map['occurred_at'] = Variable<DateTime>(occurredAt.value);
     }
@@ -6058,6 +6167,7 @@ class CachedSalesCompanion extends UpdateCompanion<CachedSale> {
           ..write('total: $total, ')
           ..write('paymentMethod: $paymentMethod, ')
           ..write('actorId: $actorId, ')
+          ..write('customerId: $customerId, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('syncedAt: $syncedAt, ')
           ..write('voidedAt: $voidedAt, ')
@@ -11903,6 +12013,3583 @@ class CachedOtherIncomesCompanion extends UpdateCompanion<CachedOtherIncome> {
   }
 }
 
+class $CustomerEntriesTable extends CustomerEntries
+    with TableInfo<$CustomerEntriesTable, CustomerEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CustomerEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _customerIdMeta = const VerificationMeta(
+    'customerId',
+  );
+  @override
+  late final GeneratedColumn<String> customerId = GeneratedColumn<String>(
+    'customer_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _addressLine1Meta = const VerificationMeta(
+    'addressLine1',
+  );
+  @override
+  late final GeneratedColumn<String> addressLine1 = GeneratedColumn<String>(
+    'address_line1',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _joinedAtMeta = const VerificationMeta(
+    'joinedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> joinedAt = GeneratedColumn<DateTime>(
+    'joined_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actorUserIdMeta = const VerificationMeta(
+    'actorUserId',
+  );
+  @override
+  late final GeneratedColumn<String> actorUserId = GeneratedColumn<String>(
+    'actor_user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<String> syncStatus = GeneratedColumn<String>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncAttemptCountMeta = const VerificationMeta(
+    'syncAttemptCount',
+  );
+  @override
+  late final GeneratedColumn<int> syncAttemptCount = GeneratedColumn<int>(
+    'sync_attempt_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastAttemptAtMeta = const VerificationMeta(
+    'lastAttemptAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastAttemptAt =
+      GeneratedColumn<DateTime>(
+        'last_attempt_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    customerId,
+    businessId,
+    name,
+    phone,
+    email,
+    addressLine1,
+    joinedAt,
+    actorUserId,
+    syncStatus,
+    syncError,
+    syncAttemptCount,
+    lastAttemptAt,
+    syncedAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'customer_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CustomerEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('customer_id')) {
+      context.handle(
+        _customerIdMeta,
+        customerId.isAcceptableOrUnknown(data['customer_id']!, _customerIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_customerIdMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_phoneMeta);
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    }
+    if (data.containsKey('address_line1')) {
+      context.handle(
+        _addressLine1Meta,
+        addressLine1.isAcceptableOrUnknown(
+          data['address_line1']!,
+          _addressLine1Meta,
+        ),
+      );
+    }
+    if (data.containsKey('joined_at')) {
+      context.handle(
+        _joinedAtMeta,
+        joinedAt.isAcceptableOrUnknown(data['joined_at']!, _joinedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_joinedAtMeta);
+    }
+    if (data.containsKey('actor_user_id')) {
+      context.handle(
+        _actorUserIdMeta,
+        actorUserId.isAcceptableOrUnknown(
+          data['actor_user_id']!,
+          _actorUserIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_actorUserIdMeta);
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
+    if (data.containsKey('sync_attempt_count')) {
+      context.handle(
+        _syncAttemptCountMeta,
+        syncAttemptCount.isAcceptableOrUnknown(
+          data['sync_attempt_count']!,
+          _syncAttemptCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_attempt_at')) {
+      context.handle(
+        _lastAttemptAtMeta,
+        lastAttemptAt.isAcceptableOrUnknown(
+          data['last_attempt_at']!,
+          _lastAttemptAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CustomerEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CustomerEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      customerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      )!,
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      ),
+      addressLine1: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address_line1'],
+      ),
+      joinedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}joined_at'],
+      )!,
+      actorUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actor_user_id'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
+      syncAttemptCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_attempt_count'],
+      )!,
+      lastAttemptAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_attempt_at'],
+      ),
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CustomerEntriesTable createAlias(String alias) {
+    return $CustomerEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
+  /// Local row ID (autoincrement).
+  final int id;
+
+  /// The customer's real, permanent id (UUID v4, generated on-device) —
+  /// unique locally, and becomes the server's primary key on sync.
+  final String customerId;
+
+  /// Business this customer belongs to.
+  final String businessId;
+  final String name;
+  final String phone;
+  final String? email;
+  final String? addressLine1;
+
+  /// When the customer was added (device time, UTC).
+  final DateTime joinedAt;
+
+  /// Staff member who added the customer.
+  /// Soft-references `LocalUserProfiles.id` without an FK constraint, same
+  /// rationale as `ExpenseEntries.actorUserId`.
+  final String actorUserId;
+
+  /// Local sync state: `pending`, `syncing`, `failed`, `synced`.
+  final String syncStatus;
+
+  /// Error message from the last sync attempt, if any.
+  final String? syncError;
+
+  /// Number of times this entry has been attempted.
+  final int syncAttemptCount;
+
+  /// Timestamp of the last sync attempt.
+  final DateTime? lastAttemptAt;
+
+  /// When the entry was successfully synced to the backend.
+  final DateTime? syncedAt;
+
+  /// Local row creation timestamp.
+  final DateTime createdAt;
+  const CustomerEntry({
+    required this.id,
+    required this.customerId,
+    required this.businessId,
+    required this.name,
+    required this.phone,
+    this.email,
+    this.addressLine1,
+    required this.joinedAt,
+    required this.actorUserId,
+    required this.syncStatus,
+    this.syncError,
+    required this.syncAttemptCount,
+    this.lastAttemptAt,
+    this.syncedAt,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['customer_id'] = Variable<String>(customerId);
+    map['business_id'] = Variable<String>(businessId);
+    map['name'] = Variable<String>(name);
+    map['phone'] = Variable<String>(phone);
+    if (!nullToAbsent || email != null) {
+      map['email'] = Variable<String>(email);
+    }
+    if (!nullToAbsent || addressLine1 != null) {
+      map['address_line1'] = Variable<String>(addressLine1);
+    }
+    map['joined_at'] = Variable<DateTime>(joinedAt);
+    map['actor_user_id'] = Variable<String>(actorUserId);
+    map['sync_status'] = Variable<String>(syncStatus);
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    map['sync_attempt_count'] = Variable<int>(syncAttemptCount);
+    if (!nullToAbsent || lastAttemptAt != null) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt);
+    }
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  CustomerEntriesCompanion toCompanion(bool nullToAbsent) {
+    return CustomerEntriesCompanion(
+      id: Value(id),
+      customerId: Value(customerId),
+      businessId: Value(businessId),
+      name: Value(name),
+      phone: Value(phone),
+      email: email == null && nullToAbsent
+          ? const Value.absent()
+          : Value(email),
+      addressLine1: addressLine1 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(addressLine1),
+      joinedAt: Value(joinedAt),
+      actorUserId: Value(actorUserId),
+      syncStatus: Value(syncStatus),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+      syncAttemptCount: Value(syncAttemptCount),
+      lastAttemptAt: lastAttemptAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory CustomerEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CustomerEntry(
+      id: serializer.fromJson<int>(json['id']),
+      customerId: serializer.fromJson<String>(json['customerId']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      name: serializer.fromJson<String>(json['name']),
+      phone: serializer.fromJson<String>(json['phone']),
+      email: serializer.fromJson<String?>(json['email']),
+      addressLine1: serializer.fromJson<String?>(json['addressLine1']),
+      joinedAt: serializer.fromJson<DateTime>(json['joinedAt']),
+      actorUserId: serializer.fromJson<String>(json['actorUserId']),
+      syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+      syncAttemptCount: serializer.fromJson<int>(json['syncAttemptCount']),
+      lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'customerId': serializer.toJson<String>(customerId),
+      'businessId': serializer.toJson<String>(businessId),
+      'name': serializer.toJson<String>(name),
+      'phone': serializer.toJson<String>(phone),
+      'email': serializer.toJson<String?>(email),
+      'addressLine1': serializer.toJson<String?>(addressLine1),
+      'joinedAt': serializer.toJson<DateTime>(joinedAt),
+      'actorUserId': serializer.toJson<String>(actorUserId),
+      'syncStatus': serializer.toJson<String>(syncStatus),
+      'syncError': serializer.toJson<String?>(syncError),
+      'syncAttemptCount': serializer.toJson<int>(syncAttemptCount),
+      'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  CustomerEntry copyWith({
+    int? id,
+    String? customerId,
+    String? businessId,
+    String? name,
+    String? phone,
+    Value<String?> email = const Value.absent(),
+    Value<String?> addressLine1 = const Value.absent(),
+    DateTime? joinedAt,
+    String? actorUserId,
+    String? syncStatus,
+    Value<String?> syncError = const Value.absent(),
+    int? syncAttemptCount,
+    Value<DateTime?> lastAttemptAt = const Value.absent(),
+    Value<DateTime?> syncedAt = const Value.absent(),
+    DateTime? createdAt,
+  }) => CustomerEntry(
+    id: id ?? this.id,
+    customerId: customerId ?? this.customerId,
+    businessId: businessId ?? this.businessId,
+    name: name ?? this.name,
+    phone: phone ?? this.phone,
+    email: email.present ? email.value : this.email,
+    addressLine1: addressLine1.present ? addressLine1.value : this.addressLine1,
+    joinedAt: joinedAt ?? this.joinedAt,
+    actorUserId: actorUserId ?? this.actorUserId,
+    syncStatus: syncStatus ?? this.syncStatus,
+    syncError: syncError.present ? syncError.value : this.syncError,
+    syncAttemptCount: syncAttemptCount ?? this.syncAttemptCount,
+    lastAttemptAt: lastAttemptAt.present
+        ? lastAttemptAt.value
+        : this.lastAttemptAt,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  CustomerEntry copyWithCompanion(CustomerEntriesCompanion data) {
+    return CustomerEntry(
+      id: data.id.present ? data.id.value : this.id,
+      customerId: data.customerId.present
+          ? data.customerId.value
+          : this.customerId,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      name: data.name.present ? data.name.value : this.name,
+      phone: data.phone.present ? data.phone.value : this.phone,
+      email: data.email.present ? data.email.value : this.email,
+      addressLine1: data.addressLine1.present
+          ? data.addressLine1.value
+          : this.addressLine1,
+      joinedAt: data.joinedAt.present ? data.joinedAt.value : this.joinedAt,
+      actorUserId: data.actorUserId.present
+          ? data.actorUserId.value
+          : this.actorUserId,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+      syncAttemptCount: data.syncAttemptCount.present
+          ? data.syncAttemptCount.value
+          : this.syncAttemptCount,
+      lastAttemptAt: data.lastAttemptAt.present
+          ? data.lastAttemptAt.value
+          : this.lastAttemptAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CustomerEntry(')
+          ..write('id: $id, ')
+          ..write('customerId: $customerId, ')
+          ..write('businessId: $businessId, ')
+          ..write('name: $name, ')
+          ..write('phone: $phone, ')
+          ..write('email: $email, ')
+          ..write('addressLine1: $addressLine1, ')
+          ..write('joinedAt: $joinedAt, ')
+          ..write('actorUserId: $actorUserId, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncAttemptCount: $syncAttemptCount, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    customerId,
+    businessId,
+    name,
+    phone,
+    email,
+    addressLine1,
+    joinedAt,
+    actorUserId,
+    syncStatus,
+    syncError,
+    syncAttemptCount,
+    lastAttemptAt,
+    syncedAt,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CustomerEntry &&
+          other.id == this.id &&
+          other.customerId == this.customerId &&
+          other.businessId == this.businessId &&
+          other.name == this.name &&
+          other.phone == this.phone &&
+          other.email == this.email &&
+          other.addressLine1 == this.addressLine1 &&
+          other.joinedAt == this.joinedAt &&
+          other.actorUserId == this.actorUserId &&
+          other.syncStatus == this.syncStatus &&
+          other.syncError == this.syncError &&
+          other.syncAttemptCount == this.syncAttemptCount &&
+          other.lastAttemptAt == this.lastAttemptAt &&
+          other.syncedAt == this.syncedAt &&
+          other.createdAt == this.createdAt);
+}
+
+class CustomerEntriesCompanion extends UpdateCompanion<CustomerEntry> {
+  final Value<int> id;
+  final Value<String> customerId;
+  final Value<String> businessId;
+  final Value<String> name;
+  final Value<String> phone;
+  final Value<String?> email;
+  final Value<String?> addressLine1;
+  final Value<DateTime> joinedAt;
+  final Value<String> actorUserId;
+  final Value<String> syncStatus;
+  final Value<String?> syncError;
+  final Value<int> syncAttemptCount;
+  final Value<DateTime?> lastAttemptAt;
+  final Value<DateTime?> syncedAt;
+  final Value<DateTime> createdAt;
+  const CustomerEntriesCompanion({
+    this.id = const Value.absent(),
+    this.customerId = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.email = const Value.absent(),
+    this.addressLine1 = const Value.absent(),
+    this.joinedAt = const Value.absent(),
+    this.actorUserId = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncAttemptCount = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  CustomerEntriesCompanion.insert({
+    this.id = const Value.absent(),
+    required String customerId,
+    required String businessId,
+    required String name,
+    required String phone,
+    this.email = const Value.absent(),
+    this.addressLine1 = const Value.absent(),
+    required DateTime joinedAt,
+    required String actorUserId,
+    this.syncStatus = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncAttemptCount = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    required DateTime createdAt,
+  }) : customerId = Value(customerId),
+       businessId = Value(businessId),
+       name = Value(name),
+       phone = Value(phone),
+       joinedAt = Value(joinedAt),
+       actorUserId = Value(actorUserId),
+       createdAt = Value(createdAt);
+  static Insertable<CustomerEntry> custom({
+    Expression<int>? id,
+    Expression<String>? customerId,
+    Expression<String>? businessId,
+    Expression<String>? name,
+    Expression<String>? phone,
+    Expression<String>? email,
+    Expression<String>? addressLine1,
+    Expression<DateTime>? joinedAt,
+    Expression<String>? actorUserId,
+    Expression<String>? syncStatus,
+    Expression<String>? syncError,
+    Expression<int>? syncAttemptCount,
+    Expression<DateTime>? lastAttemptAt,
+    Expression<DateTime>? syncedAt,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (customerId != null) 'customer_id': customerId,
+      if (businessId != null) 'business_id': businessId,
+      if (name != null) 'name': name,
+      if (phone != null) 'phone': phone,
+      if (email != null) 'email': email,
+      if (addressLine1 != null) 'address_line1': addressLine1,
+      if (joinedAt != null) 'joined_at': joinedAt,
+      if (actorUserId != null) 'actor_user_id': actorUserId,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (syncError != null) 'sync_error': syncError,
+      if (syncAttemptCount != null) 'sync_attempt_count': syncAttemptCount,
+      if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  CustomerEntriesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? customerId,
+    Value<String>? businessId,
+    Value<String>? name,
+    Value<String>? phone,
+    Value<String?>? email,
+    Value<String?>? addressLine1,
+    Value<DateTime>? joinedAt,
+    Value<String>? actorUserId,
+    Value<String>? syncStatus,
+    Value<String?>? syncError,
+    Value<int>? syncAttemptCount,
+    Value<DateTime?>? lastAttemptAt,
+    Value<DateTime?>? syncedAt,
+    Value<DateTime>? createdAt,
+  }) {
+    return CustomerEntriesCompanion(
+      id: id ?? this.id,
+      customerId: customerId ?? this.customerId,
+      businessId: businessId ?? this.businessId,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      addressLine1: addressLine1 ?? this.addressLine1,
+      joinedAt: joinedAt ?? this.joinedAt,
+      actorUserId: actorUserId ?? this.actorUserId,
+      syncStatus: syncStatus ?? this.syncStatus,
+      syncError: syncError ?? this.syncError,
+      syncAttemptCount: syncAttemptCount ?? this.syncAttemptCount,
+      lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
+      syncedAt: syncedAt ?? this.syncedAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (customerId.present) {
+      map['customer_id'] = Variable<String>(customerId.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (addressLine1.present) {
+      map['address_line1'] = Variable<String>(addressLine1.value);
+    }
+    if (joinedAt.present) {
+      map['joined_at'] = Variable<DateTime>(joinedAt.value);
+    }
+    if (actorUserId.present) {
+      map['actor_user_id'] = Variable<String>(actorUserId.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<String>(syncStatus.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (syncAttemptCount.present) {
+      map['sync_attempt_count'] = Variable<int>(syncAttemptCount.value);
+    }
+    if (lastAttemptAt.present) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CustomerEntriesCompanion(')
+          ..write('id: $id, ')
+          ..write('customerId: $customerId, ')
+          ..write('businessId: $businessId, ')
+          ..write('name: $name, ')
+          ..write('phone: $phone, ')
+          ..write('email: $email, ')
+          ..write('addressLine1: $addressLine1, ')
+          ..write('joinedAt: $joinedAt, ')
+          ..write('actorUserId: $actorUserId, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncAttemptCount: $syncAttemptCount, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CachedCustomersTable extends CachedCustomers
+    with TableInfo<$CachedCustomersTable, CachedCustomer> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedCustomersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _addressLine1Meta = const VerificationMeta(
+    'addressLine1',
+  );
+  @override
+  late final GeneratedColumn<String> addressLine1 = GeneratedColumn<String>(
+    'address_line1',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _actorIdMeta = const VerificationMeta(
+    'actorId',
+  );
+  @override
+  late final GeneratedColumn<String> actorId = GeneratedColumn<String>(
+    'actor_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _joinedAtMeta = const VerificationMeta(
+    'joinedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> joinedAt = GeneratedColumn<DateTime>(
+    'joined_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalOrdersMeta = const VerificationMeta(
+    'totalOrders',
+  );
+  @override
+  late final GeneratedColumn<int> totalOrders = GeneratedColumn<int>(
+    'total_orders',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Decimal, String> totalSpent =
+      GeneratedColumn<String>(
+        'total_spent',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<Decimal>($CachedCustomersTable.$convertertotalSpent);
+  static const VerificationMeta _lastOrderAtMeta = const VerificationMeta(
+    'lastOrderAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastOrderAt = GeneratedColumn<DateTime>(
+    'last_order_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastSyncedAtMeta = const VerificationMeta(
+    'lastSyncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
+    'last_synced_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    businessId,
+    name,
+    phone,
+    email,
+    addressLine1,
+    actorId,
+    joinedAt,
+    syncedAt,
+    updatedAt,
+    isDeleted,
+    createdAt,
+    totalOrders,
+    totalSpent,
+    lastOrderAt,
+    lastSyncedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_customers';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedCustomer> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_phoneMeta);
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    }
+    if (data.containsKey('address_line1')) {
+      context.handle(
+        _addressLine1Meta,
+        addressLine1.isAcceptableOrUnknown(
+          data['address_line1']!,
+          _addressLine1Meta,
+        ),
+      );
+    }
+    if (data.containsKey('actor_id')) {
+      context.handle(
+        _actorIdMeta,
+        actorId.isAcceptableOrUnknown(data['actor_id']!, _actorIdMeta),
+      );
+    }
+    if (data.containsKey('joined_at')) {
+      context.handle(
+        _joinedAtMeta,
+        joinedAt.isAcceptableOrUnknown(data['joined_at']!, _joinedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_joinedAtMeta);
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_syncedAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('total_orders')) {
+      context.handle(
+        _totalOrdersMeta,
+        totalOrders.isAcceptableOrUnknown(
+          data['total_orders']!,
+          _totalOrdersMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_order_at')) {
+      context.handle(
+        _lastOrderAtMeta,
+        lastOrderAt.isAcceptableOrUnknown(
+          data['last_order_at']!,
+          _lastOrderAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_synced_at')) {
+      context.handle(
+        _lastSyncedAtMeta,
+        lastSyncedAt.isAcceptableOrUnknown(
+          data['last_synced_at']!,
+          _lastSyncedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastSyncedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedCustomer map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedCustomer(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      )!,
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      ),
+      addressLine1: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address_line1'],
+      ),
+      actorId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actor_id'],
+      ),
+      joinedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}joined_at'],
+      )!,
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      totalOrders: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_orders'],
+      )!,
+      totalSpent: $CachedCustomersTable.$convertertotalSpent.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}total_spent'],
+        )!,
+      ),
+      lastOrderAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_order_at'],
+      ),
+      lastSyncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_synced_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedCustomersTable createAlias(String alias) {
+    return $CachedCustomersTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<Decimal, String> $convertertotalSpent =
+      const DecimalConverter();
+}
+
+class CachedCustomer extends DataClass implements Insertable<CachedCustomer> {
+  /// Customer UUID — server-assigned, but identical to the id the device
+  /// generated when this customer was first created (primary key).
+  final String id;
+
+  /// Business this customer belongs to.
+  final String businessId;
+  final String name;
+  final String phone;
+  final String? email;
+  final String? addressLine1;
+
+  /// Staff member who added the customer, if known.
+  final String? actorId;
+
+  /// When the customer was added (device-reported time, UTC).
+  final DateTime joinedAt;
+
+  /// When POS Service accepted this customer.
+  final DateTime syncedAt;
+
+  /// Last-edited timestamp (server-computed).
+  final DateTime updatedAt;
+
+  /// Soft-delete flag — see class doc for why deleted rows are still pulled.
+  final bool isDeleted;
+
+  /// Backend creation timestamp.
+  final DateTime createdAt;
+
+  /// Server-computed order count, from completed sales only.
+  final int totalOrders;
+
+  /// Server-computed lifetime spend, from completed sales only.
+  final Decimal totalSpent;
+
+  /// Server-computed most recent completed-sale timestamp.
+  final DateTime? lastOrderAt;
+
+  /// Local timestamp of the most recent pull that included this row.
+  final DateTime lastSyncedAt;
+  const CachedCustomer({
+    required this.id,
+    required this.businessId,
+    required this.name,
+    required this.phone,
+    this.email,
+    this.addressLine1,
+    this.actorId,
+    required this.joinedAt,
+    required this.syncedAt,
+    required this.updatedAt,
+    required this.isDeleted,
+    required this.createdAt,
+    required this.totalOrders,
+    required this.totalSpent,
+    this.lastOrderAt,
+    required this.lastSyncedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['business_id'] = Variable<String>(businessId);
+    map['name'] = Variable<String>(name);
+    map['phone'] = Variable<String>(phone);
+    if (!nullToAbsent || email != null) {
+      map['email'] = Variable<String>(email);
+    }
+    if (!nullToAbsent || addressLine1 != null) {
+      map['address_line1'] = Variable<String>(addressLine1);
+    }
+    if (!nullToAbsent || actorId != null) {
+      map['actor_id'] = Variable<String>(actorId);
+    }
+    map['joined_at'] = Variable<DateTime>(joinedAt);
+    map['synced_at'] = Variable<DateTime>(syncedAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['total_orders'] = Variable<int>(totalOrders);
+    {
+      map['total_spent'] = Variable<String>(
+        $CachedCustomersTable.$convertertotalSpent.toSql(totalSpent),
+      );
+    }
+    if (!nullToAbsent || lastOrderAt != null) {
+      map['last_order_at'] = Variable<DateTime>(lastOrderAt);
+    }
+    map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
+    return map;
+  }
+
+  CachedCustomersCompanion toCompanion(bool nullToAbsent) {
+    return CachedCustomersCompanion(
+      id: Value(id),
+      businessId: Value(businessId),
+      name: Value(name),
+      phone: Value(phone),
+      email: email == null && nullToAbsent
+          ? const Value.absent()
+          : Value(email),
+      addressLine1: addressLine1 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(addressLine1),
+      actorId: actorId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(actorId),
+      joinedAt: Value(joinedAt),
+      syncedAt: Value(syncedAt),
+      updatedAt: Value(updatedAt),
+      isDeleted: Value(isDeleted),
+      createdAt: Value(createdAt),
+      totalOrders: Value(totalOrders),
+      totalSpent: Value(totalSpent),
+      lastOrderAt: lastOrderAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastOrderAt),
+      lastSyncedAt: Value(lastSyncedAt),
+    );
+  }
+
+  factory CachedCustomer.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedCustomer(
+      id: serializer.fromJson<String>(json['id']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      name: serializer.fromJson<String>(json['name']),
+      phone: serializer.fromJson<String>(json['phone']),
+      email: serializer.fromJson<String?>(json['email']),
+      addressLine1: serializer.fromJson<String?>(json['addressLine1']),
+      actorId: serializer.fromJson<String?>(json['actorId']),
+      joinedAt: serializer.fromJson<DateTime>(json['joinedAt']),
+      syncedAt: serializer.fromJson<DateTime>(json['syncedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      totalOrders: serializer.fromJson<int>(json['totalOrders']),
+      totalSpent: serializer.fromJson<Decimal>(json['totalSpent']),
+      lastOrderAt: serializer.fromJson<DateTime?>(json['lastOrderAt']),
+      lastSyncedAt: serializer.fromJson<DateTime>(json['lastSyncedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'businessId': serializer.toJson<String>(businessId),
+      'name': serializer.toJson<String>(name),
+      'phone': serializer.toJson<String>(phone),
+      'email': serializer.toJson<String?>(email),
+      'addressLine1': serializer.toJson<String?>(addressLine1),
+      'actorId': serializer.toJson<String?>(actorId),
+      'joinedAt': serializer.toJson<DateTime>(joinedAt),
+      'syncedAt': serializer.toJson<DateTime>(syncedAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'totalOrders': serializer.toJson<int>(totalOrders),
+      'totalSpent': serializer.toJson<Decimal>(totalSpent),
+      'lastOrderAt': serializer.toJson<DateTime?>(lastOrderAt),
+      'lastSyncedAt': serializer.toJson<DateTime>(lastSyncedAt),
+    };
+  }
+
+  CachedCustomer copyWith({
+    String? id,
+    String? businessId,
+    String? name,
+    String? phone,
+    Value<String?> email = const Value.absent(),
+    Value<String?> addressLine1 = const Value.absent(),
+    Value<String?> actorId = const Value.absent(),
+    DateTime? joinedAt,
+    DateTime? syncedAt,
+    DateTime? updatedAt,
+    bool? isDeleted,
+    DateTime? createdAt,
+    int? totalOrders,
+    Decimal? totalSpent,
+    Value<DateTime?> lastOrderAt = const Value.absent(),
+    DateTime? lastSyncedAt,
+  }) => CachedCustomer(
+    id: id ?? this.id,
+    businessId: businessId ?? this.businessId,
+    name: name ?? this.name,
+    phone: phone ?? this.phone,
+    email: email.present ? email.value : this.email,
+    addressLine1: addressLine1.present ? addressLine1.value : this.addressLine1,
+    actorId: actorId.present ? actorId.value : this.actorId,
+    joinedAt: joinedAt ?? this.joinedAt,
+    syncedAt: syncedAt ?? this.syncedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    isDeleted: isDeleted ?? this.isDeleted,
+    createdAt: createdAt ?? this.createdAt,
+    totalOrders: totalOrders ?? this.totalOrders,
+    totalSpent: totalSpent ?? this.totalSpent,
+    lastOrderAt: lastOrderAt.present ? lastOrderAt.value : this.lastOrderAt,
+    lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+  );
+  CachedCustomer copyWithCompanion(CachedCustomersCompanion data) {
+    return CachedCustomer(
+      id: data.id.present ? data.id.value : this.id,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      name: data.name.present ? data.name.value : this.name,
+      phone: data.phone.present ? data.phone.value : this.phone,
+      email: data.email.present ? data.email.value : this.email,
+      addressLine1: data.addressLine1.present
+          ? data.addressLine1.value
+          : this.addressLine1,
+      actorId: data.actorId.present ? data.actorId.value : this.actorId,
+      joinedAt: data.joinedAt.present ? data.joinedAt.value : this.joinedAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      totalOrders: data.totalOrders.present
+          ? data.totalOrders.value
+          : this.totalOrders,
+      totalSpent: data.totalSpent.present
+          ? data.totalSpent.value
+          : this.totalSpent,
+      lastOrderAt: data.lastOrderAt.present
+          ? data.lastOrderAt.value
+          : this.lastOrderAt,
+      lastSyncedAt: data.lastSyncedAt.present
+          ? data.lastSyncedAt.value
+          : this.lastSyncedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedCustomer(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('name: $name, ')
+          ..write('phone: $phone, ')
+          ..write('email: $email, ')
+          ..write('addressLine1: $addressLine1, ')
+          ..write('actorId: $actorId, ')
+          ..write('joinedAt: $joinedAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('totalOrders: $totalOrders, ')
+          ..write('totalSpent: $totalSpent, ')
+          ..write('lastOrderAt: $lastOrderAt, ')
+          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    businessId,
+    name,
+    phone,
+    email,
+    addressLine1,
+    actorId,
+    joinedAt,
+    syncedAt,
+    updatedAt,
+    isDeleted,
+    createdAt,
+    totalOrders,
+    totalSpent,
+    lastOrderAt,
+    lastSyncedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedCustomer &&
+          other.id == this.id &&
+          other.businessId == this.businessId &&
+          other.name == this.name &&
+          other.phone == this.phone &&
+          other.email == this.email &&
+          other.addressLine1 == this.addressLine1 &&
+          other.actorId == this.actorId &&
+          other.joinedAt == this.joinedAt &&
+          other.syncedAt == this.syncedAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isDeleted == this.isDeleted &&
+          other.createdAt == this.createdAt &&
+          other.totalOrders == this.totalOrders &&
+          other.totalSpent == this.totalSpent &&
+          other.lastOrderAt == this.lastOrderAt &&
+          other.lastSyncedAt == this.lastSyncedAt);
+}
+
+class CachedCustomersCompanion extends UpdateCompanion<CachedCustomer> {
+  final Value<String> id;
+  final Value<String> businessId;
+  final Value<String> name;
+  final Value<String> phone;
+  final Value<String?> email;
+  final Value<String?> addressLine1;
+  final Value<String?> actorId;
+  final Value<DateTime> joinedAt;
+  final Value<DateTime> syncedAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> isDeleted;
+  final Value<DateTime> createdAt;
+  final Value<int> totalOrders;
+  final Value<Decimal> totalSpent;
+  final Value<DateTime?> lastOrderAt;
+  final Value<DateTime> lastSyncedAt;
+  final Value<int> rowid;
+  const CachedCustomersCompanion({
+    this.id = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.email = const Value.absent(),
+    this.addressLine1 = const Value.absent(),
+    this.actorId = const Value.absent(),
+    this.joinedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.totalOrders = const Value.absent(),
+    this.totalSpent = const Value.absent(),
+    this.lastOrderAt = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedCustomersCompanion.insert({
+    required String id,
+    required String businessId,
+    required String name,
+    required String phone,
+    this.email = const Value.absent(),
+    this.addressLine1 = const Value.absent(),
+    this.actorId = const Value.absent(),
+    required DateTime joinedAt,
+    required DateTime syncedAt,
+    required DateTime updatedAt,
+    this.isDeleted = const Value.absent(),
+    required DateTime createdAt,
+    this.totalOrders = const Value.absent(),
+    required Decimal totalSpent,
+    this.lastOrderAt = const Value.absent(),
+    required DateTime lastSyncedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       businessId = Value(businessId),
+       name = Value(name),
+       phone = Value(phone),
+       joinedAt = Value(joinedAt),
+       syncedAt = Value(syncedAt),
+       updatedAt = Value(updatedAt),
+       createdAt = Value(createdAt),
+       totalSpent = Value(totalSpent),
+       lastSyncedAt = Value(lastSyncedAt);
+  static Insertable<CachedCustomer> custom({
+    Expression<String>? id,
+    Expression<String>? businessId,
+    Expression<String>? name,
+    Expression<String>? phone,
+    Expression<String>? email,
+    Expression<String>? addressLine1,
+    Expression<String>? actorId,
+    Expression<DateTime>? joinedAt,
+    Expression<DateTime>? syncedAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isDeleted,
+    Expression<DateTime>? createdAt,
+    Expression<int>? totalOrders,
+    Expression<String>? totalSpent,
+    Expression<DateTime>? lastOrderAt,
+    Expression<DateTime>? lastSyncedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (businessId != null) 'business_id': businessId,
+      if (name != null) 'name': name,
+      if (phone != null) 'phone': phone,
+      if (email != null) 'email': email,
+      if (addressLine1 != null) 'address_line1': addressLine1,
+      if (actorId != null) 'actor_id': actorId,
+      if (joinedAt != null) 'joined_at': joinedAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (createdAt != null) 'created_at': createdAt,
+      if (totalOrders != null) 'total_orders': totalOrders,
+      if (totalSpent != null) 'total_spent': totalSpent,
+      if (lastOrderAt != null) 'last_order_at': lastOrderAt,
+      if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedCustomersCompanion copyWith({
+    Value<String>? id,
+    Value<String>? businessId,
+    Value<String>? name,
+    Value<String>? phone,
+    Value<String?>? email,
+    Value<String?>? addressLine1,
+    Value<String?>? actorId,
+    Value<DateTime>? joinedAt,
+    Value<DateTime>? syncedAt,
+    Value<DateTime>? updatedAt,
+    Value<bool>? isDeleted,
+    Value<DateTime>? createdAt,
+    Value<int>? totalOrders,
+    Value<Decimal>? totalSpent,
+    Value<DateTime?>? lastOrderAt,
+    Value<DateTime>? lastSyncedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedCustomersCompanion(
+      id: id ?? this.id,
+      businessId: businessId ?? this.businessId,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      addressLine1: addressLine1 ?? this.addressLine1,
+      actorId: actorId ?? this.actorId,
+      joinedAt: joinedAt ?? this.joinedAt,
+      syncedAt: syncedAt ?? this.syncedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      createdAt: createdAt ?? this.createdAt,
+      totalOrders: totalOrders ?? this.totalOrders,
+      totalSpent: totalSpent ?? this.totalSpent,
+      lastOrderAt: lastOrderAt ?? this.lastOrderAt,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (addressLine1.present) {
+      map['address_line1'] = Variable<String>(addressLine1.value);
+    }
+    if (actorId.present) {
+      map['actor_id'] = Variable<String>(actorId.value);
+    }
+    if (joinedAt.present) {
+      map['joined_at'] = Variable<DateTime>(joinedAt.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (totalOrders.present) {
+      map['total_orders'] = Variable<int>(totalOrders.value);
+    }
+    if (totalSpent.present) {
+      map['total_spent'] = Variable<String>(
+        $CachedCustomersTable.$convertertotalSpent.toSql(totalSpent.value),
+      );
+    }
+    if (lastOrderAt.present) {
+      map['last_order_at'] = Variable<DateTime>(lastOrderAt.value);
+    }
+    if (lastSyncedAt.present) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedCustomersCompanion(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('name: $name, ')
+          ..write('phone: $phone, ')
+          ..write('email: $email, ')
+          ..write('addressLine1: $addressLine1, ')
+          ..write('actorId: $actorId, ')
+          ..write('joinedAt: $joinedAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('totalOrders: $totalOrders, ')
+          ..write('totalSpent: $totalSpent, ')
+          ..write('lastOrderAt: $lastOrderAt, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CachedSuppliersTable extends CachedSuppliers
+    with TableInfo<$CachedSuppliersTable, CachedSupplier> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedSuppliersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _addressLine1Meta = const VerificationMeta(
+    'addressLine1',
+  );
+  @override
+  late final GeneratedColumn<String> addressLine1 = GeneratedColumn<String>(
+    'address_line1',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastSyncedAtMeta = const VerificationMeta(
+    'lastSyncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
+    'last_synced_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    businessId,
+    name,
+    phone,
+    email,
+    addressLine1,
+    notes,
+    updatedAt,
+    isDeleted,
+    createdAt,
+    lastSyncedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_suppliers';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedSupplier> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    }
+    if (data.containsKey('address_line1')) {
+      context.handle(
+        _addressLine1Meta,
+        addressLine1.isAcceptableOrUnknown(
+          data['address_line1']!,
+          _addressLine1Meta,
+        ),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('last_synced_at')) {
+      context.handle(
+        _lastSyncedAtMeta,
+        lastSyncedAt.isAcceptableOrUnknown(
+          data['last_synced_at']!,
+          _lastSyncedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastSyncedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedSupplier map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedSupplier(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      ),
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      ),
+      addressLine1: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address_line1'],
+      ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      lastSyncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_synced_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedSuppliersTable createAlias(String alias) {
+    return $CachedSuppliersTable(attachedDatabase, alias);
+  }
+}
+
+class CachedSupplier extends DataClass implements Insertable<CachedSupplier> {
+  /// Supplier UUID (primary key), server-assigned.
+  final String id;
+
+  /// Business this supplier belongs to.
+  final String businessId;
+  final String name;
+  final String? phone;
+  final String? email;
+  final String? addressLine1;
+  final String? notes;
+
+  /// Last-edited timestamp (server-computed).
+  final DateTime updatedAt;
+
+  /// Soft-delete flag — see class doc for why deleted rows are still pulled.
+  final bool isDeleted;
+
+  /// Backend creation timestamp.
+  final DateTime createdAt;
+
+  /// Local timestamp of the most recent pull that included this row.
+  final DateTime lastSyncedAt;
+  const CachedSupplier({
+    required this.id,
+    required this.businessId,
+    required this.name,
+    this.phone,
+    this.email,
+    this.addressLine1,
+    this.notes,
+    required this.updatedAt,
+    required this.isDeleted,
+    required this.createdAt,
+    required this.lastSyncedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['business_id'] = Variable<String>(businessId);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || phone != null) {
+      map['phone'] = Variable<String>(phone);
+    }
+    if (!nullToAbsent || email != null) {
+      map['email'] = Variable<String>(email);
+    }
+    if (!nullToAbsent || addressLine1 != null) {
+      map['address_line1'] = Variable<String>(addressLine1);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
+    return map;
+  }
+
+  CachedSuppliersCompanion toCompanion(bool nullToAbsent) {
+    return CachedSuppliersCompanion(
+      id: Value(id),
+      businessId: Value(businessId),
+      name: Value(name),
+      phone: phone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(phone),
+      email: email == null && nullToAbsent
+          ? const Value.absent()
+          : Value(email),
+      addressLine1: addressLine1 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(addressLine1),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      updatedAt: Value(updatedAt),
+      isDeleted: Value(isDeleted),
+      createdAt: Value(createdAt),
+      lastSyncedAt: Value(lastSyncedAt),
+    );
+  }
+
+  factory CachedSupplier.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedSupplier(
+      id: serializer.fromJson<String>(json['id']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      name: serializer.fromJson<String>(json['name']),
+      phone: serializer.fromJson<String?>(json['phone']),
+      email: serializer.fromJson<String?>(json['email']),
+      addressLine1: serializer.fromJson<String?>(json['addressLine1']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      lastSyncedAt: serializer.fromJson<DateTime>(json['lastSyncedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'businessId': serializer.toJson<String>(businessId),
+      'name': serializer.toJson<String>(name),
+      'phone': serializer.toJson<String?>(phone),
+      'email': serializer.toJson<String?>(email),
+      'addressLine1': serializer.toJson<String?>(addressLine1),
+      'notes': serializer.toJson<String?>(notes),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'lastSyncedAt': serializer.toJson<DateTime>(lastSyncedAt),
+    };
+  }
+
+  CachedSupplier copyWith({
+    String? id,
+    String? businessId,
+    String? name,
+    Value<String?> phone = const Value.absent(),
+    Value<String?> email = const Value.absent(),
+    Value<String?> addressLine1 = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
+    DateTime? updatedAt,
+    bool? isDeleted,
+    DateTime? createdAt,
+    DateTime? lastSyncedAt,
+  }) => CachedSupplier(
+    id: id ?? this.id,
+    businessId: businessId ?? this.businessId,
+    name: name ?? this.name,
+    phone: phone.present ? phone.value : this.phone,
+    email: email.present ? email.value : this.email,
+    addressLine1: addressLine1.present ? addressLine1.value : this.addressLine1,
+    notes: notes.present ? notes.value : this.notes,
+    updatedAt: updatedAt ?? this.updatedAt,
+    isDeleted: isDeleted ?? this.isDeleted,
+    createdAt: createdAt ?? this.createdAt,
+    lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+  );
+  CachedSupplier copyWithCompanion(CachedSuppliersCompanion data) {
+    return CachedSupplier(
+      id: data.id.present ? data.id.value : this.id,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      name: data.name.present ? data.name.value : this.name,
+      phone: data.phone.present ? data.phone.value : this.phone,
+      email: data.email.present ? data.email.value : this.email,
+      addressLine1: data.addressLine1.present
+          ? data.addressLine1.value
+          : this.addressLine1,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      lastSyncedAt: data.lastSyncedAt.present
+          ? data.lastSyncedAt.value
+          : this.lastSyncedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedSupplier(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('name: $name, ')
+          ..write('phone: $phone, ')
+          ..write('email: $email, ')
+          ..write('addressLine1: $addressLine1, ')
+          ..write('notes: $notes, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    businessId,
+    name,
+    phone,
+    email,
+    addressLine1,
+    notes,
+    updatedAt,
+    isDeleted,
+    createdAt,
+    lastSyncedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedSupplier &&
+          other.id == this.id &&
+          other.businessId == this.businessId &&
+          other.name == this.name &&
+          other.phone == this.phone &&
+          other.email == this.email &&
+          other.addressLine1 == this.addressLine1 &&
+          other.notes == this.notes &&
+          other.updatedAt == this.updatedAt &&
+          other.isDeleted == this.isDeleted &&
+          other.createdAt == this.createdAt &&
+          other.lastSyncedAt == this.lastSyncedAt);
+}
+
+class CachedSuppliersCompanion extends UpdateCompanion<CachedSupplier> {
+  final Value<String> id;
+  final Value<String> businessId;
+  final Value<String> name;
+  final Value<String?> phone;
+  final Value<String?> email;
+  final Value<String?> addressLine1;
+  final Value<String?> notes;
+  final Value<DateTime> updatedAt;
+  final Value<bool> isDeleted;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> lastSyncedAt;
+  final Value<int> rowid;
+  const CachedSuppliersCompanion({
+    this.id = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.email = const Value.absent(),
+    this.addressLine1 = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedSuppliersCompanion.insert({
+    required String id,
+    required String businessId,
+    required String name,
+    this.phone = const Value.absent(),
+    this.email = const Value.absent(),
+    this.addressLine1 = const Value.absent(),
+    this.notes = const Value.absent(),
+    required DateTime updatedAt,
+    this.isDeleted = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime lastSyncedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       businessId = Value(businessId),
+       name = Value(name),
+       updatedAt = Value(updatedAt),
+       createdAt = Value(createdAt),
+       lastSyncedAt = Value(lastSyncedAt);
+  static Insertable<CachedSupplier> custom({
+    Expression<String>? id,
+    Expression<String>? businessId,
+    Expression<String>? name,
+    Expression<String>? phone,
+    Expression<String>? email,
+    Expression<String>? addressLine1,
+    Expression<String>? notes,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isDeleted,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? lastSyncedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (businessId != null) 'business_id': businessId,
+      if (name != null) 'name': name,
+      if (phone != null) 'phone': phone,
+      if (email != null) 'email': email,
+      if (addressLine1 != null) 'address_line1': addressLine1,
+      if (notes != null) 'notes': notes,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (createdAt != null) 'created_at': createdAt,
+      if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedSuppliersCompanion copyWith({
+    Value<String>? id,
+    Value<String>? businessId,
+    Value<String>? name,
+    Value<String?>? phone,
+    Value<String?>? email,
+    Value<String?>? addressLine1,
+    Value<String?>? notes,
+    Value<DateTime>? updatedAt,
+    Value<bool>? isDeleted,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? lastSyncedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedSuppliersCompanion(
+      id: id ?? this.id,
+      businessId: businessId ?? this.businessId,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      addressLine1: addressLine1 ?? this.addressLine1,
+      notes: notes ?? this.notes,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      createdAt: createdAt ?? this.createdAt,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (addressLine1.present) {
+      map['address_line1'] = Variable<String>(addressLine1.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (lastSyncedAt.present) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedSuppliersCompanion(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('name: $name, ')
+          ..write('phone: $phone, ')
+          ..write('email: $email, ')
+          ..write('addressLine1: $addressLine1, ')
+          ..write('notes: $notes, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CachedReordersTable extends CachedReorders
+    with TableInfo<$CachedReordersTable, CachedReorder> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedReordersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _storeIdMeta = const VerificationMeta(
+    'storeId',
+  );
+  @override
+  late final GeneratedColumn<String> storeId = GeneratedColumn<String>(
+    'store_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
+  @override
+  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
+    'item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _supplierIdMeta = const VerificationMeta(
+    'supplierId',
+  );
+  @override
+  late final GeneratedColumn<String> supplierId = GeneratedColumn<String>(
+    'supplier_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Decimal, String> quantity =
+      GeneratedColumn<String>(
+        'quantity',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<Decimal>($CachedReordersTable.$converterquantity);
+  static const VerificationMeta _unitMeta = const VerificationMeta('unit');
+  @override
+  late final GeneratedColumn<String> unit = GeneratedColumn<String>(
+    'unit',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Decimal, String> unitCost =
+      GeneratedColumn<String>(
+        'unit_cost',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<Decimal>($CachedReordersTable.$converterunitCost);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _orderedAtMeta = const VerificationMeta(
+    'orderedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> orderedAt = GeneratedColumn<DateTime>(
+    'ordered_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _orderedByMeta = const VerificationMeta(
+    'orderedBy',
+  );
+  @override
+  late final GeneratedColumn<String> orderedBy = GeneratedColumn<String>(
+    'ordered_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _expectedAtMeta = const VerificationMeta(
+    'expectedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> expectedAt = GeneratedColumn<DateTime>(
+    'expected_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _receivedAtMeta = const VerificationMeta(
+    'receivedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> receivedAt = GeneratedColumn<DateTime>(
+    'received_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _receivedByMeta = const VerificationMeta(
+    'receivedBy',
+  );
+  @override
+  late final GeneratedColumn<String> receivedBy = GeneratedColumn<String>(
+    'received_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cancelledAtMeta = const VerificationMeta(
+    'cancelledAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cancelledAt = GeneratedColumn<DateTime>(
+    'cancelled_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cancelledByMeta = const VerificationMeta(
+    'cancelledBy',
+  );
+  @override
+  late final GeneratedColumn<String> cancelledBy = GeneratedColumn<String>(
+    'cancelled_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastSyncedAtMeta = const VerificationMeta(
+    'lastSyncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
+    'last_synced_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    businessId,
+    storeId,
+    itemId,
+    supplierId,
+    quantity,
+    unit,
+    unitCost,
+    status,
+    notes,
+    orderedAt,
+    orderedBy,
+    expectedAt,
+    receivedAt,
+    receivedBy,
+    cancelledAt,
+    cancelledBy,
+    createdAt,
+    lastSyncedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_reorders';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedReorder> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('store_id')) {
+      context.handle(
+        _storeIdMeta,
+        storeId.isAcceptableOrUnknown(data['store_id']!, _storeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_storeIdMeta);
+    }
+    if (data.containsKey('item_id')) {
+      context.handle(
+        _itemIdMeta,
+        itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_itemIdMeta);
+    }
+    if (data.containsKey('supplier_id')) {
+      context.handle(
+        _supplierIdMeta,
+        supplierId.isAcceptableOrUnknown(data['supplier_id']!, _supplierIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_supplierIdMeta);
+    }
+    if (data.containsKey('unit')) {
+      context.handle(
+        _unitMeta,
+        unit.isAcceptableOrUnknown(data['unit']!, _unitMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_unitMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('ordered_at')) {
+      context.handle(
+        _orderedAtMeta,
+        orderedAt.isAcceptableOrUnknown(data['ordered_at']!, _orderedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_orderedAtMeta);
+    }
+    if (data.containsKey('ordered_by')) {
+      context.handle(
+        _orderedByMeta,
+        orderedBy.isAcceptableOrUnknown(data['ordered_by']!, _orderedByMeta),
+      );
+    }
+    if (data.containsKey('expected_at')) {
+      context.handle(
+        _expectedAtMeta,
+        expectedAt.isAcceptableOrUnknown(data['expected_at']!, _expectedAtMeta),
+      );
+    }
+    if (data.containsKey('received_at')) {
+      context.handle(
+        _receivedAtMeta,
+        receivedAt.isAcceptableOrUnknown(data['received_at']!, _receivedAtMeta),
+      );
+    }
+    if (data.containsKey('received_by')) {
+      context.handle(
+        _receivedByMeta,
+        receivedBy.isAcceptableOrUnknown(data['received_by']!, _receivedByMeta),
+      );
+    }
+    if (data.containsKey('cancelled_at')) {
+      context.handle(
+        _cancelledAtMeta,
+        cancelledAt.isAcceptableOrUnknown(
+          data['cancelled_at']!,
+          _cancelledAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cancelled_by')) {
+      context.handle(
+        _cancelledByMeta,
+        cancelledBy.isAcceptableOrUnknown(
+          data['cancelled_by']!,
+          _cancelledByMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('last_synced_at')) {
+      context.handle(
+        _lastSyncedAtMeta,
+        lastSyncedAt.isAcceptableOrUnknown(
+          data['last_synced_at']!,
+          _lastSyncedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastSyncedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedReorder map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedReorder(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      storeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}store_id'],
+      )!,
+      itemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}item_id'],
+      )!,
+      supplierId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}supplier_id'],
+      )!,
+      quantity: $CachedReordersTable.$converterquantity.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}quantity'],
+        )!,
+      ),
+      unit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}unit'],
+      )!,
+      unitCost: $CachedReordersTable.$converterunitCost.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}unit_cost'],
+        )!,
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      orderedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}ordered_at'],
+      )!,
+      orderedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ordered_by'],
+      ),
+      expectedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}expected_at'],
+      ),
+      receivedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}received_at'],
+      ),
+      receivedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}received_by'],
+      ),
+      cancelledAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cancelled_at'],
+      ),
+      cancelledBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cancelled_by'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      lastSyncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_synced_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedReordersTable createAlias(String alias) {
+    return $CachedReordersTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<Decimal, String> $converterquantity =
+      const DecimalConverter();
+  static TypeConverter<Decimal, String> $converterunitCost =
+      const DecimalConverter();
+}
+
+class CachedReorder extends DataClass implements Insertable<CachedReorder> {
+  /// Reorder UUID (primary key), server-assigned.
+  final String id;
+  final String businessId;
+  final String storeId;
+  final String itemId;
+  final String supplierId;
+  final Decimal quantity;
+  final String unit;
+  final Decimal unitCost;
+
+  /// `pending` | `received` | `cancelled`.
+  final String status;
+  final String? notes;
+  final DateTime orderedAt;
+  final String? orderedBy;
+  final DateTime? expectedAt;
+  final DateTime? receivedAt;
+  final String? receivedBy;
+  final DateTime? cancelledAt;
+  final String? cancelledBy;
+
+  /// Backend creation timestamp.
+  final DateTime createdAt;
+
+  /// Local timestamp of the most recent pull that included this row.
+  final DateTime lastSyncedAt;
+  const CachedReorder({
+    required this.id,
+    required this.businessId,
+    required this.storeId,
+    required this.itemId,
+    required this.supplierId,
+    required this.quantity,
+    required this.unit,
+    required this.unitCost,
+    required this.status,
+    this.notes,
+    required this.orderedAt,
+    this.orderedBy,
+    this.expectedAt,
+    this.receivedAt,
+    this.receivedBy,
+    this.cancelledAt,
+    this.cancelledBy,
+    required this.createdAt,
+    required this.lastSyncedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['business_id'] = Variable<String>(businessId);
+    map['store_id'] = Variable<String>(storeId);
+    map['item_id'] = Variable<String>(itemId);
+    map['supplier_id'] = Variable<String>(supplierId);
+    {
+      map['quantity'] = Variable<String>(
+        $CachedReordersTable.$converterquantity.toSql(quantity),
+      );
+    }
+    map['unit'] = Variable<String>(unit);
+    {
+      map['unit_cost'] = Variable<String>(
+        $CachedReordersTable.$converterunitCost.toSql(unitCost),
+      );
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['ordered_at'] = Variable<DateTime>(orderedAt);
+    if (!nullToAbsent || orderedBy != null) {
+      map['ordered_by'] = Variable<String>(orderedBy);
+    }
+    if (!nullToAbsent || expectedAt != null) {
+      map['expected_at'] = Variable<DateTime>(expectedAt);
+    }
+    if (!nullToAbsent || receivedAt != null) {
+      map['received_at'] = Variable<DateTime>(receivedAt);
+    }
+    if (!nullToAbsent || receivedBy != null) {
+      map['received_by'] = Variable<String>(receivedBy);
+    }
+    if (!nullToAbsent || cancelledAt != null) {
+      map['cancelled_at'] = Variable<DateTime>(cancelledAt);
+    }
+    if (!nullToAbsent || cancelledBy != null) {
+      map['cancelled_by'] = Variable<String>(cancelledBy);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
+    return map;
+  }
+
+  CachedReordersCompanion toCompanion(bool nullToAbsent) {
+    return CachedReordersCompanion(
+      id: Value(id),
+      businessId: Value(businessId),
+      storeId: Value(storeId),
+      itemId: Value(itemId),
+      supplierId: Value(supplierId),
+      quantity: Value(quantity),
+      unit: Value(unit),
+      unitCost: Value(unitCost),
+      status: Value(status),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      orderedAt: Value(orderedAt),
+      orderedBy: orderedBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(orderedBy),
+      expectedAt: expectedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(expectedAt),
+      receivedAt: receivedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receivedAt),
+      receivedBy: receivedBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receivedBy),
+      cancelledAt: cancelledAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cancelledAt),
+      cancelledBy: cancelledBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cancelledBy),
+      createdAt: Value(createdAt),
+      lastSyncedAt: Value(lastSyncedAt),
+    );
+  }
+
+  factory CachedReorder.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedReorder(
+      id: serializer.fromJson<String>(json['id']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      storeId: serializer.fromJson<String>(json['storeId']),
+      itemId: serializer.fromJson<String>(json['itemId']),
+      supplierId: serializer.fromJson<String>(json['supplierId']),
+      quantity: serializer.fromJson<Decimal>(json['quantity']),
+      unit: serializer.fromJson<String>(json['unit']),
+      unitCost: serializer.fromJson<Decimal>(json['unitCost']),
+      status: serializer.fromJson<String>(json['status']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      orderedAt: serializer.fromJson<DateTime>(json['orderedAt']),
+      orderedBy: serializer.fromJson<String?>(json['orderedBy']),
+      expectedAt: serializer.fromJson<DateTime?>(json['expectedAt']),
+      receivedAt: serializer.fromJson<DateTime?>(json['receivedAt']),
+      receivedBy: serializer.fromJson<String?>(json['receivedBy']),
+      cancelledAt: serializer.fromJson<DateTime?>(json['cancelledAt']),
+      cancelledBy: serializer.fromJson<String?>(json['cancelledBy']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      lastSyncedAt: serializer.fromJson<DateTime>(json['lastSyncedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'businessId': serializer.toJson<String>(businessId),
+      'storeId': serializer.toJson<String>(storeId),
+      'itemId': serializer.toJson<String>(itemId),
+      'supplierId': serializer.toJson<String>(supplierId),
+      'quantity': serializer.toJson<Decimal>(quantity),
+      'unit': serializer.toJson<String>(unit),
+      'unitCost': serializer.toJson<Decimal>(unitCost),
+      'status': serializer.toJson<String>(status),
+      'notes': serializer.toJson<String?>(notes),
+      'orderedAt': serializer.toJson<DateTime>(orderedAt),
+      'orderedBy': serializer.toJson<String?>(orderedBy),
+      'expectedAt': serializer.toJson<DateTime?>(expectedAt),
+      'receivedAt': serializer.toJson<DateTime?>(receivedAt),
+      'receivedBy': serializer.toJson<String?>(receivedBy),
+      'cancelledAt': serializer.toJson<DateTime?>(cancelledAt),
+      'cancelledBy': serializer.toJson<String?>(cancelledBy),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'lastSyncedAt': serializer.toJson<DateTime>(lastSyncedAt),
+    };
+  }
+
+  CachedReorder copyWith({
+    String? id,
+    String? businessId,
+    String? storeId,
+    String? itemId,
+    String? supplierId,
+    Decimal? quantity,
+    String? unit,
+    Decimal? unitCost,
+    String? status,
+    Value<String?> notes = const Value.absent(),
+    DateTime? orderedAt,
+    Value<String?> orderedBy = const Value.absent(),
+    Value<DateTime?> expectedAt = const Value.absent(),
+    Value<DateTime?> receivedAt = const Value.absent(),
+    Value<String?> receivedBy = const Value.absent(),
+    Value<DateTime?> cancelledAt = const Value.absent(),
+    Value<String?> cancelledBy = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? lastSyncedAt,
+  }) => CachedReorder(
+    id: id ?? this.id,
+    businessId: businessId ?? this.businessId,
+    storeId: storeId ?? this.storeId,
+    itemId: itemId ?? this.itemId,
+    supplierId: supplierId ?? this.supplierId,
+    quantity: quantity ?? this.quantity,
+    unit: unit ?? this.unit,
+    unitCost: unitCost ?? this.unitCost,
+    status: status ?? this.status,
+    notes: notes.present ? notes.value : this.notes,
+    orderedAt: orderedAt ?? this.orderedAt,
+    orderedBy: orderedBy.present ? orderedBy.value : this.orderedBy,
+    expectedAt: expectedAt.present ? expectedAt.value : this.expectedAt,
+    receivedAt: receivedAt.present ? receivedAt.value : this.receivedAt,
+    receivedBy: receivedBy.present ? receivedBy.value : this.receivedBy,
+    cancelledAt: cancelledAt.present ? cancelledAt.value : this.cancelledAt,
+    cancelledBy: cancelledBy.present ? cancelledBy.value : this.cancelledBy,
+    createdAt: createdAt ?? this.createdAt,
+    lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+  );
+  CachedReorder copyWithCompanion(CachedReordersCompanion data) {
+    return CachedReorder(
+      id: data.id.present ? data.id.value : this.id,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      storeId: data.storeId.present ? data.storeId.value : this.storeId,
+      itemId: data.itemId.present ? data.itemId.value : this.itemId,
+      supplierId: data.supplierId.present
+          ? data.supplierId.value
+          : this.supplierId,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      unit: data.unit.present ? data.unit.value : this.unit,
+      unitCost: data.unitCost.present ? data.unitCost.value : this.unitCost,
+      status: data.status.present ? data.status.value : this.status,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      orderedAt: data.orderedAt.present ? data.orderedAt.value : this.orderedAt,
+      orderedBy: data.orderedBy.present ? data.orderedBy.value : this.orderedBy,
+      expectedAt: data.expectedAt.present
+          ? data.expectedAt.value
+          : this.expectedAt,
+      receivedAt: data.receivedAt.present
+          ? data.receivedAt.value
+          : this.receivedAt,
+      receivedBy: data.receivedBy.present
+          ? data.receivedBy.value
+          : this.receivedBy,
+      cancelledAt: data.cancelledAt.present
+          ? data.cancelledAt.value
+          : this.cancelledAt,
+      cancelledBy: data.cancelledBy.present
+          ? data.cancelledBy.value
+          : this.cancelledBy,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      lastSyncedAt: data.lastSyncedAt.present
+          ? data.lastSyncedAt.value
+          : this.lastSyncedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedReorder(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('storeId: $storeId, ')
+          ..write('itemId: $itemId, ')
+          ..write('supplierId: $supplierId, ')
+          ..write('quantity: $quantity, ')
+          ..write('unit: $unit, ')
+          ..write('unitCost: $unitCost, ')
+          ..write('status: $status, ')
+          ..write('notes: $notes, ')
+          ..write('orderedAt: $orderedAt, ')
+          ..write('orderedBy: $orderedBy, ')
+          ..write('expectedAt: $expectedAt, ')
+          ..write('receivedAt: $receivedAt, ')
+          ..write('receivedBy: $receivedBy, ')
+          ..write('cancelledAt: $cancelledAt, ')
+          ..write('cancelledBy: $cancelledBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    businessId,
+    storeId,
+    itemId,
+    supplierId,
+    quantity,
+    unit,
+    unitCost,
+    status,
+    notes,
+    orderedAt,
+    orderedBy,
+    expectedAt,
+    receivedAt,
+    receivedBy,
+    cancelledAt,
+    cancelledBy,
+    createdAt,
+    lastSyncedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedReorder &&
+          other.id == this.id &&
+          other.businessId == this.businessId &&
+          other.storeId == this.storeId &&
+          other.itemId == this.itemId &&
+          other.supplierId == this.supplierId &&
+          other.quantity == this.quantity &&
+          other.unit == this.unit &&
+          other.unitCost == this.unitCost &&
+          other.status == this.status &&
+          other.notes == this.notes &&
+          other.orderedAt == this.orderedAt &&
+          other.orderedBy == this.orderedBy &&
+          other.expectedAt == this.expectedAt &&
+          other.receivedAt == this.receivedAt &&
+          other.receivedBy == this.receivedBy &&
+          other.cancelledAt == this.cancelledAt &&
+          other.cancelledBy == this.cancelledBy &&
+          other.createdAt == this.createdAt &&
+          other.lastSyncedAt == this.lastSyncedAt);
+}
+
+class CachedReordersCompanion extends UpdateCompanion<CachedReorder> {
+  final Value<String> id;
+  final Value<String> businessId;
+  final Value<String> storeId;
+  final Value<String> itemId;
+  final Value<String> supplierId;
+  final Value<Decimal> quantity;
+  final Value<String> unit;
+  final Value<Decimal> unitCost;
+  final Value<String> status;
+  final Value<String?> notes;
+  final Value<DateTime> orderedAt;
+  final Value<String?> orderedBy;
+  final Value<DateTime?> expectedAt;
+  final Value<DateTime?> receivedAt;
+  final Value<String?> receivedBy;
+  final Value<DateTime?> cancelledAt;
+  final Value<String?> cancelledBy;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> lastSyncedAt;
+  final Value<int> rowid;
+  const CachedReordersCompanion({
+    this.id = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.storeId = const Value.absent(),
+    this.itemId = const Value.absent(),
+    this.supplierId = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.unit = const Value.absent(),
+    this.unitCost = const Value.absent(),
+    this.status = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.orderedAt = const Value.absent(),
+    this.orderedBy = const Value.absent(),
+    this.expectedAt = const Value.absent(),
+    this.receivedAt = const Value.absent(),
+    this.receivedBy = const Value.absent(),
+    this.cancelledAt = const Value.absent(),
+    this.cancelledBy = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedReordersCompanion.insert({
+    required String id,
+    required String businessId,
+    required String storeId,
+    required String itemId,
+    required String supplierId,
+    required Decimal quantity,
+    required String unit,
+    required Decimal unitCost,
+    required String status,
+    this.notes = const Value.absent(),
+    required DateTime orderedAt,
+    this.orderedBy = const Value.absent(),
+    this.expectedAt = const Value.absent(),
+    this.receivedAt = const Value.absent(),
+    this.receivedBy = const Value.absent(),
+    this.cancelledAt = const Value.absent(),
+    this.cancelledBy = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime lastSyncedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       businessId = Value(businessId),
+       storeId = Value(storeId),
+       itemId = Value(itemId),
+       supplierId = Value(supplierId),
+       quantity = Value(quantity),
+       unit = Value(unit),
+       unitCost = Value(unitCost),
+       status = Value(status),
+       orderedAt = Value(orderedAt),
+       createdAt = Value(createdAt),
+       lastSyncedAt = Value(lastSyncedAt);
+  static Insertable<CachedReorder> custom({
+    Expression<String>? id,
+    Expression<String>? businessId,
+    Expression<String>? storeId,
+    Expression<String>? itemId,
+    Expression<String>? supplierId,
+    Expression<String>? quantity,
+    Expression<String>? unit,
+    Expression<String>? unitCost,
+    Expression<String>? status,
+    Expression<String>? notes,
+    Expression<DateTime>? orderedAt,
+    Expression<String>? orderedBy,
+    Expression<DateTime>? expectedAt,
+    Expression<DateTime>? receivedAt,
+    Expression<String>? receivedBy,
+    Expression<DateTime>? cancelledAt,
+    Expression<String>? cancelledBy,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? lastSyncedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (businessId != null) 'business_id': businessId,
+      if (storeId != null) 'store_id': storeId,
+      if (itemId != null) 'item_id': itemId,
+      if (supplierId != null) 'supplier_id': supplierId,
+      if (quantity != null) 'quantity': quantity,
+      if (unit != null) 'unit': unit,
+      if (unitCost != null) 'unit_cost': unitCost,
+      if (status != null) 'status': status,
+      if (notes != null) 'notes': notes,
+      if (orderedAt != null) 'ordered_at': orderedAt,
+      if (orderedBy != null) 'ordered_by': orderedBy,
+      if (expectedAt != null) 'expected_at': expectedAt,
+      if (receivedAt != null) 'received_at': receivedAt,
+      if (receivedBy != null) 'received_by': receivedBy,
+      if (cancelledAt != null) 'cancelled_at': cancelledAt,
+      if (cancelledBy != null) 'cancelled_by': cancelledBy,
+      if (createdAt != null) 'created_at': createdAt,
+      if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedReordersCompanion copyWith({
+    Value<String>? id,
+    Value<String>? businessId,
+    Value<String>? storeId,
+    Value<String>? itemId,
+    Value<String>? supplierId,
+    Value<Decimal>? quantity,
+    Value<String>? unit,
+    Value<Decimal>? unitCost,
+    Value<String>? status,
+    Value<String?>? notes,
+    Value<DateTime>? orderedAt,
+    Value<String?>? orderedBy,
+    Value<DateTime?>? expectedAt,
+    Value<DateTime?>? receivedAt,
+    Value<String?>? receivedBy,
+    Value<DateTime?>? cancelledAt,
+    Value<String?>? cancelledBy,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? lastSyncedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedReordersCompanion(
+      id: id ?? this.id,
+      businessId: businessId ?? this.businessId,
+      storeId: storeId ?? this.storeId,
+      itemId: itemId ?? this.itemId,
+      supplierId: supplierId ?? this.supplierId,
+      quantity: quantity ?? this.quantity,
+      unit: unit ?? this.unit,
+      unitCost: unitCost ?? this.unitCost,
+      status: status ?? this.status,
+      notes: notes ?? this.notes,
+      orderedAt: orderedAt ?? this.orderedAt,
+      orderedBy: orderedBy ?? this.orderedBy,
+      expectedAt: expectedAt ?? this.expectedAt,
+      receivedAt: receivedAt ?? this.receivedAt,
+      receivedBy: receivedBy ?? this.receivedBy,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
+      cancelledBy: cancelledBy ?? this.cancelledBy,
+      createdAt: createdAt ?? this.createdAt,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (storeId.present) {
+      map['store_id'] = Variable<String>(storeId.value);
+    }
+    if (itemId.present) {
+      map['item_id'] = Variable<String>(itemId.value);
+    }
+    if (supplierId.present) {
+      map['supplier_id'] = Variable<String>(supplierId.value);
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<String>(
+        $CachedReordersTable.$converterquantity.toSql(quantity.value),
+      );
+    }
+    if (unit.present) {
+      map['unit'] = Variable<String>(unit.value);
+    }
+    if (unitCost.present) {
+      map['unit_cost'] = Variable<String>(
+        $CachedReordersTable.$converterunitCost.toSql(unitCost.value),
+      );
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (orderedAt.present) {
+      map['ordered_at'] = Variable<DateTime>(orderedAt.value);
+    }
+    if (orderedBy.present) {
+      map['ordered_by'] = Variable<String>(orderedBy.value);
+    }
+    if (expectedAt.present) {
+      map['expected_at'] = Variable<DateTime>(expectedAt.value);
+    }
+    if (receivedAt.present) {
+      map['received_at'] = Variable<DateTime>(receivedAt.value);
+    }
+    if (receivedBy.present) {
+      map['received_by'] = Variable<String>(receivedBy.value);
+    }
+    if (cancelledAt.present) {
+      map['cancelled_at'] = Variable<DateTime>(cancelledAt.value);
+    }
+    if (cancelledBy.present) {
+      map['cancelled_by'] = Variable<String>(cancelledBy.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (lastSyncedAt.present) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedReordersCompanion(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('storeId: $storeId, ')
+          ..write('itemId: $itemId, ')
+          ..write('supplierId: $supplierId, ')
+          ..write('quantity: $quantity, ')
+          ..write('unit: $unit, ')
+          ..write('unitCost: $unitCost, ')
+          ..write('status: $status, ')
+          ..write('notes: $notes, ')
+          ..write('orderedAt: $orderedAt, ')
+          ..write('orderedBy: $orderedBy, ')
+          ..write('expectedAt: $expectedAt, ')
+          ..write('receivedAt: $receivedAt, ')
+          ..write('receivedBy: $receivedBy, ')
+          ..write('cancelledAt: $cancelledAt, ')
+          ..write('cancelledBy: $cancelledBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $LocalAuditLogTable extends LocalAuditLog
     with TableInfo<$LocalAuditLogTable, LocalAuditLogData> {
   @override
@@ -12737,6 +16424,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $CachedOtherExpensesTable(this);
   late final $CachedOtherIncomesTable cachedOtherIncomes =
       $CachedOtherIncomesTable(this);
+  late final $CustomerEntriesTable customerEntries = $CustomerEntriesTable(
+    this,
+  );
+  late final $CachedCustomersTable cachedCustomers = $CachedCustomersTable(
+    this,
+  );
+  late final $CachedSuppliersTable cachedSuppliers = $CachedSuppliersTable(
+    this,
+  );
+  late final $CachedReordersTable cachedReorders = $CachedReordersTable(this);
   late final $LocalAuditLogTable localAuditLog = $LocalAuditLogTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -12758,6 +16455,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     otherIncomeEntries,
     cachedOtherExpenses,
     cachedOtherIncomes,
+    customerEntries,
+    cachedCustomers,
+    cachedSuppliers,
+    cachedReorders,
     localAuditLog,
   ];
   @override
@@ -13481,6 +17182,7 @@ typedef $$PendingSalesTableCreateCompanionBuilder =
       required String storeId,
       Value<Decimal> discountAmount,
       required String paymentMethod,
+      Value<String?> customerId,
       required DateTime occurredAt,
       Value<int?> deviceSequence,
       Value<String?> voidOrRefundReason,
@@ -13500,6 +17202,7 @@ typedef $$PendingSalesTableUpdateCompanionBuilder =
       Value<String> storeId,
       Value<Decimal> discountAmount,
       Value<String> paymentMethod,
+      Value<String?> customerId,
       Value<DateTime> occurredAt,
       Value<int?> deviceSequence,
       Value<String?> voidOrRefundReason,
@@ -13610,6 +17313,11 @@ class $$PendingSalesTableFilterComposer
 
   ColumnFilters<String> get paymentMethod => $composableBuilder(
     column: $table.paymentMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerId => $composableBuilder(
+    column: $table.customerId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13753,6 +17461,11 @@ class $$PendingSalesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get customerId => $composableBuilder(
+    column: $table.customerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
     builder: (column) => ColumnOrderings(column),
@@ -13835,6 +17548,11 @@ class $$PendingSalesTableAnnotationComposer
 
   GeneratedColumn<String> get paymentMethod => $composableBuilder(
     column: $table.paymentMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customerId => $composableBuilder(
+    column: $table.customerId,
     builder: (column) => column,
   );
 
@@ -13972,6 +17690,7 @@ class $$PendingSalesTableTableManager
                 Value<String> storeId = const Value.absent(),
                 Value<Decimal> discountAmount = const Value.absent(),
                 Value<String> paymentMethod = const Value.absent(),
+                Value<String?> customerId = const Value.absent(),
                 Value<DateTime> occurredAt = const Value.absent(),
                 Value<int?> deviceSequence = const Value.absent(),
                 Value<String?> voidOrRefundReason = const Value.absent(),
@@ -13989,6 +17708,7 @@ class $$PendingSalesTableTableManager
                 storeId: storeId,
                 discountAmount: discountAmount,
                 paymentMethod: paymentMethod,
+                customerId: customerId,
                 occurredAt: occurredAt,
                 deviceSequence: deviceSequence,
                 voidOrRefundReason: voidOrRefundReason,
@@ -14008,6 +17728,7 @@ class $$PendingSalesTableTableManager
                 required String storeId,
                 Value<Decimal> discountAmount = const Value.absent(),
                 required String paymentMethod,
+                Value<String?> customerId = const Value.absent(),
                 required DateTime occurredAt,
                 Value<int?> deviceSequence = const Value.absent(),
                 Value<String?> voidOrRefundReason = const Value.absent(),
@@ -14025,6 +17746,7 @@ class $$PendingSalesTableTableManager
                 storeId: storeId,
                 discountAmount: discountAmount,
                 paymentMethod: paymentMethod,
+                customerId: customerId,
                 occurredAt: occurredAt,
                 deviceSequence: deviceSequence,
                 voidOrRefundReason: voidOrRefundReason,
@@ -15795,6 +19517,7 @@ typedef $$CachedSalesTableCreateCompanionBuilder =
       required Decimal total,
       required String paymentMethod,
       Value<String?> actorId,
+      Value<String?> customerId,
       required DateTime occurredAt,
       required DateTime syncedAt,
       Value<DateTime?> voidedAt,
@@ -15817,6 +19540,7 @@ typedef $$CachedSalesTableUpdateCompanionBuilder =
       Value<Decimal> total,
       Value<String> paymentMethod,
       Value<String?> actorId,
+      Value<String?> customerId,
       Value<DateTime> occurredAt,
       Value<DateTime> syncedAt,
       Value<DateTime?> voidedAt,
@@ -15921,6 +19645,11 @@ class $$CachedSalesTableFilterComposer
 
   ColumnFilters<String> get actorId => $composableBuilder(
     column: $table.actorId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerId => $composableBuilder(
+    column: $table.customerId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16049,6 +19778,11 @@ class $$CachedSalesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get customerId => $composableBuilder(
+    column: $table.customerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
     builder: (column) => ColumnOrderings(column),
@@ -16135,6 +19869,11 @@ class $$CachedSalesTableAnnotationComposer
 
   GeneratedColumn<String> get actorId =>
       $composableBuilder(column: $table.actorId, builder: (column) => column);
+
+  GeneratedColumn<String> get customerId => $composableBuilder(
+    column: $table.customerId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
@@ -16231,6 +19970,7 @@ class $$CachedSalesTableTableManager
                 Value<Decimal> total = const Value.absent(),
                 Value<String> paymentMethod = const Value.absent(),
                 Value<String?> actorId = const Value.absent(),
+                Value<String?> customerId = const Value.absent(),
                 Value<DateTime> occurredAt = const Value.absent(),
                 Value<DateTime> syncedAt = const Value.absent(),
                 Value<DateTime?> voidedAt = const Value.absent(),
@@ -16251,6 +19991,7 @@ class $$CachedSalesTableTableManager
                 total: total,
                 paymentMethod: paymentMethod,
                 actorId: actorId,
+                customerId: customerId,
                 occurredAt: occurredAt,
                 syncedAt: syncedAt,
                 voidedAt: voidedAt,
@@ -16273,6 +20014,7 @@ class $$CachedSalesTableTableManager
                 required Decimal total,
                 required String paymentMethod,
                 Value<String?> actorId = const Value.absent(),
+                Value<String?> customerId = const Value.absent(),
                 required DateTime occurredAt,
                 required DateTime syncedAt,
                 Value<DateTime?> voidedAt = const Value.absent(),
@@ -16293,6 +20035,7 @@ class $$CachedSalesTableTableManager
                 total: total,
                 paymentMethod: paymentMethod,
                 actorId: actorId,
+                customerId: customerId,
                 occurredAt: occurredAt,
                 syncedAt: syncedAt,
                 voidedAt: voidedAt,
@@ -19243,6 +22986,1647 @@ typedef $$CachedOtherIncomesTableProcessedTableManager =
       CachedOtherIncome,
       PrefetchHooks Function()
     >;
+typedef $$CustomerEntriesTableCreateCompanionBuilder =
+    CustomerEntriesCompanion Function({
+      Value<int> id,
+      required String customerId,
+      required String businessId,
+      required String name,
+      required String phone,
+      Value<String?> email,
+      Value<String?> addressLine1,
+      required DateTime joinedAt,
+      required String actorUserId,
+      Value<String> syncStatus,
+      Value<String?> syncError,
+      Value<int> syncAttemptCount,
+      Value<DateTime?> lastAttemptAt,
+      Value<DateTime?> syncedAt,
+      required DateTime createdAt,
+    });
+typedef $$CustomerEntriesTableUpdateCompanionBuilder =
+    CustomerEntriesCompanion Function({
+      Value<int> id,
+      Value<String> customerId,
+      Value<String> businessId,
+      Value<String> name,
+      Value<String> phone,
+      Value<String?> email,
+      Value<String?> addressLine1,
+      Value<DateTime> joinedAt,
+      Value<String> actorUserId,
+      Value<String> syncStatus,
+      Value<String?> syncError,
+      Value<int> syncAttemptCount,
+      Value<DateTime?> lastAttemptAt,
+      Value<DateTime?> syncedAt,
+      Value<DateTime> createdAt,
+    });
+
+class $$CustomerEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $CustomerEntriesTable> {
+  $$CustomerEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerId => $composableBuilder(
+    column: $table.customerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get addressLine1 => $composableBuilder(
+    column: $table.addressLine1,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get joinedAt => $composableBuilder(
+    column: $table.joinedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncAttemptCount => $composableBuilder(
+    column: $table.syncAttemptCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CustomerEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CustomerEntriesTable> {
+  $$CustomerEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerId => $composableBuilder(
+    column: $table.customerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get addressLine1 => $composableBuilder(
+    column: $table.addressLine1,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get joinedAt => $composableBuilder(
+    column: $table.joinedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncAttemptCount => $composableBuilder(
+    column: $table.syncAttemptCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CustomerEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CustomerEntriesTable> {
+  $$CustomerEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get customerId => $composableBuilder(
+    column: $table.customerId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get addressLine1 => $composableBuilder(
+    column: $table.addressLine1,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get joinedAt =>
+      $composableBuilder(column: $table.joinedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+
+  GeneratedColumn<int> get syncAttemptCount => $composableBuilder(
+    column: $table.syncAttemptCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$CustomerEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CustomerEntriesTable,
+          CustomerEntry,
+          $$CustomerEntriesTableFilterComposer,
+          $$CustomerEntriesTableOrderingComposer,
+          $$CustomerEntriesTableAnnotationComposer,
+          $$CustomerEntriesTableCreateCompanionBuilder,
+          $$CustomerEntriesTableUpdateCompanionBuilder,
+          (
+            CustomerEntry,
+            BaseReferences<_$AppDatabase, $CustomerEntriesTable, CustomerEntry>,
+          ),
+          CustomerEntry,
+          PrefetchHooks Function()
+        > {
+  $$CustomerEntriesTableTableManager(
+    _$AppDatabase db,
+    $CustomerEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CustomerEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CustomerEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CustomerEntriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> customerId = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> phone = const Value.absent(),
+                Value<String?> email = const Value.absent(),
+                Value<String?> addressLine1 = const Value.absent(),
+                Value<DateTime> joinedAt = const Value.absent(),
+                Value<String> actorUserId = const Value.absent(),
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> syncAttemptCount = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => CustomerEntriesCompanion(
+                id: id,
+                customerId: customerId,
+                businessId: businessId,
+                name: name,
+                phone: phone,
+                email: email,
+                addressLine1: addressLine1,
+                joinedAt: joinedAt,
+                actorUserId: actorUserId,
+                syncStatus: syncStatus,
+                syncError: syncError,
+                syncAttemptCount: syncAttemptCount,
+                lastAttemptAt: lastAttemptAt,
+                syncedAt: syncedAt,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String customerId,
+                required String businessId,
+                required String name,
+                required String phone,
+                Value<String?> email = const Value.absent(),
+                Value<String?> addressLine1 = const Value.absent(),
+                required DateTime joinedAt,
+                required String actorUserId,
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
+                Value<int> syncAttemptCount = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                required DateTime createdAt,
+              }) => CustomerEntriesCompanion.insert(
+                id: id,
+                customerId: customerId,
+                businessId: businessId,
+                name: name,
+                phone: phone,
+                email: email,
+                addressLine1: addressLine1,
+                joinedAt: joinedAt,
+                actorUserId: actorUserId,
+                syncStatus: syncStatus,
+                syncError: syncError,
+                syncAttemptCount: syncAttemptCount,
+                lastAttemptAt: lastAttemptAt,
+                syncedAt: syncedAt,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CustomerEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CustomerEntriesTable,
+      CustomerEntry,
+      $$CustomerEntriesTableFilterComposer,
+      $$CustomerEntriesTableOrderingComposer,
+      $$CustomerEntriesTableAnnotationComposer,
+      $$CustomerEntriesTableCreateCompanionBuilder,
+      $$CustomerEntriesTableUpdateCompanionBuilder,
+      (
+        CustomerEntry,
+        BaseReferences<_$AppDatabase, $CustomerEntriesTable, CustomerEntry>,
+      ),
+      CustomerEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$CachedCustomersTableCreateCompanionBuilder =
+    CachedCustomersCompanion Function({
+      required String id,
+      required String businessId,
+      required String name,
+      required String phone,
+      Value<String?> email,
+      Value<String?> addressLine1,
+      Value<String?> actorId,
+      required DateTime joinedAt,
+      required DateTime syncedAt,
+      required DateTime updatedAt,
+      Value<bool> isDeleted,
+      required DateTime createdAt,
+      Value<int> totalOrders,
+      required Decimal totalSpent,
+      Value<DateTime?> lastOrderAt,
+      required DateTime lastSyncedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedCustomersTableUpdateCompanionBuilder =
+    CachedCustomersCompanion Function({
+      Value<String> id,
+      Value<String> businessId,
+      Value<String> name,
+      Value<String> phone,
+      Value<String?> email,
+      Value<String?> addressLine1,
+      Value<String?> actorId,
+      Value<DateTime> joinedAt,
+      Value<DateTime> syncedAt,
+      Value<DateTime> updatedAt,
+      Value<bool> isDeleted,
+      Value<DateTime> createdAt,
+      Value<int> totalOrders,
+      Value<Decimal> totalSpent,
+      Value<DateTime?> lastOrderAt,
+      Value<DateTime> lastSyncedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedCustomersTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedCustomersTable> {
+  $$CachedCustomersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get addressLine1 => $composableBuilder(
+    column: $table.addressLine1,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actorId => $composableBuilder(
+    column: $table.actorId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get joinedAt => $composableBuilder(
+    column: $table.joinedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalOrders => $composableBuilder(
+    column: $table.totalOrders,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Decimal, Decimal, String> get totalSpent =>
+      $composableBuilder(
+        column: $table.totalSpent,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<DateTime> get lastOrderAt => $composableBuilder(
+    column: $table.lastOrderAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedCustomersTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedCustomersTable> {
+  $$CachedCustomersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get addressLine1 => $composableBuilder(
+    column: $table.addressLine1,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actorId => $composableBuilder(
+    column: $table.actorId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get joinedAt => $composableBuilder(
+    column: $table.joinedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalOrders => $composableBuilder(
+    column: $table.totalOrders,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get totalSpent => $composableBuilder(
+    column: $table.totalSpent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastOrderAt => $composableBuilder(
+    column: $table.lastOrderAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedCustomersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedCustomersTable> {
+  $$CachedCustomersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get addressLine1 => $composableBuilder(
+    column: $table.addressLine1,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get actorId =>
+      $composableBuilder(column: $table.actorId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get joinedAt =>
+      $composableBuilder(column: $table.joinedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get totalOrders => $composableBuilder(
+    column: $table.totalOrders,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<Decimal, String> get totalSpent =>
+      $composableBuilder(
+        column: $table.totalSpent,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<DateTime> get lastOrderAt => $composableBuilder(
+    column: $table.lastOrderAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$CachedCustomersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedCustomersTable,
+          CachedCustomer,
+          $$CachedCustomersTableFilterComposer,
+          $$CachedCustomersTableOrderingComposer,
+          $$CachedCustomersTableAnnotationComposer,
+          $$CachedCustomersTableCreateCompanionBuilder,
+          $$CachedCustomersTableUpdateCompanionBuilder,
+          (
+            CachedCustomer,
+            BaseReferences<
+              _$AppDatabase,
+              $CachedCustomersTable,
+              CachedCustomer
+            >,
+          ),
+          CachedCustomer,
+          PrefetchHooks Function()
+        > {
+  $$CachedCustomersTableTableManager(
+    _$AppDatabase db,
+    $CachedCustomersTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedCustomersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedCustomersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedCustomersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> phone = const Value.absent(),
+                Value<String?> email = const Value.absent(),
+                Value<String?> addressLine1 = const Value.absent(),
+                Value<String?> actorId = const Value.absent(),
+                Value<DateTime> joinedAt = const Value.absent(),
+                Value<DateTime> syncedAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> totalOrders = const Value.absent(),
+                Value<Decimal> totalSpent = const Value.absent(),
+                Value<DateTime?> lastOrderAt = const Value.absent(),
+                Value<DateTime> lastSyncedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedCustomersCompanion(
+                id: id,
+                businessId: businessId,
+                name: name,
+                phone: phone,
+                email: email,
+                addressLine1: addressLine1,
+                actorId: actorId,
+                joinedAt: joinedAt,
+                syncedAt: syncedAt,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+                createdAt: createdAt,
+                totalOrders: totalOrders,
+                totalSpent: totalSpent,
+                lastOrderAt: lastOrderAt,
+                lastSyncedAt: lastSyncedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String businessId,
+                required String name,
+                required String phone,
+                Value<String?> email = const Value.absent(),
+                Value<String?> addressLine1 = const Value.absent(),
+                Value<String?> actorId = const Value.absent(),
+                required DateTime joinedAt,
+                required DateTime syncedAt,
+                required DateTime updatedAt,
+                Value<bool> isDeleted = const Value.absent(),
+                required DateTime createdAt,
+                Value<int> totalOrders = const Value.absent(),
+                required Decimal totalSpent,
+                Value<DateTime?> lastOrderAt = const Value.absent(),
+                required DateTime lastSyncedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CachedCustomersCompanion.insert(
+                id: id,
+                businessId: businessId,
+                name: name,
+                phone: phone,
+                email: email,
+                addressLine1: addressLine1,
+                actorId: actorId,
+                joinedAt: joinedAt,
+                syncedAt: syncedAt,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+                createdAt: createdAt,
+                totalOrders: totalOrders,
+                totalSpent: totalSpent,
+                lastOrderAt: lastOrderAt,
+                lastSyncedAt: lastSyncedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedCustomersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedCustomersTable,
+      CachedCustomer,
+      $$CachedCustomersTableFilterComposer,
+      $$CachedCustomersTableOrderingComposer,
+      $$CachedCustomersTableAnnotationComposer,
+      $$CachedCustomersTableCreateCompanionBuilder,
+      $$CachedCustomersTableUpdateCompanionBuilder,
+      (
+        CachedCustomer,
+        BaseReferences<_$AppDatabase, $CachedCustomersTable, CachedCustomer>,
+      ),
+      CachedCustomer,
+      PrefetchHooks Function()
+    >;
+typedef $$CachedSuppliersTableCreateCompanionBuilder =
+    CachedSuppliersCompanion Function({
+      required String id,
+      required String businessId,
+      required String name,
+      Value<String?> phone,
+      Value<String?> email,
+      Value<String?> addressLine1,
+      Value<String?> notes,
+      required DateTime updatedAt,
+      Value<bool> isDeleted,
+      required DateTime createdAt,
+      required DateTime lastSyncedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedSuppliersTableUpdateCompanionBuilder =
+    CachedSuppliersCompanion Function({
+      Value<String> id,
+      Value<String> businessId,
+      Value<String> name,
+      Value<String?> phone,
+      Value<String?> email,
+      Value<String?> addressLine1,
+      Value<String?> notes,
+      Value<DateTime> updatedAt,
+      Value<bool> isDeleted,
+      Value<DateTime> createdAt,
+      Value<DateTime> lastSyncedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedSuppliersTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedSuppliersTable> {
+  $$CachedSuppliersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get addressLine1 => $composableBuilder(
+    column: $table.addressLine1,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedSuppliersTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedSuppliersTable> {
+  $$CachedSuppliersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get addressLine1 => $composableBuilder(
+    column: $table.addressLine1,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedSuppliersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedSuppliersTable> {
+  $$CachedSuppliersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get addressLine1 => $composableBuilder(
+    column: $table.addressLine1,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$CachedSuppliersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedSuppliersTable,
+          CachedSupplier,
+          $$CachedSuppliersTableFilterComposer,
+          $$CachedSuppliersTableOrderingComposer,
+          $$CachedSuppliersTableAnnotationComposer,
+          $$CachedSuppliersTableCreateCompanionBuilder,
+          $$CachedSuppliersTableUpdateCompanionBuilder,
+          (
+            CachedSupplier,
+            BaseReferences<
+              _$AppDatabase,
+              $CachedSuppliersTable,
+              CachedSupplier
+            >,
+          ),
+          CachedSupplier,
+          PrefetchHooks Function()
+        > {
+  $$CachedSuppliersTableTableManager(
+    _$AppDatabase db,
+    $CachedSuppliersTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedSuppliersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedSuppliersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedSuppliersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
+                Value<String?> email = const Value.absent(),
+                Value<String?> addressLine1 = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastSyncedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedSuppliersCompanion(
+                id: id,
+                businessId: businessId,
+                name: name,
+                phone: phone,
+                email: email,
+                addressLine1: addressLine1,
+                notes: notes,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+                createdAt: createdAt,
+                lastSyncedAt: lastSyncedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String businessId,
+                required String name,
+                Value<String?> phone = const Value.absent(),
+                Value<String?> email = const Value.absent(),
+                Value<String?> addressLine1 = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                required DateTime updatedAt,
+                Value<bool> isDeleted = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime lastSyncedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CachedSuppliersCompanion.insert(
+                id: id,
+                businessId: businessId,
+                name: name,
+                phone: phone,
+                email: email,
+                addressLine1: addressLine1,
+                notes: notes,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+                createdAt: createdAt,
+                lastSyncedAt: lastSyncedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedSuppliersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedSuppliersTable,
+      CachedSupplier,
+      $$CachedSuppliersTableFilterComposer,
+      $$CachedSuppliersTableOrderingComposer,
+      $$CachedSuppliersTableAnnotationComposer,
+      $$CachedSuppliersTableCreateCompanionBuilder,
+      $$CachedSuppliersTableUpdateCompanionBuilder,
+      (
+        CachedSupplier,
+        BaseReferences<_$AppDatabase, $CachedSuppliersTable, CachedSupplier>,
+      ),
+      CachedSupplier,
+      PrefetchHooks Function()
+    >;
+typedef $$CachedReordersTableCreateCompanionBuilder =
+    CachedReordersCompanion Function({
+      required String id,
+      required String businessId,
+      required String storeId,
+      required String itemId,
+      required String supplierId,
+      required Decimal quantity,
+      required String unit,
+      required Decimal unitCost,
+      required String status,
+      Value<String?> notes,
+      required DateTime orderedAt,
+      Value<String?> orderedBy,
+      Value<DateTime?> expectedAt,
+      Value<DateTime?> receivedAt,
+      Value<String?> receivedBy,
+      Value<DateTime?> cancelledAt,
+      Value<String?> cancelledBy,
+      required DateTime createdAt,
+      required DateTime lastSyncedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedReordersTableUpdateCompanionBuilder =
+    CachedReordersCompanion Function({
+      Value<String> id,
+      Value<String> businessId,
+      Value<String> storeId,
+      Value<String> itemId,
+      Value<String> supplierId,
+      Value<Decimal> quantity,
+      Value<String> unit,
+      Value<Decimal> unitCost,
+      Value<String> status,
+      Value<String?> notes,
+      Value<DateTime> orderedAt,
+      Value<String?> orderedBy,
+      Value<DateTime?> expectedAt,
+      Value<DateTime?> receivedAt,
+      Value<String?> receivedBy,
+      Value<DateTime?> cancelledAt,
+      Value<String?> cancelledBy,
+      Value<DateTime> createdAt,
+      Value<DateTime> lastSyncedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedReordersTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedReordersTable> {
+  $$CachedReordersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get storeId => $composableBuilder(
+    column: $table.storeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get supplierId => $composableBuilder(
+    column: $table.supplierId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Decimal, Decimal, String> get quantity =>
+      $composableBuilder(
+        column: $table.quantity,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get unit => $composableBuilder(
+    column: $table.unit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Decimal, Decimal, String> get unitCost =>
+      $composableBuilder(
+        column: $table.unitCost,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get orderedAt => $composableBuilder(
+    column: $table.orderedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get orderedBy => $composableBuilder(
+    column: $table.orderedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get expectedAt => $composableBuilder(
+    column: $table.expectedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get receivedAt => $composableBuilder(
+    column: $table.receivedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receivedBy => $composableBuilder(
+    column: $table.receivedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cancelledBy => $composableBuilder(
+    column: $table.cancelledBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedReordersTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedReordersTable> {
+  $$CachedReordersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get storeId => $composableBuilder(
+    column: $table.storeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get supplierId => $composableBuilder(
+    column: $table.supplierId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get unit => $composableBuilder(
+    column: $table.unit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get unitCost => $composableBuilder(
+    column: $table.unitCost,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get orderedAt => $composableBuilder(
+    column: $table.orderedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get orderedBy => $composableBuilder(
+    column: $table.orderedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get expectedAt => $composableBuilder(
+    column: $table.expectedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get receivedAt => $composableBuilder(
+    column: $table.receivedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receivedBy => $composableBuilder(
+    column: $table.receivedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cancelledBy => $composableBuilder(
+    column: $table.cancelledBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedReordersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedReordersTable> {
+  $$CachedReordersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get storeId =>
+      $composableBuilder(column: $table.storeId, builder: (column) => column);
+
+  GeneratedColumn<String> get itemId =>
+      $composableBuilder(column: $table.itemId, builder: (column) => column);
+
+  GeneratedColumn<String> get supplierId => $composableBuilder(
+    column: $table.supplierId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<Decimal, String> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<String> get unit =>
+      $composableBuilder(column: $table.unit, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<Decimal, String> get unitCost =>
+      $composableBuilder(column: $table.unitCost, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get orderedAt =>
+      $composableBuilder(column: $table.orderedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get orderedBy =>
+      $composableBuilder(column: $table.orderedBy, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get expectedAt => $composableBuilder(
+    column: $table.expectedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get receivedAt => $composableBuilder(
+    column: $table.receivedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get receivedBy => $composableBuilder(
+    column: $table.receivedBy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get cancelledBy => $composableBuilder(
+    column: $table.cancelledBy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$CachedReordersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedReordersTable,
+          CachedReorder,
+          $$CachedReordersTableFilterComposer,
+          $$CachedReordersTableOrderingComposer,
+          $$CachedReordersTableAnnotationComposer,
+          $$CachedReordersTableCreateCompanionBuilder,
+          $$CachedReordersTableUpdateCompanionBuilder,
+          (
+            CachedReorder,
+            BaseReferences<_$AppDatabase, $CachedReordersTable, CachedReorder>,
+          ),
+          CachedReorder,
+          PrefetchHooks Function()
+        > {
+  $$CachedReordersTableTableManager(
+    _$AppDatabase db,
+    $CachedReordersTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedReordersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedReordersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedReordersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String> storeId = const Value.absent(),
+                Value<String> itemId = const Value.absent(),
+                Value<String> supplierId = const Value.absent(),
+                Value<Decimal> quantity = const Value.absent(),
+                Value<String> unit = const Value.absent(),
+                Value<Decimal> unitCost = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<DateTime> orderedAt = const Value.absent(),
+                Value<String?> orderedBy = const Value.absent(),
+                Value<DateTime?> expectedAt = const Value.absent(),
+                Value<DateTime?> receivedAt = const Value.absent(),
+                Value<String?> receivedBy = const Value.absent(),
+                Value<DateTime?> cancelledAt = const Value.absent(),
+                Value<String?> cancelledBy = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastSyncedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedReordersCompanion(
+                id: id,
+                businessId: businessId,
+                storeId: storeId,
+                itemId: itemId,
+                supplierId: supplierId,
+                quantity: quantity,
+                unit: unit,
+                unitCost: unitCost,
+                status: status,
+                notes: notes,
+                orderedAt: orderedAt,
+                orderedBy: orderedBy,
+                expectedAt: expectedAt,
+                receivedAt: receivedAt,
+                receivedBy: receivedBy,
+                cancelledAt: cancelledAt,
+                cancelledBy: cancelledBy,
+                createdAt: createdAt,
+                lastSyncedAt: lastSyncedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String businessId,
+                required String storeId,
+                required String itemId,
+                required String supplierId,
+                required Decimal quantity,
+                required String unit,
+                required Decimal unitCost,
+                required String status,
+                Value<String?> notes = const Value.absent(),
+                required DateTime orderedAt,
+                Value<String?> orderedBy = const Value.absent(),
+                Value<DateTime?> expectedAt = const Value.absent(),
+                Value<DateTime?> receivedAt = const Value.absent(),
+                Value<String?> receivedBy = const Value.absent(),
+                Value<DateTime?> cancelledAt = const Value.absent(),
+                Value<String?> cancelledBy = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime lastSyncedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CachedReordersCompanion.insert(
+                id: id,
+                businessId: businessId,
+                storeId: storeId,
+                itemId: itemId,
+                supplierId: supplierId,
+                quantity: quantity,
+                unit: unit,
+                unitCost: unitCost,
+                status: status,
+                notes: notes,
+                orderedAt: orderedAt,
+                orderedBy: orderedBy,
+                expectedAt: expectedAt,
+                receivedAt: receivedAt,
+                receivedBy: receivedBy,
+                cancelledAt: cancelledAt,
+                cancelledBy: cancelledBy,
+                createdAt: createdAt,
+                lastSyncedAt: lastSyncedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedReordersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedReordersTable,
+      CachedReorder,
+      $$CachedReordersTableFilterComposer,
+      $$CachedReordersTableOrderingComposer,
+      $$CachedReordersTableAnnotationComposer,
+      $$CachedReordersTableCreateCompanionBuilder,
+      $$CachedReordersTableUpdateCompanionBuilder,
+      (
+        CachedReorder,
+        BaseReferences<_$AppDatabase, $CachedReordersTable, CachedReorder>,
+      ),
+      CachedReorder,
+      PrefetchHooks Function()
+    >;
 typedef $$LocalAuditLogTableCreateCompanionBuilder =
     LocalAuditLogCompanion Function({
       Value<int> id,
@@ -19643,6 +25027,14 @@ class $AppDatabaseManager {
       $$CachedOtherExpensesTableTableManager(_db, _db.cachedOtherExpenses);
   $$CachedOtherIncomesTableTableManager get cachedOtherIncomes =>
       $$CachedOtherIncomesTableTableManager(_db, _db.cachedOtherIncomes);
+  $$CustomerEntriesTableTableManager get customerEntries =>
+      $$CustomerEntriesTableTableManager(_db, _db.customerEntries);
+  $$CachedCustomersTableTableManager get cachedCustomers =>
+      $$CachedCustomersTableTableManager(_db, _db.cachedCustomers);
+  $$CachedSuppliersTableTableManager get cachedSuppliers =>
+      $$CachedSuppliersTableTableManager(_db, _db.cachedSuppliers);
+  $$CachedReordersTableTableManager get cachedReorders =>
+      $$CachedReordersTableTableManager(_db, _db.cachedReorders);
   $$LocalAuditLogTableTableManager get localAuditLog =>
       $$LocalAuditLogTableTableManager(_db, _db.localAuditLog);
 }

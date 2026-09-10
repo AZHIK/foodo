@@ -51,6 +51,7 @@ class PendingSaleWriter {
           storeId: storeId,
           discountAmount: Value(Decimal.parse(order.discount.toStringAsFixed(2))),
           paymentMethod: paymentMethodToBackend(order.paymentType),
+          customerId: Value(order.customerId),
           occurredAt: order.placedAt,
           localOrderId: Value(order.id),
           createdAt: DateTime.now(),

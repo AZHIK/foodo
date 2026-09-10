@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/customer.dart';
+import '../../models/permission.dart';
 import '../../providers/customers_provider.dart';
+import '../../providers/permissions_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/formatters.dart';
@@ -24,16 +26,23 @@ class CustomersScreen extends ConsumerWidget {
     final slice = ref.watch(customersSliceProvider);
     final summary = ref.watch(customerSummaryProvider);
     final notifier = ref.read(customersQueryProvider.notifier);
+    final canCreate = ref.watch(hasPermissionProvider(AppPermissions.customersCreate));
+    final canUpdate = ref.watch(hasPermissionProvider(AppPermissions.customersUpdate));
+    final canDelete = ref.watch(hasPermissionProvider(AppPermissions.customersDelete));
 
     return DataPageScaffold(
       title: 'Customers',
       subtitle: 'All customer profiles and order history',
       actions: [],
-      primaryAction: FilledButton.icon(
-        onPressed: () => showCustomerFormDialog(context),
-        icon: const Icon(Icons.add_rounded, size: 18),
-        label: const Text('Add customer'),
-      ),
+      // Hidden rather than shown-disabled: someone who can't add customers
+      // shouldn't see a control that only ever 403s.
+      primaryAction: !canCreate
+          ? null
+          : FilledButton.icon(
+              onPressed: () => showCustomerFormDialog(context),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('Add customer'),
+            ),
       metrics: [
         SummaryMetricCard(
           label: 'Total customers',
@@ -82,31 +91,37 @@ class CustomersScreen extends ConsumerWidget {
         onPageChanged: notifier.setPage,
         onRowTap: (customer) =>
             context.go(AppRoute.customerDetail(customer.id)),
-        rowActions: _actions(ref),
+        rowActions: _actions(ref, canUpdate: canUpdate, canDelete: canDelete),
       ),
     );
   }
 
-  List<DataRowAction<Customer>> _actions(WidgetRef ref) => [
+  List<DataRowAction<Customer>> _actions(
+    WidgetRef ref, {
+    required bool canUpdate,
+    required bool canDelete,
+  }) => [
     DataRowAction(
       label: 'View detail',
       icon: Icons.open_in_new_rounded,
       onSelected: (context, customer) =>
           context.go(AppRoute.customerDetail(customer.id)),
     ),
-    DataRowAction(
-      label: 'Edit',
-      icon: Icons.edit_outlined,
-      onSelected: (context, customer) =>
-          showCustomerFormDialog(context, existingCustomer: customer),
-    ),
-    DataRowAction(
-      label: 'Delete',
-      icon: Icons.delete_outline_rounded,
-      isDestructive: true,
-      onSelected: (context, customer) =>
-          _confirmDelete(context, ref, customer),
-    ),
+    if (canUpdate)
+      DataRowAction(
+        label: 'Edit',
+        icon: Icons.edit_outlined,
+        onSelected: (context, customer) =>
+            showCustomerFormDialog(context, existingCustomer: customer),
+      ),
+    if (canDelete)
+      DataRowAction(
+        label: 'Delete',
+        icon: Icons.delete_outline_rounded,
+        isDestructive: true,
+        onSelected: (context, customer) =>
+            _confirmDelete(context, ref, customer),
+      ),
   ];
 
   Future<void> _confirmDelete(
@@ -136,10 +151,13 @@ class CustomersScreen extends ConsumerWidget {
 
     if (confirmed != true || !context.mounted) return;
 
-    ref.read(customersProvider.notifier).delete(customer.id);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${customer.name} deleted')),
-    );
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(customersProvider.notifier).delete(customer.id);
+      messenger.showSnackBar(SnackBar(content: Text('${customer.name} deleted')));
+    } on CustomerOfflineMutationException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 }
 

@@ -12,6 +12,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.config import get_settings
 from app.core.events import publish_event
 from app.core.exceptions import DomainError
+from app.models.customers import Customer
 from app.models.pos import PaymentMethod, Sale, SaleLineItem, SaleStatus
 from app.schemas.line_items import SaleLineItemInput
 from app.schemas.sales import (
@@ -55,6 +56,27 @@ def detect_time_drift(
     if occurred_at > now + timedelta(minutes=settings.time_drift_future_tolerance_minutes):
         return True
     return False
+
+
+async def _validate_customer_belongs_to_business(
+    session: AsyncSession,
+    business_id: UUID,
+    customer_id: UUID,
+) -> None:
+    """A sale's ``customer_id`` must exist, belong to this business, and not
+    be soft-deleted.
+
+    Defined here rather than imported from ``app/services/customer_service.py``
+    to avoid a circular import — that module already imports
+    ``detect_time_drift`` from this one.
+    """
+    customer = (
+        await session.exec(select(Customer).where(Customer.id == customer_id))
+    ).first()
+    if customer is None or customer.business_id != business_id:
+        raise SaleValidationError("customer_id does not exist for this business")
+    if customer.is_deleted:
+        raise SaleValidationError("customer_id refers to a deleted customer")
 
 
 async def sync_sale_batch(
@@ -133,6 +155,11 @@ async def _create_sale_internal(
             f"void_or_refund_reason is required when status is {sale_input.status}"
         )
 
+    if sale_input.customer_id is not None:
+        await _validate_customer_belongs_to_business(
+            session, business_id, sale_input.customer_id,
+        )
+
     subtotal = sum(
         li.quantity * li.unit_price for li in sale_input.line_items
     )
@@ -159,6 +186,7 @@ async def _create_sale_internal(
         total=total,
         payment_method=PaymentMethod(sale_input.payment_method),
         actor_id=actor_id,
+        customer_id=sale_input.customer_id,
         occurred_at=sale_input.occurred_at,
         device_sequence=sale_input.device_sequence,
         is_time_suspect=is_time_suspect,

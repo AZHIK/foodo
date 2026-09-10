@@ -11,8 +11,8 @@ import '../screens/auth/pin_unlock_screen.dart';
 import '../screens/auth/profile_picker_screen.dart';
 import '../screens/auth/set_pin_screen.dart';
 import '../screens/auth/splash_screen.dart';
-import '../screens/customers/customers_screen.dart';
-import '../screens/customers/customer_detail_screen.dart';
+import '../screens/customers/customers_screen_gated.dart';
+import '../screens/customers/customer_detail_screen_gated.dart';
 import '../screens/dashboard/dashboard_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/order_detail/order_detail_screen.dart';
@@ -20,7 +20,8 @@ import '../screens/inventory/inventory_groceries_screen_gated.dart';
 import '../screens/inventory/inventory_menu_items_screen_gated.dart';
 import '../screens/insights/ai_insights_screen.dart';
 import '../screens/inventory/item_detail_screen.dart';
-import '../screens/inventory/reorders_screen.dart';
+import '../screens/inventory/reorders_screen_gated.dart';
+import '../screens/suppliers/suppliers_screen_gated.dart';
 import '../screens/placeholder/module_placeholder_screen.dart';
 import '../screens/pos/pos_screen.dart';
 import '../screens/sales/couriers_screen.dart';
@@ -198,6 +199,9 @@ abstract final class AppRoute {
   static const reordersPath = '/reorders';
   static const reordersName = 'reorders';
 
+  static const suppliersPath = '/suppliers';
+  static const suppliersName = 'suppliers';
+
   static const couriersPath = '/couriers';
   static const couriersName = 'couriers';
 }
@@ -219,6 +223,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   );
   final reordersNavigatorKey = GlobalKey<NavigatorState>(
     debugLabel: 'reorders',
+  );
+  final suppliersNavigatorKey = GlobalKey<NavigatorState>(
+    debugLabel: 'suppliers',
   );
   final couriersNavigatorKey = GlobalKey<NavigatorState>(
     debugLabel: 'couriers',
@@ -345,12 +352,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoute.customersPath,
                 name: AppRoute.customersName,
-                builder: (context, state) => const CustomersScreen(),
+                builder: (context, state) => const CustomersScreenGated(),
                 routes: [
                   GoRoute(
                     path: AppRoute.customerDetailPath,
                     name: AppRoute.customerDetailName,
-                    builder: (context, state) => CustomerDetailScreen(
+                    builder: (context, state) => CustomerDetailScreenGated(
                       customerId: state.pathParameters['customerId']!,
                     ),
                   ),
@@ -364,7 +371,17 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoute.reordersPath,
                 name: AppRoute.reordersName,
-                builder: (context, state) => const ReordersScreen(),
+                builder: (context, state) => const ReordersScreenGated(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: suppliersNavigatorKey,
+            routes: [
+              GoRoute(
+                path: AppRoute.suppliersPath,
+                name: AppRoute.suppliersName,
+                builder: (context, state) => const SuppliersScreenGated(),
               ),
             ],
           ),

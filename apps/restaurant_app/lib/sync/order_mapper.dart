@@ -121,5 +121,6 @@ Order orderFromCachedRow({
     status: orderStatusFromBackend(sale.status),
     taxRate: taxableAmount > 0 ? taxAmount / taxableAmount : 0,
     discountRate: subtotal > 0 ? discountAmount / subtotal : 0,
+    customerId: sale.customerId,
   );
 }

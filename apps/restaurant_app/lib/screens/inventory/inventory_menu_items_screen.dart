@@ -180,7 +180,11 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
     DataRowAction(
       label: 'Create reorder',
       icon: Icons.shopping_cart_outlined,
-      isEnabled: (item) => item.trackStock,
+      // A sellable-only item can never be purchase-received (see
+      // `services/inventory-service/app/services/stock_movement_service.py`'s
+      // `_COMPATIBILITY_RULES`) — reordering it would always fail at
+      // receive time, so it's disabled here rather than offered.
+      isEnabled: (item) => item.trackStock && item.itemType != 'sellable',
       onSelected: (context, item) => showReorderDialog(context, item),
     ),
     DataRowAction(

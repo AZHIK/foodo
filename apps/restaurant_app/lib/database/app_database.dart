@@ -83,6 +83,26 @@
 /// `CachedOtherExpenses`/`CachedOtherIncomes` (the finance-side analogue of
 /// `CachedSales`). `paymentMethod` is added with a `'other'` default since
 /// SQLite requires one for a non-nullable `addColumn` on existing rows.
+///
+/// v7 connects the Customers module to a real backend (POS Service's
+/// `customers`, migration `e5f6a7b8c9d0`) and wires the POS checkout flow
+/// to attribute sales to a customer: adds the outbox `CustomerEntries` and
+/// the pull-side cache `CachedCustomers` (business-scoped, not
+/// store-scoped — see `customer_entries.dart`'s doc comment on why a
+/// customer's id is client-generated and IS its server primary key, unlike
+/// every other synced entity), and adds a nullable `customerId` column to
+/// both `PendingSales` and `CachedSales` so a sale can carry its
+/// attribution end to end. Both new sale columns are nullable, so no
+/// SQLite default is needed here (unlike v6's `paymentMethod`).
+///
+/// v8 connects the Reorders module to a real backend (Inventory Service's
+/// `suppliers`/`reorders`, migration `e4f5a6b7c8d9`): adds two pull-only
+/// cache tables, `CachedSuppliers` (business-scoped) and `CachedReorders`
+/// (store-scoped). Unlike every prior sync-connected module, neither gets
+/// an outbox table — Inventory Service writes have always gone direct to
+/// the API with no offline queue (see `InventoryNotifier`'s doc comment in
+/// `inventory_provider.dart`), and Suppliers/Reorders follow that same
+/// convention rather than Finance/Customers' outbox pattern.
 library;
 
 import 'package:decimal/decimal.dart';
@@ -103,6 +123,10 @@ import 'tables/expense_entries.dart';
 import 'tables/other_income_entries.dart';
 import 'tables/cached_other_expenses.dart';
 import 'tables/cached_other_incomes.dart';
+import 'tables/customer_entries.dart';
+import 'tables/cached_customers.dart';
+import 'tables/cached_suppliers.dart';
+import 'tables/cached_reorders.dart';
 import 'tables/local_audit_log.dart';
 
 part 'app_database.g.dart';
@@ -124,6 +148,10 @@ part 'app_database.g.dart';
   OtherIncomeEntries,
   CachedOtherExpenses,
   CachedOtherIncomes,
+  CustomerEntries,
+  CachedCustomers,
+  CachedSuppliers,
+  CachedReorders,
   LocalAuditLog,
 ])
 class AppDatabase extends _$AppDatabase {
@@ -131,7 +159,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.connection);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -210,6 +238,16 @@ class AppDatabase extends _$AppDatabase {
           otherIncomeEntries.localReceiptPath,
         );
         await m.addColumn(otherIncomeEntries, otherIncomeEntries.serverId);
+      }
+      if (from < 7) {
+        await m.createTable(customerEntries);
+        await m.createTable(cachedCustomers);
+        await m.addColumn(pendingSales, pendingSales.customerId);
+        await m.addColumn(cachedSales, cachedSales.customerId);
+      }
+      if (from < 8) {
+        await m.createTable(cachedSuppliers);
+        await m.createTable(cachedReorders);
       }
     },
     beforeOpen: (details) async {

@@ -71,6 +71,12 @@ const _destinations = <NavDestinationSpec>[
     requiredPermission: AppPermissions.reordersView,
   ),
   NavDestinationSpec(
+    label: 'Suppliers',
+    icon: Icons.storefront_outlined,
+    selectedIcon: Icons.storefront_rounded,
+    requiredPermission: AppPermissions.suppliersView,
+  ),
+  NavDestinationSpec(
     label: 'Couriers',
     icon: Icons.two_wheeler_outlined,
     selectedIcon: Icons.two_wheeler_rounded,

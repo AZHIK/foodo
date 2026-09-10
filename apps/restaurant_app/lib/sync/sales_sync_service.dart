@@ -58,6 +58,7 @@ class SalesSyncService {
             total: Value(sale.total),
             paymentMethod: Value(sale.paymentMethod),
             actorId: Value(sale.actorId),
+            customerId: Value(sale.customerId),
             occurredAt: Value(sale.occurredAt),
             syncedAt: Value(sale.syncedAt),
             voidedAt: Value(sale.voidedAt),

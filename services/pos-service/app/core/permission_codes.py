@@ -45,6 +45,12 @@ class PermissionCode(StrEnum):
     FINANCE_INCOMES_DELETE = "finance.incomes.delete"
     FINANCE_ATTACHMENTS_UPLOAD = "finance.attachments.upload"
 
+    # ── Customers ──────────────────────────────
+    CUSTOMERS_VIEW = "customers.view"
+    CUSTOMERS_CREATE = "customers.create"
+    CUSTOMERS_UPDATE = "customers.update"
+    CUSTOMERS_DELETE = "customers.delete"
+
     # ── Inventory (cross-service reference) ────
     INVENTORY_VIEW = "inventory.view"
     INVENTORY_ADJUST = "inventory.adjust"
@@ -53,6 +59,17 @@ class PermissionCode(StrEnum):
     INVENTORY_ITEMS_DEACTIVATE = "inventory.items.deactivate"
     INVENTORY_WASTE_RECORD = "inventory.waste.record"
     INVENTORY_TRANSFER = "inventory.transfer"
+
+    # ── Reorders / Suppliers (cross-service reference — enforced by
+    # Inventory Service) ────────────────────────
+    REORDERS_VIEW = "reorders.view"
+    REORDERS_CREATE = "reorders.create"
+    REORDERS_RECEIVE = "reorders.receive"
+    REORDERS_CANCEL = "reorders.cancel"
+    SUPPLIERS_VIEW = "suppliers.view"
+    SUPPLIERS_CREATE = "suppliers.create"
+    SUPPLIERS_UPDATE = "suppliers.update"
+    SUPPLIERS_DELETE = "suppliers.delete"
 
     # ── Procurement ────────────────────────────
     PROCUREMENT_CREATE = "procurement.create"

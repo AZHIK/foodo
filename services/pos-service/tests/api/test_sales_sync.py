@@ -253,6 +253,86 @@ class TestSyncEndpoint:
         )
         assert resp.status_code == 403
 
+    async def test_customer_id_round_trips_through_sync_and_read(
+        self, client: AsyncClient,
+    ) -> None:
+        """A sale synced with a customer_id carries it through GET reads too
+        — see tests/api/test_customers.py for the full customer-linkage and
+        aggregate-correctness coverage; this just guards the sales-side
+        schemas (SaleSyncInput/SaleRead) don't regress independently."""
+        business_id = uuid4()
+        headers = _auth_header(
+            business_id=business_id, permissions=["pos.write", "pos.view", "customers.create"],
+        )
+        customer_id = uuid4()
+        await client.post(
+            f"/api/v1/businesses/{business_id}/customers/sync",
+            json={"customers": [{
+                "id": str(customer_id),
+                "name": "Jane Doe",
+                "phone": "+1-555-0100",
+                "joined_at": datetime.now(UTC).isoformat(),
+            }]},
+            headers=headers,
+        )
+
+        client_sale_id = str(uuid4())
+        payload = {
+            "sales": [
+                {
+                    "client_sale_id": client_sale_id,
+                    "status": "completed",
+                    "store_id": str(uuid4()),
+                    "line_items": [
+                        {"item_id": str(uuid4()), "quantity": "1", "unit_price": "5.00"},
+                    ],
+                    "discount_amount": "0",
+                    "payment_method": "cash",
+                    "customer_id": str(customer_id),
+                    "occurred_at": datetime.now(UTC).isoformat(),
+                },
+            ],
+        }
+        sync_resp = await client.post(
+            SYNC_URL.format(business_id=business_id), json=payload, headers=headers,
+        )
+        assert sync_resp.json()["results"][0]["status"] == "created"
+
+        read_resp = await client.get(
+            BY_CLIENT_URL.format(business_id=business_id, client_sale_id=client_sale_id),
+            headers=headers,
+        )
+        assert read_resp.json()["customer_id"] == str(customer_id)
+
+    async def test_sale_with_no_customer_id_reads_back_null(
+        self, client: AsyncClient,
+    ) -> None:
+        business_id = uuid4()
+        headers = _auth_header(business_id=business_id, permissions=["pos.write", "pos.view"])
+        client_sale_id = str(uuid4())
+        payload = {
+            "sales": [
+                {
+                    "client_sale_id": client_sale_id,
+                    "status": "completed",
+                    "store_id": str(uuid4()),
+                    "line_items": [
+                        {"item_id": str(uuid4()), "quantity": "1", "unit_price": "5.00"},
+                    ],
+                    "discount_amount": "0",
+                    "payment_method": "cash",
+                    "occurred_at": datetime.now(UTC).isoformat(),
+                },
+            ],
+        }
+        await client.post(SYNC_URL.format(business_id=business_id), json=payload, headers=headers)
+
+        read_resp = await client.get(
+            BY_CLIENT_URL.format(business_id=business_id, client_sale_id=client_sale_id),
+            headers=headers,
+        )
+        assert read_resp.json()["customer_id"] is None
+
 
 class TestGetSaleEndpoint:
     """GET /businesses/{business_id}/sales/{sale_id}"""

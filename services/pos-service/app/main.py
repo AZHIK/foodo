@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.endpoints import (
+    customers,
     finance_attachments,
     other_expenses,
     other_incomes,
@@ -59,3 +60,4 @@ app.include_router(void_refund.router, prefix="/api/v1")
 app.include_router(other_expenses.router, prefix="/api/v1")
 app.include_router(other_incomes.router, prefix="/api/v1")
 app.include_router(finance_attachments.router, prefix="/api/v1")
+app.include_router(customers.router, prefix="/api/v1")

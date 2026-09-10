@@ -3,6 +3,7 @@
 /// Verifies batch processing, partial failure handling, idempotency, and retry logic.
 library;
 
+import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:restaurant_pos/database/app_database.dart';
@@ -182,6 +183,44 @@ void main() {
       // Verify it's now synced.
       sales = await database.select(database.pendingSales).get();
       expect(sales.first.syncStatus, 'synced');
+    });
+
+    test('carries customerId onto the built PendingSaleDto', () async {
+      final now = DateTime.now();
+
+      await database.into(database.pendingSales).insert(
+            PendingSalesCompanion.insert(
+              clientSaleId: 'sale-with-customer',
+              status: 'completed',
+              storeId: 'loc-1',
+              paymentMethod: 'cash',
+              occurredAt: now,
+              createdAt: now,
+              customerId: const Value('cust-uuid-1'),
+            ),
+          );
+      await database.into(database.pendingSales).insert(
+            PendingSalesCompanion.insert(
+              clientSaleId: 'sale-without-customer',
+              status: 'completed',
+              storeId: 'loc-1',
+              paymentMethod: 'cash',
+              occurredAt: now,
+              createdAt: now,
+            ),
+          );
+
+      final api = FakeSyncApi();
+      final service = SyncService(db: database, api: api);
+      await service.syncNow();
+
+      final builtDtos = api.capturedBatches.expand((batch) => batch).toList();
+      final withCustomer = builtDtos.firstWhere((d) => d.clientSaleId == 'sale-with-customer');
+      final withoutCustomer =
+          builtDtos.firstWhere((d) => d.clientSaleId == 'sale-without-customer');
+
+      expect(withCustomer.customerId, 'cust-uuid-1');
+      expect(withoutCustomer.customerId, null);
     });
   });
 }

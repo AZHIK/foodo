@@ -84,6 +84,7 @@ class HttpPosCatalogApi extends PosCatalogApi {
         total: Decimal.parse(sale['total'].toString()),
         paymentMethod: sale['payment_method'] as String,
         actorId: sale['actor_id'] as String?,
+        customerId: sale['customer_id'] as String?,
         occurredAt: DateTime.parse(sale['occurred_at'] as String),
         syncedAt: DateTime.parse(sale['synced_at'] as String),
         voidedAt: sale['voided_at'] != null

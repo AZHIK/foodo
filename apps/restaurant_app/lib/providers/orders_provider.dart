@@ -12,10 +12,12 @@ import '../models/order.dart';
 import '../models/order_totals.dart';
 import '../models/table_query.dart';
 import '../services/pos_api_service.dart';
+import '../sync/customer_sync_service.dart';
 import '../sync/order_mapper.dart';
 import '../sync/pending_sale_writer.dart';
 import '../sync/sales_sync_service.dart';
 import '../sync/sync_service.dart';
+import 'customer_api_provider.dart';
 import 'database_providers.dart';
 import 'permissions_provider.dart';
 import 'pos_api_provider.dart';
@@ -170,6 +172,7 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
     OrderType orderType = OrderType.dineIn,
     String? tableLabel,
     String serverName = 'House',
+    String? customerId,
   }) {
     final current = state.valueOrNull ?? const <Order>[];
     final order = Order.fromCart(
@@ -180,6 +183,7 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
       orderType: orderType,
       tableLabel: tableLabel,
       serverName: serverName,
+      customerId: customerId,
     );
     state = AsyncData([order, ...current]);
 
@@ -187,7 +191,8 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
     if (storeId != null) {
       final db = ref.read(appDatabaseProvider);
       final syncService = ref.read(syncServiceProvider);
-      unawaited(_writeAndSync(db, order, storeId, syncService));
+      final customerSyncService = ref.read(customerSyncServiceProvider);
+      unawaited(_writeAndSync(db, order, storeId, syncService, customerSyncService));
     }
 
     return order;
@@ -198,9 +203,16 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
     Order order,
     String storeId,
     SyncService syncService,
+    CustomerSyncService customerSyncService,
   ) async {
     final written = await PendingSaleWriter(db).writeIfMappable(order, storeId: storeId);
-    if (written) unawaited(syncService.syncNow());
+    if (!written) return;
+    // Customers MUST drain before sales: a sale carrying a customer_id
+    // whose row hasn't reached the server yet fails its FK insert
+    // server-side and has to retry — draining in order avoids that extra
+    // round trip (see `CustomerSyncService`'s doc comment).
+    await customerSyncService.syncNow();
+    unawaited(syncService.syncNow());
   }
 
   Future<void> refund(String orderId, {required String reason}) =>

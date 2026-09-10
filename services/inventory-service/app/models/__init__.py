@@ -17,6 +17,8 @@ from app.models.inventory import (
     StockMovement,
     UnitOfMeasure,
 )
+from app.models.reorders import Reorder, ReorderStatus
+from app.models.suppliers import Supplier
 
 __all__ = [
     "ActorType",
@@ -25,7 +27,10 @@ __all__ = [
     "MovementType",
     "ProcessedEvent",
     "RecipeComponent",
+    "Reorder",
+    "ReorderStatus",
     "StockLevel",
     "StockMovement",
+    "Supplier",
     "UnitOfMeasure",
 ]

@@ -26,6 +26,7 @@ class SaleDto {
   final Decimal total;
   final String paymentMethod;
   final String? actorId;
+  final String? customerId;
   final DateTime occurredAt;
   final DateTime syncedAt;
   final DateTime? voidedAt;
@@ -45,6 +46,7 @@ class SaleDto {
     required this.total,
     required this.paymentMethod,
     this.actorId,
+    this.customerId,
     required this.occurredAt,
     required this.syncedAt,
     this.voidedAt,

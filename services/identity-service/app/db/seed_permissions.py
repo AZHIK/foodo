@@ -149,6 +149,68 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
         "Attach receipts",
         "Upload a receipt attachment for an expense or income entry.",
     ),
+    # Customers (enforced by POS Service)
+    PermissionSeed(
+        PermissionCode.CUSTOMERS_VIEW,
+        "View customers",
+        "Browse the customer list, profiles, and order history.",
+    ),
+    PermissionSeed(
+        PermissionCode.CUSTOMERS_CREATE,
+        "Add customers",
+        "Create a new customer record, including from the checkout flow.",
+    ),
+    PermissionSeed(
+        PermissionCode.CUSTOMERS_UPDATE,
+        "Edit customers",
+        "Change a customer's name, phone, email, or address.",
+    ),
+    PermissionSeed(
+        PermissionCode.CUSTOMERS_DELETE,
+        "Delete customers",
+        "Remove a customer record.",
+    ),
+    # Reorders / Suppliers
+    PermissionSeed(
+        PermissionCode.REORDERS_VIEW,
+        "View reorders",
+        "Browse purchase orders placed with suppliers to restock inventory.",
+    ),
+    PermissionSeed(
+        PermissionCode.REORDERS_CREATE,
+        "Create reorders",
+        "Place a new purchase order for a raw-material or dual-use item.",
+    ),
+    PermissionSeed(
+        PermissionCode.REORDERS_RECEIVE,
+        "Receive reorders",
+        "Mark a pending reorder received, adding the ordered quantity to stock.",
+    ),
+    PermissionSeed(
+        PermissionCode.REORDERS_CANCEL,
+        "Cancel reorders",
+        "Cancel a pending reorder before it is received.",
+    ),
+    PermissionSeed(
+        PermissionCode.SUPPLIERS_VIEW,
+        "View suppliers",
+        "Browse the supplier list.",
+    ),
+    PermissionSeed(
+        PermissionCode.SUPPLIERS_CREATE,
+        "Add suppliers",
+        "Create a new supplier record, including from the reorder flow.",
+    ),
+    PermissionSeed(
+        PermissionCode.SUPPLIERS_UPDATE,
+        "Edit suppliers",
+        "Change a supplier's name or contact details.",
+    ),
+    PermissionSeed(
+        PermissionCode.SUPPLIERS_DELETE,
+        "Delete suppliers",
+        "Remove a supplier record.",
+    ),
     # Users (platform staff)
     PermissionSeed(
         PermissionCode.USERS_VIEW,

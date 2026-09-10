@@ -4,26 +4,41 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:restaurant_pos/main.dart';
 import 'package:restaurant_pos/models/order.dart';
+import 'package:restaurant_pos/models/permission.dart';
 import 'package:restaurant_pos/providers/cart_provider.dart';
+import 'package:restaurant_pos/providers/order_session_provider.dart';
 import 'package:restaurant_pos/providers/orders_provider.dart';
+import 'package:restaurant_pos/providers/permissions_provider.dart';
 import 'package:restaurant_pos/providers/settings_provider.dart';
 import 'package:restaurant_pos/router/app_router.dart';
 import 'package:restaurant_pos/utils/formatters.dart';
 import 'package:restaurant_pos/widgets/pos/charge_dialog.dart';
+import 'package:restaurant_pos/widgets/pos/customer_picker.dart';
 import 'package:restaurant_pos/widgets/pos/menu_item_card.dart';
 import 'package:restaurant_pos/widgets/selectable_option_card.dart';
 
 import 'test_helpers/test_container.dart';
 
+/// Grants exactly [codes] via [hasPermissionProvider] — a plain family
+/// override, since none of these tests need a real signed-in session (see
+/// `newTestContainer()`'s doc comment on why POS/demo tests skip auth
+/// entirely).
+Override _grantedPermissions(Set<String> codes) =>
+    hasPermissionProvider.overrideWith((ref, code) => codes.contains(code));
+
 void main() {
   /// Pumps the POS screen at [size] with one item already rung up, and opens
   /// the take-payment dialog.
-  Future<ProviderContainer> openDialog(WidgetTester tester, Size size) async {
+  Future<ProviderContainer> openDialog(
+    WidgetTester tester,
+    Size size, {
+    List<Override> overrides = const [],
+  }) async {
     addTearDown(tester.view.reset);
     tester.view.physicalSize = size * tester.view.devicePixelRatio;
     tester.view.devicePixelRatio = tester.view.devicePixelRatio;
 
-    final container = newTestContainer();
+    final container = newTestContainer(extraOverrides: overrides);
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -280,4 +295,109 @@ void main() {
       expect(find.text('Change due'), findsOneWidget);
     });
   }
+
+  group('customer attribution', () {
+    /// The Customer section's "Walk-in — attach a customer" button, scoped
+    /// to the dialog so it can't collide with anything else in the tree.
+    Finder attachCustomerButton() => find.descendant(
+      of: find.byType(ChargeDialog),
+      matching: find.text('Walk-in — attach a customer'),
+    );
+
+    testWidgets('the Customer section is hidden without customers.view', (tester) async {
+      await openDialog(tester, const Size(1440, 900), overrides: [_grantedPermissions(const {})]);
+
+      expect(find.byType(CustomerPickerField), findsNothing);
+    });
+
+    testWidgets('the Customer section shows with customers.view', (tester) async {
+      await openDialog(
+        tester,
+        const Size(1440, 900),
+        overrides: [_grantedPermissions({AppPermissions.customersView})],
+      );
+
+      expect(find.byType(CustomerPickerField), findsOneWidget);
+      expect(attachCustomerButton(), findsOneWidget);
+    });
+
+    testWidgets("'Add new customer' is hidden without customers.create", (tester) async {
+      await openDialog(
+        tester,
+        const Size(1440, 900),
+        overrides: [_grantedPermissions({AppPermissions.customersView})],
+      );
+
+      await tester.tap(attachCustomerButton());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Attach a customer'), findsOneWidget); // the picker dialog itself
+      expect(find.text('Add new customer'), findsNothing);
+    });
+
+    testWidgets("'Add new customer' shows with customers.create", (tester) async {
+      await openDialog(
+        tester,
+        const Size(1440, 900),
+        overrides: [
+          _grantedPermissions({AppPermissions.customersView, AppPermissions.customersCreate}),
+        ],
+      );
+
+      await tester.tap(attachCustomerButton());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add new customer'), findsOneWidget);
+    });
+
+    testWidgets('picking a customer attributes the charged sale to them', (tester) async {
+      final container = await openDialog(
+        tester,
+        const Size(1440, 900),
+        overrides: [_grantedPermissions({AppPermissions.customersView})],
+      );
+
+      await tester.tap(attachCustomerButton());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Alice Johnson'));
+      await tester.pumpAndSettle();
+
+      // The field now shows who the ticket is attached to.
+      expect(find.byType(ChargeDialog), findsOneWidget);
+      expect(find.text('Alice Johnson'), findsOneWidget);
+      expect(container.read(selectedCustomerIdProvider), 'cus-01');
+
+      await tester.enterText(tenderField(), '100');
+      await tester.pumpAndSettle();
+      await tester.tap(chargeButton());
+      await tester.pumpAndSettle();
+
+      final order = container.read(ordersListProvider).first;
+      expect(order.customerId, 'cus-01');
+      // Reset for the next ticket — a new customer must not silently
+      // inherit the last one.
+      expect(container.read(selectedCustomerIdProvider), isNull);
+    });
+
+    testWidgets('a cancelled charge dialog preserves the selected customer', (tester) async {
+      final container = await openDialog(
+        tester,
+        const Size(1440, 900),
+        overrides: [_grantedPermissions({AppPermissions.customersView})],
+      );
+
+      await tester.tap(attachCustomerButton());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Alice Johnson'));
+      await tester.pumpAndSettle();
+      expect(container.read(selectedCustomerIdProvider), 'cus-01');
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // A dismissed dialog is a mis-tap, not a change of mind — only a
+      // successful charge clears the attribution.
+      expect(container.read(selectedCustomerIdProvider), 'cus-01');
+    });
+  });
 }
