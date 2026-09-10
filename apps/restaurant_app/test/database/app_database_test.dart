@@ -36,8 +36,8 @@ void main() {
       expect(database != null, true);
     });
 
-    test('schema version is 5', () async {
-      expect(database.schemaVersion, 5);
+    test('schema version is 6', () async {
+      expect(database.schemaVersion, 6);
     });
 
     test('LocalUserProfiles table exists and can be queried', () async {
@@ -292,7 +292,7 @@ void main() {
             ExpenseEntriesCompanion.insert(
               expenseId: 'expense-uuid-1',
               businessId: 'biz-123',
-              businessLocationId: 'loc-456',
+              storeId: 'loc-456',
               category: 'supplies',
               amount: Decimal.parse('45.00'),
               occurredAt: now,
@@ -304,6 +304,9 @@ void main() {
       final expenses = await database.select(database.expenseEntries).get();
       expect(expenses.length, 1);
       expect(expenses.first.category, 'supplies');
+      // paymentMethod defaults to 'other' so a v5-shaped insert (unaware of
+      // the new column) still round-trips cleanly.
+      expect(expenses.first.paymentMethod, 'other');
     });
 
     test('OtherIncomeEntries table exists', () async {
@@ -313,7 +316,7 @@ void main() {
             OtherIncomeEntriesCompanion.insert(
               incomeId: 'income-uuid-1',
               businessId: 'biz-123',
-              businessLocationId: 'loc-456',
+              storeId: 'loc-456',
               category: 'equipment_rental',
               amount: Decimal.parse('100.00'),
               occurredAt: now,
@@ -325,6 +328,51 @@ void main() {
       final income = await database.select(database.otherIncomeEntries).get();
       expect(income.length, 1);
       expect(income.first.category, 'equipment_rental');
+    });
+
+    test('CachedOtherExpenses and CachedOtherIncomes tables exist', () async {
+      final now = DateTime.now();
+
+      await database.into(database.cachedOtherExpenses).insertOnConflictUpdate(
+            CachedOtherExpensesCompanion.insert(
+              id: 'srv-exp-1',
+              businessId: 'biz-123',
+              storeId: 'loc-456',
+              clientExpenseId: 'client-exp-1',
+              category: 'rent',
+              amount: Decimal.parse('300.00'),
+              description: 'Rent',
+              paymentMethod: 'cash',
+              occurredAt: now,
+              syncedAt: now,
+              updatedAt: now,
+              createdAt: now,
+              lastSyncedAt: now,
+            ),
+          );
+      await database.into(database.cachedOtherIncomes).insertOnConflictUpdate(
+            CachedOtherIncomesCompanion.insert(
+              id: 'srv-inc-1',
+              businessId: 'biz-123',
+              storeId: 'loc-456',
+              clientIncomeId: 'client-inc-1',
+              category: 'catering',
+              amount: Decimal.parse('500.00'),
+              description: 'Catering',
+              paymentMethod: 'mobile_money',
+              occurredAt: now,
+              syncedAt: now,
+              updatedAt: now,
+              createdAt: now,
+              lastSyncedAt: now,
+            ),
+          );
+
+      final expenses = await database.select(database.cachedOtherExpenses).get();
+      final incomes = await database.select(database.cachedOtherIncomes).get();
+      expect(expenses.length, 1);
+      expect(incomes.length, 1);
+      expect(expenses.first.isDeleted, false);
     });
 
     test('LocalAuditLog table exists', () async {

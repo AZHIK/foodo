@@ -4,9 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/mock_finance.dart';
 import '../../models/other_expense.dart';
 import '../../models/order.dart';
+import '../../models/permission.dart';
 import '../../providers/other_expense_form_provider.dart';
+import '../../providers/other_expenses_provider.dart' show FinanceOfflineMutationException;
+import '../../providers/permissions_provider.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
+import '../image_upload_field.dart';
 import '../labeled_form_field.dart';
 import '../responsive_form_dialog.dart';
 
@@ -32,6 +36,7 @@ class OtherExpenseFormDialog extends ConsumerStatefulWidget {
 
 class _OtherExpenseFormDialogState extends ConsumerState<OtherExpenseFormDialog> {
   final _formKey = GlobalKey<FormState>();
+  bool _saving = false;
 
   late final _provider =
       otherExpenseFormProvider(widget.expenseId);
@@ -40,6 +45,9 @@ class _OtherExpenseFormDialogState extends ConsumerState<OtherExpenseFormDialog>
   Widget build(BuildContext context) {
     final state = ref.watch(_provider);
     final notifier = ref.read(_provider.notifier);
+    final canUploadReceipt = ref.watch(
+      hasPermissionProvider(AppPermissions.financeAttachmentsUpload),
+    );
 
     return Dialog(
       child: SizedBox(
@@ -162,6 +170,22 @@ class _OtherExpenseFormDialogState extends ConsumerState<OtherExpenseFormDialog>
                       maxLines: 3,
                     ),
                   ),
+                  if (canUploadReceipt) ...[
+                    const SizedBox(height: Insets.lg),
+                    LabeledFormField(
+                      label: 'Receipt (optional)',
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: ImageUploadField(
+                          image: state.receiptBytes,
+                          size: 120,
+                          label: 'Upload receipt',
+                          onPicked: notifier.setReceipt,
+                          onRemoved: notifier.clearReceipt,
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: Insets.xl),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -172,10 +196,16 @@ class _OtherExpenseFormDialogState extends ConsumerState<OtherExpenseFormDialog>
                       ),
                       const SizedBox(width: Insets.md),
                       FilledButton(
-                        onPressed: state.canSave ? _save : null,
-                        child: Text(
-                          widget.expenseId == null ? 'Add' : 'Update',
-                        ),
+                        onPressed: state.canSave && !_saving ? _save : null,
+                        child: _saving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Text(
+                                widget.expenseId == null ? 'Add' : 'Update',
+                              ),
                       ),
                     ],
                   ),
@@ -188,22 +218,32 @@ class _OtherExpenseFormDialogState extends ConsumerState<OtherExpenseFormDialog>
     );
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     final isEdit = widget.expenseId != null;
-    ref.read(_provider.notifier).save();
     final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context).pop();
+    setState(() => _saving = true);
 
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          isEdit ? 'Expense updated' : 'Expense added',
+    try {
+      await ref.read(_provider.notifier).save();
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(isEdit ? 'Expense updated' : 'Expense added'),
         ),
-      ),
-    );
+      );
+    } on FinanceOfflineMutationException catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+    }
   }
 }

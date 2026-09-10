@@ -14,6 +14,8 @@ class OtherExpense {
     this.payee = '',
     this.note = '',
     this.receipt,
+    this.serverId,
+    this.syncStatus = 'synced',
   });
 
   final String id;
@@ -26,6 +28,15 @@ class OtherExpense {
   final String note;
   final FinanceAttachment? receipt;
 
+  /// Server-assigned `OtherExpense.id` once this entry has synced. Null for
+  /// a demo-mode row or one still in the outbox.
+  final String? serverId;
+
+  /// `pending` | `syncing` | `failed` | `synced`. Demo-mode rows (and every
+  /// row before this connected to a backend) default to `synced` so
+  /// existing call sites that don't pass it keep behaving as before.
+  final String syncStatus;
+
   OtherExpense copyWith({
     String? id,
     DateTime? date,
@@ -37,6 +48,8 @@ class OtherExpense {
     String? note,
     FinanceAttachment? receipt,
     bool clearReceipt = false,
+    String? serverId,
+    String? syncStatus,
   }) {
     return OtherExpense(
       id: id ?? this.id,
@@ -48,6 +61,8 @@ class OtherExpense {
       payee: payee ?? this.payee,
       note: note ?? this.note,
       receipt: clearReceipt ? null : (receipt ?? this.receipt),
+      serverId: serverId ?? this.serverId,
+      syncStatus: syncStatus ?? this.syncStatus,
     );
   }
 

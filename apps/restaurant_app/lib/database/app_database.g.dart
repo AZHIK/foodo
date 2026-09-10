@@ -7394,17 +7394,17 @@ class $ExpenseEntriesTable extends ExpenseEntries
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _businessLocationIdMeta =
-      const VerificationMeta('businessLocationId');
+  static const VerificationMeta _storeIdMeta = const VerificationMeta(
+    'storeId',
+  );
   @override
-  late final GeneratedColumn<String> businessLocationId =
-      GeneratedColumn<String>(
-        'business_location_id',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      );
+  late final GeneratedColumn<String> storeId = GeneratedColumn<String>(
+    'store_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _categoryMeta = const VerificationMeta(
     'category',
   );
@@ -7436,6 +7436,58 @@ class $ExpenseEntriesTable extends ExpenseEntries
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _payeeMeta = const VerificationMeta('payee');
+  @override
+  late final GeneratedColumn<String> payee = GeneratedColumn<String>(
+    'payee',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _paymentMethodMeta = const VerificationMeta(
+    'paymentMethod',
+  );
+  @override
+  late final GeneratedColumn<String> paymentMethod = GeneratedColumn<String>(
+    'payment_method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('other'),
+  );
+  static const VerificationMeta _receiptAttachmentIdMeta =
+      const VerificationMeta('receiptAttachmentId');
+  @override
+  late final GeneratedColumn<String> receiptAttachmentId =
+      GeneratedColumn<String>(
+        'receipt_attachment_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _localReceiptPathMeta = const VerificationMeta(
+    'localReceiptPath',
+  );
+  @override
+  late final GeneratedColumn<String> localReceiptPath = GeneratedColumn<String>(
+    'local_receipt_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _occurredAtMeta = const VerificationMeta(
     'occurredAt',
   );
@@ -7457,6 +7509,17 @@ class $ExpenseEntriesTable extends ExpenseEntries
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _serverIdMeta = const VerificationMeta(
+    'serverId',
+  );
+  @override
+  late final GeneratedColumn<String> serverId = GeneratedColumn<String>(
+    'server_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _syncStatusMeta = const VerificationMeta(
     'syncStatus',
@@ -7532,12 +7595,18 @@ class $ExpenseEntriesTable extends ExpenseEntries
     id,
     expenseId,
     businessId,
-    businessLocationId,
+    storeId,
     category,
     amount,
     description,
+    payee,
+    note,
+    paymentMethod,
+    receiptAttachmentId,
+    localReceiptPath,
     occurredAt,
     actorUserId,
+    serverId,
     syncStatus,
     syncError,
     syncAttemptCount,
@@ -7576,16 +7645,13 @@ class $ExpenseEntriesTable extends ExpenseEntries
     } else if (isInserting) {
       context.missing(_businessIdMeta);
     }
-    if (data.containsKey('business_location_id')) {
+    if (data.containsKey('store_id')) {
       context.handle(
-        _businessLocationIdMeta,
-        businessLocationId.isAcceptableOrUnknown(
-          data['business_location_id']!,
-          _businessLocationIdMeta,
-        ),
+        _storeIdMeta,
+        storeId.isAcceptableOrUnknown(data['store_id']!, _storeIdMeta),
       );
     } else if (isInserting) {
-      context.missing(_businessLocationIdMeta);
+      context.missing(_storeIdMeta);
     }
     if (data.containsKey('category')) {
       context.handle(
@@ -7601,6 +7667,45 @@ class $ExpenseEntriesTable extends ExpenseEntries
         description.isAcceptableOrUnknown(
           data['description']!,
           _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('payee')) {
+      context.handle(
+        _payeeMeta,
+        payee.isAcceptableOrUnknown(data['payee']!, _payeeMeta),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('payment_method')) {
+      context.handle(
+        _paymentMethodMeta,
+        paymentMethod.isAcceptableOrUnknown(
+          data['payment_method']!,
+          _paymentMethodMeta,
+        ),
+      );
+    }
+    if (data.containsKey('receipt_attachment_id')) {
+      context.handle(
+        _receiptAttachmentIdMeta,
+        receiptAttachmentId.isAcceptableOrUnknown(
+          data['receipt_attachment_id']!,
+          _receiptAttachmentIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('local_receipt_path')) {
+      context.handle(
+        _localReceiptPathMeta,
+        localReceiptPath.isAcceptableOrUnknown(
+          data['local_receipt_path']!,
+          _localReceiptPathMeta,
         ),
       );
     }
@@ -7622,6 +7727,12 @@ class $ExpenseEntriesTable extends ExpenseEntries
       );
     } else if (isInserting) {
       context.missing(_actorUserIdMeta);
+    }
+    if (data.containsKey('server_id')) {
+      context.handle(
+        _serverIdMeta,
+        serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta),
+      );
     }
     if (data.containsKey('sync_status')) {
       context.handle(
@@ -7688,9 +7799,9 @@ class $ExpenseEntriesTable extends ExpenseEntries
         DriftSqlType.string,
         data['${effectivePrefix}business_id'],
       )!,
-      businessLocationId: attachedDatabase.typeMapping.read(
+      storeId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}business_location_id'],
+        data['${effectivePrefix}store_id'],
       )!,
       category: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -7706,6 +7817,26 @@ class $ExpenseEntriesTable extends ExpenseEntries
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       ),
+      payee: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payee'],
+      ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      paymentMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payment_method'],
+      )!,
+      receiptAttachmentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt_attachment_id'],
+      ),
+      localReceiptPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_receipt_path'],
+      ),
       occurredAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}occurred_at'],
@@ -7714,6 +7845,10 @@ class $ExpenseEntriesTable extends ExpenseEntries
         DriftSqlType.string,
         data['${effectivePrefix}actor_user_id'],
       )!,
+      serverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}server_id'],
+      ),
       syncStatus: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}sync_status'],
@@ -7760,18 +7895,41 @@ class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
   /// Business this expense belongs to.
   final String businessId;
 
-  /// Business location this expense belongs to.
-  final String businessLocationId;
+  /// Store/location this expense belongs to. Matches POS Service's
+  /// `other_expenses.store_id` field (renamed from `businessLocationId`
+  /// by schema v6, mirroring `PendingSales`'s own v5 rename).
+  final String storeId;
 
-  /// Expense category. Controlled list, not free text, so reporting
-  /// stays meaningful: rent|utilities|salaries|repairs|supplies|other.
+  /// Expense category. Controlled list, not free text, so reporting stays
+  /// meaningful — canonical list (mirrors
+  /// `services/pos-service/app/models/finance.py::ExpenseCategory`):
+  /// rent|utilities|salaries|repairs|supplies|marketing|insurance|
+  /// professional_fees|other.
   final String category;
 
   /// Expense amount.
   final Decimal amount;
 
-  /// Optional free-text description.
+  /// Free-text description.
   final String? description;
+
+  /// Who the expense was paid to.
+  final String? payee;
+
+  /// Optional free-text note.
+  final String? note;
+
+  /// Payment method used: cash|mobile_money|card|other.
+  final String paymentMethod;
+
+  /// Server-assigned id of the uploaded receipt (`FinanceAttachment.id`),
+  /// set once `FinanceSyncService` has successfully uploaded `localReceiptPath`.
+  final String? receiptAttachmentId;
+
+  /// Device-local path to a receipt file awaiting upload. Cleared once
+  /// `receiptAttachmentId` is set. See `finance_sync_service.dart`'s
+  /// upload-before-sync ordering.
+  final String? localReceiptPath;
 
   /// When the expense occurred (device time, UTC).
   final DateTime occurredAt;
@@ -7781,6 +7939,11 @@ class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
   /// profile that is later remotely revoked and deleted should not block
   /// or cascade-delete a historical expense record.
   final String actorUserId;
+
+  /// Server-assigned id (`OtherExpense.id`), set once this row has synced.
+  /// A row with a non-null `serverId` is edited/deleted via direct API
+  /// calls (`FinanceApiService`), not the outbox.
+  final String? serverId;
 
   /// Local sync state: `pending`, `syncing`, `failed`, `synced`.
   final String syncStatus;
@@ -7803,12 +7966,18 @@ class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
     required this.id,
     required this.expenseId,
     required this.businessId,
-    required this.businessLocationId,
+    required this.storeId,
     required this.category,
     required this.amount,
     this.description,
+    this.payee,
+    this.note,
+    required this.paymentMethod,
+    this.receiptAttachmentId,
+    this.localReceiptPath,
     required this.occurredAt,
     required this.actorUserId,
+    this.serverId,
     required this.syncStatus,
     this.syncError,
     required this.syncAttemptCount,
@@ -7822,7 +7991,7 @@ class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
     map['id'] = Variable<int>(id);
     map['expense_id'] = Variable<String>(expenseId);
     map['business_id'] = Variable<String>(businessId);
-    map['business_location_id'] = Variable<String>(businessLocationId);
+    map['store_id'] = Variable<String>(storeId);
     map['category'] = Variable<String>(category);
     {
       map['amount'] = Variable<String>(
@@ -7832,8 +8001,24 @@ class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
     }
+    if (!nullToAbsent || payee != null) {
+      map['payee'] = Variable<String>(payee);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['payment_method'] = Variable<String>(paymentMethod);
+    if (!nullToAbsent || receiptAttachmentId != null) {
+      map['receipt_attachment_id'] = Variable<String>(receiptAttachmentId);
+    }
+    if (!nullToAbsent || localReceiptPath != null) {
+      map['local_receipt_path'] = Variable<String>(localReceiptPath);
+    }
     map['occurred_at'] = Variable<DateTime>(occurredAt);
     map['actor_user_id'] = Variable<String>(actorUserId);
+    if (!nullToAbsent || serverId != null) {
+      map['server_id'] = Variable<String>(serverId);
+    }
     map['sync_status'] = Variable<String>(syncStatus);
     if (!nullToAbsent || syncError != null) {
       map['sync_error'] = Variable<String>(syncError);
@@ -7854,14 +8039,28 @@ class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
       id: Value(id),
       expenseId: Value(expenseId),
       businessId: Value(businessId),
-      businessLocationId: Value(businessLocationId),
+      storeId: Value(storeId),
       category: Value(category),
       amount: Value(amount),
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
+      payee: payee == null && nullToAbsent
+          ? const Value.absent()
+          : Value(payee),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      paymentMethod: Value(paymentMethod),
+      receiptAttachmentId: receiptAttachmentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receiptAttachmentId),
+      localReceiptPath: localReceiptPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(localReceiptPath),
       occurredAt: Value(occurredAt),
       actorUserId: Value(actorUserId),
+      serverId: serverId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serverId),
       syncStatus: Value(syncStatus),
       syncError: syncError == null && nullToAbsent
           ? const Value.absent()
@@ -7886,14 +8085,20 @@ class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
       id: serializer.fromJson<int>(json['id']),
       expenseId: serializer.fromJson<String>(json['expenseId']),
       businessId: serializer.fromJson<String>(json['businessId']),
-      businessLocationId: serializer.fromJson<String>(
-        json['businessLocationId'],
-      ),
+      storeId: serializer.fromJson<String>(json['storeId']),
       category: serializer.fromJson<String>(json['category']),
       amount: serializer.fromJson<Decimal>(json['amount']),
       description: serializer.fromJson<String?>(json['description']),
+      payee: serializer.fromJson<String?>(json['payee']),
+      note: serializer.fromJson<String?>(json['note']),
+      paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
+      receiptAttachmentId: serializer.fromJson<String?>(
+        json['receiptAttachmentId'],
+      ),
+      localReceiptPath: serializer.fromJson<String?>(json['localReceiptPath']),
       occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
       actorUserId: serializer.fromJson<String>(json['actorUserId']),
+      serverId: serializer.fromJson<String?>(json['serverId']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
       syncError: serializer.fromJson<String?>(json['syncError']),
       syncAttemptCount: serializer.fromJson<int>(json['syncAttemptCount']),
@@ -7909,12 +8114,18 @@ class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
       'id': serializer.toJson<int>(id),
       'expenseId': serializer.toJson<String>(expenseId),
       'businessId': serializer.toJson<String>(businessId),
-      'businessLocationId': serializer.toJson<String>(businessLocationId),
+      'storeId': serializer.toJson<String>(storeId),
       'category': serializer.toJson<String>(category),
       'amount': serializer.toJson<Decimal>(amount),
       'description': serializer.toJson<String?>(description),
+      'payee': serializer.toJson<String?>(payee),
+      'note': serializer.toJson<String?>(note),
+      'paymentMethod': serializer.toJson<String>(paymentMethod),
+      'receiptAttachmentId': serializer.toJson<String?>(receiptAttachmentId),
+      'localReceiptPath': serializer.toJson<String?>(localReceiptPath),
       'occurredAt': serializer.toJson<DateTime>(occurredAt),
       'actorUserId': serializer.toJson<String>(actorUserId),
+      'serverId': serializer.toJson<String?>(serverId),
       'syncStatus': serializer.toJson<String>(syncStatus),
       'syncError': serializer.toJson<String?>(syncError),
       'syncAttemptCount': serializer.toJson<int>(syncAttemptCount),
@@ -7928,12 +8139,18 @@ class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
     int? id,
     String? expenseId,
     String? businessId,
-    String? businessLocationId,
+    String? storeId,
     String? category,
     Decimal? amount,
     Value<String?> description = const Value.absent(),
+    Value<String?> payee = const Value.absent(),
+    Value<String?> note = const Value.absent(),
+    String? paymentMethod,
+    Value<String?> receiptAttachmentId = const Value.absent(),
+    Value<String?> localReceiptPath = const Value.absent(),
     DateTime? occurredAt,
     String? actorUserId,
+    Value<String?> serverId = const Value.absent(),
     String? syncStatus,
     Value<String?> syncError = const Value.absent(),
     int? syncAttemptCount,
@@ -7944,12 +8161,22 @@ class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
     id: id ?? this.id,
     expenseId: expenseId ?? this.expenseId,
     businessId: businessId ?? this.businessId,
-    businessLocationId: businessLocationId ?? this.businessLocationId,
+    storeId: storeId ?? this.storeId,
     category: category ?? this.category,
     amount: amount ?? this.amount,
     description: description.present ? description.value : this.description,
+    payee: payee.present ? payee.value : this.payee,
+    note: note.present ? note.value : this.note,
+    paymentMethod: paymentMethod ?? this.paymentMethod,
+    receiptAttachmentId: receiptAttachmentId.present
+        ? receiptAttachmentId.value
+        : this.receiptAttachmentId,
+    localReceiptPath: localReceiptPath.present
+        ? localReceiptPath.value
+        : this.localReceiptPath,
     occurredAt: occurredAt ?? this.occurredAt,
     actorUserId: actorUserId ?? this.actorUserId,
+    serverId: serverId.present ? serverId.value : this.serverId,
     syncStatus: syncStatus ?? this.syncStatus,
     syncError: syncError.present ? syncError.value : this.syncError,
     syncAttemptCount: syncAttemptCount ?? this.syncAttemptCount,
@@ -7966,20 +8193,30 @@ class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
       businessId: data.businessId.present
           ? data.businessId.value
           : this.businessId,
-      businessLocationId: data.businessLocationId.present
-          ? data.businessLocationId.value
-          : this.businessLocationId,
+      storeId: data.storeId.present ? data.storeId.value : this.storeId,
       category: data.category.present ? data.category.value : this.category,
       amount: data.amount.present ? data.amount.value : this.amount,
       description: data.description.present
           ? data.description.value
           : this.description,
+      payee: data.payee.present ? data.payee.value : this.payee,
+      note: data.note.present ? data.note.value : this.note,
+      paymentMethod: data.paymentMethod.present
+          ? data.paymentMethod.value
+          : this.paymentMethod,
+      receiptAttachmentId: data.receiptAttachmentId.present
+          ? data.receiptAttachmentId.value
+          : this.receiptAttachmentId,
+      localReceiptPath: data.localReceiptPath.present
+          ? data.localReceiptPath.value
+          : this.localReceiptPath,
       occurredAt: data.occurredAt.present
           ? data.occurredAt.value
           : this.occurredAt,
       actorUserId: data.actorUserId.present
           ? data.actorUserId.value
           : this.actorUserId,
+      serverId: data.serverId.present ? data.serverId.value : this.serverId,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
           : this.syncStatus,
@@ -8001,12 +8238,18 @@ class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
           ..write('id: $id, ')
           ..write('expenseId: $expenseId, ')
           ..write('businessId: $businessId, ')
-          ..write('businessLocationId: $businessLocationId, ')
+          ..write('storeId: $storeId, ')
           ..write('category: $category, ')
           ..write('amount: $amount, ')
           ..write('description: $description, ')
+          ..write('payee: $payee, ')
+          ..write('note: $note, ')
+          ..write('paymentMethod: $paymentMethod, ')
+          ..write('receiptAttachmentId: $receiptAttachmentId, ')
+          ..write('localReceiptPath: $localReceiptPath, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('actorUserId: $actorUserId, ')
+          ..write('serverId: $serverId, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('syncError: $syncError, ')
           ..write('syncAttemptCount: $syncAttemptCount, ')
@@ -8018,23 +8261,29 @@ class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     expenseId,
     businessId,
-    businessLocationId,
+    storeId,
     category,
     amount,
     description,
+    payee,
+    note,
+    paymentMethod,
+    receiptAttachmentId,
+    localReceiptPath,
     occurredAt,
     actorUserId,
+    serverId,
     syncStatus,
     syncError,
     syncAttemptCount,
     lastAttemptAt,
     syncedAt,
     createdAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -8042,12 +8291,18 @@ class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
           other.id == this.id &&
           other.expenseId == this.expenseId &&
           other.businessId == this.businessId &&
-          other.businessLocationId == this.businessLocationId &&
+          other.storeId == this.storeId &&
           other.category == this.category &&
           other.amount == this.amount &&
           other.description == this.description &&
+          other.payee == this.payee &&
+          other.note == this.note &&
+          other.paymentMethod == this.paymentMethod &&
+          other.receiptAttachmentId == this.receiptAttachmentId &&
+          other.localReceiptPath == this.localReceiptPath &&
           other.occurredAt == this.occurredAt &&
           other.actorUserId == this.actorUserId &&
+          other.serverId == this.serverId &&
           other.syncStatus == this.syncStatus &&
           other.syncError == this.syncError &&
           other.syncAttemptCount == this.syncAttemptCount &&
@@ -8060,12 +8315,18 @@ class ExpenseEntriesCompanion extends UpdateCompanion<ExpenseEntry> {
   final Value<int> id;
   final Value<String> expenseId;
   final Value<String> businessId;
-  final Value<String> businessLocationId;
+  final Value<String> storeId;
   final Value<String> category;
   final Value<Decimal> amount;
   final Value<String?> description;
+  final Value<String?> payee;
+  final Value<String?> note;
+  final Value<String> paymentMethod;
+  final Value<String?> receiptAttachmentId;
+  final Value<String?> localReceiptPath;
   final Value<DateTime> occurredAt;
   final Value<String> actorUserId;
+  final Value<String?> serverId;
   final Value<String> syncStatus;
   final Value<String?> syncError;
   final Value<int> syncAttemptCount;
@@ -8076,12 +8337,18 @@ class ExpenseEntriesCompanion extends UpdateCompanion<ExpenseEntry> {
     this.id = const Value.absent(),
     this.expenseId = const Value.absent(),
     this.businessId = const Value.absent(),
-    this.businessLocationId = const Value.absent(),
+    this.storeId = const Value.absent(),
     this.category = const Value.absent(),
     this.amount = const Value.absent(),
     this.description = const Value.absent(),
+    this.payee = const Value.absent(),
+    this.note = const Value.absent(),
+    this.paymentMethod = const Value.absent(),
+    this.receiptAttachmentId = const Value.absent(),
+    this.localReceiptPath = const Value.absent(),
     this.occurredAt = const Value.absent(),
     this.actorUserId = const Value.absent(),
+    this.serverId = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.syncError = const Value.absent(),
     this.syncAttemptCount = const Value.absent(),
@@ -8093,12 +8360,18 @@ class ExpenseEntriesCompanion extends UpdateCompanion<ExpenseEntry> {
     this.id = const Value.absent(),
     required String expenseId,
     required String businessId,
-    required String businessLocationId,
+    required String storeId,
     required String category,
     required Decimal amount,
     this.description = const Value.absent(),
+    this.payee = const Value.absent(),
+    this.note = const Value.absent(),
+    this.paymentMethod = const Value.absent(),
+    this.receiptAttachmentId = const Value.absent(),
+    this.localReceiptPath = const Value.absent(),
     required DateTime occurredAt,
     required String actorUserId,
+    this.serverId = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.syncError = const Value.absent(),
     this.syncAttemptCount = const Value.absent(),
@@ -8107,7 +8380,7 @@ class ExpenseEntriesCompanion extends UpdateCompanion<ExpenseEntry> {
     required DateTime createdAt,
   }) : expenseId = Value(expenseId),
        businessId = Value(businessId),
-       businessLocationId = Value(businessLocationId),
+       storeId = Value(storeId),
        category = Value(category),
        amount = Value(amount),
        occurredAt = Value(occurredAt),
@@ -8117,12 +8390,18 @@ class ExpenseEntriesCompanion extends UpdateCompanion<ExpenseEntry> {
     Expression<int>? id,
     Expression<String>? expenseId,
     Expression<String>? businessId,
-    Expression<String>? businessLocationId,
+    Expression<String>? storeId,
     Expression<String>? category,
     Expression<String>? amount,
     Expression<String>? description,
+    Expression<String>? payee,
+    Expression<String>? note,
+    Expression<String>? paymentMethod,
+    Expression<String>? receiptAttachmentId,
+    Expression<String>? localReceiptPath,
     Expression<DateTime>? occurredAt,
     Expression<String>? actorUserId,
+    Expression<String>? serverId,
     Expression<String>? syncStatus,
     Expression<String>? syncError,
     Expression<int>? syncAttemptCount,
@@ -8134,13 +8413,19 @@ class ExpenseEntriesCompanion extends UpdateCompanion<ExpenseEntry> {
       if (id != null) 'id': id,
       if (expenseId != null) 'expense_id': expenseId,
       if (businessId != null) 'business_id': businessId,
-      if (businessLocationId != null)
-        'business_location_id': businessLocationId,
+      if (storeId != null) 'store_id': storeId,
       if (category != null) 'category': category,
       if (amount != null) 'amount': amount,
       if (description != null) 'description': description,
+      if (payee != null) 'payee': payee,
+      if (note != null) 'note': note,
+      if (paymentMethod != null) 'payment_method': paymentMethod,
+      if (receiptAttachmentId != null)
+        'receipt_attachment_id': receiptAttachmentId,
+      if (localReceiptPath != null) 'local_receipt_path': localReceiptPath,
       if (occurredAt != null) 'occurred_at': occurredAt,
       if (actorUserId != null) 'actor_user_id': actorUserId,
+      if (serverId != null) 'server_id': serverId,
       if (syncStatus != null) 'sync_status': syncStatus,
       if (syncError != null) 'sync_error': syncError,
       if (syncAttemptCount != null) 'sync_attempt_count': syncAttemptCount,
@@ -8154,12 +8439,18 @@ class ExpenseEntriesCompanion extends UpdateCompanion<ExpenseEntry> {
     Value<int>? id,
     Value<String>? expenseId,
     Value<String>? businessId,
-    Value<String>? businessLocationId,
+    Value<String>? storeId,
     Value<String>? category,
     Value<Decimal>? amount,
     Value<String?>? description,
+    Value<String?>? payee,
+    Value<String?>? note,
+    Value<String>? paymentMethod,
+    Value<String?>? receiptAttachmentId,
+    Value<String?>? localReceiptPath,
     Value<DateTime>? occurredAt,
     Value<String>? actorUserId,
+    Value<String?>? serverId,
     Value<String>? syncStatus,
     Value<String?>? syncError,
     Value<int>? syncAttemptCount,
@@ -8171,12 +8462,18 @@ class ExpenseEntriesCompanion extends UpdateCompanion<ExpenseEntry> {
       id: id ?? this.id,
       expenseId: expenseId ?? this.expenseId,
       businessId: businessId ?? this.businessId,
-      businessLocationId: businessLocationId ?? this.businessLocationId,
+      storeId: storeId ?? this.storeId,
       category: category ?? this.category,
       amount: amount ?? this.amount,
       description: description ?? this.description,
+      payee: payee ?? this.payee,
+      note: note ?? this.note,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      receiptAttachmentId: receiptAttachmentId ?? this.receiptAttachmentId,
+      localReceiptPath: localReceiptPath ?? this.localReceiptPath,
       occurredAt: occurredAt ?? this.occurredAt,
       actorUserId: actorUserId ?? this.actorUserId,
+      serverId: serverId ?? this.serverId,
       syncStatus: syncStatus ?? this.syncStatus,
       syncError: syncError ?? this.syncError,
       syncAttemptCount: syncAttemptCount ?? this.syncAttemptCount,
@@ -8198,8 +8495,8 @@ class ExpenseEntriesCompanion extends UpdateCompanion<ExpenseEntry> {
     if (businessId.present) {
       map['business_id'] = Variable<String>(businessId.value);
     }
-    if (businessLocationId.present) {
-      map['business_location_id'] = Variable<String>(businessLocationId.value);
+    if (storeId.present) {
+      map['store_id'] = Variable<String>(storeId.value);
     }
     if (category.present) {
       map['category'] = Variable<String>(category.value);
@@ -8212,11 +8509,31 @@ class ExpenseEntriesCompanion extends UpdateCompanion<ExpenseEntry> {
     if (description.present) {
       map['description'] = Variable<String>(description.value);
     }
+    if (payee.present) {
+      map['payee'] = Variable<String>(payee.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (paymentMethod.present) {
+      map['payment_method'] = Variable<String>(paymentMethod.value);
+    }
+    if (receiptAttachmentId.present) {
+      map['receipt_attachment_id'] = Variable<String>(
+        receiptAttachmentId.value,
+      );
+    }
+    if (localReceiptPath.present) {
+      map['local_receipt_path'] = Variable<String>(localReceiptPath.value);
+    }
     if (occurredAt.present) {
       map['occurred_at'] = Variable<DateTime>(occurredAt.value);
     }
     if (actorUserId.present) {
       map['actor_user_id'] = Variable<String>(actorUserId.value);
+    }
+    if (serverId.present) {
+      map['server_id'] = Variable<String>(serverId.value);
     }
     if (syncStatus.present) {
       map['sync_status'] = Variable<String>(syncStatus.value);
@@ -8245,12 +8562,18 @@ class ExpenseEntriesCompanion extends UpdateCompanion<ExpenseEntry> {
           ..write('id: $id, ')
           ..write('expenseId: $expenseId, ')
           ..write('businessId: $businessId, ')
-          ..write('businessLocationId: $businessLocationId, ')
+          ..write('storeId: $storeId, ')
           ..write('category: $category, ')
           ..write('amount: $amount, ')
           ..write('description: $description, ')
+          ..write('payee: $payee, ')
+          ..write('note: $note, ')
+          ..write('paymentMethod: $paymentMethod, ')
+          ..write('receiptAttachmentId: $receiptAttachmentId, ')
+          ..write('localReceiptPath: $localReceiptPath, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('actorUserId: $actorUserId, ')
+          ..write('serverId: $serverId, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('syncError: $syncError, ')
           ..write('syncAttemptCount: $syncAttemptCount, ')
@@ -8304,17 +8627,17 @@ class $OtherIncomeEntriesTable extends OtherIncomeEntries
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _businessLocationIdMeta =
-      const VerificationMeta('businessLocationId');
+  static const VerificationMeta _storeIdMeta = const VerificationMeta(
+    'storeId',
+  );
   @override
-  late final GeneratedColumn<String> businessLocationId =
-      GeneratedColumn<String>(
-        'business_location_id',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      );
+  late final GeneratedColumn<String> storeId = GeneratedColumn<String>(
+    'store_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _categoryMeta = const VerificationMeta(
     'category',
   );
@@ -8346,6 +8669,58 @@ class $OtherIncomeEntriesTable extends OtherIncomeEntries
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _paymentMethodMeta = const VerificationMeta(
+    'paymentMethod',
+  );
+  @override
+  late final GeneratedColumn<String> paymentMethod = GeneratedColumn<String>(
+    'payment_method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('other'),
+  );
+  static const VerificationMeta _receiptAttachmentIdMeta =
+      const VerificationMeta('receiptAttachmentId');
+  @override
+  late final GeneratedColumn<String> receiptAttachmentId =
+      GeneratedColumn<String>(
+        'receipt_attachment_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _localReceiptPathMeta = const VerificationMeta(
+    'localReceiptPath',
+  );
+  @override
+  late final GeneratedColumn<String> localReceiptPath = GeneratedColumn<String>(
+    'local_receipt_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _occurredAtMeta = const VerificationMeta(
     'occurredAt',
   );
@@ -8367,6 +8742,17 @@ class $OtherIncomeEntriesTable extends OtherIncomeEntries
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _serverIdMeta = const VerificationMeta(
+    'serverId',
+  );
+  @override
+  late final GeneratedColumn<String> serverId = GeneratedColumn<String>(
+    'server_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _syncStatusMeta = const VerificationMeta(
     'syncStatus',
@@ -8442,12 +8828,18 @@ class $OtherIncomeEntriesTable extends OtherIncomeEntries
     id,
     incomeId,
     businessId,
-    businessLocationId,
+    storeId,
     category,
     amount,
     description,
+    source,
+    note,
+    paymentMethod,
+    receiptAttachmentId,
+    localReceiptPath,
     occurredAt,
     actorUserId,
+    serverId,
     syncStatus,
     syncError,
     syncAttemptCount,
@@ -8486,16 +8878,13 @@ class $OtherIncomeEntriesTable extends OtherIncomeEntries
     } else if (isInserting) {
       context.missing(_businessIdMeta);
     }
-    if (data.containsKey('business_location_id')) {
+    if (data.containsKey('store_id')) {
       context.handle(
-        _businessLocationIdMeta,
-        businessLocationId.isAcceptableOrUnknown(
-          data['business_location_id']!,
-          _businessLocationIdMeta,
-        ),
+        _storeIdMeta,
+        storeId.isAcceptableOrUnknown(data['store_id']!, _storeIdMeta),
       );
     } else if (isInserting) {
-      context.missing(_businessLocationIdMeta);
+      context.missing(_storeIdMeta);
     }
     if (data.containsKey('category')) {
       context.handle(
@@ -8511,6 +8900,45 @@ class $OtherIncomeEntriesTable extends OtherIncomeEntries
         description.isAcceptableOrUnknown(
           data['description']!,
           _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('payment_method')) {
+      context.handle(
+        _paymentMethodMeta,
+        paymentMethod.isAcceptableOrUnknown(
+          data['payment_method']!,
+          _paymentMethodMeta,
+        ),
+      );
+    }
+    if (data.containsKey('receipt_attachment_id')) {
+      context.handle(
+        _receiptAttachmentIdMeta,
+        receiptAttachmentId.isAcceptableOrUnknown(
+          data['receipt_attachment_id']!,
+          _receiptAttachmentIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('local_receipt_path')) {
+      context.handle(
+        _localReceiptPathMeta,
+        localReceiptPath.isAcceptableOrUnknown(
+          data['local_receipt_path']!,
+          _localReceiptPathMeta,
         ),
       );
     }
@@ -8532,6 +8960,12 @@ class $OtherIncomeEntriesTable extends OtherIncomeEntries
       );
     } else if (isInserting) {
       context.missing(_actorUserIdMeta);
+    }
+    if (data.containsKey('server_id')) {
+      context.handle(
+        _serverIdMeta,
+        serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta),
+      );
     }
     if (data.containsKey('sync_status')) {
       context.handle(
@@ -8598,9 +9032,9 @@ class $OtherIncomeEntriesTable extends OtherIncomeEntries
         DriftSqlType.string,
         data['${effectivePrefix}business_id'],
       )!,
-      businessLocationId: attachedDatabase.typeMapping.read(
+      storeId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}business_location_id'],
+        data['${effectivePrefix}store_id'],
       )!,
       category: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -8616,6 +9050,26 @@ class $OtherIncomeEntriesTable extends OtherIncomeEntries
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       ),
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      paymentMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payment_method'],
+      )!,
+      receiptAttachmentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt_attachment_id'],
+      ),
+      localReceiptPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_receipt_path'],
+      ),
       occurredAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}occurred_at'],
@@ -8624,6 +9078,10 @@ class $OtherIncomeEntriesTable extends OtherIncomeEntries
         DriftSqlType.string,
         data['${effectivePrefix}actor_user_id'],
       )!,
+      serverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}server_id'],
+      ),
       syncStatus: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}sync_status'],
@@ -8671,18 +9129,38 @@ class OtherIncomeEntry extends DataClass
   /// Business this income belongs to.
   final String businessId;
 
-  /// Business location this income belongs to.
-  final String businessLocationId;
+  /// Store/location this income belongs to. Matches POS Service's
+  /// `other_incomes.store_id` field (renamed from `businessLocationId`
+  /// by schema v6, mirroring `PendingSales`'s own v5 rename).
+  final String storeId;
 
-  /// Income category. Controlled list, not free text, same reasoning as
-  /// `ExpenseEntries.category`: equipment_rental|catering_deposit|other.
+  /// Income category. Controlled list, not free text — canonical list
+  /// (mirrors
+  /// `services/pos-service/app/models/finance.py::IncomeCategory`):
+  /// catering|grants|rebates|space_rental|equipment_rental|other.
   final String category;
 
   /// Income amount.
   final Decimal amount;
 
-  /// Optional free-text description.
+  /// Free-text description.
   final String? description;
+
+  /// Who/what the income came from.
+  final String? source;
+
+  /// Optional free-text note.
+  final String? note;
+
+  /// Payment method used: cash|mobile_money|card|other.
+  final String paymentMethod;
+
+  /// Server-assigned id of the uploaded receipt (`FinanceAttachment.id`).
+  final String? receiptAttachmentId;
+
+  /// Device-local path to a receipt file awaiting upload. See
+  /// `ExpenseEntries.localReceiptPath`.
+  final String? localReceiptPath;
 
   /// When the income occurred (device time, UTC).
   final DateTime occurredAt;
@@ -8691,6 +9169,9 @@ class OtherIncomeEntry extends DataClass
   /// Soft-references `LocalUserProfiles.id` without an FK constraint, same
   /// rationale as `ExpenseEntries.actorUserId`.
   final String actorUserId;
+
+  /// Server-assigned id (`OtherIncome.id`), set once this row has synced.
+  final String? serverId;
 
   /// Local sync state: `pending`, `syncing`, `failed`, `synced`.
   final String syncStatus;
@@ -8713,12 +9194,18 @@ class OtherIncomeEntry extends DataClass
     required this.id,
     required this.incomeId,
     required this.businessId,
-    required this.businessLocationId,
+    required this.storeId,
     required this.category,
     required this.amount,
     this.description,
+    this.source,
+    this.note,
+    required this.paymentMethod,
+    this.receiptAttachmentId,
+    this.localReceiptPath,
     required this.occurredAt,
     required this.actorUserId,
+    this.serverId,
     required this.syncStatus,
     this.syncError,
     required this.syncAttemptCount,
@@ -8732,7 +9219,7 @@ class OtherIncomeEntry extends DataClass
     map['id'] = Variable<int>(id);
     map['income_id'] = Variable<String>(incomeId);
     map['business_id'] = Variable<String>(businessId);
-    map['business_location_id'] = Variable<String>(businessLocationId);
+    map['store_id'] = Variable<String>(storeId);
     map['category'] = Variable<String>(category);
     {
       map['amount'] = Variable<String>(
@@ -8742,8 +9229,24 @@ class OtherIncomeEntry extends DataClass
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
     }
+    if (!nullToAbsent || source != null) {
+      map['source'] = Variable<String>(source);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['payment_method'] = Variable<String>(paymentMethod);
+    if (!nullToAbsent || receiptAttachmentId != null) {
+      map['receipt_attachment_id'] = Variable<String>(receiptAttachmentId);
+    }
+    if (!nullToAbsent || localReceiptPath != null) {
+      map['local_receipt_path'] = Variable<String>(localReceiptPath);
+    }
     map['occurred_at'] = Variable<DateTime>(occurredAt);
     map['actor_user_id'] = Variable<String>(actorUserId);
+    if (!nullToAbsent || serverId != null) {
+      map['server_id'] = Variable<String>(serverId);
+    }
     map['sync_status'] = Variable<String>(syncStatus);
     if (!nullToAbsent || syncError != null) {
       map['sync_error'] = Variable<String>(syncError);
@@ -8764,14 +9267,28 @@ class OtherIncomeEntry extends DataClass
       id: Value(id),
       incomeId: Value(incomeId),
       businessId: Value(businessId),
-      businessLocationId: Value(businessLocationId),
+      storeId: Value(storeId),
       category: Value(category),
       amount: Value(amount),
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
+      source: source == null && nullToAbsent
+          ? const Value.absent()
+          : Value(source),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      paymentMethod: Value(paymentMethod),
+      receiptAttachmentId: receiptAttachmentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receiptAttachmentId),
+      localReceiptPath: localReceiptPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(localReceiptPath),
       occurredAt: Value(occurredAt),
       actorUserId: Value(actorUserId),
+      serverId: serverId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serverId),
       syncStatus: Value(syncStatus),
       syncError: syncError == null && nullToAbsent
           ? const Value.absent()
@@ -8796,14 +9313,20 @@ class OtherIncomeEntry extends DataClass
       id: serializer.fromJson<int>(json['id']),
       incomeId: serializer.fromJson<String>(json['incomeId']),
       businessId: serializer.fromJson<String>(json['businessId']),
-      businessLocationId: serializer.fromJson<String>(
-        json['businessLocationId'],
-      ),
+      storeId: serializer.fromJson<String>(json['storeId']),
       category: serializer.fromJson<String>(json['category']),
       amount: serializer.fromJson<Decimal>(json['amount']),
       description: serializer.fromJson<String?>(json['description']),
+      source: serializer.fromJson<String?>(json['source']),
+      note: serializer.fromJson<String?>(json['note']),
+      paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
+      receiptAttachmentId: serializer.fromJson<String?>(
+        json['receiptAttachmentId'],
+      ),
+      localReceiptPath: serializer.fromJson<String?>(json['localReceiptPath']),
       occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
       actorUserId: serializer.fromJson<String>(json['actorUserId']),
+      serverId: serializer.fromJson<String?>(json['serverId']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
       syncError: serializer.fromJson<String?>(json['syncError']),
       syncAttemptCount: serializer.fromJson<int>(json['syncAttemptCount']),
@@ -8819,12 +9342,18 @@ class OtherIncomeEntry extends DataClass
       'id': serializer.toJson<int>(id),
       'incomeId': serializer.toJson<String>(incomeId),
       'businessId': serializer.toJson<String>(businessId),
-      'businessLocationId': serializer.toJson<String>(businessLocationId),
+      'storeId': serializer.toJson<String>(storeId),
       'category': serializer.toJson<String>(category),
       'amount': serializer.toJson<Decimal>(amount),
       'description': serializer.toJson<String?>(description),
+      'source': serializer.toJson<String?>(source),
+      'note': serializer.toJson<String?>(note),
+      'paymentMethod': serializer.toJson<String>(paymentMethod),
+      'receiptAttachmentId': serializer.toJson<String?>(receiptAttachmentId),
+      'localReceiptPath': serializer.toJson<String?>(localReceiptPath),
       'occurredAt': serializer.toJson<DateTime>(occurredAt),
       'actorUserId': serializer.toJson<String>(actorUserId),
+      'serverId': serializer.toJson<String?>(serverId),
       'syncStatus': serializer.toJson<String>(syncStatus),
       'syncError': serializer.toJson<String?>(syncError),
       'syncAttemptCount': serializer.toJson<int>(syncAttemptCount),
@@ -8838,12 +9367,18 @@ class OtherIncomeEntry extends DataClass
     int? id,
     String? incomeId,
     String? businessId,
-    String? businessLocationId,
+    String? storeId,
     String? category,
     Decimal? amount,
     Value<String?> description = const Value.absent(),
+    Value<String?> source = const Value.absent(),
+    Value<String?> note = const Value.absent(),
+    String? paymentMethod,
+    Value<String?> receiptAttachmentId = const Value.absent(),
+    Value<String?> localReceiptPath = const Value.absent(),
     DateTime? occurredAt,
     String? actorUserId,
+    Value<String?> serverId = const Value.absent(),
     String? syncStatus,
     Value<String?> syncError = const Value.absent(),
     int? syncAttemptCount,
@@ -8854,12 +9389,22 @@ class OtherIncomeEntry extends DataClass
     id: id ?? this.id,
     incomeId: incomeId ?? this.incomeId,
     businessId: businessId ?? this.businessId,
-    businessLocationId: businessLocationId ?? this.businessLocationId,
+    storeId: storeId ?? this.storeId,
     category: category ?? this.category,
     amount: amount ?? this.amount,
     description: description.present ? description.value : this.description,
+    source: source.present ? source.value : this.source,
+    note: note.present ? note.value : this.note,
+    paymentMethod: paymentMethod ?? this.paymentMethod,
+    receiptAttachmentId: receiptAttachmentId.present
+        ? receiptAttachmentId.value
+        : this.receiptAttachmentId,
+    localReceiptPath: localReceiptPath.present
+        ? localReceiptPath.value
+        : this.localReceiptPath,
     occurredAt: occurredAt ?? this.occurredAt,
     actorUserId: actorUserId ?? this.actorUserId,
+    serverId: serverId.present ? serverId.value : this.serverId,
     syncStatus: syncStatus ?? this.syncStatus,
     syncError: syncError.present ? syncError.value : this.syncError,
     syncAttemptCount: syncAttemptCount ?? this.syncAttemptCount,
@@ -8876,20 +9421,30 @@ class OtherIncomeEntry extends DataClass
       businessId: data.businessId.present
           ? data.businessId.value
           : this.businessId,
-      businessLocationId: data.businessLocationId.present
-          ? data.businessLocationId.value
-          : this.businessLocationId,
+      storeId: data.storeId.present ? data.storeId.value : this.storeId,
       category: data.category.present ? data.category.value : this.category,
       amount: data.amount.present ? data.amount.value : this.amount,
       description: data.description.present
           ? data.description.value
           : this.description,
+      source: data.source.present ? data.source.value : this.source,
+      note: data.note.present ? data.note.value : this.note,
+      paymentMethod: data.paymentMethod.present
+          ? data.paymentMethod.value
+          : this.paymentMethod,
+      receiptAttachmentId: data.receiptAttachmentId.present
+          ? data.receiptAttachmentId.value
+          : this.receiptAttachmentId,
+      localReceiptPath: data.localReceiptPath.present
+          ? data.localReceiptPath.value
+          : this.localReceiptPath,
       occurredAt: data.occurredAt.present
           ? data.occurredAt.value
           : this.occurredAt,
       actorUserId: data.actorUserId.present
           ? data.actorUserId.value
           : this.actorUserId,
+      serverId: data.serverId.present ? data.serverId.value : this.serverId,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
           : this.syncStatus,
@@ -8911,12 +9466,18 @@ class OtherIncomeEntry extends DataClass
           ..write('id: $id, ')
           ..write('incomeId: $incomeId, ')
           ..write('businessId: $businessId, ')
-          ..write('businessLocationId: $businessLocationId, ')
+          ..write('storeId: $storeId, ')
           ..write('category: $category, ')
           ..write('amount: $amount, ')
           ..write('description: $description, ')
+          ..write('source: $source, ')
+          ..write('note: $note, ')
+          ..write('paymentMethod: $paymentMethod, ')
+          ..write('receiptAttachmentId: $receiptAttachmentId, ')
+          ..write('localReceiptPath: $localReceiptPath, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('actorUserId: $actorUserId, ')
+          ..write('serverId: $serverId, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('syncError: $syncError, ')
           ..write('syncAttemptCount: $syncAttemptCount, ')
@@ -8928,23 +9489,29 @@ class OtherIncomeEntry extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     incomeId,
     businessId,
-    businessLocationId,
+    storeId,
     category,
     amount,
     description,
+    source,
+    note,
+    paymentMethod,
+    receiptAttachmentId,
+    localReceiptPath,
     occurredAt,
     actorUserId,
+    serverId,
     syncStatus,
     syncError,
     syncAttemptCount,
     lastAttemptAt,
     syncedAt,
     createdAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -8952,12 +9519,18 @@ class OtherIncomeEntry extends DataClass
           other.id == this.id &&
           other.incomeId == this.incomeId &&
           other.businessId == this.businessId &&
-          other.businessLocationId == this.businessLocationId &&
+          other.storeId == this.storeId &&
           other.category == this.category &&
           other.amount == this.amount &&
           other.description == this.description &&
+          other.source == this.source &&
+          other.note == this.note &&
+          other.paymentMethod == this.paymentMethod &&
+          other.receiptAttachmentId == this.receiptAttachmentId &&
+          other.localReceiptPath == this.localReceiptPath &&
           other.occurredAt == this.occurredAt &&
           other.actorUserId == this.actorUserId &&
+          other.serverId == this.serverId &&
           other.syncStatus == this.syncStatus &&
           other.syncError == this.syncError &&
           other.syncAttemptCount == this.syncAttemptCount &&
@@ -8970,12 +9543,18 @@ class OtherIncomeEntriesCompanion extends UpdateCompanion<OtherIncomeEntry> {
   final Value<int> id;
   final Value<String> incomeId;
   final Value<String> businessId;
-  final Value<String> businessLocationId;
+  final Value<String> storeId;
   final Value<String> category;
   final Value<Decimal> amount;
   final Value<String?> description;
+  final Value<String?> source;
+  final Value<String?> note;
+  final Value<String> paymentMethod;
+  final Value<String?> receiptAttachmentId;
+  final Value<String?> localReceiptPath;
   final Value<DateTime> occurredAt;
   final Value<String> actorUserId;
+  final Value<String?> serverId;
   final Value<String> syncStatus;
   final Value<String?> syncError;
   final Value<int> syncAttemptCount;
@@ -8986,12 +9565,18 @@ class OtherIncomeEntriesCompanion extends UpdateCompanion<OtherIncomeEntry> {
     this.id = const Value.absent(),
     this.incomeId = const Value.absent(),
     this.businessId = const Value.absent(),
-    this.businessLocationId = const Value.absent(),
+    this.storeId = const Value.absent(),
     this.category = const Value.absent(),
     this.amount = const Value.absent(),
     this.description = const Value.absent(),
+    this.source = const Value.absent(),
+    this.note = const Value.absent(),
+    this.paymentMethod = const Value.absent(),
+    this.receiptAttachmentId = const Value.absent(),
+    this.localReceiptPath = const Value.absent(),
     this.occurredAt = const Value.absent(),
     this.actorUserId = const Value.absent(),
+    this.serverId = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.syncError = const Value.absent(),
     this.syncAttemptCount = const Value.absent(),
@@ -9003,12 +9588,18 @@ class OtherIncomeEntriesCompanion extends UpdateCompanion<OtherIncomeEntry> {
     this.id = const Value.absent(),
     required String incomeId,
     required String businessId,
-    required String businessLocationId,
+    required String storeId,
     required String category,
     required Decimal amount,
     this.description = const Value.absent(),
+    this.source = const Value.absent(),
+    this.note = const Value.absent(),
+    this.paymentMethod = const Value.absent(),
+    this.receiptAttachmentId = const Value.absent(),
+    this.localReceiptPath = const Value.absent(),
     required DateTime occurredAt,
     required String actorUserId,
+    this.serverId = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.syncError = const Value.absent(),
     this.syncAttemptCount = const Value.absent(),
@@ -9017,7 +9608,7 @@ class OtherIncomeEntriesCompanion extends UpdateCompanion<OtherIncomeEntry> {
     required DateTime createdAt,
   }) : incomeId = Value(incomeId),
        businessId = Value(businessId),
-       businessLocationId = Value(businessLocationId),
+       storeId = Value(storeId),
        category = Value(category),
        amount = Value(amount),
        occurredAt = Value(occurredAt),
@@ -9027,12 +9618,18 @@ class OtherIncomeEntriesCompanion extends UpdateCompanion<OtherIncomeEntry> {
     Expression<int>? id,
     Expression<String>? incomeId,
     Expression<String>? businessId,
-    Expression<String>? businessLocationId,
+    Expression<String>? storeId,
     Expression<String>? category,
     Expression<String>? amount,
     Expression<String>? description,
+    Expression<String>? source,
+    Expression<String>? note,
+    Expression<String>? paymentMethod,
+    Expression<String>? receiptAttachmentId,
+    Expression<String>? localReceiptPath,
     Expression<DateTime>? occurredAt,
     Expression<String>? actorUserId,
+    Expression<String>? serverId,
     Expression<String>? syncStatus,
     Expression<String>? syncError,
     Expression<int>? syncAttemptCount,
@@ -9044,13 +9641,19 @@ class OtherIncomeEntriesCompanion extends UpdateCompanion<OtherIncomeEntry> {
       if (id != null) 'id': id,
       if (incomeId != null) 'income_id': incomeId,
       if (businessId != null) 'business_id': businessId,
-      if (businessLocationId != null)
-        'business_location_id': businessLocationId,
+      if (storeId != null) 'store_id': storeId,
       if (category != null) 'category': category,
       if (amount != null) 'amount': amount,
       if (description != null) 'description': description,
+      if (source != null) 'source': source,
+      if (note != null) 'note': note,
+      if (paymentMethod != null) 'payment_method': paymentMethod,
+      if (receiptAttachmentId != null)
+        'receipt_attachment_id': receiptAttachmentId,
+      if (localReceiptPath != null) 'local_receipt_path': localReceiptPath,
       if (occurredAt != null) 'occurred_at': occurredAt,
       if (actorUserId != null) 'actor_user_id': actorUserId,
+      if (serverId != null) 'server_id': serverId,
       if (syncStatus != null) 'sync_status': syncStatus,
       if (syncError != null) 'sync_error': syncError,
       if (syncAttemptCount != null) 'sync_attempt_count': syncAttemptCount,
@@ -9064,12 +9667,18 @@ class OtherIncomeEntriesCompanion extends UpdateCompanion<OtherIncomeEntry> {
     Value<int>? id,
     Value<String>? incomeId,
     Value<String>? businessId,
-    Value<String>? businessLocationId,
+    Value<String>? storeId,
     Value<String>? category,
     Value<Decimal>? amount,
     Value<String?>? description,
+    Value<String?>? source,
+    Value<String?>? note,
+    Value<String>? paymentMethod,
+    Value<String?>? receiptAttachmentId,
+    Value<String?>? localReceiptPath,
     Value<DateTime>? occurredAt,
     Value<String>? actorUserId,
+    Value<String?>? serverId,
     Value<String>? syncStatus,
     Value<String?>? syncError,
     Value<int>? syncAttemptCount,
@@ -9081,12 +9690,18 @@ class OtherIncomeEntriesCompanion extends UpdateCompanion<OtherIncomeEntry> {
       id: id ?? this.id,
       incomeId: incomeId ?? this.incomeId,
       businessId: businessId ?? this.businessId,
-      businessLocationId: businessLocationId ?? this.businessLocationId,
+      storeId: storeId ?? this.storeId,
       category: category ?? this.category,
       amount: amount ?? this.amount,
       description: description ?? this.description,
+      source: source ?? this.source,
+      note: note ?? this.note,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      receiptAttachmentId: receiptAttachmentId ?? this.receiptAttachmentId,
+      localReceiptPath: localReceiptPath ?? this.localReceiptPath,
       occurredAt: occurredAt ?? this.occurredAt,
       actorUserId: actorUserId ?? this.actorUserId,
+      serverId: serverId ?? this.serverId,
       syncStatus: syncStatus ?? this.syncStatus,
       syncError: syncError ?? this.syncError,
       syncAttemptCount: syncAttemptCount ?? this.syncAttemptCount,
@@ -9108,8 +9723,8 @@ class OtherIncomeEntriesCompanion extends UpdateCompanion<OtherIncomeEntry> {
     if (businessId.present) {
       map['business_id'] = Variable<String>(businessId.value);
     }
-    if (businessLocationId.present) {
-      map['business_location_id'] = Variable<String>(businessLocationId.value);
+    if (storeId.present) {
+      map['store_id'] = Variable<String>(storeId.value);
     }
     if (category.present) {
       map['category'] = Variable<String>(category.value);
@@ -9122,11 +9737,31 @@ class OtherIncomeEntriesCompanion extends UpdateCompanion<OtherIncomeEntry> {
     if (description.present) {
       map['description'] = Variable<String>(description.value);
     }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (paymentMethod.present) {
+      map['payment_method'] = Variable<String>(paymentMethod.value);
+    }
+    if (receiptAttachmentId.present) {
+      map['receipt_attachment_id'] = Variable<String>(
+        receiptAttachmentId.value,
+      );
+    }
+    if (localReceiptPath.present) {
+      map['local_receipt_path'] = Variable<String>(localReceiptPath.value);
+    }
     if (occurredAt.present) {
       map['occurred_at'] = Variable<DateTime>(occurredAt.value);
     }
     if (actorUserId.present) {
       map['actor_user_id'] = Variable<String>(actorUserId.value);
+    }
+    if (serverId.present) {
+      map['server_id'] = Variable<String>(serverId.value);
     }
     if (syncStatus.present) {
       map['sync_status'] = Variable<String>(syncStatus.value);
@@ -9155,18 +9790,2114 @@ class OtherIncomeEntriesCompanion extends UpdateCompanion<OtherIncomeEntry> {
           ..write('id: $id, ')
           ..write('incomeId: $incomeId, ')
           ..write('businessId: $businessId, ')
-          ..write('businessLocationId: $businessLocationId, ')
+          ..write('storeId: $storeId, ')
           ..write('category: $category, ')
           ..write('amount: $amount, ')
           ..write('description: $description, ')
+          ..write('source: $source, ')
+          ..write('note: $note, ')
+          ..write('paymentMethod: $paymentMethod, ')
+          ..write('receiptAttachmentId: $receiptAttachmentId, ')
+          ..write('localReceiptPath: $localReceiptPath, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('actorUserId: $actorUserId, ')
+          ..write('serverId: $serverId, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('syncError: $syncError, ')
           ..write('syncAttemptCount: $syncAttemptCount, ')
           ..write('lastAttemptAt: $lastAttemptAt, ')
           ..write('syncedAt: $syncedAt, ')
           ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CachedOtherExpensesTable extends CachedOtherExpenses
+    with TableInfo<$CachedOtherExpensesTable, CachedOtherExpense> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedOtherExpensesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _storeIdMeta = const VerificationMeta(
+    'storeId',
+  );
+  @override
+  late final GeneratedColumn<String> storeId = GeneratedColumn<String>(
+    'store_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _clientExpenseIdMeta = const VerificationMeta(
+    'clientExpenseId',
+  );
+  @override
+  late final GeneratedColumn<String> clientExpenseId = GeneratedColumn<String>(
+    'client_expense_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Decimal, String> amount =
+      GeneratedColumn<String>(
+        'amount',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<Decimal>($CachedOtherExpensesTable.$converteramount);
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payeeMeta = const VerificationMeta('payee');
+  @override
+  late final GeneratedColumn<String> payee = GeneratedColumn<String>(
+    'payee',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _paymentMethodMeta = const VerificationMeta(
+    'paymentMethod',
+  );
+  @override
+  late final GeneratedColumn<String> paymentMethod = GeneratedColumn<String>(
+    'payment_method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _receiptAttachmentIdMeta =
+      const VerificationMeta('receiptAttachmentId');
+  @override
+  late final GeneratedColumn<String> receiptAttachmentId =
+      GeneratedColumn<String>(
+        'receipt_attachment_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _actorIdMeta = const VerificationMeta(
+    'actorId',
+  );
+  @override
+  late final GeneratedColumn<String> actorId = GeneratedColumn<String>(
+    'actor_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _occurredAtMeta = const VerificationMeta(
+    'occurredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> occurredAt = GeneratedColumn<DateTime>(
+    'occurred_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastSyncedAtMeta = const VerificationMeta(
+    'lastSyncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
+    'last_synced_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    businessId,
+    storeId,
+    clientExpenseId,
+    category,
+    amount,
+    description,
+    payee,
+    note,
+    paymentMethod,
+    receiptAttachmentId,
+    actorId,
+    occurredAt,
+    syncedAt,
+    updatedAt,
+    isDeleted,
+    createdAt,
+    lastSyncedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_other_expenses';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedOtherExpense> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('store_id')) {
+      context.handle(
+        _storeIdMeta,
+        storeId.isAcceptableOrUnknown(data['store_id']!, _storeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_storeIdMeta);
+    }
+    if (data.containsKey('client_expense_id')) {
+      context.handle(
+        _clientExpenseIdMeta,
+        clientExpenseId.isAcceptableOrUnknown(
+          data['client_expense_id']!,
+          _clientExpenseIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_clientExpenseIdMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_descriptionMeta);
+    }
+    if (data.containsKey('payee')) {
+      context.handle(
+        _payeeMeta,
+        payee.isAcceptableOrUnknown(data['payee']!, _payeeMeta),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('payment_method')) {
+      context.handle(
+        _paymentMethodMeta,
+        paymentMethod.isAcceptableOrUnknown(
+          data['payment_method']!,
+          _paymentMethodMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_paymentMethodMeta);
+    }
+    if (data.containsKey('receipt_attachment_id')) {
+      context.handle(
+        _receiptAttachmentIdMeta,
+        receiptAttachmentId.isAcceptableOrUnknown(
+          data['receipt_attachment_id']!,
+          _receiptAttachmentIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('actor_id')) {
+      context.handle(
+        _actorIdMeta,
+        actorId.isAcceptableOrUnknown(data['actor_id']!, _actorIdMeta),
+      );
+    }
+    if (data.containsKey('occurred_at')) {
+      context.handle(
+        _occurredAtMeta,
+        occurredAt.isAcceptableOrUnknown(data['occurred_at']!, _occurredAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_occurredAtMeta);
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_syncedAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('last_synced_at')) {
+      context.handle(
+        _lastSyncedAtMeta,
+        lastSyncedAt.isAcceptableOrUnknown(
+          data['last_synced_at']!,
+          _lastSyncedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastSyncedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedOtherExpense map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedOtherExpense(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      storeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}store_id'],
+      )!,
+      clientExpenseId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}client_expense_id'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      amount: $CachedOtherExpensesTable.$converteramount.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}amount'],
+        )!,
+      ),
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      )!,
+      payee: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payee'],
+      ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      paymentMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payment_method'],
+      )!,
+      receiptAttachmentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt_attachment_id'],
+      ),
+      actorId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actor_id'],
+      ),
+      occurredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}occurred_at'],
+      )!,
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      lastSyncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_synced_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedOtherExpensesTable createAlias(String alias) {
+    return $CachedOtherExpensesTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<Decimal, String> $converteramount =
+      const DecimalConverter();
+}
+
+class CachedOtherExpense extends DataClass
+    implements Insertable<CachedOtherExpense> {
+  /// Expense UUID, assigned by POS Service (primary key).
+  final String id;
+
+  /// Business this expense belongs to.
+  final String businessId;
+
+  /// Store/location this expense belongs to.
+  final String storeId;
+
+  /// Client-generated idempotency key this expense was created from.
+  final String clientExpenseId;
+  final String category;
+  final Decimal amount;
+  final String description;
+  final String? payee;
+  final String? note;
+
+  /// Payment method: `cash`, `mobile_money`, `card`, or `other`.
+  final String paymentMethod;
+  final String? receiptAttachmentId;
+
+  /// Staff member who recorded the expense, if known.
+  final String? actorId;
+
+  /// When the expense occurred (device-reported time, UTC).
+  final DateTime occurredAt;
+
+  /// When POS Service accepted this expense.
+  final DateTime syncedAt;
+
+  /// Last-edited timestamp (server-computed).
+  final DateTime updatedAt;
+
+  /// Soft-delete flag — see class doc for why deleted rows are still pulled.
+  final bool isDeleted;
+
+  /// Backend creation timestamp.
+  final DateTime createdAt;
+
+  /// Local timestamp of the most recent pull that included this row.
+  final DateTime lastSyncedAt;
+  const CachedOtherExpense({
+    required this.id,
+    required this.businessId,
+    required this.storeId,
+    required this.clientExpenseId,
+    required this.category,
+    required this.amount,
+    required this.description,
+    this.payee,
+    this.note,
+    required this.paymentMethod,
+    this.receiptAttachmentId,
+    this.actorId,
+    required this.occurredAt,
+    required this.syncedAt,
+    required this.updatedAt,
+    required this.isDeleted,
+    required this.createdAt,
+    required this.lastSyncedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['business_id'] = Variable<String>(businessId);
+    map['store_id'] = Variable<String>(storeId);
+    map['client_expense_id'] = Variable<String>(clientExpenseId);
+    map['category'] = Variable<String>(category);
+    {
+      map['amount'] = Variable<String>(
+        $CachedOtherExpensesTable.$converteramount.toSql(amount),
+      );
+    }
+    map['description'] = Variable<String>(description);
+    if (!nullToAbsent || payee != null) {
+      map['payee'] = Variable<String>(payee);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['payment_method'] = Variable<String>(paymentMethod);
+    if (!nullToAbsent || receiptAttachmentId != null) {
+      map['receipt_attachment_id'] = Variable<String>(receiptAttachmentId);
+    }
+    if (!nullToAbsent || actorId != null) {
+      map['actor_id'] = Variable<String>(actorId);
+    }
+    map['occurred_at'] = Variable<DateTime>(occurredAt);
+    map['synced_at'] = Variable<DateTime>(syncedAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
+    return map;
+  }
+
+  CachedOtherExpensesCompanion toCompanion(bool nullToAbsent) {
+    return CachedOtherExpensesCompanion(
+      id: Value(id),
+      businessId: Value(businessId),
+      storeId: Value(storeId),
+      clientExpenseId: Value(clientExpenseId),
+      category: Value(category),
+      amount: Value(amount),
+      description: Value(description),
+      payee: payee == null && nullToAbsent
+          ? const Value.absent()
+          : Value(payee),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      paymentMethod: Value(paymentMethod),
+      receiptAttachmentId: receiptAttachmentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receiptAttachmentId),
+      actorId: actorId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(actorId),
+      occurredAt: Value(occurredAt),
+      syncedAt: Value(syncedAt),
+      updatedAt: Value(updatedAt),
+      isDeleted: Value(isDeleted),
+      createdAt: Value(createdAt),
+      lastSyncedAt: Value(lastSyncedAt),
+    );
+  }
+
+  factory CachedOtherExpense.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedOtherExpense(
+      id: serializer.fromJson<String>(json['id']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      storeId: serializer.fromJson<String>(json['storeId']),
+      clientExpenseId: serializer.fromJson<String>(json['clientExpenseId']),
+      category: serializer.fromJson<String>(json['category']),
+      amount: serializer.fromJson<Decimal>(json['amount']),
+      description: serializer.fromJson<String>(json['description']),
+      payee: serializer.fromJson<String?>(json['payee']),
+      note: serializer.fromJson<String?>(json['note']),
+      paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
+      receiptAttachmentId: serializer.fromJson<String?>(
+        json['receiptAttachmentId'],
+      ),
+      actorId: serializer.fromJson<String?>(json['actorId']),
+      occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
+      syncedAt: serializer.fromJson<DateTime>(json['syncedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      lastSyncedAt: serializer.fromJson<DateTime>(json['lastSyncedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'businessId': serializer.toJson<String>(businessId),
+      'storeId': serializer.toJson<String>(storeId),
+      'clientExpenseId': serializer.toJson<String>(clientExpenseId),
+      'category': serializer.toJson<String>(category),
+      'amount': serializer.toJson<Decimal>(amount),
+      'description': serializer.toJson<String>(description),
+      'payee': serializer.toJson<String?>(payee),
+      'note': serializer.toJson<String?>(note),
+      'paymentMethod': serializer.toJson<String>(paymentMethod),
+      'receiptAttachmentId': serializer.toJson<String?>(receiptAttachmentId),
+      'actorId': serializer.toJson<String?>(actorId),
+      'occurredAt': serializer.toJson<DateTime>(occurredAt),
+      'syncedAt': serializer.toJson<DateTime>(syncedAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'lastSyncedAt': serializer.toJson<DateTime>(lastSyncedAt),
+    };
+  }
+
+  CachedOtherExpense copyWith({
+    String? id,
+    String? businessId,
+    String? storeId,
+    String? clientExpenseId,
+    String? category,
+    Decimal? amount,
+    String? description,
+    Value<String?> payee = const Value.absent(),
+    Value<String?> note = const Value.absent(),
+    String? paymentMethod,
+    Value<String?> receiptAttachmentId = const Value.absent(),
+    Value<String?> actorId = const Value.absent(),
+    DateTime? occurredAt,
+    DateTime? syncedAt,
+    DateTime? updatedAt,
+    bool? isDeleted,
+    DateTime? createdAt,
+    DateTime? lastSyncedAt,
+  }) => CachedOtherExpense(
+    id: id ?? this.id,
+    businessId: businessId ?? this.businessId,
+    storeId: storeId ?? this.storeId,
+    clientExpenseId: clientExpenseId ?? this.clientExpenseId,
+    category: category ?? this.category,
+    amount: amount ?? this.amount,
+    description: description ?? this.description,
+    payee: payee.present ? payee.value : this.payee,
+    note: note.present ? note.value : this.note,
+    paymentMethod: paymentMethod ?? this.paymentMethod,
+    receiptAttachmentId: receiptAttachmentId.present
+        ? receiptAttachmentId.value
+        : this.receiptAttachmentId,
+    actorId: actorId.present ? actorId.value : this.actorId,
+    occurredAt: occurredAt ?? this.occurredAt,
+    syncedAt: syncedAt ?? this.syncedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    isDeleted: isDeleted ?? this.isDeleted,
+    createdAt: createdAt ?? this.createdAt,
+    lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+  );
+  CachedOtherExpense copyWithCompanion(CachedOtherExpensesCompanion data) {
+    return CachedOtherExpense(
+      id: data.id.present ? data.id.value : this.id,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      storeId: data.storeId.present ? data.storeId.value : this.storeId,
+      clientExpenseId: data.clientExpenseId.present
+          ? data.clientExpenseId.value
+          : this.clientExpenseId,
+      category: data.category.present ? data.category.value : this.category,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      payee: data.payee.present ? data.payee.value : this.payee,
+      note: data.note.present ? data.note.value : this.note,
+      paymentMethod: data.paymentMethod.present
+          ? data.paymentMethod.value
+          : this.paymentMethod,
+      receiptAttachmentId: data.receiptAttachmentId.present
+          ? data.receiptAttachmentId.value
+          : this.receiptAttachmentId,
+      actorId: data.actorId.present ? data.actorId.value : this.actorId,
+      occurredAt: data.occurredAt.present
+          ? data.occurredAt.value
+          : this.occurredAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      lastSyncedAt: data.lastSyncedAt.present
+          ? data.lastSyncedAt.value
+          : this.lastSyncedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedOtherExpense(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('storeId: $storeId, ')
+          ..write('clientExpenseId: $clientExpenseId, ')
+          ..write('category: $category, ')
+          ..write('amount: $amount, ')
+          ..write('description: $description, ')
+          ..write('payee: $payee, ')
+          ..write('note: $note, ')
+          ..write('paymentMethod: $paymentMethod, ')
+          ..write('receiptAttachmentId: $receiptAttachmentId, ')
+          ..write('actorId: $actorId, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    businessId,
+    storeId,
+    clientExpenseId,
+    category,
+    amount,
+    description,
+    payee,
+    note,
+    paymentMethod,
+    receiptAttachmentId,
+    actorId,
+    occurredAt,
+    syncedAt,
+    updatedAt,
+    isDeleted,
+    createdAt,
+    lastSyncedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedOtherExpense &&
+          other.id == this.id &&
+          other.businessId == this.businessId &&
+          other.storeId == this.storeId &&
+          other.clientExpenseId == this.clientExpenseId &&
+          other.category == this.category &&
+          other.amount == this.amount &&
+          other.description == this.description &&
+          other.payee == this.payee &&
+          other.note == this.note &&
+          other.paymentMethod == this.paymentMethod &&
+          other.receiptAttachmentId == this.receiptAttachmentId &&
+          other.actorId == this.actorId &&
+          other.occurredAt == this.occurredAt &&
+          other.syncedAt == this.syncedAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isDeleted == this.isDeleted &&
+          other.createdAt == this.createdAt &&
+          other.lastSyncedAt == this.lastSyncedAt);
+}
+
+class CachedOtherExpensesCompanion extends UpdateCompanion<CachedOtherExpense> {
+  final Value<String> id;
+  final Value<String> businessId;
+  final Value<String> storeId;
+  final Value<String> clientExpenseId;
+  final Value<String> category;
+  final Value<Decimal> amount;
+  final Value<String> description;
+  final Value<String?> payee;
+  final Value<String?> note;
+  final Value<String> paymentMethod;
+  final Value<String?> receiptAttachmentId;
+  final Value<String?> actorId;
+  final Value<DateTime> occurredAt;
+  final Value<DateTime> syncedAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> isDeleted;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> lastSyncedAt;
+  final Value<int> rowid;
+  const CachedOtherExpensesCompanion({
+    this.id = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.storeId = const Value.absent(),
+    this.clientExpenseId = const Value.absent(),
+    this.category = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.description = const Value.absent(),
+    this.payee = const Value.absent(),
+    this.note = const Value.absent(),
+    this.paymentMethod = const Value.absent(),
+    this.receiptAttachmentId = const Value.absent(),
+    this.actorId = const Value.absent(),
+    this.occurredAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedOtherExpensesCompanion.insert({
+    required String id,
+    required String businessId,
+    required String storeId,
+    required String clientExpenseId,
+    required String category,
+    required Decimal amount,
+    required String description,
+    this.payee = const Value.absent(),
+    this.note = const Value.absent(),
+    required String paymentMethod,
+    this.receiptAttachmentId = const Value.absent(),
+    this.actorId = const Value.absent(),
+    required DateTime occurredAt,
+    required DateTime syncedAt,
+    required DateTime updatedAt,
+    this.isDeleted = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime lastSyncedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       businessId = Value(businessId),
+       storeId = Value(storeId),
+       clientExpenseId = Value(clientExpenseId),
+       category = Value(category),
+       amount = Value(amount),
+       description = Value(description),
+       paymentMethod = Value(paymentMethod),
+       occurredAt = Value(occurredAt),
+       syncedAt = Value(syncedAt),
+       updatedAt = Value(updatedAt),
+       createdAt = Value(createdAt),
+       lastSyncedAt = Value(lastSyncedAt);
+  static Insertable<CachedOtherExpense> custom({
+    Expression<String>? id,
+    Expression<String>? businessId,
+    Expression<String>? storeId,
+    Expression<String>? clientExpenseId,
+    Expression<String>? category,
+    Expression<String>? amount,
+    Expression<String>? description,
+    Expression<String>? payee,
+    Expression<String>? note,
+    Expression<String>? paymentMethod,
+    Expression<String>? receiptAttachmentId,
+    Expression<String>? actorId,
+    Expression<DateTime>? occurredAt,
+    Expression<DateTime>? syncedAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isDeleted,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? lastSyncedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (businessId != null) 'business_id': businessId,
+      if (storeId != null) 'store_id': storeId,
+      if (clientExpenseId != null) 'client_expense_id': clientExpenseId,
+      if (category != null) 'category': category,
+      if (amount != null) 'amount': amount,
+      if (description != null) 'description': description,
+      if (payee != null) 'payee': payee,
+      if (note != null) 'note': note,
+      if (paymentMethod != null) 'payment_method': paymentMethod,
+      if (receiptAttachmentId != null)
+        'receipt_attachment_id': receiptAttachmentId,
+      if (actorId != null) 'actor_id': actorId,
+      if (occurredAt != null) 'occurred_at': occurredAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (createdAt != null) 'created_at': createdAt,
+      if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedOtherExpensesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? businessId,
+    Value<String>? storeId,
+    Value<String>? clientExpenseId,
+    Value<String>? category,
+    Value<Decimal>? amount,
+    Value<String>? description,
+    Value<String?>? payee,
+    Value<String?>? note,
+    Value<String>? paymentMethod,
+    Value<String?>? receiptAttachmentId,
+    Value<String?>? actorId,
+    Value<DateTime>? occurredAt,
+    Value<DateTime>? syncedAt,
+    Value<DateTime>? updatedAt,
+    Value<bool>? isDeleted,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? lastSyncedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedOtherExpensesCompanion(
+      id: id ?? this.id,
+      businessId: businessId ?? this.businessId,
+      storeId: storeId ?? this.storeId,
+      clientExpenseId: clientExpenseId ?? this.clientExpenseId,
+      category: category ?? this.category,
+      amount: amount ?? this.amount,
+      description: description ?? this.description,
+      payee: payee ?? this.payee,
+      note: note ?? this.note,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      receiptAttachmentId: receiptAttachmentId ?? this.receiptAttachmentId,
+      actorId: actorId ?? this.actorId,
+      occurredAt: occurredAt ?? this.occurredAt,
+      syncedAt: syncedAt ?? this.syncedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      createdAt: createdAt ?? this.createdAt,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (storeId.present) {
+      map['store_id'] = Variable<String>(storeId.value);
+    }
+    if (clientExpenseId.present) {
+      map['client_expense_id'] = Variable<String>(clientExpenseId.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<String>(
+        $CachedOtherExpensesTable.$converteramount.toSql(amount.value),
+      );
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (payee.present) {
+      map['payee'] = Variable<String>(payee.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (paymentMethod.present) {
+      map['payment_method'] = Variable<String>(paymentMethod.value);
+    }
+    if (receiptAttachmentId.present) {
+      map['receipt_attachment_id'] = Variable<String>(
+        receiptAttachmentId.value,
+      );
+    }
+    if (actorId.present) {
+      map['actor_id'] = Variable<String>(actorId.value);
+    }
+    if (occurredAt.present) {
+      map['occurred_at'] = Variable<DateTime>(occurredAt.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (lastSyncedAt.present) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedOtherExpensesCompanion(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('storeId: $storeId, ')
+          ..write('clientExpenseId: $clientExpenseId, ')
+          ..write('category: $category, ')
+          ..write('amount: $amount, ')
+          ..write('description: $description, ')
+          ..write('payee: $payee, ')
+          ..write('note: $note, ')
+          ..write('paymentMethod: $paymentMethod, ')
+          ..write('receiptAttachmentId: $receiptAttachmentId, ')
+          ..write('actorId: $actorId, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CachedOtherIncomesTable extends CachedOtherIncomes
+    with TableInfo<$CachedOtherIncomesTable, CachedOtherIncome> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedOtherIncomesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _storeIdMeta = const VerificationMeta(
+    'storeId',
+  );
+  @override
+  late final GeneratedColumn<String> storeId = GeneratedColumn<String>(
+    'store_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _clientIncomeIdMeta = const VerificationMeta(
+    'clientIncomeId',
+  );
+  @override
+  late final GeneratedColumn<String> clientIncomeId = GeneratedColumn<String>(
+    'client_income_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Decimal, String> amount =
+      GeneratedColumn<String>(
+        'amount',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<Decimal>($CachedOtherIncomesTable.$converteramount);
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _paymentMethodMeta = const VerificationMeta(
+    'paymentMethod',
+  );
+  @override
+  late final GeneratedColumn<String> paymentMethod = GeneratedColumn<String>(
+    'payment_method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _receiptAttachmentIdMeta =
+      const VerificationMeta('receiptAttachmentId');
+  @override
+  late final GeneratedColumn<String> receiptAttachmentId =
+      GeneratedColumn<String>(
+        'receipt_attachment_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _actorIdMeta = const VerificationMeta(
+    'actorId',
+  );
+  @override
+  late final GeneratedColumn<String> actorId = GeneratedColumn<String>(
+    'actor_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _occurredAtMeta = const VerificationMeta(
+    'occurredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> occurredAt = GeneratedColumn<DateTime>(
+    'occurred_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastSyncedAtMeta = const VerificationMeta(
+    'lastSyncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
+    'last_synced_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    businessId,
+    storeId,
+    clientIncomeId,
+    category,
+    amount,
+    description,
+    source,
+    note,
+    paymentMethod,
+    receiptAttachmentId,
+    actorId,
+    occurredAt,
+    syncedAt,
+    updatedAt,
+    isDeleted,
+    createdAt,
+    lastSyncedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_other_incomes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedOtherIncome> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('store_id')) {
+      context.handle(
+        _storeIdMeta,
+        storeId.isAcceptableOrUnknown(data['store_id']!, _storeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_storeIdMeta);
+    }
+    if (data.containsKey('client_income_id')) {
+      context.handle(
+        _clientIncomeIdMeta,
+        clientIncomeId.isAcceptableOrUnknown(
+          data['client_income_id']!,
+          _clientIncomeIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_clientIncomeIdMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_descriptionMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('payment_method')) {
+      context.handle(
+        _paymentMethodMeta,
+        paymentMethod.isAcceptableOrUnknown(
+          data['payment_method']!,
+          _paymentMethodMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_paymentMethodMeta);
+    }
+    if (data.containsKey('receipt_attachment_id')) {
+      context.handle(
+        _receiptAttachmentIdMeta,
+        receiptAttachmentId.isAcceptableOrUnknown(
+          data['receipt_attachment_id']!,
+          _receiptAttachmentIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('actor_id')) {
+      context.handle(
+        _actorIdMeta,
+        actorId.isAcceptableOrUnknown(data['actor_id']!, _actorIdMeta),
+      );
+    }
+    if (data.containsKey('occurred_at')) {
+      context.handle(
+        _occurredAtMeta,
+        occurredAt.isAcceptableOrUnknown(data['occurred_at']!, _occurredAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_occurredAtMeta);
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_syncedAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('last_synced_at')) {
+      context.handle(
+        _lastSyncedAtMeta,
+        lastSyncedAt.isAcceptableOrUnknown(
+          data['last_synced_at']!,
+          _lastSyncedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastSyncedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedOtherIncome map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedOtherIncome(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      )!,
+      storeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}store_id'],
+      )!,
+      clientIncomeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}client_income_id'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      amount: $CachedOtherIncomesTable.$converteramount.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}amount'],
+        )!,
+      ),
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      paymentMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payment_method'],
+      )!,
+      receiptAttachmentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt_attachment_id'],
+      ),
+      actorId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actor_id'],
+      ),
+      occurredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}occurred_at'],
+      )!,
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      lastSyncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_synced_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedOtherIncomesTable createAlias(String alias) {
+    return $CachedOtherIncomesTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<Decimal, String> $converteramount =
+      const DecimalConverter();
+}
+
+class CachedOtherIncome extends DataClass
+    implements Insertable<CachedOtherIncome> {
+  /// Income UUID, assigned by POS Service (primary key).
+  final String id;
+  final String businessId;
+  final String storeId;
+
+  /// Client-generated idempotency key this income was created from.
+  final String clientIncomeId;
+  final String category;
+  final Decimal amount;
+  final String description;
+  final String? source;
+  final String? note;
+
+  /// Payment method: `cash`, `mobile_money`, `card`, or `other`.
+  final String paymentMethod;
+  final String? receiptAttachmentId;
+
+  /// Staff member who recorded the income, if known.
+  final String? actorId;
+  final DateTime occurredAt;
+  final DateTime syncedAt;
+  final DateTime updatedAt;
+  final bool isDeleted;
+  final DateTime createdAt;
+
+  /// Local timestamp of the most recent pull that included this row.
+  final DateTime lastSyncedAt;
+  const CachedOtherIncome({
+    required this.id,
+    required this.businessId,
+    required this.storeId,
+    required this.clientIncomeId,
+    required this.category,
+    required this.amount,
+    required this.description,
+    this.source,
+    this.note,
+    required this.paymentMethod,
+    this.receiptAttachmentId,
+    this.actorId,
+    required this.occurredAt,
+    required this.syncedAt,
+    required this.updatedAt,
+    required this.isDeleted,
+    required this.createdAt,
+    required this.lastSyncedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['business_id'] = Variable<String>(businessId);
+    map['store_id'] = Variable<String>(storeId);
+    map['client_income_id'] = Variable<String>(clientIncomeId);
+    map['category'] = Variable<String>(category);
+    {
+      map['amount'] = Variable<String>(
+        $CachedOtherIncomesTable.$converteramount.toSql(amount),
+      );
+    }
+    map['description'] = Variable<String>(description);
+    if (!nullToAbsent || source != null) {
+      map['source'] = Variable<String>(source);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['payment_method'] = Variable<String>(paymentMethod);
+    if (!nullToAbsent || receiptAttachmentId != null) {
+      map['receipt_attachment_id'] = Variable<String>(receiptAttachmentId);
+    }
+    if (!nullToAbsent || actorId != null) {
+      map['actor_id'] = Variable<String>(actorId);
+    }
+    map['occurred_at'] = Variable<DateTime>(occurredAt);
+    map['synced_at'] = Variable<DateTime>(syncedAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
+    return map;
+  }
+
+  CachedOtherIncomesCompanion toCompanion(bool nullToAbsent) {
+    return CachedOtherIncomesCompanion(
+      id: Value(id),
+      businessId: Value(businessId),
+      storeId: Value(storeId),
+      clientIncomeId: Value(clientIncomeId),
+      category: Value(category),
+      amount: Value(amount),
+      description: Value(description),
+      source: source == null && nullToAbsent
+          ? const Value.absent()
+          : Value(source),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      paymentMethod: Value(paymentMethod),
+      receiptAttachmentId: receiptAttachmentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receiptAttachmentId),
+      actorId: actorId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(actorId),
+      occurredAt: Value(occurredAt),
+      syncedAt: Value(syncedAt),
+      updatedAt: Value(updatedAt),
+      isDeleted: Value(isDeleted),
+      createdAt: Value(createdAt),
+      lastSyncedAt: Value(lastSyncedAt),
+    );
+  }
+
+  factory CachedOtherIncome.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedOtherIncome(
+      id: serializer.fromJson<String>(json['id']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      storeId: serializer.fromJson<String>(json['storeId']),
+      clientIncomeId: serializer.fromJson<String>(json['clientIncomeId']),
+      category: serializer.fromJson<String>(json['category']),
+      amount: serializer.fromJson<Decimal>(json['amount']),
+      description: serializer.fromJson<String>(json['description']),
+      source: serializer.fromJson<String?>(json['source']),
+      note: serializer.fromJson<String?>(json['note']),
+      paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
+      receiptAttachmentId: serializer.fromJson<String?>(
+        json['receiptAttachmentId'],
+      ),
+      actorId: serializer.fromJson<String?>(json['actorId']),
+      occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
+      syncedAt: serializer.fromJson<DateTime>(json['syncedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      lastSyncedAt: serializer.fromJson<DateTime>(json['lastSyncedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'businessId': serializer.toJson<String>(businessId),
+      'storeId': serializer.toJson<String>(storeId),
+      'clientIncomeId': serializer.toJson<String>(clientIncomeId),
+      'category': serializer.toJson<String>(category),
+      'amount': serializer.toJson<Decimal>(amount),
+      'description': serializer.toJson<String>(description),
+      'source': serializer.toJson<String?>(source),
+      'note': serializer.toJson<String?>(note),
+      'paymentMethod': serializer.toJson<String>(paymentMethod),
+      'receiptAttachmentId': serializer.toJson<String?>(receiptAttachmentId),
+      'actorId': serializer.toJson<String?>(actorId),
+      'occurredAt': serializer.toJson<DateTime>(occurredAt),
+      'syncedAt': serializer.toJson<DateTime>(syncedAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'lastSyncedAt': serializer.toJson<DateTime>(lastSyncedAt),
+    };
+  }
+
+  CachedOtherIncome copyWith({
+    String? id,
+    String? businessId,
+    String? storeId,
+    String? clientIncomeId,
+    String? category,
+    Decimal? amount,
+    String? description,
+    Value<String?> source = const Value.absent(),
+    Value<String?> note = const Value.absent(),
+    String? paymentMethod,
+    Value<String?> receiptAttachmentId = const Value.absent(),
+    Value<String?> actorId = const Value.absent(),
+    DateTime? occurredAt,
+    DateTime? syncedAt,
+    DateTime? updatedAt,
+    bool? isDeleted,
+    DateTime? createdAt,
+    DateTime? lastSyncedAt,
+  }) => CachedOtherIncome(
+    id: id ?? this.id,
+    businessId: businessId ?? this.businessId,
+    storeId: storeId ?? this.storeId,
+    clientIncomeId: clientIncomeId ?? this.clientIncomeId,
+    category: category ?? this.category,
+    amount: amount ?? this.amount,
+    description: description ?? this.description,
+    source: source.present ? source.value : this.source,
+    note: note.present ? note.value : this.note,
+    paymentMethod: paymentMethod ?? this.paymentMethod,
+    receiptAttachmentId: receiptAttachmentId.present
+        ? receiptAttachmentId.value
+        : this.receiptAttachmentId,
+    actorId: actorId.present ? actorId.value : this.actorId,
+    occurredAt: occurredAt ?? this.occurredAt,
+    syncedAt: syncedAt ?? this.syncedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    isDeleted: isDeleted ?? this.isDeleted,
+    createdAt: createdAt ?? this.createdAt,
+    lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+  );
+  CachedOtherIncome copyWithCompanion(CachedOtherIncomesCompanion data) {
+    return CachedOtherIncome(
+      id: data.id.present ? data.id.value : this.id,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      storeId: data.storeId.present ? data.storeId.value : this.storeId,
+      clientIncomeId: data.clientIncomeId.present
+          ? data.clientIncomeId.value
+          : this.clientIncomeId,
+      category: data.category.present ? data.category.value : this.category,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      source: data.source.present ? data.source.value : this.source,
+      note: data.note.present ? data.note.value : this.note,
+      paymentMethod: data.paymentMethod.present
+          ? data.paymentMethod.value
+          : this.paymentMethod,
+      receiptAttachmentId: data.receiptAttachmentId.present
+          ? data.receiptAttachmentId.value
+          : this.receiptAttachmentId,
+      actorId: data.actorId.present ? data.actorId.value : this.actorId,
+      occurredAt: data.occurredAt.present
+          ? data.occurredAt.value
+          : this.occurredAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      lastSyncedAt: data.lastSyncedAt.present
+          ? data.lastSyncedAt.value
+          : this.lastSyncedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedOtherIncome(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('storeId: $storeId, ')
+          ..write('clientIncomeId: $clientIncomeId, ')
+          ..write('category: $category, ')
+          ..write('amount: $amount, ')
+          ..write('description: $description, ')
+          ..write('source: $source, ')
+          ..write('note: $note, ')
+          ..write('paymentMethod: $paymentMethod, ')
+          ..write('receiptAttachmentId: $receiptAttachmentId, ')
+          ..write('actorId: $actorId, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    businessId,
+    storeId,
+    clientIncomeId,
+    category,
+    amount,
+    description,
+    source,
+    note,
+    paymentMethod,
+    receiptAttachmentId,
+    actorId,
+    occurredAt,
+    syncedAt,
+    updatedAt,
+    isDeleted,
+    createdAt,
+    lastSyncedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedOtherIncome &&
+          other.id == this.id &&
+          other.businessId == this.businessId &&
+          other.storeId == this.storeId &&
+          other.clientIncomeId == this.clientIncomeId &&
+          other.category == this.category &&
+          other.amount == this.amount &&
+          other.description == this.description &&
+          other.source == this.source &&
+          other.note == this.note &&
+          other.paymentMethod == this.paymentMethod &&
+          other.receiptAttachmentId == this.receiptAttachmentId &&
+          other.actorId == this.actorId &&
+          other.occurredAt == this.occurredAt &&
+          other.syncedAt == this.syncedAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isDeleted == this.isDeleted &&
+          other.createdAt == this.createdAt &&
+          other.lastSyncedAt == this.lastSyncedAt);
+}
+
+class CachedOtherIncomesCompanion extends UpdateCompanion<CachedOtherIncome> {
+  final Value<String> id;
+  final Value<String> businessId;
+  final Value<String> storeId;
+  final Value<String> clientIncomeId;
+  final Value<String> category;
+  final Value<Decimal> amount;
+  final Value<String> description;
+  final Value<String?> source;
+  final Value<String?> note;
+  final Value<String> paymentMethod;
+  final Value<String?> receiptAttachmentId;
+  final Value<String?> actorId;
+  final Value<DateTime> occurredAt;
+  final Value<DateTime> syncedAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> isDeleted;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> lastSyncedAt;
+  final Value<int> rowid;
+  const CachedOtherIncomesCompanion({
+    this.id = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.storeId = const Value.absent(),
+    this.clientIncomeId = const Value.absent(),
+    this.category = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.description = const Value.absent(),
+    this.source = const Value.absent(),
+    this.note = const Value.absent(),
+    this.paymentMethod = const Value.absent(),
+    this.receiptAttachmentId = const Value.absent(),
+    this.actorId = const Value.absent(),
+    this.occurredAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedOtherIncomesCompanion.insert({
+    required String id,
+    required String businessId,
+    required String storeId,
+    required String clientIncomeId,
+    required String category,
+    required Decimal amount,
+    required String description,
+    this.source = const Value.absent(),
+    this.note = const Value.absent(),
+    required String paymentMethod,
+    this.receiptAttachmentId = const Value.absent(),
+    this.actorId = const Value.absent(),
+    required DateTime occurredAt,
+    required DateTime syncedAt,
+    required DateTime updatedAt,
+    this.isDeleted = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime lastSyncedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       businessId = Value(businessId),
+       storeId = Value(storeId),
+       clientIncomeId = Value(clientIncomeId),
+       category = Value(category),
+       amount = Value(amount),
+       description = Value(description),
+       paymentMethod = Value(paymentMethod),
+       occurredAt = Value(occurredAt),
+       syncedAt = Value(syncedAt),
+       updatedAt = Value(updatedAt),
+       createdAt = Value(createdAt),
+       lastSyncedAt = Value(lastSyncedAt);
+  static Insertable<CachedOtherIncome> custom({
+    Expression<String>? id,
+    Expression<String>? businessId,
+    Expression<String>? storeId,
+    Expression<String>? clientIncomeId,
+    Expression<String>? category,
+    Expression<String>? amount,
+    Expression<String>? description,
+    Expression<String>? source,
+    Expression<String>? note,
+    Expression<String>? paymentMethod,
+    Expression<String>? receiptAttachmentId,
+    Expression<String>? actorId,
+    Expression<DateTime>? occurredAt,
+    Expression<DateTime>? syncedAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isDeleted,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? lastSyncedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (businessId != null) 'business_id': businessId,
+      if (storeId != null) 'store_id': storeId,
+      if (clientIncomeId != null) 'client_income_id': clientIncomeId,
+      if (category != null) 'category': category,
+      if (amount != null) 'amount': amount,
+      if (description != null) 'description': description,
+      if (source != null) 'source': source,
+      if (note != null) 'note': note,
+      if (paymentMethod != null) 'payment_method': paymentMethod,
+      if (receiptAttachmentId != null)
+        'receipt_attachment_id': receiptAttachmentId,
+      if (actorId != null) 'actor_id': actorId,
+      if (occurredAt != null) 'occurred_at': occurredAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (createdAt != null) 'created_at': createdAt,
+      if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedOtherIncomesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? businessId,
+    Value<String>? storeId,
+    Value<String>? clientIncomeId,
+    Value<String>? category,
+    Value<Decimal>? amount,
+    Value<String>? description,
+    Value<String?>? source,
+    Value<String?>? note,
+    Value<String>? paymentMethod,
+    Value<String?>? receiptAttachmentId,
+    Value<String?>? actorId,
+    Value<DateTime>? occurredAt,
+    Value<DateTime>? syncedAt,
+    Value<DateTime>? updatedAt,
+    Value<bool>? isDeleted,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? lastSyncedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedOtherIncomesCompanion(
+      id: id ?? this.id,
+      businessId: businessId ?? this.businessId,
+      storeId: storeId ?? this.storeId,
+      clientIncomeId: clientIncomeId ?? this.clientIncomeId,
+      category: category ?? this.category,
+      amount: amount ?? this.amount,
+      description: description ?? this.description,
+      source: source ?? this.source,
+      note: note ?? this.note,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      receiptAttachmentId: receiptAttachmentId ?? this.receiptAttachmentId,
+      actorId: actorId ?? this.actorId,
+      occurredAt: occurredAt ?? this.occurredAt,
+      syncedAt: syncedAt ?? this.syncedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      createdAt: createdAt ?? this.createdAt,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (storeId.present) {
+      map['store_id'] = Variable<String>(storeId.value);
+    }
+    if (clientIncomeId.present) {
+      map['client_income_id'] = Variable<String>(clientIncomeId.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<String>(
+        $CachedOtherIncomesTable.$converteramount.toSql(amount.value),
+      );
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (paymentMethod.present) {
+      map['payment_method'] = Variable<String>(paymentMethod.value);
+    }
+    if (receiptAttachmentId.present) {
+      map['receipt_attachment_id'] = Variable<String>(
+        receiptAttachmentId.value,
+      );
+    }
+    if (actorId.present) {
+      map['actor_id'] = Variable<String>(actorId.value);
+    }
+    if (occurredAt.present) {
+      map['occurred_at'] = Variable<DateTime>(occurredAt.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (lastSyncedAt.present) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedOtherIncomesCompanion(')
+          ..write('id: $id, ')
+          ..write('businessId: $businessId, ')
+          ..write('storeId: $storeId, ')
+          ..write('clientIncomeId: $clientIncomeId, ')
+          ..write('category: $category, ')
+          ..write('amount: $amount, ')
+          ..write('description: $description, ')
+          ..write('source: $source, ')
+          ..write('note: $note, ')
+          ..write('paymentMethod: $paymentMethod, ')
+          ..write('receiptAttachmentId: $receiptAttachmentId, ')
+          ..write('actorId: $actorId, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -10002,6 +12733,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ExpenseEntriesTable expenseEntries = $ExpenseEntriesTable(this);
   late final $OtherIncomeEntriesTable otherIncomeEntries =
       $OtherIncomeEntriesTable(this);
+  late final $CachedOtherExpensesTable cachedOtherExpenses =
+      $CachedOtherExpensesTable(this);
+  late final $CachedOtherIncomesTable cachedOtherIncomes =
+      $CachedOtherIncomesTable(this);
   late final $LocalAuditLogTable localAuditLog = $LocalAuditLogTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -10021,6 +12756,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     pendingVoidsRefunds,
     expenseEntries,
     otherIncomeEntries,
+    cachedOtherExpenses,
+    cachedOtherIncomes,
     localAuditLog,
   ];
   @override
@@ -14505,12 +17242,18 @@ typedef $$ExpenseEntriesTableCreateCompanionBuilder =
       Value<int> id,
       required String expenseId,
       required String businessId,
-      required String businessLocationId,
+      required String storeId,
       required String category,
       required Decimal amount,
       Value<String?> description,
+      Value<String?> payee,
+      Value<String?> note,
+      Value<String> paymentMethod,
+      Value<String?> receiptAttachmentId,
+      Value<String?> localReceiptPath,
       required DateTime occurredAt,
       required String actorUserId,
+      Value<String?> serverId,
       Value<String> syncStatus,
       Value<String?> syncError,
       Value<int> syncAttemptCount,
@@ -14523,12 +17266,18 @@ typedef $$ExpenseEntriesTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> expenseId,
       Value<String> businessId,
-      Value<String> businessLocationId,
+      Value<String> storeId,
       Value<String> category,
       Value<Decimal> amount,
       Value<String?> description,
+      Value<String?> payee,
+      Value<String?> note,
+      Value<String> paymentMethod,
+      Value<String?> receiptAttachmentId,
+      Value<String?> localReceiptPath,
       Value<DateTime> occurredAt,
       Value<String> actorUserId,
+      Value<String?> serverId,
       Value<String> syncStatus,
       Value<String?> syncError,
       Value<int> syncAttemptCount,
@@ -14561,8 +17310,8 @@ class $$ExpenseEntriesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get businessLocationId => $composableBuilder(
-    column: $table.businessLocationId,
+  ColumnFilters<String> get storeId => $composableBuilder(
+    column: $table.storeId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14582,6 +17331,31 @@ class $$ExpenseEntriesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get payee => $composableBuilder(
+    column: $table.payee,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receiptAttachmentId => $composableBuilder(
+    column: $table.receiptAttachmentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localReceiptPath => $composableBuilder(
+    column: $table.localReceiptPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
     builder: (column) => ColumnFilters(column),
@@ -14589,6 +17363,11 @@ class $$ExpenseEntriesTableFilterComposer
 
   ColumnFilters<String> get actorUserId => $composableBuilder(
     column: $table.actorUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serverId => $composableBuilder(
+    column: $table.serverId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14647,8 +17426,8 @@ class $$ExpenseEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get businessLocationId => $composableBuilder(
-    column: $table.businessLocationId,
+  ColumnOrderings<String> get storeId => $composableBuilder(
+    column: $table.storeId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -14667,6 +17446,31 @@ class $$ExpenseEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get payee => $composableBuilder(
+    column: $table.payee,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receiptAttachmentId => $composableBuilder(
+    column: $table.receiptAttachmentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localReceiptPath => $composableBuilder(
+    column: $table.localReceiptPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
     builder: (column) => ColumnOrderings(column),
@@ -14674,6 +17478,11 @@ class $$ExpenseEntriesTableOrderingComposer
 
   ColumnOrderings<String> get actorUserId => $composableBuilder(
     column: $table.actorUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serverId => $composableBuilder(
+    column: $table.serverId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -14728,10 +17537,8 @@ class $$ExpenseEntriesTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get businessLocationId => $composableBuilder(
-    column: $table.businessLocationId,
-    builder: (column) => column,
-  );
+  GeneratedColumn<String> get storeId =>
+      $composableBuilder(column: $table.storeId, builder: (column) => column);
 
   GeneratedColumn<String> get category =>
       $composableBuilder(column: $table.category, builder: (column) => column);
@@ -14744,6 +17551,27 @@ class $$ExpenseEntriesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get payee =>
+      $composableBuilder(column: $table.payee, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get receiptAttachmentId => $composableBuilder(
+    column: $table.receiptAttachmentId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get localReceiptPath => $composableBuilder(
+    column: $table.localReceiptPath,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
     builder: (column) => column,
@@ -14753,6 +17581,9 @@ class $$ExpenseEntriesTableAnnotationComposer
     column: $table.actorUserId,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get serverId =>
+      $composableBuilder(column: $table.serverId, builder: (column) => column);
 
   GeneratedColumn<String> get syncStatus => $composableBuilder(
     column: $table.syncStatus,
@@ -14815,12 +17646,18 @@ class $$ExpenseEntriesTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> expenseId = const Value.absent(),
                 Value<String> businessId = const Value.absent(),
-                Value<String> businessLocationId = const Value.absent(),
+                Value<String> storeId = const Value.absent(),
                 Value<String> category = const Value.absent(),
                 Value<Decimal> amount = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<String?> payee = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<String> paymentMethod = const Value.absent(),
+                Value<String?> receiptAttachmentId = const Value.absent(),
+                Value<String?> localReceiptPath = const Value.absent(),
                 Value<DateTime> occurredAt = const Value.absent(),
                 Value<String> actorUserId = const Value.absent(),
+                Value<String?> serverId = const Value.absent(),
                 Value<String> syncStatus = const Value.absent(),
                 Value<String?> syncError = const Value.absent(),
                 Value<int> syncAttemptCount = const Value.absent(),
@@ -14831,12 +17668,18 @@ class $$ExpenseEntriesTableTableManager
                 id: id,
                 expenseId: expenseId,
                 businessId: businessId,
-                businessLocationId: businessLocationId,
+                storeId: storeId,
                 category: category,
                 amount: amount,
                 description: description,
+                payee: payee,
+                note: note,
+                paymentMethod: paymentMethod,
+                receiptAttachmentId: receiptAttachmentId,
+                localReceiptPath: localReceiptPath,
                 occurredAt: occurredAt,
                 actorUserId: actorUserId,
+                serverId: serverId,
                 syncStatus: syncStatus,
                 syncError: syncError,
                 syncAttemptCount: syncAttemptCount,
@@ -14849,12 +17692,18 @@ class $$ExpenseEntriesTableTableManager
                 Value<int> id = const Value.absent(),
                 required String expenseId,
                 required String businessId,
-                required String businessLocationId,
+                required String storeId,
                 required String category,
                 required Decimal amount,
                 Value<String?> description = const Value.absent(),
+                Value<String?> payee = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<String> paymentMethod = const Value.absent(),
+                Value<String?> receiptAttachmentId = const Value.absent(),
+                Value<String?> localReceiptPath = const Value.absent(),
                 required DateTime occurredAt,
                 required String actorUserId,
+                Value<String?> serverId = const Value.absent(),
                 Value<String> syncStatus = const Value.absent(),
                 Value<String?> syncError = const Value.absent(),
                 Value<int> syncAttemptCount = const Value.absent(),
@@ -14865,12 +17714,18 @@ class $$ExpenseEntriesTableTableManager
                 id: id,
                 expenseId: expenseId,
                 businessId: businessId,
-                businessLocationId: businessLocationId,
+                storeId: storeId,
                 category: category,
                 amount: amount,
                 description: description,
+                payee: payee,
+                note: note,
+                paymentMethod: paymentMethod,
+                receiptAttachmentId: receiptAttachmentId,
+                localReceiptPath: localReceiptPath,
                 occurredAt: occurredAt,
                 actorUserId: actorUserId,
+                serverId: serverId,
                 syncStatus: syncStatus,
                 syncError: syncError,
                 syncAttemptCount: syncAttemptCount,
@@ -14908,12 +17763,18 @@ typedef $$OtherIncomeEntriesTableCreateCompanionBuilder =
       Value<int> id,
       required String incomeId,
       required String businessId,
-      required String businessLocationId,
+      required String storeId,
       required String category,
       required Decimal amount,
       Value<String?> description,
+      Value<String?> source,
+      Value<String?> note,
+      Value<String> paymentMethod,
+      Value<String?> receiptAttachmentId,
+      Value<String?> localReceiptPath,
       required DateTime occurredAt,
       required String actorUserId,
+      Value<String?> serverId,
       Value<String> syncStatus,
       Value<String?> syncError,
       Value<int> syncAttemptCount,
@@ -14926,12 +17787,18 @@ typedef $$OtherIncomeEntriesTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> incomeId,
       Value<String> businessId,
-      Value<String> businessLocationId,
+      Value<String> storeId,
       Value<String> category,
       Value<Decimal> amount,
       Value<String?> description,
+      Value<String?> source,
+      Value<String?> note,
+      Value<String> paymentMethod,
+      Value<String?> receiptAttachmentId,
+      Value<String?> localReceiptPath,
       Value<DateTime> occurredAt,
       Value<String> actorUserId,
+      Value<String?> serverId,
       Value<String> syncStatus,
       Value<String?> syncError,
       Value<int> syncAttemptCount,
@@ -14964,8 +17831,8 @@ class $$OtherIncomeEntriesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get businessLocationId => $composableBuilder(
-    column: $table.businessLocationId,
+  ColumnFilters<String> get storeId => $composableBuilder(
+    column: $table.storeId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14985,6 +17852,31 @@ class $$OtherIncomeEntriesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receiptAttachmentId => $composableBuilder(
+    column: $table.receiptAttachmentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localReceiptPath => $composableBuilder(
+    column: $table.localReceiptPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
     builder: (column) => ColumnFilters(column),
@@ -14992,6 +17884,11 @@ class $$OtherIncomeEntriesTableFilterComposer
 
   ColumnFilters<String> get actorUserId => $composableBuilder(
     column: $table.actorUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serverId => $composableBuilder(
+    column: $table.serverId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15050,8 +17947,8 @@ class $$OtherIncomeEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get businessLocationId => $composableBuilder(
-    column: $table.businessLocationId,
+  ColumnOrderings<String> get storeId => $composableBuilder(
+    column: $table.storeId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -15070,6 +17967,31 @@ class $$OtherIncomeEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receiptAttachmentId => $composableBuilder(
+    column: $table.receiptAttachmentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localReceiptPath => $composableBuilder(
+    column: $table.localReceiptPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
     builder: (column) => ColumnOrderings(column),
@@ -15077,6 +17999,11 @@ class $$OtherIncomeEntriesTableOrderingComposer
 
   ColumnOrderings<String> get actorUserId => $composableBuilder(
     column: $table.actorUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serverId => $composableBuilder(
+    column: $table.serverId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -15131,10 +18058,8 @@ class $$OtherIncomeEntriesTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get businessLocationId => $composableBuilder(
-    column: $table.businessLocationId,
-    builder: (column) => column,
-  );
+  GeneratedColumn<String> get storeId =>
+      $composableBuilder(column: $table.storeId, builder: (column) => column);
 
   GeneratedColumn<String> get category =>
       $composableBuilder(column: $table.category, builder: (column) => column);
@@ -15147,6 +18072,27 @@ class $$OtherIncomeEntriesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get receiptAttachmentId => $composableBuilder(
+    column: $table.receiptAttachmentId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get localReceiptPath => $composableBuilder(
+    column: $table.localReceiptPath,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
     builder: (column) => column,
@@ -15156,6 +18102,9 @@ class $$OtherIncomeEntriesTableAnnotationComposer
     column: $table.actorUserId,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get serverId =>
+      $composableBuilder(column: $table.serverId, builder: (column) => column);
 
   GeneratedColumn<String> get syncStatus => $composableBuilder(
     column: $table.syncStatus,
@@ -15225,12 +18174,18 @@ class $$OtherIncomeEntriesTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> incomeId = const Value.absent(),
                 Value<String> businessId = const Value.absent(),
-                Value<String> businessLocationId = const Value.absent(),
+                Value<String> storeId = const Value.absent(),
                 Value<String> category = const Value.absent(),
                 Value<Decimal> amount = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<String?> source = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<String> paymentMethod = const Value.absent(),
+                Value<String?> receiptAttachmentId = const Value.absent(),
+                Value<String?> localReceiptPath = const Value.absent(),
                 Value<DateTime> occurredAt = const Value.absent(),
                 Value<String> actorUserId = const Value.absent(),
+                Value<String?> serverId = const Value.absent(),
                 Value<String> syncStatus = const Value.absent(),
                 Value<String?> syncError = const Value.absent(),
                 Value<int> syncAttemptCount = const Value.absent(),
@@ -15241,12 +18196,18 @@ class $$OtherIncomeEntriesTableTableManager
                 id: id,
                 incomeId: incomeId,
                 businessId: businessId,
-                businessLocationId: businessLocationId,
+                storeId: storeId,
                 category: category,
                 amount: amount,
                 description: description,
+                source: source,
+                note: note,
+                paymentMethod: paymentMethod,
+                receiptAttachmentId: receiptAttachmentId,
+                localReceiptPath: localReceiptPath,
                 occurredAt: occurredAt,
                 actorUserId: actorUserId,
+                serverId: serverId,
                 syncStatus: syncStatus,
                 syncError: syncError,
                 syncAttemptCount: syncAttemptCount,
@@ -15259,12 +18220,18 @@ class $$OtherIncomeEntriesTableTableManager
                 Value<int> id = const Value.absent(),
                 required String incomeId,
                 required String businessId,
-                required String businessLocationId,
+                required String storeId,
                 required String category,
                 required Decimal amount,
                 Value<String?> description = const Value.absent(),
+                Value<String?> source = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<String> paymentMethod = const Value.absent(),
+                Value<String?> receiptAttachmentId = const Value.absent(),
+                Value<String?> localReceiptPath = const Value.absent(),
                 required DateTime occurredAt,
                 required String actorUserId,
+                Value<String?> serverId = const Value.absent(),
                 Value<String> syncStatus = const Value.absent(),
                 Value<String?> syncError = const Value.absent(),
                 Value<int> syncAttemptCount = const Value.absent(),
@@ -15275,12 +18242,18 @@ class $$OtherIncomeEntriesTableTableManager
                 id: id,
                 incomeId: incomeId,
                 businessId: businessId,
-                businessLocationId: businessLocationId,
+                storeId: storeId,
                 category: category,
                 amount: amount,
                 description: description,
+                source: source,
+                note: note,
+                paymentMethod: paymentMethod,
+                receiptAttachmentId: receiptAttachmentId,
+                localReceiptPath: localReceiptPath,
                 occurredAt: occurredAt,
                 actorUserId: actorUserId,
+                serverId: serverId,
                 syncStatus: syncStatus,
                 syncError: syncError,
                 syncAttemptCount: syncAttemptCount,
@@ -15315,6 +18288,959 @@ typedef $$OtherIncomeEntriesTableProcessedTableManager =
         >,
       ),
       OtherIncomeEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$CachedOtherExpensesTableCreateCompanionBuilder =
+    CachedOtherExpensesCompanion Function({
+      required String id,
+      required String businessId,
+      required String storeId,
+      required String clientExpenseId,
+      required String category,
+      required Decimal amount,
+      required String description,
+      Value<String?> payee,
+      Value<String?> note,
+      required String paymentMethod,
+      Value<String?> receiptAttachmentId,
+      Value<String?> actorId,
+      required DateTime occurredAt,
+      required DateTime syncedAt,
+      required DateTime updatedAt,
+      Value<bool> isDeleted,
+      required DateTime createdAt,
+      required DateTime lastSyncedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedOtherExpensesTableUpdateCompanionBuilder =
+    CachedOtherExpensesCompanion Function({
+      Value<String> id,
+      Value<String> businessId,
+      Value<String> storeId,
+      Value<String> clientExpenseId,
+      Value<String> category,
+      Value<Decimal> amount,
+      Value<String> description,
+      Value<String?> payee,
+      Value<String?> note,
+      Value<String> paymentMethod,
+      Value<String?> receiptAttachmentId,
+      Value<String?> actorId,
+      Value<DateTime> occurredAt,
+      Value<DateTime> syncedAt,
+      Value<DateTime> updatedAt,
+      Value<bool> isDeleted,
+      Value<DateTime> createdAt,
+      Value<DateTime> lastSyncedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedOtherExpensesTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedOtherExpensesTable> {
+  $$CachedOtherExpensesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get storeId => $composableBuilder(
+    column: $table.storeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clientExpenseId => $composableBuilder(
+    column: $table.clientExpenseId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Decimal, Decimal, String> get amount =>
+      $composableBuilder(
+        column: $table.amount,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payee => $composableBuilder(
+    column: $table.payee,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receiptAttachmentId => $composableBuilder(
+    column: $table.receiptAttachmentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actorId => $composableBuilder(
+    column: $table.actorId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedOtherExpensesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedOtherExpensesTable> {
+  $$CachedOtherExpensesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get storeId => $composableBuilder(
+    column: $table.storeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clientExpenseId => $composableBuilder(
+    column: $table.clientExpenseId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payee => $composableBuilder(
+    column: $table.payee,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receiptAttachmentId => $composableBuilder(
+    column: $table.receiptAttachmentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actorId => $composableBuilder(
+    column: $table.actorId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedOtherExpensesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedOtherExpensesTable> {
+  $$CachedOtherExpensesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get storeId =>
+      $composableBuilder(column: $table.storeId, builder: (column) => column);
+
+  GeneratedColumn<String> get clientExpenseId => $composableBuilder(
+    column: $table.clientExpenseId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<Decimal, String> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get payee =>
+      $composableBuilder(column: $table.payee, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get receiptAttachmentId => $composableBuilder(
+    column: $table.receiptAttachmentId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get actorId =>
+      $composableBuilder(column: $table.actorId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$CachedOtherExpensesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedOtherExpensesTable,
+          CachedOtherExpense,
+          $$CachedOtherExpensesTableFilterComposer,
+          $$CachedOtherExpensesTableOrderingComposer,
+          $$CachedOtherExpensesTableAnnotationComposer,
+          $$CachedOtherExpensesTableCreateCompanionBuilder,
+          $$CachedOtherExpensesTableUpdateCompanionBuilder,
+          (
+            CachedOtherExpense,
+            BaseReferences<
+              _$AppDatabase,
+              $CachedOtherExpensesTable,
+              CachedOtherExpense
+            >,
+          ),
+          CachedOtherExpense,
+          PrefetchHooks Function()
+        > {
+  $$CachedOtherExpensesTableTableManager(
+    _$AppDatabase db,
+    $CachedOtherExpensesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedOtherExpensesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedOtherExpensesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$CachedOtherExpensesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String> storeId = const Value.absent(),
+                Value<String> clientExpenseId = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<Decimal> amount = const Value.absent(),
+                Value<String> description = const Value.absent(),
+                Value<String?> payee = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<String> paymentMethod = const Value.absent(),
+                Value<String?> receiptAttachmentId = const Value.absent(),
+                Value<String?> actorId = const Value.absent(),
+                Value<DateTime> occurredAt = const Value.absent(),
+                Value<DateTime> syncedAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastSyncedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedOtherExpensesCompanion(
+                id: id,
+                businessId: businessId,
+                storeId: storeId,
+                clientExpenseId: clientExpenseId,
+                category: category,
+                amount: amount,
+                description: description,
+                payee: payee,
+                note: note,
+                paymentMethod: paymentMethod,
+                receiptAttachmentId: receiptAttachmentId,
+                actorId: actorId,
+                occurredAt: occurredAt,
+                syncedAt: syncedAt,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+                createdAt: createdAt,
+                lastSyncedAt: lastSyncedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String businessId,
+                required String storeId,
+                required String clientExpenseId,
+                required String category,
+                required Decimal amount,
+                required String description,
+                Value<String?> payee = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                required String paymentMethod,
+                Value<String?> receiptAttachmentId = const Value.absent(),
+                Value<String?> actorId = const Value.absent(),
+                required DateTime occurredAt,
+                required DateTime syncedAt,
+                required DateTime updatedAt,
+                Value<bool> isDeleted = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime lastSyncedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CachedOtherExpensesCompanion.insert(
+                id: id,
+                businessId: businessId,
+                storeId: storeId,
+                clientExpenseId: clientExpenseId,
+                category: category,
+                amount: amount,
+                description: description,
+                payee: payee,
+                note: note,
+                paymentMethod: paymentMethod,
+                receiptAttachmentId: receiptAttachmentId,
+                actorId: actorId,
+                occurredAt: occurredAt,
+                syncedAt: syncedAt,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+                createdAt: createdAt,
+                lastSyncedAt: lastSyncedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedOtherExpensesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedOtherExpensesTable,
+      CachedOtherExpense,
+      $$CachedOtherExpensesTableFilterComposer,
+      $$CachedOtherExpensesTableOrderingComposer,
+      $$CachedOtherExpensesTableAnnotationComposer,
+      $$CachedOtherExpensesTableCreateCompanionBuilder,
+      $$CachedOtherExpensesTableUpdateCompanionBuilder,
+      (
+        CachedOtherExpense,
+        BaseReferences<
+          _$AppDatabase,
+          $CachedOtherExpensesTable,
+          CachedOtherExpense
+        >,
+      ),
+      CachedOtherExpense,
+      PrefetchHooks Function()
+    >;
+typedef $$CachedOtherIncomesTableCreateCompanionBuilder =
+    CachedOtherIncomesCompanion Function({
+      required String id,
+      required String businessId,
+      required String storeId,
+      required String clientIncomeId,
+      required String category,
+      required Decimal amount,
+      required String description,
+      Value<String?> source,
+      Value<String?> note,
+      required String paymentMethod,
+      Value<String?> receiptAttachmentId,
+      Value<String?> actorId,
+      required DateTime occurredAt,
+      required DateTime syncedAt,
+      required DateTime updatedAt,
+      Value<bool> isDeleted,
+      required DateTime createdAt,
+      required DateTime lastSyncedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedOtherIncomesTableUpdateCompanionBuilder =
+    CachedOtherIncomesCompanion Function({
+      Value<String> id,
+      Value<String> businessId,
+      Value<String> storeId,
+      Value<String> clientIncomeId,
+      Value<String> category,
+      Value<Decimal> amount,
+      Value<String> description,
+      Value<String?> source,
+      Value<String?> note,
+      Value<String> paymentMethod,
+      Value<String?> receiptAttachmentId,
+      Value<String?> actorId,
+      Value<DateTime> occurredAt,
+      Value<DateTime> syncedAt,
+      Value<DateTime> updatedAt,
+      Value<bool> isDeleted,
+      Value<DateTime> createdAt,
+      Value<DateTime> lastSyncedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedOtherIncomesTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedOtherIncomesTable> {
+  $$CachedOtherIncomesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get storeId => $composableBuilder(
+    column: $table.storeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clientIncomeId => $composableBuilder(
+    column: $table.clientIncomeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Decimal, Decimal, String> get amount =>
+      $composableBuilder(
+        column: $table.amount,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receiptAttachmentId => $composableBuilder(
+    column: $table.receiptAttachmentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actorId => $composableBuilder(
+    column: $table.actorId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedOtherIncomesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedOtherIncomesTable> {
+  $$CachedOtherIncomesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get storeId => $composableBuilder(
+    column: $table.storeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clientIncomeId => $composableBuilder(
+    column: $table.clientIncomeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receiptAttachmentId => $composableBuilder(
+    column: $table.receiptAttachmentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actorId => $composableBuilder(
+    column: $table.actorId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedOtherIncomesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedOtherIncomesTable> {
+  $$CachedOtherIncomesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get storeId =>
+      $composableBuilder(column: $table.storeId, builder: (column) => column);
+
+  GeneratedColumn<String> get clientIncomeId => $composableBuilder(
+    column: $table.clientIncomeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<Decimal, String> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get receiptAttachmentId => $composableBuilder(
+    column: $table.receiptAttachmentId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get actorId =>
+      $composableBuilder(column: $table.actorId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$CachedOtherIncomesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedOtherIncomesTable,
+          CachedOtherIncome,
+          $$CachedOtherIncomesTableFilterComposer,
+          $$CachedOtherIncomesTableOrderingComposer,
+          $$CachedOtherIncomesTableAnnotationComposer,
+          $$CachedOtherIncomesTableCreateCompanionBuilder,
+          $$CachedOtherIncomesTableUpdateCompanionBuilder,
+          (
+            CachedOtherIncome,
+            BaseReferences<
+              _$AppDatabase,
+              $CachedOtherIncomesTable,
+              CachedOtherIncome
+            >,
+          ),
+          CachedOtherIncome,
+          PrefetchHooks Function()
+        > {
+  $$CachedOtherIncomesTableTableManager(
+    _$AppDatabase db,
+    $CachedOtherIncomesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedOtherIncomesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedOtherIncomesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedOtherIncomesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> businessId = const Value.absent(),
+                Value<String> storeId = const Value.absent(),
+                Value<String> clientIncomeId = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<Decimal> amount = const Value.absent(),
+                Value<String> description = const Value.absent(),
+                Value<String?> source = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<String> paymentMethod = const Value.absent(),
+                Value<String?> receiptAttachmentId = const Value.absent(),
+                Value<String?> actorId = const Value.absent(),
+                Value<DateTime> occurredAt = const Value.absent(),
+                Value<DateTime> syncedAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastSyncedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedOtherIncomesCompanion(
+                id: id,
+                businessId: businessId,
+                storeId: storeId,
+                clientIncomeId: clientIncomeId,
+                category: category,
+                amount: amount,
+                description: description,
+                source: source,
+                note: note,
+                paymentMethod: paymentMethod,
+                receiptAttachmentId: receiptAttachmentId,
+                actorId: actorId,
+                occurredAt: occurredAt,
+                syncedAt: syncedAt,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+                createdAt: createdAt,
+                lastSyncedAt: lastSyncedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String businessId,
+                required String storeId,
+                required String clientIncomeId,
+                required String category,
+                required Decimal amount,
+                required String description,
+                Value<String?> source = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                required String paymentMethod,
+                Value<String?> receiptAttachmentId = const Value.absent(),
+                Value<String?> actorId = const Value.absent(),
+                required DateTime occurredAt,
+                required DateTime syncedAt,
+                required DateTime updatedAt,
+                Value<bool> isDeleted = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime lastSyncedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CachedOtherIncomesCompanion.insert(
+                id: id,
+                businessId: businessId,
+                storeId: storeId,
+                clientIncomeId: clientIncomeId,
+                category: category,
+                amount: amount,
+                description: description,
+                source: source,
+                note: note,
+                paymentMethod: paymentMethod,
+                receiptAttachmentId: receiptAttachmentId,
+                actorId: actorId,
+                occurredAt: occurredAt,
+                syncedAt: syncedAt,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+                createdAt: createdAt,
+                lastSyncedAt: lastSyncedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedOtherIncomesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedOtherIncomesTable,
+      CachedOtherIncome,
+      $$CachedOtherIncomesTableFilterComposer,
+      $$CachedOtherIncomesTableOrderingComposer,
+      $$CachedOtherIncomesTableAnnotationComposer,
+      $$CachedOtherIncomesTableCreateCompanionBuilder,
+      $$CachedOtherIncomesTableUpdateCompanionBuilder,
+      (
+        CachedOtherIncome,
+        BaseReferences<
+          _$AppDatabase,
+          $CachedOtherIncomesTable,
+          CachedOtherIncome
+        >,
+      ),
+      CachedOtherIncome,
       PrefetchHooks Function()
     >;
 typedef $$LocalAuditLogTableCreateCompanionBuilder =
@@ -15713,6 +19639,10 @@ class $AppDatabaseManager {
       $$ExpenseEntriesTableTableManager(_db, _db.expenseEntries);
   $$OtherIncomeEntriesTableTableManager get otherIncomeEntries =>
       $$OtherIncomeEntriesTableTableManager(_db, _db.otherIncomeEntries);
+  $$CachedOtherExpensesTableTableManager get cachedOtherExpenses =>
+      $$CachedOtherExpensesTableTableManager(_db, _db.cachedOtherExpenses);
+  $$CachedOtherIncomesTableTableManager get cachedOtherIncomes =>
+      $$CachedOtherIncomesTableTableManager(_db, _db.cachedOtherIncomes);
   $$LocalAuditLogTableTableManager get localAuditLog =>
       $$LocalAuditLogTableTableManager(_db, _db.localAuditLog);
 }

@@ -189,6 +189,14 @@ const Map<String, List<String>> _featureRequirements = {
   'settings_tax': [AppPermissions.settingsTax],
   'settings_devices': [AppPermissions.settingsDevices],
   'settings_billing': [AppPermissions.settingsBilling],
+  'finance_view': [AppPermissions.financeView],
+  'finance_expenses_create': [AppPermissions.financeExpensesCreate],
+  'finance_expenses_update': [AppPermissions.financeExpensesUpdate],
+  'finance_expenses_delete': [AppPermissions.financeExpensesDelete],
+  'finance_incomes_create': [AppPermissions.financeIncomesCreate],
+  'finance_incomes_update': [AppPermissions.financeIncomesUpdate],
+  'finance_incomes_delete': [AppPermissions.financeIncomesDelete],
+  'finance_attachments_upload': [AppPermissions.financeAttachmentsUpload],
 };
 
 /// Provider for permission enforcement service.

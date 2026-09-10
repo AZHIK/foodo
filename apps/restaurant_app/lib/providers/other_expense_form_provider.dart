@@ -42,7 +42,7 @@ class OtherExpenseFormNotifier extends AutoDisposeFamilyNotifier<OtherExpenseFor
   @override
   OtherExpenseFormState build(String? id) {
     if (id == null) return OtherExpenseFormState.blank();
-    for (final e in ref.read(otherExpensesProvider)) { if (e.id == id) return OtherExpenseFormState.from(e); }
+    for (final e in ref.read(otherExpensesListProvider)) { if (e.id == id) return OtherExpenseFormState.from(e); }
     return OtherExpenseFormState.blank();
   }
   void setDate(DateTime v) => state = state.copyWithDate(v);
@@ -54,14 +54,38 @@ class OtherExpenseFormNotifier extends AutoDisposeFamilyNotifier<OtherExpenseFor
   void setNote(String v) => state = state.copyWith(note: v);
   void setReceipt(String n, Uint8List b) => state = state.copyWith(receipt: FinanceAttachment(name: n, bytes: b));
   void clearReceipt() => state = state.copyWith(clearReceipt: true);
-  OtherExpense save() {
+
+  Future<OtherExpense> save() async {
     final notifier = ref.read(otherExpensesProvider.notifier);
     OtherExpense? existing;
-    if (arg != null) { for (final e in ref.read(otherExpensesProvider)) { if (e.id == arg) existing = e; } }
+    if (arg != null) { for (final e in ref.read(otherExpensesListProvider)) { if (e.id == arg) existing = e; } }
     final amount = double.tryParse(state.amount.trim()) ?? 0;
-    final expense = existing != null ? existing.copyWith(date: state.date, categoryId: state.categoryId, description: state.description.trim(), amount: amount, paymentType: state.paymentType, payee: state.payee.trim(), note: state.note.trim(), receipt: state.receipt, clearReceipt: state.receipt == null) : OtherExpense(id: notifier.nextId(), date: state.date, categoryId: state.categoryId, description: state.description.trim(), amount: amount, paymentType: state.paymentType, payee: state.payee.trim(), note: state.note.trim(), receipt: state.receipt);
-    notifier.upsert(expense);
-    return expense;
+
+    if (existing != null) {
+      return notifier.edit(
+        existing,
+        date: state.date,
+        categoryId: state.categoryId,
+        description: state.description.trim(),
+        amount: amount,
+        paymentType: state.paymentType,
+        payee: state.payee.trim(),
+        note: state.note.trim(),
+        receipt: state.receipt,
+        clearReceipt: state.receipt == null,
+      );
+    }
+
+    return notifier.create(
+      date: state.date,
+      categoryId: state.categoryId,
+      description: state.description.trim(),
+      amount: amount,
+      paymentType: state.paymentType,
+      payee: state.payee.trim(),
+      note: state.note.trim(),
+      receipt: state.receipt,
+    );
   }
 }
 

@@ -45,8 +45,8 @@ class DashboardSummary {
 final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
   final orders = ref.watch(ordersListProvider);
   final items = ref.watch(inventoryItemsListProvider);
-  final expenses = ref.watch(otherExpensesProvider);
-  final incomes = ref.watch(otherIncomesProvider);
+  final expenses = ref.watch(otherExpensesListProvider);
+  final incomes = ref.watch(otherIncomesListProvider);
 
   final now = DateTime.now();
   final startOfToday = DateTime(now.year, now.month, now.day);

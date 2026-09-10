@@ -64,6 +64,16 @@ class Settings(BaseSettings):
     # touching Identity Service's businesses table.
     default_tax_rate: Decimal = Decimal("0")
 
+    # ── Receipt storage ─────────────────────────
+    # Local-disk storage for finance receipt uploads (see
+    # app/services/receipt_storage.py). No cloud infra exists yet; this is
+    # deliberately behind a swappable protocol so an S3/MinIO backend can
+    # replace it later without touching call sites. NOTE: local disk pins
+    # this service to a single node — revisit before horizontal scaling,
+    # and make sure this volume is included in the backup story.
+    receipt_storage_root: str = "/var/lib/foodlink/receipts"
+    receipt_max_bytes: int = 5 * 1024 * 1024
+
     # ── Host ───────────────────────────────────
     host: str = "0.0.0.0"
     port: int = 8200

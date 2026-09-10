@@ -25,15 +25,24 @@ class PermissionCode(StrEnum):
     SETTINGS_TAX = "settings.tax"
     SETTINGS_DEVICES = "settings.devices"
     SETTINGS_BILLING = "settings.billing"
-    # Not yet enforced by any endpoint — no customers/reorders/couriers/finance/
+    # Not yet enforced by any endpoint — no customers/reorders/couriers/
     # insights resource exists in this service today. Added so the restaurant
     # app's nav sidebar and a business owner's custom-role editor have a real
     # code to gate/assign, same forward-declared pattern as SETTINGS_* above.
     CUSTOMERS_VIEW = "customers.view"
     REORDERS_VIEW = "reorders.view"
     COURIERS_VIEW = "couriers.view"
-    FINANCE_VIEW = "finance.view"
     INSIGHTS_VIEW = "insights.view"
+    # ── Finance (enforced by POS Service's other-expenses/other-incomes
+    # endpoints — see services/pos-service/app/api/v1/endpoints/) ─────────
+    FINANCE_VIEW = "finance.view"
+    FINANCE_EXPENSES_CREATE = "finance.expenses.create"
+    FINANCE_EXPENSES_UPDATE = "finance.expenses.update"
+    FINANCE_EXPENSES_DELETE = "finance.expenses.delete"
+    FINANCE_INCOMES_CREATE = "finance.incomes.create"
+    FINANCE_INCOMES_UPDATE = "finance.incomes.update"
+    FINANCE_INCOMES_DELETE = "finance.incomes.delete"
+    FINANCE_ATTACHMENTS_UPLOAD = "finance.attachments.upload"
     PROCUREMENT_CREATE = "procurement.create"
     PROCUREMENT_APPROVE = "procurement.approve"
     PROCUREMENT_AUTO_ORDER_ENABLE = "procurement.auto_order.enable"

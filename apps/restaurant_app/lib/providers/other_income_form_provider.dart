@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/finance_attachment.dart';
@@ -41,7 +42,7 @@ class OtherIncomeFormNotifier extends AutoDisposeFamilyNotifier<OtherIncomeFormS
   @override
   OtherIncomeFormState build(String? id) {
     if (id == null) return OtherIncomeFormState.blank();
-    for (final i in ref.read(otherIncomesProvider)) { if (i.id == id) return OtherIncomeFormState.from(i); }
+    for (final i in ref.read(otherIncomesListProvider)) { if (i.id == id) return OtherIncomeFormState.from(i); }
     return OtherIncomeFormState.blank();
   }
   void setDate(DateTime v) => state = state.copyWithDate(v);
@@ -53,14 +54,38 @@ class OtherIncomeFormNotifier extends AutoDisposeFamilyNotifier<OtherIncomeFormS
   void setNote(String v) => state = state.copyWith(note: v);
   void setReceipt(String n, Uint8List b) => state = state.copyWith(receipt: FinanceAttachment(name: n, bytes: b));
   void clearReceipt() => state = state.copyWith(clearReceipt: true);
-  OtherIncome save() {
+
+  Future<OtherIncome> save() async {
     final notifier = ref.read(otherIncomesProvider.notifier);
     OtherIncome? existing;
-    if (arg != null) { for (final i in ref.read(otherIncomesProvider)) { if (i.id == arg) existing = i; } }
+    if (arg != null) { for (final i in ref.read(otherIncomesListProvider)) { if (i.id == arg) existing = i; } }
     final amount = double.tryParse(state.amount.trim()) ?? 0;
-    final income = existing != null ? existing.copyWith(date: state.date, categoryId: state.categoryId, description: state.description.trim(), amount: amount, paymentType: state.paymentType, source: state.source.trim(), note: state.note.trim(), receipt: state.receipt, clearReceipt: state.receipt == null) : OtherIncome(id: notifier.nextId(), date: state.date, categoryId: state.categoryId, description: state.description.trim(), amount: amount, paymentType: state.paymentType, source: state.source.trim(), note: state.note.trim(), receipt: state.receipt);
-    notifier.upsert(income);
-    return income;
+
+    if (existing != null) {
+      return notifier.edit(
+        existing,
+        date: state.date,
+        categoryId: state.categoryId,
+        description: state.description.trim(),
+        amount: amount,
+        paymentType: state.paymentType,
+        source: state.source.trim(),
+        note: state.note.trim(),
+        receipt: state.receipt,
+        clearReceipt: state.receipt == null,
+      );
+    }
+
+    return notifier.create(
+      date: state.date,
+      categoryId: state.categoryId,
+      description: state.description.trim(),
+      amount: amount,
+      paymentType: state.paymentType,
+      source: state.source.trim(),
+      note: state.note.trim(),
+      receipt: state.receipt,
+    );
   }
 }
 

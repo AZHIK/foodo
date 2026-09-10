@@ -72,6 +72,17 @@
 /// own rename of `SaleSyncInput.business_location_id` to `store_id`
 /// (migration `c3d4e5f6a7b8`) — the old name would 422 against the real
 /// backend.
+///
+/// v6 connects `ExpenseEntries`/`OtherIncomeEntries` to a real backend
+/// (POS Service's `other_expenses`/`other_incomes`, migration
+/// `d4e5f6a7b8c9`) for the first time: adds `paymentMethod`, `payee`/
+/// `source`, `note`, `receiptAttachmentId`, `localReceiptPath`, and
+/// `serverId` columns to both outbox tables, renames their
+/// `businessLocationId` to `storeId` (same rename `PendingSales` went
+/// through in v5), and adds the pull-side read caches
+/// `CachedOtherExpenses`/`CachedOtherIncomes` (the finance-side analogue of
+/// `CachedSales`). `paymentMethod` is added with a `'other'` default since
+/// SQLite requires one for a non-nullable `addColumn` on existing rows.
 library;
 
 import 'package:decimal/decimal.dart';
@@ -90,6 +101,8 @@ import 'tables/cached_sale_line_items.dart';
 import 'tables/pending_voids_refunds.dart';
 import 'tables/expense_entries.dart';
 import 'tables/other_income_entries.dart';
+import 'tables/cached_other_expenses.dart';
+import 'tables/cached_other_incomes.dart';
 import 'tables/local_audit_log.dart';
 
 part 'app_database.g.dart';
@@ -109,6 +122,8 @@ part 'app_database.g.dart';
   PendingVoidsRefunds,
   ExpenseEntries,
   OtherIncomeEntries,
+  CachedOtherExpenses,
+  CachedOtherIncomes,
   LocalAuditLog,
 ])
 class AppDatabase extends _$AppDatabase {
@@ -116,7 +131,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.connection);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -155,6 +170,46 @@ class AppDatabase extends _$AppDatabase {
           'business_location_id',
           pendingSales.storeId,
         );
+      }
+      if (from < 6) {
+        await m.createTable(cachedOtherExpenses);
+        await m.createTable(cachedOtherIncomes);
+
+        await m.renameColumn(
+          expenseEntries,
+          'business_location_id',
+          expenseEntries.storeId,
+        );
+        await m.addColumn(expenseEntries, expenseEntries.payee);
+        await m.addColumn(expenseEntries, expenseEntries.note);
+        await m.addColumn(expenseEntries, expenseEntries.paymentMethod);
+        await m.addColumn(
+          expenseEntries,
+          expenseEntries.receiptAttachmentId,
+        );
+        await m.addColumn(expenseEntries, expenseEntries.localReceiptPath);
+        await m.addColumn(expenseEntries, expenseEntries.serverId);
+
+        await m.renameColumn(
+          otherIncomeEntries,
+          'business_location_id',
+          otherIncomeEntries.storeId,
+        );
+        await m.addColumn(otherIncomeEntries, otherIncomeEntries.source);
+        await m.addColumn(otherIncomeEntries, otherIncomeEntries.note);
+        await m.addColumn(
+          otherIncomeEntries,
+          otherIncomeEntries.paymentMethod,
+        );
+        await m.addColumn(
+          otherIncomeEntries,
+          otherIncomeEntries.receiptAttachmentId,
+        );
+        await m.addColumn(
+          otherIncomeEntries,
+          otherIncomeEntries.localReceiptPath,
+        );
+        await m.addColumn(otherIncomeEntries, otherIncomeEntries.serverId);
       }
     },
     beforeOpen: (details) async {

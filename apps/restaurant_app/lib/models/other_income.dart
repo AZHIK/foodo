@@ -14,6 +14,8 @@ class OtherIncome {
     this.source = '',
     this.note = '',
     this.receipt,
+    this.serverId,
+    this.syncStatus = 'synced',
   });
 
   final String id;
@@ -26,6 +28,13 @@ class OtherIncome {
   final String note;
   final FinanceAttachment? receipt;
 
+  /// Server-assigned `OtherIncome.id` once this entry has synced. Null for
+  /// a demo-mode row or one still in the outbox.
+  final String? serverId;
+
+  /// `pending` | `syncing` | `failed` | `synced`. See `OtherExpense.syncStatus`.
+  final String syncStatus;
+
   OtherIncome copyWith({
     String? id,
     DateTime? date,
@@ -37,6 +46,8 @@ class OtherIncome {
     String? note,
     FinanceAttachment? receipt,
     bool clearReceipt = false,
+    String? serverId,
+    String? syncStatus,
   }) {
     return OtherIncome(
       id: id ?? this.id,
@@ -48,6 +59,8 @@ class OtherIncome {
       source: source ?? this.source,
       note: note ?? this.note,
       receipt: clearReceipt ? null : (receipt ?? this.receipt),
+      serverId: serverId ?? this.serverId,
+      syncStatus: syncStatus ?? this.syncStatus,
     );
   }
 

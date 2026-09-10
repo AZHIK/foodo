@@ -108,6 +108,47 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
         "Manage farmer supply commitments",
         "Create and update farmer supply commitments.",
     ),
+    # Finance (other expenses / other incomes, enforced by POS Service)
+    PermissionSeed(
+        PermissionCode.FINANCE_VIEW,
+        "View finance",
+        "List and view other expenses, other incomes, and finance summaries.",
+    ),
+    PermissionSeed(
+        PermissionCode.FINANCE_EXPENSES_CREATE,
+        "Create expenses",
+        "Record a new ad-hoc expense entry.",
+    ),
+    PermissionSeed(
+        PermissionCode.FINANCE_EXPENSES_UPDATE,
+        "Update expenses",
+        "Edit an existing expense entry.",
+    ),
+    PermissionSeed(
+        PermissionCode.FINANCE_EXPENSES_DELETE,
+        "Delete expenses",
+        "Delete an expense entry.",
+    ),
+    PermissionSeed(
+        PermissionCode.FINANCE_INCOMES_CREATE,
+        "Create other income",
+        "Record a new ad-hoc income entry.",
+    ),
+    PermissionSeed(
+        PermissionCode.FINANCE_INCOMES_UPDATE,
+        "Update other income",
+        "Edit an existing income entry.",
+    ),
+    PermissionSeed(
+        PermissionCode.FINANCE_INCOMES_DELETE,
+        "Delete other income",
+        "Delete an income entry.",
+    ),
+    PermissionSeed(
+        PermissionCode.FINANCE_ATTACHMENTS_UPLOAD,
+        "Attach receipts",
+        "Upload a receipt attachment for an expense or income entry.",
+    ),
     # Users (platform staff)
     PermissionSeed(
         PermissionCode.USERS_VIEW,

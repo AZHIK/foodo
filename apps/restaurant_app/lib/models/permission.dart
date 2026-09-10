@@ -85,6 +85,13 @@ abstract final class AppPermissions {
   static const reordersView = 'reorders.view';
   static const couriersView = 'couriers.view';
   static const financeView = 'finance.view';
+  static const financeExpensesCreate = 'finance.expenses.create';
+  static const financeExpensesUpdate = 'finance.expenses.update';
+  static const financeExpensesDelete = 'finance.expenses.delete';
+  static const financeIncomesCreate = 'finance.incomes.create';
+  static const financeIncomesUpdate = 'finance.incomes.update';
+  static const financeIncomesDelete = 'finance.incomes.delete';
+  static const financeAttachmentsUpload = 'finance.attachments.upload';
   static const insightsView = 'insights.view';
 
   static const rolesView = 'business_roles.view';
@@ -212,6 +219,41 @@ abstract final class AppPermissions {
           id: financeView,
           label: 'View finance',
           description: 'See revenue, payouts and financial summaries',
+        ),
+        Permission(
+          id: financeExpensesCreate,
+          label: 'Add expenses',
+          description: 'Record a new ad-hoc expense entry',
+        ),
+        Permission(
+          id: financeExpensesUpdate,
+          label: 'Edit expenses',
+          description: 'Change an existing expense entry',
+        ),
+        Permission(
+          id: financeExpensesDelete,
+          label: 'Delete expenses',
+          description: 'Remove an expense entry',
+        ),
+        Permission(
+          id: financeIncomesCreate,
+          label: 'Add other income',
+          description: 'Record a new ad-hoc income entry',
+        ),
+        Permission(
+          id: financeIncomesUpdate,
+          label: 'Edit other income',
+          description: 'Change an existing income entry',
+        ),
+        Permission(
+          id: financeIncomesDelete,
+          label: 'Delete other income',
+          description: 'Remove an income entry',
+        ),
+        Permission(
+          id: financeAttachmentsUpload,
+          label: 'Attach receipts',
+          description: 'Upload a receipt photo to an expense or income entry',
         ),
         Permission(
           id: insightsView,

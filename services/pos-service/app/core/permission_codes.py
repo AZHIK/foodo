@@ -35,6 +35,16 @@ class PermissionCode(StrEnum):
     POS_RESUME = "pos.resume"
     POS_MANAGE = "pos.manage"
 
+    # ── Finance ────────────────────────────────
+    FINANCE_VIEW = "finance.view"
+    FINANCE_EXPENSES_CREATE = "finance.expenses.create"
+    FINANCE_EXPENSES_UPDATE = "finance.expenses.update"
+    FINANCE_EXPENSES_DELETE = "finance.expenses.delete"
+    FINANCE_INCOMES_CREATE = "finance.incomes.create"
+    FINANCE_INCOMES_UPDATE = "finance.incomes.update"
+    FINANCE_INCOMES_DELETE = "finance.incomes.delete"
+    FINANCE_ATTACHMENTS_UPLOAD = "finance.attachments.upload"
+
     # ── Inventory (cross-service reference) ────
     INVENTORY_VIEW = "inventory.view"
     INVENTORY_ADJUST = "inventory.adjust"

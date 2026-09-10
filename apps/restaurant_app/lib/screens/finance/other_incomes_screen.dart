@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/mock_finance.dart';
 import '../../models/other_income.dart';
+import '../../models/permission.dart';
+import '../../providers/other_expenses_provider.dart' show FinanceOfflineMutationException;
 import '../../providers/other_incomes_provider.dart';
+import '../../providers/permissions_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
@@ -26,6 +29,9 @@ class OtherIncomesScreen extends ConsumerWidget {
     final summary = ref.watch(otherIncomesSummaryProvider);
     final filters = ref.watch(otherIncomeFiltersProvider);
     final notifier = ref.read(otherIncomesQueryProvider.notifier);
+    final canCreate = ref.watch(hasPermissionProvider(AppPermissions.financeIncomesCreate));
+    final canUpdate = ref.watch(hasPermissionProvider(AppPermissions.financeIncomesUpdate));
+    final canDelete = ref.watch(hasPermissionProvider(AppPermissions.financeIncomesDelete));
 
     return Column(
       children: [
@@ -41,7 +47,10 @@ class OtherIncomesScreen extends ConsumerWidget {
               title: 'Other incomes',
               subtitle: _exportSubtitle(filters, query.search),
             ),
-            primaryAction: context.isMobile
+            // Hidden rather than shown-disabled — see other_expenses_screen.dart.
+            primaryAction: !canCreate
+                ? null
+                : context.isMobile
                 ? SizedBox(
                     height: 40,
                     width: 40,
@@ -115,17 +124,19 @@ class OtherIncomesScreen extends ConsumerWidget {
               onSort: notifier.toggleSort,
               onPageChanged: notifier.setPage,
               rowActions: [
-                DataRowAction(
-                  label: 'Edit',
-                  icon: Icons.edit_outlined,
-                  onSelected: (c, i) {},
-                ),
-                DataRowAction(
-                  label: 'Delete',
-                  icon: Icons.delete_outline_rounded,
-                  isDestructive: true,
-                  onSelected: (c, i) => _confirmDelete(c, ref, i),
-                ),
+                if (canUpdate)
+                  DataRowAction(
+                    label: 'Edit',
+                    icon: Icons.edit_outlined,
+                    onSelected: (c, i) => showOtherIncomeFormDialog(c, existingIncome: i),
+                  ),
+                if (canDelete)
+                  DataRowAction(
+                    label: 'Delete',
+                    icon: Icons.delete_outline_rounded,
+                    isDestructive: true,
+                    onSelected: (c, i) => _confirmDelete(c, ref, i),
+                  ),
               ],
             ),
           ),
@@ -146,9 +157,13 @@ class OtherIncomesScreen extends ConsumerWidget {
         ],
       ),
     );
-    if (confirmed == true && context.mounted) {
-      ref.read(otherIncomesProvider.notifier).delete(income.id);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${income.description} deleted')));
+    if (confirmed != true || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(otherIncomesProvider.notifier).delete(income.id);
+      messenger.showSnackBar(SnackBar(content: Text('${income.description} deleted')));
+    } on FinanceOfflineMutationException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
 

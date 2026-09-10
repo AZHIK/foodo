@@ -1,10 +1,25 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:decimal/decimal.dart';
+import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:uuid/uuid.dart';
 
 import '../data/mock_finance.dart';
+import '../database/app_database.dart';
+import '../models/finance_attachment.dart';
 import '../models/order.dart';
 import '../models/other_income.dart';
 import '../models/table_query.dart';
+import '../sync/finance_entry_mapper.dart';
+import 'database_providers.dart';
+import 'finance_api_provider.dart';
+import 'other_expenses_provider.dart' show FinanceOfflineMutationException;
+import 'permissions_provider.dart';
+import 'session_provider.dart';
 import 'table_query_provider.dart';
 
 abstract final class OtherIncomeSort {
@@ -16,38 +31,301 @@ abstract final class OtherIncomeSort {
   static const payment = 'payment';
 }
 
-class OtherIncomesNotifier extends Notifier<List<OtherIncome>> {
+/// Source of other-income entries, backed by POS Service once a store
+/// context exists. Mirror of `OtherExpensesNotifier` — see that file for the
+/// stale-while-revalidate contract and the pending-vs-synced mutation split.
+class OtherIncomesNotifier extends AsyncNotifier<List<OtherIncome>> {
   @override
-  List<OtherIncome> build() => List.of(MockFinance.incomes);
+  Future<List<OtherIncome>> build() async {
+    final storeId = ref.watch(currentStoreIdProvider);
+    if (storeId == null) return List.of(MockFinance.incomes);
 
-  void upsert(OtherIncome income) {
-    final index = state.indexWhere((i) => i.id == income.id);
-    if (index == -1) {
-      state = [income, ...state];
-      return;
-    }
-    final next = [...state];
-    next[index] = income;
-    state = next;
+    var disposed = false;
+    ref.onDispose(() => disposed = true);
+    unawaited(_refreshFromApi(storeId, isDisposed: () => disposed));
+
+    return _loadFromCache(storeId);
   }
 
-  void delete(String id) =>
-      state = state.where((income) => income.id != id).toList();
+  Future<void> _refreshFromApi(
+    String storeId, {
+    required bool Function() isDisposed,
+  }) async {
+    try {
+      await ref.read(financeSyncServiceProvider).syncNow();
+      await ref.read(financeLedgerSyncServiceProvider).syncIncomes(storeId: storeId);
+      if (!isDisposed()) {
+        state = AsyncData(await _loadFromCache(storeId));
+      }
+    } catch (_) {
+      // Offline, no permission, or a transient failure — keep last known-good.
+    }
+  }
 
-  String nextId() {
+  Future<List<OtherIncome>> _loadFromCache(String storeId) async {
+    final db = ref.read(appDatabaseProvider);
+
+    final cached = await (db.select(db.cachedOtherIncomes)
+          ..where((row) =>
+              row.storeId.equals(storeId) & row.isDeleted.equals(false)))
+        .get();
+    final cachedClientIds = cached.map((row) => row.clientIncomeId).toSet();
+
+    final outbox = await (db.select(db.otherIncomeEntries)
+          ..where((row) => row.storeId.equals(storeId)))
+        .get();
+
+    final rows = [
+      for (final row in cached) otherIncomeFromCachedRow(row),
+      for (final row in outbox)
+        if (!cachedClientIds.contains(row.incomeId)) otherIncomeFromOutboxRow(row),
+    ];
+    rows.sort((a, b) => b.date.compareTo(a.date));
+    return rows;
+  }
+
+  Future<void> refresh() async {
+    final storeId = ref.read(currentStoreIdProvider);
+    if (storeId == null) return;
+    state = const AsyncLoading<List<OtherIncome>>().copyWithPrevious(state);
+    await ref.read(financeSyncServiceProvider).syncNow();
+    await ref.read(financeLedgerSyncServiceProvider).syncIncomes(storeId: storeId);
+    state = AsyncData(await _loadFromCache(storeId));
+  }
+
+  Future<OtherIncome> create({
+    required DateTime date,
+    required String categoryId,
+    required String description,
+    required double amount,
+    required PaymentType paymentType,
+    String source = '',
+    String note = '',
+    FinanceAttachment? receipt,
+  }) async {
+    final storeId = ref.read(currentStoreIdProvider);
+    final current = state.valueOrNull ?? const <OtherIncome>[];
+
+    if (storeId == null) {
+      final income = OtherIncome(
+        id: _nextMockId(current),
+        date: date,
+        categoryId: categoryId,
+        description: description,
+        amount: amount,
+        paymentType: paymentType,
+        source: source,
+        note: note,
+        receipt: receipt,
+      );
+      state = AsyncData([income, ...current]);
+      return income;
+    }
+
+    final localReceiptPath = await _persistReceiptLocally(receipt);
+    final clientId = await ref.read(financeEntryWriterProvider).writeIncome(
+      storeId: storeId,
+      businessId: _businessId,
+      actorUserId: _actorUserId,
+      occurredAt: date,
+      category: categoryId,
+      amount: Decimal.parse(amount.toStringAsFixed(2)),
+      description: description,
+      paymentType: paymentType,
+      source: source.isEmpty ? null : source,
+      note: note.isEmpty ? null : note,
+      localReceiptPath: localReceiptPath,
+    );
+
+    final income = OtherIncome(
+      id: clientId,
+      date: date,
+      categoryId: categoryId,
+      description: description,
+      amount: amount,
+      paymentType: paymentType,
+      source: source,
+      note: note,
+      receipt: receipt,
+      syncStatus: 'pending',
+    );
+    state = AsyncData([income, ...current]);
+    unawaited(_syncThenRefresh(storeId));
+    return income;
+  }
+
+  /// See `OtherExpensesNotifier.edit` — same pending-vs-synced split, same
+  /// reason for the `edit` name over `update`.
+  Future<OtherIncome> edit(
+    OtherIncome existing, {
+    required DateTime date,
+    required String categoryId,
+    required String description,
+    required double amount,
+    required PaymentType paymentType,
+    String source = '',
+    String note = '',
+    FinanceAttachment? receipt,
+    bool clearReceipt = false,
+  }) async {
+    final storeId = ref.read(currentStoreIdProvider);
+    final updated = existing.copyWith(
+      date: date,
+      categoryId: categoryId,
+      description: description,
+      amount: amount,
+      paymentType: paymentType,
+      source: source,
+      note: note,
+      receipt: receipt,
+      clearReceipt: clearReceipt,
+    );
+
+    if (storeId == null) {
+      _replaceInState(updated);
+      return updated;
+    }
+
+    final db = ref.read(appDatabaseProvider);
+    final outboxRow = await (db.select(db.otherIncomeEntries)
+          ..where((row) => row.incomeId.equals(existing.id)))
+        .getSingleOrNull();
+
+    if (outboxRow != null && outboxRow.syncStatus != 'synced') {
+      final newLocalPath = await _persistReceiptLocally(receipt);
+      await (db.update(db.otherIncomeEntries)
+            ..where((row) => row.id.equals(outboxRow.id)))
+          .write(OtherIncomeEntriesCompanion(
+            category: Value(categoryId),
+            amount: Value(Decimal.parse(amount.toStringAsFixed(2))),
+            description: Value(description),
+            source: Value(source.isEmpty ? null : source),
+            note: Value(note.isEmpty ? null : note),
+            paymentMethod: Value(paymentMethodToBackend(paymentType)),
+            occurredAt: Value(date),
+            localReceiptPath: clearReceipt
+                ? const Value(null)
+                : (newLocalPath != null ? Value(newLocalPath) : const Value.absent()),
+            receiptAttachmentId: (clearReceipt || newLocalPath != null)
+                ? const Value(null)
+                : const Value.absent(),
+            syncStatus: const Value('pending'),
+          ));
+      unawaited(_syncThenRefresh(storeId));
+      final pendingUpdate = updated.copyWith(syncStatus: 'pending');
+      _replaceInState(pendingUpdate);
+      return pendingUpdate;
+    }
+
+    final serverId = existing.serverId ?? outboxRow?.serverId;
+    if (serverId == null) {
+      throw FinanceOfflineMutationException(
+        'This entry has not finished syncing yet — try again once it does.',
+      );
+    }
+    await ref.read(financeApiServiceProvider).updateIncome(
+      businessId: _businessId,
+      incomeId: serverId,
+      category: categoryId,
+      amount: Decimal.parse(amount.toStringAsFixed(2)),
+      description: description,
+      paymentMethod: paymentMethodToBackend(paymentType),
+      source: source,
+      note: note,
+      occurredAt: date,
+    );
+    await refresh();
+    return updated;
+  }
+
+  Future<void> delete(String id) async {
+    final storeId = ref.read(currentStoreIdProvider);
+    final current = state.valueOrNull ?? const <OtherIncome>[];
+
+    if (storeId == null) {
+      state = AsyncData(current.where((i) => i.id != id).toList());
+      return;
+    }
+
+    final db = ref.read(appDatabaseProvider);
+    final outboxRow = await (db.select(db.otherIncomeEntries)
+          ..where((row) => row.incomeId.equals(id)))
+        .getSingleOrNull();
+
+    if (outboxRow != null && outboxRow.syncStatus != 'synced') {
+      await (db.delete(db.otherIncomeEntries)..where((row) => row.id.equals(outboxRow.id))).go();
+      state = AsyncData(current.where((i) => i.id != id).toList());
+      return;
+    }
+
+    String? serverId = outboxRow?.serverId;
+    for (final income in current) {
+      if (income.id == id) serverId ??= income.serverId;
+    }
+    if (serverId == null) {
+      throw FinanceOfflineMutationException(
+        'This entry has not finished syncing yet — try again once it does.',
+      );
+    }
+    await ref.read(financeApiServiceProvider).deleteIncome(
+      businessId: _businessId,
+      incomeId: serverId,
+    );
+    await refresh();
+  }
+
+  Future<void> _syncThenRefresh(String storeId) async {
+    await ref.read(financeSyncServiceProvider).syncNow();
+    await ref.read(financeLedgerSyncServiceProvider).syncIncomes(storeId: storeId);
+    state = AsyncData(await _loadFromCache(storeId));
+  }
+
+  void _replaceInState(OtherIncome income) {
+    final current = state.valueOrNull ?? const <OtherIncome>[];
+    state = AsyncData([
+      for (final i in current) if (i.id == income.id) income else i,
+    ]);
+  }
+
+  String get _businessId {
+    final id = ref.read(currentBusinessIdProvider);
+    if (id == null) throw StateError('No active business context');
+    return id;
+  }
+
+  String get _actorUserId => ref.read(sessionStaffProvider)?.id ?? '';
+
+  String _nextMockId(List<OtherIncome> current) {
     var highest = 0;
-    for (final income in state) {
+    for (final income in current) {
       final n = int.tryParse(income.id.split('-').last);
       if (n != null && n > highest) highest = n;
     }
     return 'inc-${(highest + 1).toString().padLeft(2, '0')}';
   }
+
+  Future<String?> _persistReceiptLocally(FinanceAttachment? receipt) async {
+    final bytes = receipt?.bytes;
+    if (bytes == null) return null;
+    final dir = await getApplicationSupportDirectory();
+    final receiptsDir = Directory('${dir.path}/receipts');
+    await receiptsDir.create(recursive: true);
+    final ext = receipt!.name.contains('.') ? receipt.name.split('.').last : 'jpg';
+    final path = '${receiptsDir.path}/${const Uuid().v4()}.$ext';
+    await File(path).writeAsBytes(bytes, flush: true);
+    return path;
+  }
 }
 
 final otherIncomesProvider =
-    NotifierProvider<OtherIncomesNotifier, List<OtherIncome>>(
-      OtherIncomesNotifier.new,
-    );
+    AsyncNotifierProvider<OtherIncomesNotifier, List<OtherIncome>>(
+  OtherIncomesNotifier.new,
+);
+
+/// The list, unwrapped — mirrors `otherExpensesListProvider`.
+final otherIncomesListProvider = Provider<List<OtherIncome>>(
+  (ref) => ref.watch(otherIncomesProvider).valueOrNull ?? const [],
+);
 
 // ---------------------------------------------------------------------------
 // Search / sort / pagination
@@ -152,7 +430,7 @@ final otherIncomeFiltersProvider =
 // ---------------------------------------------------------------------------
 
 final filteredOtherIncomesProvider = Provider<List<OtherIncome>>((ref) {
-  final incomes = ref.watch(otherIncomesProvider);
+  final incomes = ref.watch(otherIncomesListProvider);
   final query = ref.watch(otherIncomesQueryProvider);
   final filters = ref.watch(otherIncomeFiltersProvider);
   final search = query.search.trim().toLowerCase();

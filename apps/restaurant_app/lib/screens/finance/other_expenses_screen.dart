@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/mock_finance.dart';
 import '../../models/other_expense.dart';
+import '../../models/permission.dart';
 import '../../providers/other_expenses_provider.dart';
+import '../../providers/permissions_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
@@ -26,6 +28,9 @@ class OtherExpensesScreen extends ConsumerWidget {
     final summary = ref.watch(otherExpensesSummaryProvider);
     final filters = ref.watch(otherExpenseFiltersProvider);
     final notifier = ref.read(otherExpensesQueryProvider.notifier);
+    final canCreate = ref.watch(hasPermissionProvider(AppPermissions.financeExpensesCreate));
+    final canUpdate = ref.watch(hasPermissionProvider(AppPermissions.financeExpensesUpdate));
+    final canDelete = ref.watch(hasPermissionProvider(AppPermissions.financeExpensesDelete));
 
     return Column(
       children: [
@@ -41,7 +46,11 @@ class OtherExpensesScreen extends ConsumerWidget {
               title: 'Other expenses',
               subtitle: _exportSubtitle(filters, query.search),
             ),
-            primaryAction: context.isMobile
+            // Hidden rather than shown-disabled: someone who can't add
+            // expenses shouldn't see a control that only ever 403s.
+            primaryAction: !canCreate
+                ? null
+                : context.isMobile
                 ? SizedBox(
                     height: 40,
                     width: 40,
@@ -115,17 +124,19 @@ class OtherExpensesScreen extends ConsumerWidget {
               onSort: notifier.toggleSort,
               onPageChanged: notifier.setPage,
               rowActions: [
-                DataRowAction(
-                  label: 'Edit',
-                  icon: Icons.edit_outlined,
-                  onSelected: (c, e) {},
-                ),
-                DataRowAction(
-                  label: 'Delete',
-                  icon: Icons.delete_outline_rounded,
-                  isDestructive: true,
-                  onSelected: (c, e) => _confirmDelete(c, ref, e),
-                ),
+                if (canUpdate)
+                  DataRowAction(
+                    label: 'Edit',
+                    icon: Icons.edit_outlined,
+                    onSelected: (c, e) => showOtherExpenseFormDialog(c, existingExpense: e),
+                  ),
+                if (canDelete)
+                  DataRowAction(
+                    label: 'Delete',
+                    icon: Icons.delete_outline_rounded,
+                    isDestructive: true,
+                    onSelected: (c, e) => _confirmDelete(c, ref, e),
+                  ),
               ],
             ),
           ),
@@ -146,9 +157,13 @@ class OtherExpensesScreen extends ConsumerWidget {
         ],
       ),
     );
-    if (confirmed == true && context.mounted) {
-      ref.read(otherExpensesProvider.notifier).delete(expense.id);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${expense.description} deleted')));
+    if (confirmed != true || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(otherExpensesProvider.notifier).delete(expense.id);
+      messenger.showSnackBar(SnackBar(content: Text('${expense.description} deleted')));
+    } on FinanceOfflineMutationException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
 

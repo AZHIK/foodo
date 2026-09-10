@@ -1,13 +1,10 @@
 /// Recorded other income (money coming in), not from a POS sale.
 ///
-/// `OtherIncomeEntries` mirrors `ExpenseEntries`'s outbox shape and
-/// immutability rules, but is kept as its own table rather than a
-/// signed-amount row in `ExpenseEntries`: income and expense have
-/// different category lists and will likely need different
-/// reporting/permission treatment later, not worth conflating now.
-///
-/// ⚠️ BACKEND-BLOCKED: same as `ExpenseEntries` — no service currently
-/// owns this, so nothing in `lib/sync` pushes these rows yet.
+/// `OtherIncomeEntries` mirrors `ExpenseEntries`'s outbox shape (and, as of
+/// schema v6, its edit/delete-after-sync support), but is kept as its own
+/// table rather than a signed-amount row in `ExpenseEntries`: income and
+/// expense have different category lists and different reporting/
+/// permission treatment.
 library;
 
 import 'package:drift/drift.dart';
@@ -24,18 +21,39 @@ class OtherIncomeEntries extends Table {
   /// Business this income belongs to.
   TextColumn get businessId => text()();
 
-  /// Business location this income belongs to.
-  TextColumn get businessLocationId => text()();
+  /// Store/location this income belongs to. Matches POS Service's
+  /// `other_incomes.store_id` field (renamed from `businessLocationId`
+  /// by schema v6, mirroring `PendingSales`'s own v5 rename).
+  TextColumn get storeId => text()();
 
-  /// Income category. Controlled list, not free text, same reasoning as
-  /// `ExpenseEntries.category`: equipment_rental|catering_deposit|other.
+  /// Income category. Controlled list, not free text — canonical list
+  /// (mirrors
+  /// `services/pos-service/app/models/finance.py::IncomeCategory`):
+  /// catering|grants|rebates|space_rental|equipment_rental|other.
   TextColumn get category => text()();
 
   /// Income amount.
   TextColumn get amount => text().map(const DecimalConverter())();
 
-  /// Optional free-text description.
+  /// Free-text description.
   TextColumn get description => text().nullable()();
+
+  /// Who/what the income came from.
+  TextColumn get source => text().nullable()();
+
+  /// Optional free-text note.
+  TextColumn get note => text().nullable()();
+
+  /// Payment method used: cash|mobile_money|card|other.
+  TextColumn get paymentMethod =>
+      text().withDefault(const Constant('other'))();
+
+  /// Server-assigned id of the uploaded receipt (`FinanceAttachment.id`).
+  TextColumn get receiptAttachmentId => text().nullable()();
+
+  /// Device-local path to a receipt file awaiting upload. See
+  /// `ExpenseEntries.localReceiptPath`.
+  TextColumn get localReceiptPath => text().nullable()();
 
   /// When the income occurred (device time, UTC).
   DateTimeColumn get occurredAt => dateTime()();
@@ -44,6 +62,9 @@ class OtherIncomeEntries extends Table {
   /// Soft-references `LocalUserProfiles.id` without an FK constraint, same
   /// rationale as `ExpenseEntries.actorUserId`.
   TextColumn get actorUserId => text()();
+
+  /// Server-assigned id (`OtherIncome.id`), set once this row has synced.
+  TextColumn get serverId => text().nullable()();
 
   /// Local sync state: `pending`, `syncing`, `failed`, `synced`.
   TextColumn get syncStatus =>

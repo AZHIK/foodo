@@ -7,11 +7,13 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'connectivity_provider.dart';
+import 'finance_api_provider.dart';
 import 'sync_status_provider.dart';
 
 /// Arms the connectivity→sync trigger. Watch this once from the app shell.
 final syncTriggerProvider = Provider<void>((ref) {
   final syncService = ref.watch(syncServiceProvider);
+  final financeSyncService = ref.watch(financeSyncServiceProvider);
 
   // Track the last online state to detect offline→online transitions.
   var wasOnline = false;
@@ -25,6 +27,7 @@ final syncTriggerProvider = Provider<void>((ref) {
         if (!wasOnline && isOnline) {
           // Device went online: trigger sync.
           syncService.syncNow();
+          financeSyncService.syncNow();
         }
         wasOnline = isOnline;
       });

@@ -6,6 +6,13 @@ meaning it maps to a Postgres table.
 Import all models here so SQLModel.metadata is complete for Alembic.
 """
 
+from app.models.finance import (
+    ExpenseCategory,
+    FinanceAttachment,
+    IncomeCategory,
+    OtherExpense,
+    OtherIncome,
+)
 from app.models.pos import (
     PaymentMethod,
     Sale,
@@ -14,6 +21,11 @@ from app.models.pos import (
 )
 
 __all__ = [
+    "ExpenseCategory",
+    "FinanceAttachment",
+    "IncomeCategory",
+    "OtherExpense",
+    "OtherIncome",
     "PaymentMethod",
     "Sale",
     "SaleLineItem",

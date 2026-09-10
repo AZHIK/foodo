@@ -34,8 +34,8 @@ import '../screens/settings/store_settings_screen.dart';
 import '../screens/staff/roles_screen.dart';
 import '../screens/staff/staff_detail_screen.dart';
 import '../screens/staff/staff_screen.dart';
-import '../screens/finance/other_expenses_screen.dart';
-import '../screens/finance/other_incomes_screen.dart';
+import '../screens/finance/other_expenses_screen_gated.dart';
+import '../screens/finance/other_incomes_screen_gated.dart';
 import '../widgets/responsive_scaffold.dart';
 
 /// Route paths and names in one place, so navigation calls never spell a
@@ -384,17 +384,17 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoute.financePath,
                 name: AppRoute.financeName,
-                builder: (context, state) => const OtherExpensesScreen(),
+                builder: (context, state) => const OtherExpensesScreenGated(),
                 routes: [
                   GoRoute(
                     path: AppRoute.financeExpensesPath,
                     name: AppRoute.financeExpensesName,
-                    builder: (context, state) => const OtherExpensesScreen(),
+                    builder: (context, state) => const OtherExpensesScreenGated(),
                   ),
                   GoRoute(
                     path: AppRoute.financeIncomesPath,
                     name: AppRoute.financeIncomesName,
-                    builder: (context, state) => const OtherIncomesScreen(),
+                    builder: (context, state) => const OtherIncomesScreenGated(),
                   ),
                 ],
               ),

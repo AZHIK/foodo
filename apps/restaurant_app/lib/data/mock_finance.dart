@@ -5,22 +5,30 @@ import '../models/other_expense.dart';
 import '../models/other_income.dart';
 
 abstract final class MockFinance {
+  // Ids are the canonical list shared with the backend — see
+  // `services/pos-service/app/models/finance.py::ExpenseCategory`. Keep the
+  // two lists in sync by hand; a category id the backend doesn't know about
+  // fails sync validation.
   static const expenseCategories = <FinanceCategory>[
     FinanceCategory(id: 'rent', label: 'Rent & lease', icon: Icons.home_work_outlined),
     FinanceCategory(id: 'utilities', label: 'Utilities', icon: Icons.bolt_outlined),
+    FinanceCategory(id: 'salaries', label: 'Salaries', icon: Icons.badge_outlined),
     FinanceCategory(id: 'repairs', label: 'Repairs & maintenance', icon: Icons.build_outlined),
+    FinanceCategory(id: 'supplies', label: 'Supplies', icon: Icons.inventory_2_outlined),
     FinanceCategory(id: 'marketing', label: 'Marketing', icon: Icons.campaign_outlined),
     FinanceCategory(id: 'insurance', label: 'Insurance', icon: Icons.shield_outlined),
-    FinanceCategory(id: 'professional', label: 'Professional fees', icon: Icons.gavel_outlined),
-    FinanceCategory(id: 'misc-expense', label: 'Miscellaneous', icon: Icons.more_horiz_rounded),
+    FinanceCategory(id: 'professional_fees', label: 'Professional fees', icon: Icons.gavel_outlined),
+    FinanceCategory(id: 'other', label: 'Miscellaneous', icon: Icons.more_horiz_rounded),
   ];
 
+  // Ids mirror `services/pos-service/app/models/finance.py::IncomeCategory`.
   static const incomeCategories = <FinanceCategory>[
     FinanceCategory(id: 'catering', label: 'Catering & events', icon: Icons.event_outlined),
     FinanceCategory(id: 'grants', label: 'Grants & subsidies', icon: Icons.volunteer_activism_outlined),
     FinanceCategory(id: 'rebates', label: 'Rebates & refunds', icon: Icons.replay_outlined),
-    FinanceCategory(id: 'rental-income', label: 'Space rental', icon: Icons.meeting_room_outlined),
-    FinanceCategory(id: 'misc-income', label: 'Miscellaneous', icon: Icons.more_horiz_rounded),
+    FinanceCategory(id: 'space_rental', label: 'Space rental', icon: Icons.meeting_room_outlined),
+    FinanceCategory(id: 'equipment_rental', label: 'Equipment rental', icon: Icons.construction_outlined),
+    FinanceCategory(id: 'other', label: 'Miscellaneous', icon: Icons.more_horiz_rounded),
   ];
 
   static FinanceCategory? expenseCategoryById(String id) {
@@ -40,18 +48,18 @@ abstract final class MockFinance {
     _expense('exp-03', DateTime.now().subtract(Duration(days: 1)), 'repairs', 'Walk-in fridge compressor repair', 480.00, PaymentType.cash, payee: 'ColdFix Services'),
     _expense('exp-04', DateTime.now().subtract(Duration(days: 10)), 'marketing', 'Local paper ad, two weeks', 220.00, PaymentType.card, payee: 'Harbor Weekly'),
     _expense('exp-05', DateTime.now().subtract(Duration(days: 30)), 'insurance', 'Liability insurance — quarterly', 890.00, PaymentType.card, payee: 'Guardian Mutual'),
-    _expense('exp-06', DateTime.now().subtract(Duration(days: 15)), 'professional', 'Bookkeeping, May', 350.00, PaymentType.card, payee: 'Lin & Associates'),
-    _expense('exp-07', DateTime.now().subtract(Duration(days: 3)), 'misc-expense', 'Parking permits renewal', 90.00, PaymentType.cash, payee: 'City Council'),
+    _expense('exp-06', DateTime.now().subtract(Duration(days: 15)), 'professional_fees', 'Bookkeeping, May', 350.00, PaymentType.card, payee: 'Lin & Associates'),
+    _expense('exp-07', DateTime.now().subtract(Duration(days: 3)), 'other', 'Parking permits renewal', 90.00, PaymentType.cash, payee: 'City Council'),
     _expense('exp-08', DateTime.now().subtract(Duration(days: 22)), 'repairs', 'Door hinge repair', 125.00, PaymentType.cash, payee: 'Local Hardware'),
   ];
 
   static final List<OtherIncome> incomes = <OtherIncome>[
     _income('inc-01', DateTime.now().subtract(Duration(days: 4)), 'catering', 'Corporate lunch catering — Alder & Finch', 1450.00, PaymentType.card, source: 'Alder & Finch Law'),
     _income('inc-02', DateTime.now().subtract(Duration(days: 12)), 'grants', 'Small business energy grant', 2000.00, PaymentType.card, source: 'City Economic Development'),
-    _income('inc-03', DateTime.now().subtract(Duration(days: 8)), 'rental-income', 'Private room hire — birthday party', 300.00, PaymentType.cash, source: 'M. Alvarez'),
+    _income('inc-03', DateTime.now().subtract(Duration(days: 8)), 'space_rental', 'Private room hire — birthday party', 300.00, PaymentType.cash, source: 'M. Alvarez'),
     _income('inc-04', DateTime.now().subtract(Duration(days: 20)), 'rebates', 'Supplier volume rebate', 175.00, PaymentType.card, source: 'Fenwick Farm'),
     _income('inc-05', DateTime.now().subtract(Duration(days: 1)), 'catering', 'Wedding catering deposit', 900.00, PaymentType.mobile, source: 'J. & R. Whitfield'),
-    _income('inc-06', DateTime.now().subtract(Duration(days: 25)), 'misc-income', 'Deposit refund from cancelled event', 250.00, PaymentType.card, source: 'Event Planner Co.'),
+    _income('inc-06', DateTime.now().subtract(Duration(days: 25)), 'other', 'Deposit refund from cancelled event', 250.00, PaymentType.card, source: 'Event Planner Co.'),
   ];
 
   static OtherExpense _expense(String id, DateTime date, String categoryId, String description, double amount, PaymentType paymentType, {String payee = ''}) {

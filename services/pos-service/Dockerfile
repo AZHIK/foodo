@@ -57,6 +57,8 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+RUN mkdir -p /var/lib/foodlink/receipts && chown -R foodlink:foodlink /var/lib/foodlink
+
 WORKDIR /app
 USER foodlink
 

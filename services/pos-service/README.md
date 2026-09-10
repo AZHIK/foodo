@@ -1,7 +1,8 @@
 # FoodLink POS Service
 
 Point-of-sale microservice for FoodLink Africa. Manages sales transactions,
-line items, payments, receipts, and local tax configuration.
+line items, payments, receipts, local tax configuration, and ad-hoc
+other-expense/other-income finance entries.
 
 - **Database**: dedicated `foodlink_pos` PostgreSQL instance (not shared).
 - **Auth**: verifies RS256 JWTs issued by Identity Service (never issues tokens).
@@ -33,9 +34,23 @@ uv run uvicorn app.main:app --reload
 | `GET` | `/businesses/{business_id}/sales/{sale_id}` | `pos.view` | Read single sale by server ID |
 | `GET` | `/businesses/{business_id}/sales/by-client-id/{client_sale_id}` | `pos.view` | Read single sale by client idempotency key |
 | `POST` | `/businesses/{business_id}/sales/{sale_id}/void-or-refund` | `pos.refund` | Void or refund a completed sale |
+| `POST` | `/businesses/{business_id}/other-expenses/sync` | `finance.expenses.create` | Batch-sync offline expense entries |
+| `GET` | `/businesses/{business_id}/other-expenses` | `finance.view` | List expenses (paginated, filterable) |
+| `GET` | `/businesses/{business_id}/other-expenses/summary` | `finance.view` | Aggregate summary + category breakdown |
+| `GET` | `/businesses/{business_id}/other-expenses/{expense_id}` | `finance.view` | Read single expense |
+| `PATCH` | `/businesses/{business_id}/other-expenses/{expense_id}` | `finance.expenses.update` | Edit an already-synced expense |
+| `DELETE` | `/businesses/{business_id}/other-expenses/{expense_id}` | `finance.expenses.delete` | Soft-delete an expense |
+| `POST` | `/businesses/{business_id}/other-incomes/sync` | `finance.incomes.create` | Batch-sync offline income entries |
+| `GET` | `/businesses/{business_id}/other-incomes` | `finance.view` | List incomes (paginated, filterable) |
+| `GET` | `/businesses/{business_id}/other-incomes/summary` | `finance.view` | Aggregate summary + category breakdown |
+| `GET` | `/businesses/{business_id}/other-incomes/{income_id}` | `finance.view` | Read single income |
+| `PATCH` | `/businesses/{business_id}/other-incomes/{income_id}` | `finance.incomes.update` | Edit an already-synced income |
+| `DELETE` | `/businesses/{business_id}/other-incomes/{income_id}` | `finance.incomes.delete` | Soft-delete an income |
+| `POST` | `/businesses/{business_id}/finance/attachments` | `finance.attachments.upload` | Upload a receipt file |
+| `GET` | `/businesses/{business_id}/finance/attachments/{attachment_id}` | `finance.view` | Download a receipt file |
 
-All `pos.*` endpoints enforce **business-context binding**: the URL path's
-`business_id` must match the JWT's `active_business_id` claim.
+All `pos.*`/`finance.*` endpoints enforce **business-context binding**: the
+URL path's `business_id` must match the JWT's `active_business_id` claim.
 
 ---
 
@@ -55,6 +70,9 @@ Key locations:
 | Event-publish stub (RabbitMQ deferred) | `app/core/events.py:1-4` |
 | PermissionCode duplication / shared-package extraction | `app/core/permission_codes.py:1-13` |
 | Per-sale independent transactions in batch sync | `app/services/sale_service.py:69-75` |
+| Finance entries are mutable, sales are not | `app/models/finance.py:16-26` |
+| Category storage: VARCHAR, not a Postgres enum | `app/models/finance.py:28-37` |
+| Local-disk receipt storage (single-node/backup tradeoff) | `app/services/receipt_storage.py:1-24` |
 
 ---
 
@@ -73,7 +91,25 @@ refunded.
 - Fix target: add `handle_sale_voided` / `handle_sale_refunded` in
   Inventory Service's `app/services/event_handlers.py`.
 
-### 2. Shared-package extraction (prep for Service #4)
+### 2. Receipt files are stored on local disk, not object storage
+
+`app/services/receipt_storage.py`'s `LocalDiskReceiptStorage` writes
+uploaded receipts under `RECEIPT_STORAGE_ROOT` on the container's own
+filesystem (a named Docker volume in `docker-compose.yml`). This is fine
+for a single instance, but:
+
+- **No horizontal scaling / rolling deploy**: a second replica would not
+  see receipts uploaded to the first. Do not scale this service past one
+  instance (or deploy behind a shared network filesystem) without first
+  swapping in an S3/MinIO-backed `ReceiptStorage` implementation.
+- **Backup**: a Postgres dump alone is no longer a complete backup once
+  receipts exist — the `receipt_data` volume must be included in whatever
+  backs up this service's state.
+
+Swapping the backend is a new class behind the existing `ReceiptStorage`
+protocol — no call-site changes needed.
+
+### 3. Shared-package extraction (prep for Service #4)
 
 `security.py`, `deps/auth.py`, and `PermissionCode` (`permission_codes.py`)
 are duplicated across POS Service and Identity Service. Before starting
@@ -160,7 +196,7 @@ docker compose exec api-dev uv run pytest -v tests/
 uv run pytest -v tests/
 ```
 
-Full suite (113+ tests):
+Full suite (138+ tests):
 
 ```bash
 uv run pytest -v tests/ --tb=short
