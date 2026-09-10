@@ -8,8 +8,11 @@ import 'package:restaurant_pos/models/cart.dart';
 import 'package:restaurant_pos/models/menu_item.dart';
 import 'package:restaurant_pos/providers/cart_provider.dart';
 import 'package:restaurant_pos/providers/database_providers.dart';
+import 'package:restaurant_pos/providers/inventory_provider.dart';
 import 'package:restaurant_pos/providers/menu_providers.dart';
 import 'package:restaurant_pos/main.dart';
+
+import 'test_helpers/test_container.dart';
 
 const _burger = MenuItem(
   id: 'test-1',
@@ -85,10 +88,14 @@ void main() {
   });
 
   group('Menu filtering', () {
-    test('search matches name and description', () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    // The menu is now derived from `inventoryItemsProvider`, an
+    // `AsyncNotifierProvider` — even its no-store-context (demo catalog)
+    // branch resolves one microtask later, so these need to wait for it
+    // rather than reading synchronously right after container creation.
+    test('search matches name and description', () async {
+      final container = newTestContainer();
 
+      await container.read(inventoryItemsProvider.future);
       container.read(searchQueryProvider.notifier).state = 'risotto';
       final results = container.read(filteredMenuItemsProvider);
 
@@ -103,10 +110,10 @@ void main() {
       );
     });
 
-    test('category filter narrows to one category', () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    test('category filter narrows to one category', () async {
+      final container = newTestContainer();
 
+      await container.read(inventoryItemsProvider.future);
       container.read(selectedCategoryProvider.notifier).state = 'drinks';
       final results = container.read(filteredMenuItemsProvider);
 

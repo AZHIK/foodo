@@ -24,12 +24,18 @@ class ItemFormState {
     required this.isArchived,
     this.description = '',
     this.image,
+    this.sellingPrice = '',
+    this.itemType = '',
+    this.reorderQuantity = '',
+    this.allowNegativeStock = false,
   });
 
   /// Blank form for a new item.
   ///
   /// Category starts unset on purpose: a defaulted dropdown gets accepted
   /// unread, and miscategorised stock is invisible in every filter afterwards.
+  /// [itemType] starts empty too — that is what tells the dialog to show the
+  /// Grocery/Menu item/Both entry choice before any other field.
   factory ItemFormState.blank() => const ItemFormState(
     isEdit: false,
     name: '',
@@ -56,6 +62,10 @@ class ItemFormState {
     isArchived: item.isArchived,
     description: item.description,
     image: item.image,
+    sellingPrice: item.sellingPrice?.toStringAsFixed(2) ?? '',
+    itemType: item.itemType,
+    reorderQuantity: item.reorderQuantity.toString(),
+    allowNegativeStock: item.allowNegativeStock,
   );
 
   final bool isEdit;
@@ -70,6 +80,22 @@ class ItemFormState {
   final bool trackStock;
   final bool isArchived;
   final ItemImage? image;
+
+  /// Blank means "not for sale" — the item stays off the POS menu until a
+  /// price is set. Kept as text like the other numeric fields so a half-typed
+  /// "4." isn't fought by eager parsing.
+  final String sellingPrice;
+
+  /// `sellable` | `raw_material` | `both`, or empty while adding a new item
+  /// that has not been through the entry-choice step yet. Never empty once
+  /// [isEdit] is true — an existing item always has a real type.
+  final String itemType;
+
+  /// How much to reorder when this line falls below [lowStockAlert]. Text
+  /// like the other numeric fields; optional the same way the threshold is.
+  final String reorderQuantity;
+
+  final bool allowNegativeStock;
 
   Uint8List? get imageBytes => image?.bytes;
 
@@ -118,16 +144,50 @@ class ItemFormState {
     return null;
   }
 
+  /// Blank only passes for a grocery ([isRequired] false) — a stockroom-only
+  /// line genuinely has no till price. A `sellable` or `both` item must carry
+  /// one: an item that can be rung up with no price would silently vanish
+  /// from the POS menu (`isSellable` requires a non-null price), which is a
+  /// confusing way to fail rather than a real "not for sale yet" state.
+  static String? validateSellingPrice(String? value, {required bool isRequired}) {
+    final text = (value ?? '').trim();
+    if (text.isEmpty) {
+      return isRequired ? 'Enter a selling price to sell this at the till' : null;
+    }
+    final parsed = double.tryParse(text);
+    if (parsed == null) return 'Enter a number';
+    if (parsed < 0) return 'Cannot be negative';
+    return null;
+  }
+
+  /// Optional, same shape as [validateLowStockAlert] — a blank reorder
+  /// quantity is fine, a malformed one is not.
+  static String? validateReorderQuantity(String? value) {
+    final text = (value ?? '').trim();
+    if (text.isEmpty) return null;
+    final parsed = double.tryParse(text);
+    if (parsed == null) return 'Enter a number';
+    if (parsed < 0) return 'Cannot be negative';
+    return null;
+  }
+
   /// Drives the primary button. Name, category and unit cost are the three the
   /// brief calls required; the optional numeric fields still have to parse if
-  /// they were filled in at all.
+  /// they were filled in at all. A new item also needs [itemType] set — the
+  /// entry-choice step is what sets it, so this is what keeps the form
+  /// unsavable until that choice has been made. A selling price is required
+  /// too, unless the item is a pure grocery — see [validateSellingPrice].
   bool get canSave =>
+      itemType.isNotEmpty &&
       validateName(name) == null &&
       validateCategory(categoryId) == null &&
       validateUnitCost(unitCost) == null &&
+      validateSellingPrice(sellingPrice, isRequired: itemType != 'raw_material') ==
+          null &&
       (!trackStock ||
           (validateLowStockAlert(lowStockAlert) == null &&
-              validateStock(stock) == null));
+              validateStock(stock) == null &&
+              validateReorderQuantity(reorderQuantity) == null));
 
   ItemFormState copyWith({
     String? name,
@@ -141,7 +201,15 @@ class ItemFormState {
     bool? isArchived,
     String? description,
     ItemImage? image,
+    String? sellingPrice,
+    String? itemType,
+    String? reorderQuantity,
+    bool? allowNegativeStock,
     bool clearImage = false,
+    // itemType has no natural "unset" value to fall back to via `??`, since
+    // '' is itself meaningful (the entry choice has not been made) — going
+    // back to the chooser has to say so explicitly.
+    bool clearItemType = false,
   }) {
     return ItemFormState(
       isEdit: isEdit,
@@ -156,6 +224,10 @@ class ItemFormState {
       isArchived: isArchived ?? this.isArchived,
       description: description ?? this.description,
       image: clearImage ? null : (image ?? this.image),
+      sellingPrice: sellingPrice ?? this.sellingPrice,
+      itemType: clearItemType ? '' : (itemType ?? this.itemType),
+      reorderQuantity: reorderQuantity ?? this.reorderQuantity,
+      allowNegativeStock: allowNegativeStock ?? this.allowNegativeStock,
     );
   }
 }
@@ -189,6 +261,8 @@ class ItemFormNotifier
   void setDescription(String value) =>
       state = state.copyWith(description: value);
   void setUnitCost(String value) => state = state.copyWith(unitCost: value);
+  void setSellingPrice(String value) =>
+      state = state.copyWith(sellingPrice: value);
   void setUnit(String value) => state = state.copyWith(unit: value);
   void setStock(String value) => state = state.copyWith(stock: value);
   void setArchived(bool value) => state = state.copyWith(isArchived: value);
@@ -196,7 +270,25 @@ class ItemFormNotifier
   void setLowStockAlert(String value) =>
       state = state.copyWith(lowStockAlert: value);
 
+  void setReorderQuantity(String value) =>
+      state = state.copyWith(reorderQuantity: value);
+
+  void setAllowNegativeStock(bool value) =>
+      state = state.copyWith(allowNegativeStock: value);
+
   void setTrackStock(bool value) => state = state.copyWith(trackStock: value);
+
+  /// Answers the entry-choice step. Groceries and "both" default to tracked
+  /// stock; a pure menu item defaults to untracked — prepared-to-order dishes
+  /// are the common case, and the toggle is still there for the exception.
+  void chooseType(String type) {
+    state = state.copyWith(itemType: type, trackStock: type != 'sellable');
+  }
+
+  /// Sends the form back to the entry-choice step. Everything else already
+  /// typed is kept — changing your mind about the item's type should not
+  /// throw away the name and cost you already entered.
+  void resetType() => state = state.copyWith(clearItemType: true);
 
   void setImage(String name, Uint8List bytes) => state = state.copyWith(
     image: ItemImage(name: name, bytes: bytes),
@@ -222,7 +314,13 @@ class ItemFormNotifier
     final name = state.name.trim();
     final unitCost = double.tryParse(state.unitCost.trim()) ?? 0;
     final reorderLevel = double.tryParse(state.lowStockAlert.trim()) ?? 0;
+    final reorderQuantity = double.tryParse(state.reorderQuantity.trim()) ?? 0;
     final sku = state.sku.trim();
+    final sellingPrice = double.tryParse(state.sellingPrice.trim());
+    // Defensive fallback only — the entry-choice step blocks `canSave` (and
+    // therefore this call) until a type is picked, so this never actually
+    // runs empty in practice.
+    final itemType = state.itemType.isEmpty ? 'both' : state.itemType;
 
     final item = existing != null
         ? existing.copyWith(
@@ -231,12 +329,18 @@ class ItemFormNotifier
             sku: sku.isEmpty ? existing.sku : sku,
             unitCost: unitCost,
             reorderLevel: reorderLevel,
+            reorderQuantity: reorderQuantity,
+            allowNegativeStock: state.allowNegativeStock,
             unit: state.unit,
             trackStock: state.trackStock,
             isArchived: state.isArchived,
             description: state.description.trim(),
             image: state.image,
             clearImage: state.image == null,
+            sellingPrice: sellingPrice,
+            clearSellingPrice: sellingPrice == null,
+            isSellable: itemType != 'raw_material' && sellingPrice != null,
+            itemType: itemType,
             // Stock is deliberately not written here — the count moves through
             // the Stock Adjust flow, which records why it changed.
           )
@@ -248,12 +352,17 @@ class ItemFormNotifier
             emoji: '📦',
             stock: double.tryParse(state.stock.trim()) ?? 0,
             reorderLevel: reorderLevel,
+            reorderQuantity: reorderQuantity,
+            allowNegativeStock: state.allowNegativeStock,
             unitCost: unitCost,
             unit: state.unit,
             trackStock: state.trackStock,
             isArchived: state.isArchived,
             description: state.description.trim(),
             image: state.image,
+            sellingPrice: sellingPrice,
+            isSellable: itemType != 'raw_material' && sellingPrice != null,
+            itemType: itemType,
           );
 
     await inventory.upsert(item);

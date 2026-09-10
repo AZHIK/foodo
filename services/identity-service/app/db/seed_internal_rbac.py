@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from sqlmodel import Session, select
 
 from app.core.permission_codes import PermissionCode
-from app.db.seed_mappings import POS_SALES_LIST, POS_SALES_VIEW, uniq
+from app.db.seed_mappings import uniq
 from app.models import Group, Role, RolePermission
 
 
@@ -106,8 +106,7 @@ _SUPPORT_AGENT_PERMISSIONS: tuple[PermissionCode, ...] = (
 _FINANCE_ANALYST_PERMISSIONS: tuple[PermissionCode, ...] = (
     PermissionCode.BUSINESSES_VIEW,
     PermissionCode.ORGANIZATIONS_VIEW,
-    POS_SALES_LIST,
-    POS_SALES_VIEW,
+    PermissionCode.POS_VIEW,
 )
 
 
@@ -195,7 +194,7 @@ INTERNAL_GROUP_SEEDS: tuple[GroupSeed, ...] = (
                     (
                         PermissionCode.AI_FORECAST_VIEW,
                         PermissionCode.BUSINESSES_VIEW,
-                        POS_SALES_LIST,
+                        PermissionCode.POS_VIEW,
                         PermissionCode.INVENTORY_VIEW,
                     )
                 ),

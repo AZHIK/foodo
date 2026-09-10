@@ -88,7 +88,7 @@ class SyncService {
         dtos.add(PendingSaleDto(
           clientSaleId: row.clientSaleId,
           status: row.status,
-          businessLocationId: row.businessLocationId,
+          storeId: row.storeId,
           lineItems: lineItems
               .map((li) => PendingSaleLineItemDto(
                 itemId: li.itemId,

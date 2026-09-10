@@ -7,14 +7,17 @@ import 'package:restaurant_pos/models/order_totals.dart';
 import 'package:restaurant_pos/providers/cart_provider.dart';
 import 'package:restaurant_pos/providers/orders_provider.dart';
 
+import 'test_helpers/test_container.dart';
+
 /// The checkout flow's shared state: one totals calculation, one payment
 /// record, read by the payment screen, the receipt and sale detail alike.
 void main() {
-  ProviderContainer makeContainer() {
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-    return container;
-  }
+  // `newTestContainer`, not a bare `ProviderContainer`: `OrdersNotifier`
+  // watches `currentStoreIdProvider`, which — same as `InventoryNotifier` —
+  // routes through `AuthNotifier`, and that unconditionally needs a working
+  // database even to discover there's no session (see
+  // `test_helpers/test_container.dart`'s own doc comment).
+  ProviderContainer makeContainer() => newTestContainer();
 
   /// Puts a known ticket in the cart and returns its container.
   ProviderContainer withOrder() {
@@ -169,11 +172,16 @@ void main() {
   });
 
   group('the sale a payment produces', () {
-    test('carries the tender and its totals into the ledger', () {
+    test('carries the tender and its totals into the ledger', () async {
       final container = withOrder();
       final cart = container.read(cartProvider.notifier);
       cart.selectPaymentMethod(PaymentType.cash);
       cart.setAmountTendered(200);
+
+      // `OrdersNotifier.build()` resolves asynchronously even in demo mode
+      // (no store context) — waiting for it first avoids racing `placeOrder`
+      // against the notifier's own initial state resolution.
+      await container.read(ordersProvider.future);
 
       final open = container.read(cartProvider);
       final order = container
@@ -187,15 +195,16 @@ void main() {
       expect(order.payment.changeFor(order.totals), closeTo(200 - open.total, 0.0001));
     });
 
-    test('refunding preserves the tender recorded on the sale', () {
+    test('refunding preserves the tender recorded on the sale', () async {
       final container = withOrder();
       final cart = container.read(cartProvider.notifier);
       cart.selectPaymentMethod(PaymentType.cash);
       cart.setAmountTendered(200);
 
+      await container.read(ordersProvider.future);
       final orders = container.read(ordersProvider.notifier);
       final order = orders.placeOrder(cart: container.read(cartProvider));
-      orders.refund(order.id);
+      await orders.refund(order.id, reason: 'Customer changed their mind');
 
       final refunded = container.read(orderByIdProvider(order.id))!;
       expect(refunded.status, OrderStatus.refunded);

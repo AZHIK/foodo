@@ -65,6 +65,13 @@
 /// v4 adds one nullable column, `CachedItems.unitCost`, mirroring
 /// Inventory Service's `Item.unit_cost` (the cost basis behind the
 /// inventory-value reporting metric).
+///
+/// v5 adds the sales read cache (`CachedSales`, `CachedSaleLineItems` — the
+/// sales-side analogue of `CachedItems`/`CachedStockLevels`) and renames
+/// `PendingSales.businessLocationId` to `storeId`, matching POS Service's
+/// own rename of `SaleSyncInput.business_location_id` to `store_id`
+/// (migration `c3d4e5f6a7b8`) — the old name would 422 against the real
+/// backend.
 library;
 
 import 'package:decimal/decimal.dart';
@@ -78,6 +85,8 @@ import 'tables/cached_items.dart';
 import 'tables/cached_permissions.dart';
 import 'tables/cached_stock_levels.dart';
 import 'tables/cached_business_roles.dart';
+import 'tables/cached_sales.dart';
+import 'tables/cached_sale_line_items.dart';
 import 'tables/pending_voids_refunds.dart';
 import 'tables/expense_entries.dart';
 import 'tables/other_income_entries.dart';
@@ -95,6 +104,8 @@ part 'app_database.g.dart';
   CachedPermissions,
   CachedStockLevels,
   CachedBusinessRoles,
+  CachedSales,
+  CachedSaleLineItems,
   PendingVoidsRefunds,
   ExpenseEntries,
   OtherIncomeEntries,
@@ -105,7 +116,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.connection);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -135,6 +146,15 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 4) {
         await m.addColumn(cachedItems, cachedItems.unitCost);
+      }
+      if (from < 5) {
+        await m.createTable(cachedSales);
+        await m.createTable(cachedSaleLineItems);
+        await m.renameColumn(
+          pendingSales,
+          'business_location_id',
+          pendingSales.storeId,
+        );
       }
     },
     beforeOpen: (details) async {

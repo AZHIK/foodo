@@ -112,6 +112,7 @@ class Order {
     this.amountTendered,
     this.customerId,
     this.courierId,
+    this.serverSaleId,
   });
 
   final String id;
@@ -137,6 +138,13 @@ class Order {
 
   /// Assigned courier id, for delivery orders.
   final String? courierId;
+
+  /// POS Service's own `Sale.id`, once this order has been synced. Null for
+  /// an order that only exists locally (not yet synced, or placed with no
+  /// store context at all) — refund/void target this id directly rather
+  /// than [id], which stays this device's stable "ORD-0042" ticket number
+  /// across the whole lifecycle (see `order_mapper.dart`).
+  final String? serverSaleId;
 
   /// The numeric part of the ticket id, for composing a receipt number under
   /// whatever prefix Store Settings is configured with.
@@ -206,6 +214,7 @@ class Order {
       amountTendered: amountTendered ?? this.amountTendered,
       customerId: customerId ?? this.customerId,
       courierId: courierId ?? this.courierId,
+      serverSaleId: serverSaleId,
     );
   }
 

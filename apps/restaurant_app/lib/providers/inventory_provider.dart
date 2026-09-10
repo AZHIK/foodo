@@ -25,6 +25,7 @@ abstract final class InventorySort {
   static const cost = 'cost';
   static const value = 'value';
   static const status = 'status';
+  static const reorderLevel = 'reorderLevel';
 }
 
 // ---------------------------------------------------------------------------
@@ -128,17 +129,23 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
       return;
     }
 
+    final sellingPrice = item.sellingPrice == null
+        ? null
+        : Decimal.parse(item.sellingPrice.toString());
+
     if (item.catalogItemId == null) {
       await _api.createItem(
         businessId: _businessId,
         storeId: storeId,
         name: item.name,
         unitOfMeasure: _unitOfMeasureCode(item.unit),
-        itemType: 'both',
+        itemType: item.itemType,
         reorderThreshold: Decimal.parse(item.reorderLevel.toString()),
-        reorderQuantity: Decimal.parse(item.reorderLevel.toString()),
+        reorderQuantity: Decimal.parse(item.reorderQuantity.toString()),
         category: item.categoryId,
         unitCost: Decimal.parse(item.unitCost.toString()),
+        sellingPrice: sellingPrice,
+        allowNegativeStock: item.allowNegativeStock,
       );
     } else {
       await _api.updateItem(
@@ -148,7 +155,11 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
         unitOfMeasure: _unitOfMeasureCode(item.unit),
         category: item.categoryId,
         reorderThreshold: Decimal.parse(item.reorderLevel.toString()),
+        reorderQuantity: Decimal.parse(item.reorderQuantity.toString()),
         unitCost: Decimal.parse(item.unitCost.toString()),
+        sellingPrice: sellingPrice,
+        allowNegativeStock: item.allowNegativeStock,
+        itemType: item.itemType,
       );
     }
     await refresh();
@@ -285,8 +296,30 @@ final inventoryItemsListProvider = Provider<List<InventoryItem>>(
   (ref) => ref.watch(inventoryItemsProvider).valueOrNull ?? const [],
 );
 
+/// The Groceries view's source list — every item except a pure `sellable`
+/// one. This is the UI/query-level split the Inventory section is built on:
+/// the backend items table and its `item_type` column are untouched, only
+/// this filter decides what each of the two screens shows.
+final groceryItemsProvider = Provider<List<InventoryItem>>(
+  (ref) => [
+    for (final item in ref.watch(inventoryItemsListProvider))
+      if (item.isGroceryItem) item,
+  ],
+);
+
+/// The Menu Items view's source list — every item except a pure
+/// `raw_material` one. A `both` item (bought and resold unchanged) appears
+/// here *and* in [groceryItemsProvider] — that duplication is intentional,
+/// not a bug: the item genuinely belongs in both views.
+final menuCatalogItemsProvider = Provider<List<InventoryItem>>(
+  (ref) => [
+    for (final item in ref.watch(inventoryItemsListProvider))
+      if (item.isMenuCatalogItem) item,
+  ],
+);
+
 // ---------------------------------------------------------------------------
-// Search / sort / pagination
+// Search / sort / pagination — Groceries
 // ---------------------------------------------------------------------------
 
 final inventoryQueryProvider = NotifierProvider<TableQueryNotifier, TableQuery>(
@@ -296,7 +329,7 @@ final inventoryQueryProvider = NotifierProvider<TableQueryNotifier, TableQuery>(
 );
 
 // ---------------------------------------------------------------------------
-// Filters
+// Filters — Groceries
 // ---------------------------------------------------------------------------
 
 /// The Inventory filter panel's state. An empty set means "no constraint",
@@ -389,24 +422,25 @@ final inventoryFiltersProvider =
       InventoryFiltersNotifier.new,
     );
 
-/// Highest stock count in the data, so the range filter can bound its inputs
-/// instead of guessing a maximum.
+/// Highest stock count among grocery items, so the range filter can bound its
+/// inputs instead of guessing a maximum.
 final inventoryStockCeilingProvider = Provider<double>((ref) {
   var highest = 0.0;
-  for (final item in ref.watch(inventoryItemsListProvider)) {
+  for (final item in ref.watch(groceryItemsProvider)) {
     if (item.stock > highest) highest = item.stock;
   }
   return highest;
 });
 
 // ---------------------------------------------------------------------------
-// Derived views
+// Derived views — Groceries
 // ---------------------------------------------------------------------------
 
-/// Search + filters + sort, composed in one place. The screen never sees an
-/// unfiltered list, and no filtering logic lives in the widget tree.
+/// Search + filters + sort over [groceryItemsProvider], composed in one
+/// place. The screen never sees an unfiltered list, and no filtering logic
+/// lives in the widget tree.
 final filteredInventoryProvider = Provider<List<InventoryItem>>((ref) {
-  final items = ref.watch(inventoryItemsListProvider);
+  final items = ref.watch(groceryItemsProvider);
   final query = ref.watch(inventoryQueryProvider);
   final filters = ref.watch(inventoryFiltersProvider);
   final search = query.search.trim().toLowerCase();
@@ -431,6 +465,7 @@ final filteredInventoryProvider = Provider<List<InventoryItem>>((ref) {
       InventorySort.stock => a.stock.compareTo(b.stock),
       InventorySort.cost => a.unitCost.compareTo(b.unitCost),
       InventorySort.value => a.totalValue.compareTo(b.totalValue),
+      InventorySort.reorderLevel => a.reorderLevel.compareTo(b.reorderLevel),
       // In stock → low → out, so ascending reads as "least urgent first".
       InventorySort.status => a.status.index.compareTo(b.status.index),
       _ => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
@@ -467,10 +502,13 @@ class InventorySummary {
   int get needsAttention => lowStockCount + outOfStockCount;
 }
 
-/// Computed over the whole stockroom, not the current filter, so the header
-/// stays a stable "how are we doing" readout while the user filters below it.
+/// Computed over the whole grocery list, not the current filter, so the
+/// header stays a stable "how are we doing" readout while the user filters
+/// below it. [InventorySummary.totalValue] sums `stock × unitCost` — the
+/// last-known cost basis already carried on every item — so the "total
+/// estimated stock value" stat is real data, not a placeholder.
 final inventorySummaryProvider = Provider<InventorySummary>((ref) {
-  final items = ref.watch(inventoryItemsListProvider);
+  final items = ref.watch(groceryItemsProvider);
 
   var low = 0;
   var out = 0;
@@ -494,3 +532,107 @@ final inventorySummaryProvider = Provider<InventorySummary>((ref) {
     totalValue: value,
   );
 });
+
+// ---------------------------------------------------------------------------
+// Search / sort / pagination — Menu Items
+// ---------------------------------------------------------------------------
+
+abstract final class MenuItemSort {
+  static const name = 'name';
+  static const category = 'category';
+  static const price = 'price';
+}
+
+final menuItemsQueryProvider = NotifierProvider<TableQueryNotifier, TableQuery>(
+  () => TableQueryNotifier(
+    const TableQuery(sortField: MenuItemSort.name, pageSize: 8),
+  ),
+);
+
+// ---------------------------------------------------------------------------
+// Filters — Menu Items
+// ---------------------------------------------------------------------------
+
+/// Menu Items' filter state. Deliberately lighter than [InventoryFilters] —
+/// stock status and stock-quantity range describe a stockroom line, not a
+/// till item, so only category applies here.
+@immutable
+class MenuItemFilters {
+  const MenuItemFilters({this.categoryIds = const {}});
+
+  final Set<String> categoryIds;
+
+  int get activeCount => categoryIds.length;
+
+  bool matches(InventoryItem item) =>
+      categoryIds.isEmpty || categoryIds.contains(item.categoryId);
+
+  MenuItemFilters copyWith({Set<String>? categoryIds}) =>
+      MenuItemFilters(categoryIds: categoryIds ?? this.categoryIds);
+}
+
+class MenuItemFiltersNotifier extends Notifier<MenuItemFilters> {
+  @override
+  MenuItemFilters build() => const MenuItemFilters();
+
+  void toggleCategory(String id) {
+    final next = Set<String>.of(state.categoryIds);
+    next.contains(id) ? next.remove(id) : next.add(id);
+    state = state.copyWith(categoryIds: next);
+    ref.read(menuItemsQueryProvider.notifier).resetPage();
+  }
+
+  void clear() {
+    state = const MenuItemFilters();
+    ref.read(menuItemsQueryProvider.notifier).resetPage();
+  }
+}
+
+final menuItemFiltersProvider =
+    NotifierProvider<MenuItemFiltersNotifier, MenuItemFilters>(
+      MenuItemFiltersNotifier.new,
+    );
+
+// ---------------------------------------------------------------------------
+// Derived views — Menu Items
+// ---------------------------------------------------------------------------
+
+final filteredMenuCatalogProvider = Provider<List<InventoryItem>>((ref) {
+  final items = ref.watch(menuCatalogItemsProvider);
+  final query = ref.watch(menuItemsQueryProvider);
+  final filters = ref.watch(menuItemFiltersProvider);
+  final search = query.search.trim().toLowerCase();
+
+  final rows = items.where((item) {
+    if (!filters.matches(item)) return false;
+    if (search.isEmpty) return true;
+    return item.name.toLowerCase().contains(search) ||
+        item.sku.toLowerCase().contains(search) ||
+        MockInventory.categoryLabel(item.categoryId)
+            .toLowerCase()
+            .contains(search);
+  }).toList();
+
+  final direction = query.ascending ? 1 : -1;
+  rows.sort((a, b) {
+    final cmp = switch (query.sortField) {
+      MenuItemSort.category => MockInventory.categoryLabel(
+        a.categoryId,
+      ).compareTo(MockInventory.categoryLabel(b.categoryId)),
+      MenuItemSort.price => (a.sellingPrice ?? 0).compareTo(
+        b.sellingPrice ?? 0,
+      ),
+      _ => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+    };
+    return cmp != 0 ? cmp * direction : a.id.compareTo(b.id);
+  });
+
+  return rows;
+});
+
+final menuItemsSliceProvider = Provider<PageSlice<InventoryItem>>(
+  (ref) => PageSlice.of(
+    ref.watch(filteredMenuCatalogProvider),
+    ref.watch(menuItemsQueryProvider),
+  ),
+);

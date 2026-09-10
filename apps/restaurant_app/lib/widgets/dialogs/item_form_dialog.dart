@@ -42,12 +42,21 @@ abstract final class ItemFormKeys {
   static const category = Key('itemForm.category');
   static const description = Key('itemForm.description');
   static const unitCost = Key('itemForm.unitCost');
+  static const sellingPrice = Key('itemForm.sellingPrice');
   static const lowStockAlert = Key('itemForm.lowStockAlert');
+  static const reorderQuantity = Key('itemForm.reorderQuantity');
+  static const allowNegativeStock = Key('itemForm.allowNegativeStock');
   static const stock = Key('itemForm.stock');
   static const unit = Key('itemForm.unit');
   static const trackStock = Key('itemForm.trackStock');
   static const cancel = Key('itemForm.cancel');
   static const submit = Key('itemForm.submit');
+
+  /// The entry-choice step's three options.
+  static const chooseGrocery = Key('itemForm.chooseGrocery');
+  static const chooseMenuItem = Key('itemForm.chooseMenuItem');
+  static const chooseBoth = Key('itemForm.chooseBoth');
+  static const changeType = Key('itemForm.changeType');
 }
 
 /// The form itself. Prefer [showItemFormDialog] — this is public only so tests
@@ -84,7 +93,9 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
   final _name = TextEditingController();
   final _sku = TextEditingController();
   final _unitCost = TextEditingController();
+  final _sellingPrice = TextEditingController();
   final _lowStock = TextEditingController();
+  final _reorderQuantity = TextEditingController();
   final _stock = TextEditingController();
   final _description = TextEditingController();
 
@@ -112,7 +123,9 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
     _name.text = state.name;
     _sku.text = state.sku;
     _unitCost.text = state.unitCost;
+    _sellingPrice.text = state.sellingPrice;
     _lowStock.text = state.lowStockAlert;
+    _reorderQuantity.text = state.reorderQuantity;
     _stock.text = state.stock;
     _description.text = state.description;
   }
@@ -122,7 +135,9 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
     _name.dispose();
     _sku.dispose();
     _unitCost.dispose();
+    _sellingPrice.dispose();
     _lowStock.dispose();
+    _reorderQuantity.dispose();
     _stock.dispose();
     _description.dispose();
     super.dispose();
@@ -155,10 +170,16 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
     }
   }
 
+  /// True only while adding a new item that has not been through the
+  /// Grocery/Menu item/Both entry choice yet — an existing item always has a
+  /// real [ItemFormState.itemType], so editing never shows the chooser.
+  bool _chooserMode(ItemFormState state) => !state.isEdit && state.itemType.isEmpty;
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(_provider);
     final isMobile = MediaQuery.sizeOf(context).width < Breakpoints.tablet;
+    final chooserMode = _chooserMode(state);
 
     return Form(
       key: _formKey,
@@ -180,7 +201,103 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
             child: Text(state.isEdit ? 'Save changes' : 'Add item'),
           ),
         ],
-        child: isMobile ? _mobileBody(state) : _wideBody(state),
+        child: chooserMode
+            ? _typeChoiceStep(context)
+            : (isMobile ? _mobileBody(state) : _wideBody(state)),
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------
+  // Entry choice
+  // -------------------------------------------------------------------
+
+  /// "Grocery or Menu item?" — the first thing an add-item flow asks, rather
+  /// than a generic item-type dropdown buried among other fields. The less
+  /// common "both bought and sold" case is still one tap away, just not the
+  /// lead option.
+  Widget _typeChoiceStep(BuildContext context) {
+    final notifier = ref.read(_provider.notifier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('What are you adding?', style: context.text.titleMedium),
+        const SizedBox(height: Insets.xs),
+        Text(
+          'This decides which fields the form leads with — nothing here is '
+          'final.',
+          style: context.text.bodySmall?.copyWith(
+            color: context.colors.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: Insets.lg),
+        SelectableOptionGrid(
+          perRow: 2,
+          children: [
+            SelectableOptionCard(
+              key: ItemFormKeys.chooseGrocery,
+              label: 'Grocery',
+              subtitle: 'A raw material you stock and use',
+              icon: Icons.shopping_basket_outlined,
+              selected: false,
+              onTap: () => notifier.chooseType('raw_material'),
+            ),
+            SelectableOptionCard(
+              key: ItemFormKeys.chooseMenuItem,
+              label: 'Menu item',
+              subtitle: 'Something you sell at the till',
+              icon: Icons.restaurant_menu_rounded,
+              selected: false,
+              onTap: () => notifier.chooseType('sellable'),
+            ),
+          ],
+        ),
+        const SizedBox(height: Insets.lg),
+        Center(
+          child: TextButton.icon(
+            key: ItemFormKeys.chooseBoth,
+            onPressed: () => notifier.chooseType('both'),
+            icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+            label: const Text(
+              'This item is both bought and sold — e.g. a bottled drink',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Sits above the fields once a type has been chosen, naming the choice and
+  /// offering a way back to the chooser without losing anything else typed.
+  Widget _typeSummaryBar(BuildContext context, ItemFormState state) {
+    final (label, icon) = switch (state.itemType) {
+      'raw_material' => ('Grocery', Icons.shopping_basket_outlined),
+      'sellable' => ('Menu item', Icons.restaurant_menu_rounded),
+      _ => ('Bought and sold', Icons.swap_horiz_rounded),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.sm),
+      decoration: BoxDecoration(
+        color: context.colors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(Radii.md),
+        border: Border.all(color: context.semantic.hairline),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: context.colors.onSurfaceVariant),
+          const SizedBox(width: Insets.sm),
+          Expanded(
+            child: Text(label, style: context.text.labelLarge),
+          ),
+          TextButton(
+            key: ItemFormKeys.changeType,
+            onPressed: () => ref.read(_provider.notifier).resetType(),
+            child: const Text('Change'),
+          ),
+        ],
       ),
     );
   }
@@ -232,6 +349,10 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (!state.isEdit) ...[
+          _typeSummaryBar(context, state),
+          const SizedBox(height: Insets.lg),
+        ],
         const SectionLabel('Basic info'),
         const SizedBox(height: Insets.md),
         LabeledFormField(
@@ -326,8 +447,11 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
         const SizedBox(height: Insets.md),
         // The toggle governs the fields under it, so it comes before them —
         // switching it off after typing a threshold reads as a mistake.
-        _TrackStockToggle(
+        _SwitchTile(
           key: ItemFormKeys.trackStock,
+          title: 'Track stock for this item',
+          subtitleOn: 'Counted against a low-stock threshold',
+          subtitleOff: 'No counts, no low-stock warnings',
           value: state.trackStock,
           onChanged: notifier.setTrackStock,
         ),
@@ -375,6 +499,63 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
             ),
           ),
         ),
+        if (state.trackStock) ...[
+          const SizedBox(height: Insets.lg),
+          LabeledFormField(
+            label: 'Reorder quantity',
+            helper: 'How much to order when restocking',
+            child: TextFormField(
+              key: ItemFormKeys.reorderQuantity,
+              controller: _reorderQuantity,
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.next,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(hintText: '0'),
+              onChanged: notifier.setReorderQuantity,
+              validator: ItemFormState.validateReorderQuantity,
+            ),
+          ),
+          const SizedBox(height: Insets.lg),
+          _SwitchTile(
+            key: ItemFormKeys.allowNegativeStock,
+            title: 'Allow stock to go negative',
+            subtitleOn: 'A sale can go through before the count catches up',
+            subtitleOff: 'A sale is blocked once stock reaches zero',
+            value: state.allowNegativeStock,
+            onChanged: notifier.setAllowNegativeStock,
+          ),
+        ],
+        const SizedBox(height: Insets.lg),
+        // Disabled rather than hidden for a raw material — same reasoning as
+        // the low-stock alert field above: hiding it would reflow the row
+        // around it, and a grocery-only item can still be reclassified later.
+        LabeledFormField(
+          label: 'Selling price',
+          enabled: state.itemType != 'raw_material',
+          helper: state.itemType == 'raw_material'
+              ? 'Not shown for groceries — change type to set a price'
+              : 'Required to appear on the POS menu',
+          child: TextFormField(
+            key: ItemFormKeys.sellingPrice,
+            controller: _sellingPrice,
+            enabled: state.itemType != 'raw_material',
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textInputAction: TextInputAction.next,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+            ],
+            decoration: InputDecoration(
+              hintText: '0.00',
+              prefixText: Fmt.currencySymbol,
+            ),
+            onChanged: notifier.setSellingPrice,
+            validator: (value) => ItemFormState.validateSellingPrice(
+              value,
+              isRequired: state.itemType != 'raw_material',
+            ),
+          ),
+        ),
+
         if (state.trackStock) ...[
           const SizedBox(height: Insets.lg),
           _FieldPair(
@@ -576,13 +757,22 @@ class _ReadOnlyStock extends StatelessWidget {
   }
 }
 
-class _TrackStockToggle extends StatelessWidget {
-  const _TrackStockToggle({
+/// A labelled on/off row in its own bordered card — the shared shape behind
+/// both the track-stock and allow-negative-stock toggles, so a second
+/// checkbox-like setting did not mean inventing a second widget.
+class _SwitchTile extends StatelessWidget {
+  const _SwitchTile({
     super.key,
+    required this.title,
+    required this.subtitleOn,
+    required this.subtitleOff,
     required this.value,
     required this.onChanged,
   });
 
+  final String title;
+  final String subtitleOn;
+  final String subtitleOff;
   final bool value;
   final ValueChanged<bool> onChanged;
 
@@ -607,14 +797,9 @@ class _TrackStockToggle extends StatelessWidget {
           horizontal: Insets.lg,
           vertical: Insets.xs,
         ),
-        title: Text(
-          'Track stock for this item',
-          style: context.text.bodyMedium,
-        ),
+        title: Text(title, style: context.text.bodyMedium),
         subtitle: Text(
-          value
-              ? 'Counted against a low-stock threshold'
-              : 'No counts, no low-stock warnings',
+          value ? subtitleOn : subtitleOff,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: context.text.bodySmall?.copyWith(

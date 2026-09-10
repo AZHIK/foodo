@@ -81,7 +81,9 @@ List<AiInsight> _stockInsights(Ref ref, List<InventoryItem> items) {
           ),
         ],
         actionLabel: 'Open inventory',
-        actionRoute: AppRoute.inventoryName,
+        // Always Groceries: an out-of-stock insight is about raw materials,
+        // never a till item.
+        actionRoute: AppRoute.groceriesName,
       ),
     AiInsight(
       id: 'stock-reorder',

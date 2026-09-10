@@ -16,7 +16,8 @@ import '../screens/customers/customer_detail_screen.dart';
 import '../screens/dashboard/dashboard_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/order_detail/order_detail_screen.dart';
-import '../screens/inventory/inventory_screen_gated.dart';
+import '../screens/inventory/inventory_groceries_screen_gated.dart';
+import '../screens/inventory/inventory_menu_items_screen_gated.dart';
 import '../screens/insights/ai_insights_screen.dart';
 import '../screens/inventory/item_detail_screen.dart';
 import '../screens/inventory/reorders_screen.dart';
@@ -108,7 +109,25 @@ abstract final class AppRoute {
   static const inventoryPath = '/inventory';
   static const inventoryName = 'inventory';
 
+  /// The Inventory section's two views, nested under [inventoryPath] the
+  /// same way Finance nests Expenses/Incomes under `/finance` — one shell
+  /// branch, one Navigator, two sibling routes switched by
+  /// [InventoryTabBar]. The bare `/inventory` path itself renders Groceries,
+  /// matching Finance's parent route defaulting to Other Expenses.
+  static const groceriesPath = 'groceries';
+  static const groceriesName = 'inventoryGroceries';
+
+  static String groceries() => '$inventoryPath/$groceriesPath';
+
+  static const menuItemsPath = 'menu-items';
+  static const menuItemsName = 'inventoryMenuItems';
+
+  static String menuItems() => '$inventoryPath/$menuItemsPath';
+
   /// Nested under inventory so the shell's Inventory tab stays selected.
+  /// Declared after the two tab paths above so the literal `groceries`/
+  /// `menu-items` segments are matched before this parameter — same ordering
+  /// rule as `/staff/roles` versus `:staffId`.
   static const itemDetailPath = ':itemId';
   static const itemDetailName = 'itemDetail';
 
@@ -416,8 +435,25 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoute.inventoryPath,
                 name: AppRoute.inventoryName,
-                builder: (context, state) => const InventoryScreenGated(),
+                // The bare path renders Groceries, matching Finance's parent
+                // route defaulting to Other Expenses.
+                builder: (context, state) =>
+                    const InventoryGroceriesScreenGated(),
                 routes: [
+                  // Declared before `:itemId` so the literal segments match
+                  // first — same ordering rule as `/staff/roles`.
+                  GoRoute(
+                    path: AppRoute.groceriesPath,
+                    name: AppRoute.groceriesName,
+                    builder: (context, state) =>
+                        const InventoryGroceriesScreenGated(),
+                  ),
+                  GoRoute(
+                    path: AppRoute.menuItemsPath,
+                    name: AppRoute.menuItemsName,
+                    builder: (context, state) =>
+                        const InventoryMenuItemsScreenGated(),
+                  ),
                   GoRoute(
                     path: AppRoute.itemDetailPath,
                     name: AppRoute.itemDetailName,

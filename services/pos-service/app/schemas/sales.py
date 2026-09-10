@@ -21,12 +21,12 @@ stop retrying successes without losing visibility into failures.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.schemas.line_items import SaleLineItemInput, SaleLineItemRead
 
@@ -54,6 +54,22 @@ class SaleSyncInput(BaseModel):
     occurred_at: datetime
     device_sequence: int | None = None
     void_or_refund_reason: str | None = None
+
+    @field_validator("occurred_at")
+    @classmethod
+    def _assume_naive_is_utc(cls, value: datetime) -> datetime:
+        """Treat a timezone-naive timestamp as UTC rather than crashing later.
+
+        `occurred_at` is documented as UTC device time, but nothing here
+        enforced that a client actually attaches a timezone marker — a plain
+        `datetime.now().toIso8601String()` on the Dart side has none.
+        `detect_time_drift` compares this against `datetime.now(UTC)`
+        (timezone-aware), and Python raises `TypeError` comparing naive to
+        aware rather than any usable error — normalize at the input
+        boundary instead of letting a malformed request 500 deep in
+        business logic.
+        """
+        return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 
     @model_validator(mode="after")
     def _validate_void_reason(self) -> "SaleSyncInput":

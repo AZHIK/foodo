@@ -32,7 +32,7 @@ void main() {
             PendingSalesCompanion.insert(
               clientSaleId: 'sale-1',
               status: 'completed',
-              businessLocationId: 'loc-1',
+              storeId: 'loc-1',
               paymentMethod: 'cash',
               occurredAt: now,
               createdAt: now,
@@ -42,7 +42,7 @@ void main() {
             PendingSalesCompanion.insert(
               clientSaleId: 'sale-2',
               status: 'completed',
-              businessLocationId: 'loc-1',
+              storeId: 'loc-1',
               paymentMethod: 'cash',
               occurredAt: now,
               createdAt: now,
@@ -67,7 +67,7 @@ void main() {
             PendingSalesCompanion.insert(
               clientSaleId: 'sale-good',
               status: 'completed',
-              businessLocationId: 'loc-1',
+              storeId: 'loc-1',
               paymentMethod: 'cash',
               occurredAt: now,
               createdAt: now,
@@ -77,7 +77,7 @@ void main() {
             PendingSalesCompanion.insert(
               clientSaleId: 'sale-bad',
               status: 'completed',
-              businessLocationId: 'loc-1',
+              storeId: 'loc-1',
               paymentMethod: 'cash',
               occurredAt: now,
               createdAt: now,
@@ -119,7 +119,7 @@ void main() {
             PendingSalesCompanion.insert(
               clientSaleId: 'sale-1',
               status: 'completed',
-              businessLocationId: 'loc-1',
+              storeId: 'loc-1',
               paymentMethod: 'cash',
               occurredAt: now,
               createdAt: now,
@@ -133,7 +133,7 @@ void main() {
             PendingSalesCompanion.insert(
               clientSaleId: 'sale-2',
               status: 'completed',
-              businessLocationId: 'loc-1',
+              storeId: 'loc-1',
               paymentMethod: 'cash',
               occurredAt: now,
               createdAt: now,
@@ -158,7 +158,7 @@ void main() {
             PendingSalesCompanion.insert(
               clientSaleId: 'sale-retry',
               status: 'completed',
-              businessLocationId: 'loc-1',
+              storeId: 'loc-1',
               paymentMethod: 'cash',
               occurredAt: now,
               createdAt: now,

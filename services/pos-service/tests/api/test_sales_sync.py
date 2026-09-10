@@ -35,9 +35,9 @@ def _auth_header(
     return {"Authorization": f"Bearer {token}"}
 
 
-SYNC_URL = "/businesses/{business_id}/sales/sync"
-SALE_URL = "/businesses/{business_id}/sales/{sale_id}"
-BY_CLIENT_URL = "/businesses/{business_id}/sales/by-client-id/{client_sale_id}"
+SYNC_URL = "/api/v1/businesses/{business_id}/sales/sync"
+SALE_URL = "/api/v1/businesses/{business_id}/sales/{sale_id}"
+BY_CLIENT_URL = "/api/v1/businesses/{business_id}/sales/by-client-id/{client_sale_id}"
 
 
 async def _create_sale(

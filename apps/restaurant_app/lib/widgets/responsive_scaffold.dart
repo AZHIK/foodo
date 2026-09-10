@@ -54,7 +54,9 @@ const _destinations = <NavDestinationSpec>[
     label: 'Sales',
     icon: Icons.receipt_long_outlined,
     selectedIcon: Icons.receipt_long_rounded,
-    requiredPermission: AppPermissions.salesView,
+    // `pos.view`, not the invented `sales.view` — this is what POS Service
+    // actually checks on every sales-ledger read.
+    requiredPermission: AppPermissions.posView,
   ),
   NavDestinationSpec(
     label: 'Customers',

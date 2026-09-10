@@ -25,8 +25,8 @@ from sqlmodel import select
 from app.models.pos import Sale, SaleLineItem
 from tests.test_token_verification import _build_token
 
-LIST_URL = "/businesses/{business_id}/sales"
-SUMMARY_URL = "/businesses/{business_id}/sales/summary"
+LIST_URL = "/api/v1/businesses/{business_id}/sales"
+SUMMARY_URL = "/api/v1/businesses/{business_id}/sales/summary"
 
 
 def _auth_header(

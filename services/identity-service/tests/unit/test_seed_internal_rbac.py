@@ -93,12 +93,12 @@ def _expected() -> dict[tuple[str, str], set[str]]:
         ("Finance", "Finance Analyst"): {
             PermissionCode.BUSINESSES_VIEW.value,
             PermissionCode.ORGANIZATIONS_VIEW.value,
-            PermissionCode.POS_WRITE.value,
+            PermissionCode.POS_VIEW.value,
         },
         ("Finance", "Finance Manager"): {
             PermissionCode.BUSINESSES_VIEW.value,
             PermissionCode.ORGANIZATIONS_VIEW.value,
-            PermissionCode.POS_WRITE.value,
+            PermissionCode.POS_VIEW.value,
             PermissionCode.POS_REFUND.value,
             PermissionCode.ORGANIZATIONS_CREATE.value,
             PermissionCode.ORGANIZATIONS_UPDATE.value,
@@ -110,7 +110,7 @@ def _expected() -> dict[tuple[str, str], set[str]]:
         ("Data / Analytics", "Data Analyst"): {
             PermissionCode.AI_FORECAST_VIEW.value,
             PermissionCode.BUSINESSES_VIEW.value,
-            PermissionCode.POS_WRITE.value,
+            PermissionCode.POS_VIEW.value,
             PermissionCode.INVENTORY_VIEW.value,
         },
         ("Compliance", "Compliance Officer"): {

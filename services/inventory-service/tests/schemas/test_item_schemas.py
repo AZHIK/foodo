@@ -45,7 +45,10 @@ class TestItemCreate:
             unit_cost=2.45,
             store_id=UUID("22222222-2222-2222-2222-222222222222"),
         )
-        assert data.unit_cost == 2.45
+        # 2.45 isn't exactly representable in binary float, so compare
+        # against a Decimal parsed the same way pydantic parses the input
+        # rather than the float literal itself.
+        assert data.unit_cost == Decimal("2.45")
 
     def test_rejects_invalid_unit_of_measure(self) -> None:
         with pytest.raises(ValidationError):

@@ -35,8 +35,21 @@ class Settings(BaseSettings):
     jwt_public_key: str | None = None
 
     # ── RabbitMQ ───────────────────────────────
+    # Unused for now — see app/core/events.py. publish_event currently makes
+    # a direct synchronous HTTP call to Inventory Service instead (MVP,
+    # avoids standing up a broker); these settings stay defined so the
+    # eventual broker migration doesn't need a new settings section.
     rabbitmq_url: str = "amqp://guest:guest@localhost:5672/"
     events_exchange: str = "foodlink.events"
+
+    # ── Inter-service events (MVP transport: synchronous HTTP) ────
+    # Where publish_event posts stock-affecting events (sale.completed,
+    # sale.voided, sale.refunded). internal_service_token must match
+    # Inventory Service's own INTERNAL_SERVICE_TOKEN setting exactly — this
+    # is a shared secret for service-to-service calls, not an end-user JWT.
+    inventory_service_url: str = "http://localhost:8100/api/v1"
+    internal_service_token: str = "change-me-internal-token"
+    internal_event_timeout_seconds: float = 5.0
 
     # ── CORS ────────────────────────────────────
     cors_allowed_origins: str = "http://localhost:3000"

@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.core.telemetry import configure_telemetry
 from app.api.v1.endpoints import items as items_endpoints
+from app.api.v1.endpoints.internal_events import router as internal_events_router
 from app.api.v1.endpoints.operations import business_router, items_router as ops_items_router
 from app.api.v1.endpoints.reports import router as reports_router
 from app.routers import health
@@ -49,3 +50,4 @@ app.include_router(items_endpoints.router, prefix="/api/v1")
 app.include_router(ops_items_router, prefix="/api/v1")
 app.include_router(business_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
+app.include_router(internal_events_router, prefix="/api/v1")

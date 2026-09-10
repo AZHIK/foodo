@@ -11,11 +11,13 @@ class NotificationsNotifier extends Notifier<List<AppNotification>> {
   List<AppNotification> build() {
     // Listen for new orders and add notifications.
     ref.listen(ordersProvider, (prev, next) {
-      if (prev == null) return;
+      final prevOrders = prev?.valueOrNull;
+      final nextOrders = next.valueOrNull;
+      if (prevOrders == null || nextOrders == null) return;
 
       // Find orders that weren't in the previous list (new orders).
-      for (final order in next) {
-        final isNew = prev.indexWhere((o) => o.id == order.id) == -1;
+      for (final order in nextOrders) {
+        final isNew = prevOrders.indexWhere((o) => o.id == order.id) == -1;
         if (isNew && order.isRecent(DateTime.now())) {
           add(
             AppNotification(

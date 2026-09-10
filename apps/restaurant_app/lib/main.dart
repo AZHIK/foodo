@@ -5,6 +5,7 @@ import 'database/database_connection.dart';
 import 'database/encryption_key_service.dart';
 import 'providers/database_providers.dart';
 import 'providers/settings_provider.dart';
+import 'providers/sync_trigger_provider.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 import 'utils/formatters.dart';
@@ -37,6 +38,10 @@ class RestaurantPosApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(goRouterProvider);
     final themeMode = ref.watch(themeModeProvider);
+
+    // Arms the connectivity→sync trigger for the app's whole lifetime — this
+    // is the one place it should be watched, per its own doc comment.
+    ref.watch(syncTriggerProvider);
 
     // Money is formatted through static helpers, so the store's currency is
     // applied here — above everything that prints a price — rather than passed

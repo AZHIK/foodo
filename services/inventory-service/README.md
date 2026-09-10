@@ -59,8 +59,16 @@ cp .env.example .env
 # Requires Python 3.12+ and uv installed
 
 uv sync
-uv run alembic upgrade head
 uv run uvicorn app.main:app --reload
+```
+
+## Run migrations
+
+```bash
+docker compose exec api alembic upgrade head
+
+# To create a new migration after adding a model
+docker compose exec api alembic revision --autogenerate -m "description"
 ```
 
 ## Tests

@@ -10,7 +10,7 @@ import 'package:decimal/decimal.dart';
 class PendingSaleDto {
   final String clientSaleId;
   final String status;
-  final String businessLocationId;
+  final String storeId;
   final List<PendingSaleLineItemDto> lineItems;
   final Decimal discountAmount;
   final String paymentMethod;
@@ -21,7 +21,7 @@ class PendingSaleDto {
   PendingSaleDto({
     required this.clientSaleId,
     required this.status,
-    required this.businessLocationId,
+    required this.storeId,
     required this.lineItems,
     required this.discountAmount,
     required this.paymentMethod,
@@ -33,11 +33,17 @@ class PendingSaleDto {
   Map<String, dynamic> toJson() => {
     'client_sale_id': clientSaleId,
     'status': status,
-    'business_location_id': businessLocationId,
+    'store_id': storeId,
     'line_items': lineItems.map((li) => li.toJson()).toList(),
     'discount_amount': discountAmount.toString(),
     'payment_method': paymentMethod,
-    'occurred_at': occurredAt.toIso8601String(),
+    // `.toUtc()` first: `DateTime.now()` (what `placeOrder` stamps `Order`s
+    // with) is local time, and `.toIso8601String()` on a non-UTC DateTime
+    // carries no timezone marker at all — the backend then parses it as
+    // timezone-naive and 500s comparing it against its own timezone-aware
+    // clock (`detect_time_drift`). `occurred_at` is documented as UTC device
+    // time on both ends; this is what actually makes that true on the wire.
+    'occurred_at': occurredAt.toUtc().toIso8601String(),
     'device_sequence': deviceSequence,
     'void_or_refund_reason': voidOrRefundReason,
   };

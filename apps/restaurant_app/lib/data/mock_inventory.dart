@@ -38,6 +38,26 @@ abstract final class MockInventory {
       label: 'Supplies',
       icon: Icons.inventory_2_outlined,
     ),
+    InventoryCategory(
+      id: 'starters',
+      label: 'Starters',
+      icon: Icons.tapas_outlined,
+    ),
+    InventoryCategory(
+      id: 'mains',
+      label: 'Mains',
+      icon: Icons.dinner_dining_outlined,
+    ),
+    InventoryCategory(
+      id: 'sides',
+      label: 'Sides',
+      icon: Icons.rice_bowl_outlined,
+    ),
+    InventoryCategory(
+      id: 'desserts',
+      label: 'Desserts',
+      icon: Icons.icecream_outlined,
+    ),
   ];
 
   /// Units a stock line can be counted in. A closed list rather than free text
@@ -88,7 +108,10 @@ abstract final class MockInventory {
     _item('inv-25', 'BEV-5001', 'House Red (Case)', 'drinks', '🍷', 22, 8, 96.00, 'case', 'House Tempranillo blend, 12 bottles per case. Two cases held back for functions.'),
     _item('inv-26', 'BEV-5002', 'Craft Lager (Keg)', 'drinks', '🍺', 5, 6, 128.00, 'keg', '30L keg, rotates with the seasonal tap. Line cleaned every second Monday.'),
     _item('inv-27', 'BEV-5003', 'Espresso Beans', 'drinks', '☕', 27, 10, 18.60, 'kg', 'Medium roast, ground fresh per service. Discard any beans open longer than 10 days.'),
-    _item('inv-28', 'BEV-5004', 'Sparkling Water', 'drinks', '🥤', 144, 48, 0.68, 'ea'),
+    // Bought in cases and resold unchanged — genuinely both a stockroom line
+    // and a till item, so it carries itemType 'both' rather than forcing a
+    // choice between the two views.
+    _item('inv-28', 'BEV-5004', 'Sparkling Water', 'drinks', '🥤', 144, 48, 0.68, 'ea', 'Bottled, bought by the case and sold as-is.', 2.50, true, 'both'),
     _item('inv-29', 'BEV-5005', 'Tonic Water', 'drinks', '🧴', 9, 24, 0.74, 'ea'),
 
     _item('inv-30', 'SUP-6001', 'Takeaway Boxes', 'supplies', '📦', 320, 100, 0.22, 'ea', 'Compostable kraft, three sizes nested. Reorder before a bank holiday weekend.'),
@@ -96,6 +119,25 @@ abstract final class MockInventory {
     _item('inv-32', 'SUP-6003', 'Cleaning Degreaser', 'supplies', '🧽', 14, 6, 7.95, 'L'),
     _item('inv-33', 'SUP-6004', 'Nitrile Gloves', 'supplies', '🧤', 0, 20, 0.11, 'ea', 'Powder-free, size L. Kitchen and cleaning both draw from this line.'),
     _item('inv-34', 'SUP-6005', 'Receipt Rolls', 'supplies', '🧾', 46, 15, 1.35, 'ea'),
+
+    // Finished dishes — the only items with a selling price, so these are
+    // the only ones that ever show up at the till. Everything above this
+    // line is stockroom-only (per the class docstring: flour and napkins are
+    // inventory but never appear on a menu).
+    _item('inv-35', 'MNU-7001', 'Margherita Pizza', 'mains', '🍕', 999, 0, 4.20, 'ea', '', 14.50, true, 'sellable'),
+    _item('inv-36', 'MNU-7002', 'Truffle Risotto', 'mains', '🍚', 999, 0, 7.80, 'ea', '', 24.00, true, 'sellable'),
+    _item('inv-37', 'MNU-7003', 'Pan-Seared Cod', 'mains', '🐟', 999, 0, 8.60, 'ea', '', 26.50, true, 'sellable'),
+    _item('inv-38', 'MNU-7004', 'Grilled Ribeye', 'mains', '🥩', 999, 0, 11.20, 'ea', '', 32.00, true, 'sellable'),
+    _item('inv-39', 'MNU-7005', 'Caesar Salad', 'starters', '🥗', 999, 0, 2.90, 'ea', '', 9.50, true, 'sellable'),
+    _item('inv-40', 'MNU-7006', 'Garlic Bread', 'starters', '🍞', 999, 0, 1.40, 'ea', '', 6.00, true, 'sellable'),
+    _item('inv-41', 'MNU-7007', 'Soup of the Day', 'starters', '🍲', 999, 0, 2.10, 'ea', '', 7.50, true, 'sellable'),
+    _item('inv-42', 'MNU-7008', 'Rosemary Fries', 'sides', '🍟', 999, 0, 1.80, 'ea', '', 6.50, true, 'sellable'),
+    _item('inv-43', 'MNU-7009', 'Sauteed Spinach', 'sides', '🥬', 999, 0, 1.30, 'ea', '', 5.00, true, 'sellable'),
+    _item('inv-44', 'MNU-7010', 'Tiramisu', 'desserts', '🍰', 999, 0, 2.40, 'ea', '', 8.00, true, 'sellable'),
+    _item('inv-45', 'MNU-7011', 'Molten Fondant Cake', 'desserts', '🍫', 999, 0, 2.70, 'ea', '', 9.00, true, 'sellable'),
+    _item('inv-46', 'MNU-7012', 'Espresso', 'drinks', '☕', 999, 0, 0.60, 'ea', '', 3.00, true, 'sellable'),
+    _item('inv-47', 'MNU-7013', 'Iced Tea', 'drinks', '🧊', 999, 0, 0.90, 'ea', '', 4.00, true, 'sellable'),
+    _item('inv-48', 'MNU-7014', 'Fresh Lemonade', 'drinks', '🍋', 999, 0, 1.00, 'ea', '', 4.50, true, 'sellable'),
   ];
 
   static InventoryItem _item(
@@ -112,6 +154,13 @@ abstract final class MockInventory {
     // described where it matters and blank everywhere else, and the detail
     // screen has to handle both.
     String description = '',
+    // Only finished dishes set these — everything else is stockroom-only and
+    // never appears at the till.
+    double? sellingPrice,
+    bool isSellable = false,
+    // Everything defaults to a raw material; the finished-dish and 'both'
+    // lines above override this explicitly.
+    String itemType = 'raw_material',
   ]) {
     return InventoryItem(
       id: id,
@@ -124,6 +173,12 @@ abstract final class MockInventory {
       unitCost: unitCost,
       unit: unit,
       description: description,
+      sellingPrice: sellingPrice,
+      isSellable: isSellable,
+      itemType: itemType,
+      // The demo catalogue has no separate "how much to reorder" figure —
+      // reordering back up to the threshold is a reasonable stand-in.
+      reorderQuantity: reorderLevel,
     );
   }
 }

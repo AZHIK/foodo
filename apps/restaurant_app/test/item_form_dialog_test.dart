@@ -45,8 +45,16 @@ Future<ProviderContainer> pumpInventory(WidgetTester tester, Size size) async {
 
 /// Opens the form through the page's own "Add item" button, the way a user
 /// does — the dialog's presentation is decided by the helper, not by the test.
+///
+/// Also answers the entry-choice step with "both bought and sold", which
+/// shows every field the pre-split dialog used to show unconditionally — the
+/// tests below that are not specifically about the chooser rely on that full
+/// field set. The chooser itself is exercised separately, in the "Item type
+/// entry choice" group.
 Future<void> openAddForm(WidgetTester tester) async {
   await tester.tap(find.text('Add item'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(ItemFormKeys.chooseBoth));
   await tester.pumpAndSettle();
 }
 
@@ -67,8 +75,21 @@ Future<void> pickCategory(WidgetTester tester, String label) async {
 
 void main() {
   group('ItemFormState', () {
+    test('a fresh add-item state cannot save until a type is chosen', () {
+      final state = ItemFormState.blank().copyWith(
+        name: 'Paprika',
+        categoryId: 'dry',
+        unitCost: '4.50',
+      );
+      expect(state.itemType, isEmpty);
+      expect(state.canSave, isFalse, reason: 'no type chosen yet');
+      expect(state.copyWith(itemType: 'raw_material').canSave, isTrue);
+    });
+
     test('required fields gate saving', () {
-      var state = ItemFormState.blank();
+      // itemType set throughout, as it would be after the entry choice —
+      // these cases are about the *other* required fields.
+      var state = ItemFormState.blank().copyWith(itemType: 'raw_material');
       expect(state.canSave, isFalse);
 
       state = state.copyWith(name: 'Paprika');
@@ -83,6 +104,7 @@ void main() {
 
     test('a blank low-stock threshold is allowed, a malformed one is not', () {
       final valid = ItemFormState.blank().copyWith(
+        itemType: 'raw_material',
         name: 'Paprika',
         categoryId: 'dry',
         unitCost: '4.50',
@@ -95,10 +117,12 @@ void main() {
 
     test('untracked items skip the stock validators entirely', () {
       final state = ItemFormState.blank().copyWith(
+        itemType: 'raw_material',
         name: 'Table salt',
         categoryId: 'dry',
         unitCost: '1.20',
         lowStockAlert: 'nonsense',
+        reorderQuantity: 'nonsense',
         trackStock: false,
       );
 
@@ -301,6 +325,7 @@ void main() {
       await tester.enterText(find.byKey(ItemFormKeys.name), 'Retired Line');
       await pickCategory(tester, 'Supplies');
       await tester.enterText(find.byKey(ItemFormKeys.unitCost), '2.00');
+      await tester.enterText(find.byKey(ItemFormKeys.sellingPrice), '5.00');
       // The Status section can sit below the fold in a short window.
       await tester.ensureVisible(find.text('Archived'));
       await tester.pumpAndSettle();
@@ -351,6 +376,7 @@ void main() {
       await tester.enterText(find.byKey(ItemFormKeys.name), 'Pocket Item');
       await pickCategory(tester, 'Beverages');
       await tester.enterText(find.byKey(ItemFormKeys.unitCost), '3.25');
+      await tester.enterText(find.byKey(ItemFormKeys.sellingPrice), '4.00');
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(ItemFormKeys.submit));
@@ -361,6 +387,172 @@ void main() {
       expect(items.first.name, 'Pocket Item');
       expect(items.first.categoryId, 'drinks');
       expect(container.read(inventorySummaryProvider).totalItems, before + 1);
+    });
+  });
+
+  group('Item type entry choice', () {
+    testWidgets('opening "Add item" leads with the chooser, not the fields', (
+      tester,
+    ) async {
+      await pumpInventory(tester, const Size(1440, 900));
+      await tester.tap(find.text('Add item'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('What are you adding?'), findsOneWidget);
+      expect(find.byKey(ItemFormKeys.chooseGrocery), findsOneWidget);
+      expect(find.byKey(ItemFormKeys.chooseMenuItem), findsOneWidget);
+      expect(find.byKey(ItemFormKeys.chooseBoth), findsOneWidget);
+      // None of the ordinary fields exist yet — the choice comes first.
+      expect(find.byKey(ItemFormKeys.name), findsNothing);
+      // Submit is disabled until a type is picked.
+      expect(
+        tester.widget<FilledButton>(find.byKey(ItemFormKeys.submit)).onPressed,
+        isNull,
+      );
+    });
+
+    testWidgets('choosing Grocery pre-sets raw_material and leads with stock fields', (
+      tester,
+    ) async {
+      final container = await pumpInventory(tester, const Size(1440, 900));
+      await tester.tap(find.text('Add item'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ItemFormKeys.chooseGrocery));
+      await tester.pumpAndSettle();
+
+      // Stock-relevant fields are enabled and prominent.
+      expect(find.byKey(ItemFormKeys.reorderQuantity), findsOneWidget);
+      expect(find.byKey(ItemFormKeys.allowNegativeStock), findsOneWidget);
+      expect(find.byKey(ItemFormKeys.unit), findsOneWidget);
+      // Selling price is present but disabled — de-emphasised, not hidden.
+      expect(
+        tester
+            .widget<TextField>(
+              find.descendant(
+                of: find.byKey(ItemFormKeys.sellingPrice),
+                matching: find.byType(TextField),
+              ),
+            )
+            .enabled,
+        isFalse,
+      );
+
+      await tester.enterText(find.byKey(ItemFormKeys.name), 'Smoked Paprika');
+      await pickCategory(tester, 'Dry goods');
+      await tester.enterText(find.byKey(ItemFormKeys.unitCost), '4.50');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ItemFormKeys.submit));
+      await tester.pumpAndSettle();
+
+      final saved = container
+          .read(inventoryItemsListProvider)
+          .firstWhere((i) => i.name == 'Smoked Paprika');
+      expect(saved.itemType, 'raw_material');
+      expect(saved.isGroceryItem, isTrue);
+      expect(saved.isMenuCatalogItem, isFalse);
+    });
+
+    testWidgets('choosing Menu item pre-sets sellable and leads with price', (
+      tester,
+    ) async {
+      final container = await pumpInventory(tester, const Size(1440, 900));
+      await tester.tap(find.text('Add item'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ItemFormKeys.chooseMenuItem));
+      await tester.pumpAndSettle();
+
+      // Untracked by default, so the stock-only fields never render.
+      expect(find.byKey(ItemFormKeys.reorderQuantity), findsNothing);
+      expect(find.byKey(ItemFormKeys.allowNegativeStock), findsNothing);
+      expect(find.byKey(ItemFormKeys.stock), findsNothing);
+      // Selling price is enabled and prominent.
+      expect(
+        tester
+            .widget<TextField>(
+              find.descendant(
+                of: find.byKey(ItemFormKeys.sellingPrice),
+                matching: find.byType(TextField),
+              ),
+            )
+            .enabled,
+        isTrue,
+      );
+
+      await tester.enterText(find.byKey(ItemFormKeys.name), 'House Salad');
+      await pickCategory(tester, 'Starters');
+      await tester.enterText(find.byKey(ItemFormKeys.unitCost), '2.10');
+      await tester.enterText(find.byKey(ItemFormKeys.sellingPrice), '9.50');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ItemFormKeys.submit));
+      await tester.pumpAndSettle();
+
+      final saved = container
+          .read(inventoryItemsListProvider)
+          .firstWhere((i) => i.name == 'House Salad');
+      expect(saved.itemType, 'sellable');
+      expect(saved.isMenuCatalogItem, isTrue);
+      expect(saved.isGroceryItem, isFalse);
+      expect(saved.isSellable, isTrue);
+    });
+
+    testWidgets('choosing "both" shows every field group and saves as both', (
+      tester,
+    ) async {
+      final container = await pumpInventory(tester, const Size(1440, 900));
+      await tester.tap(find.text('Add item'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ItemFormKeys.chooseBoth));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(ItemFormKeys.reorderQuantity), findsOneWidget);
+      expect(
+        tester
+            .widget<TextField>(
+              find.descendant(
+                of: find.byKey(ItemFormKeys.sellingPrice),
+                matching: find.byType(TextField),
+              ),
+            )
+            .enabled,
+        isTrue,
+      );
+
+      await tester.enterText(find.byKey(ItemFormKeys.name), 'Bottled Cola');
+      await pickCategory(tester, 'Beverages');
+      await tester.enterText(find.byKey(ItemFormKeys.unitCost), '0.90');
+      await tester.enterText(find.byKey(ItemFormKeys.sellingPrice), '2.50');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ItemFormKeys.submit));
+      await tester.pumpAndSettle();
+
+      final saved = container
+          .read(inventoryItemsListProvider)
+          .firstWhere((i) => i.name == 'Bottled Cola');
+      expect(saved.itemType, 'both');
+      // The concrete proof a 'both' item is not forced into one view.
+      expect(saved.isGroceryItem, isTrue);
+      expect(saved.isMenuCatalogItem, isTrue);
+    });
+
+    testWidgets('"Change" returns to the chooser without losing other fields', (
+      tester,
+    ) async {
+      await pumpInventory(tester, const Size(1440, 900));
+      await tester.tap(find.text('Add item'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ItemFormKeys.chooseGrocery));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(ItemFormKeys.name), 'Kept Name');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(ItemFormKeys.changeType));
+      await tester.pumpAndSettle();
+      expect(find.text('What are you adding?'), findsOneWidget);
+
+      await tester.tap(find.byKey(ItemFormKeys.chooseMenuItem));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextField, 'Kept Name'), findsOneWidget);
     });
   });
 }

@@ -19,6 +19,12 @@ class InventoryFilterPanel extends ConsumerWidget {
     final filters = ref.watch(inventoryFiltersProvider);
     final notifier = ref.read(inventoryFiltersProvider.notifier);
     final ceiling = ref.watch(inventoryStockCeilingProvider);
+    // Only categories actually present among grocery items — a menu-only
+    // category (Mains, Desserts, …) would just be a chip that always empties
+    // the table.
+    final presentCategoryIds = {
+      for (final item in ref.watch(groceryItemsProvider)) item.categoryId,
+    };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -27,7 +33,10 @@ class InventoryFilterPanel extends ConsumerWidget {
         FilterSection(
           title: 'Category',
           child: FilterChipGroup<String>(
-            options: [for (final c in MockInventory.categories) c.id],
+            options: [
+              for (final c in MockInventory.categories)
+                if (presentCategoryIds.contains(c.id)) c.id,
+            ],
             selected: filters.categoryIds,
             labelOf: MockInventory.categoryLabel,
             iconOf: (id) => MockInventory.categoryById(id)?.icon,

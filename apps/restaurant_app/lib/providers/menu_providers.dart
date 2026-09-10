@@ -1,47 +1,73 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/mock_menu.dart';
+import '../models/inventory_item.dart';
 import '../models/menu_item.dart';
+import 'inventory_provider.dart';
 
-/// Menu categories, with the synthetic "All" tab in front.
-///
-/// Backend swap: replace the body with a `FutureProvider` reading your API and
-/// have consumers handle the `AsyncValue`.
-final menuCategoriesProvider = Provider<List<MenuCategory>>((ref) {
-  return [MenuCategory.all, ...MockMenu.categories];
-});
+/// Turns a raw category id ("dry_goods", "uncategorized") into a label fit
+/// for a pill — real categories are whatever free text a business typed into
+/// Inventory Service, so there is no curated label list to look up.
+String _humanizeCategoryLabel(String id) => id
+    .split(RegExp('[_-]'))
+    .where((word) => word.isNotEmpty)
+    .map((word) => word[0].toUpperCase() + word.substring(1))
+    .join(' ');
 
-/// The source of truth for menu items.
-class MenuNotifier extends Notifier<List<MenuItem>> {
-  @override
-  List<MenuItem> build() => MockMenu.items;
-
-  void upsert(MenuItem item) {
-    final index = state.indexWhere((m) => m.id == item.id);
-    if (index == -1) {
-      state = [item, ...state];
-      return;
-    }
-    final next = [...state];
-    next[index] = item;
-    state = next;
-  }
-
-  void delete(String id) => state = state.where((m) => m.id != id).toList();
-
-  String nextId() {
-    var highest = 0;
-    for (final item in state) {
-      final n = int.tryParse(item.id.split('-').last);
-      if (n != null && n > highest) highest = n;
-    }
-    return 'mn-${(highest + 1).toString().padLeft(2, '0')}';
-  }
+/// Maps a local inventory item onto the till's `MenuItem` shape. Every
+/// sellable item already lives in the same local database the rest of the
+/// app reads from — a menu item is just an inventory item with a price, not
+/// a separate thing to curate — so no field here is invented.
+MenuItem _toMenuItem(InventoryItem item) {
+  // Untracked items (service charges, bottomless condiments) are always
+  // available; tracked items are only sellable while there's stock to sell.
+  final available = !item.trackStock || item.stock > 0;
+  return MenuItem(
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    price: item.sellingPrice ?? 0,
+    categoryId: item.categoryId,
+    emoji: item.emoji,
+    isAvailable: available,
+    linkedInventoryItemId: item.id,
+  );
 }
 
-/// The full, unfiltered menu.
-final menuItemsProvider =
-    NotifierProvider<MenuNotifier, List<MenuItem>>(MenuNotifier.new);
+/// The full, unfiltered menu — every local inventory item marked sellable and
+/// not archived, mapped onto the POS's `MenuItem` shape.
+///
+/// Derived from [inventoryItemsListProvider] rather than owning its own list:
+/// the local database (synced from Inventory Service, or the shared demo
+/// catalog when there's no store context yet) is the single source of truth,
+/// so a stock edit on the Inventory screen shows up here without a separate
+/// sync.
+final menuItemsProvider = Provider<List<MenuItem>>((ref) {
+  final items = ref.watch(inventoryItemsListProvider);
+  return items
+      .where((item) => item.isSellable && !item.isArchived)
+      .map(_toMenuItem)
+      .toList();
+});
+
+/// Menu categories, with the synthetic "All" tab in front. Derived from
+/// whatever category strings are actually present among sellable items, so
+/// there is nothing to keep in sync with a curated list.
+final menuCategoriesProvider = Provider<List<MenuCategory>>((ref) {
+  final categoryIds = <String>{
+    for (final item in ref.watch(menuItemsProvider)) item.categoryId,
+  }.toList()..sort();
+
+  return [
+    MenuCategory.all,
+    for (final id in categoryIds)
+      MenuCategory(
+        id: id,
+        label: _humanizeCategoryLabel(id),
+        icon: Icons.local_offer_outlined,
+      ),
+  ];
+});
 
 /// Currently selected category tab. Defaults to "All".
 final selectedCategoryProvider = StateProvider<String>(
@@ -51,7 +77,7 @@ final selectedCategoryProvider = StateProvider<String>(
 /// Live text from the POS search field.
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
-/// Hides items the kitchen has 86'd.
+/// Hides items the kitchen has 86'd (out of stock).
 final hideUnavailableProvider = StateProvider<bool>((ref) => false);
 
 /// The menu after category, search and availability filters are applied.
@@ -65,8 +91,6 @@ final filteredMenuItemsProvider = Provider<List<MenuItem>>((ref) {
   final hideUnavailable = ref.watch(hideUnavailableProvider);
 
   return items.where((item) {
-    // Archived items never appear in the POS grid.
-    if (item.isArchived) return false;
     if (hideUnavailable && !item.isAvailable) return false;
     if (categoryId != MenuCategory.all.id && item.categoryId != categoryId) {
       return false;
@@ -94,13 +118,4 @@ final menuItemByIdProvider = Provider.family<MenuItem?, String>((ref, id) {
     if (item.id == id) return item;
   }
   return null;
-});
-
-/// Reverse lookup: find all menu items linked to an inventory item.
-final menuItemsByInventoryIdProvider =
-    Provider.family<List<MenuItem>, String>((ref, inventoryItemId) {
-  return ref
-      .watch(menuItemsProvider)
-      .where((item) => item.linkedInventoryItemId == inventoryItemId)
-      .toList();
 });

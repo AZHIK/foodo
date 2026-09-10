@@ -65,6 +65,7 @@ abstract final class AppPermissions {
   /// Permissions that let a staff member work a till. A role holding this
   /// gets the sales performance block on their detail screen.
   static const posAccess = 'pos.write';
+  static const posView = 'pos.view';
   static const posDiscount = 'pos.discount';
   static const posRefund = 'pos.refund';
 

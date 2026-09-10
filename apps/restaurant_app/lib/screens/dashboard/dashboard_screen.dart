@@ -104,15 +104,17 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  /// Sends the user to Inventory with the low-stock filter already applied, so
-  /// the list they land on is the one the banner was describing.
+  /// Sends the user to Groceries with the low-stock filter already applied,
+  /// so the list they land on is the one the banner was describing. Always
+  /// Groceries, never Menu Items — a low-stock alert is about raw materials
+  /// and stock counts, which is exactly what that view's filters cover.
   void _openLowStock(BuildContext context, WidgetRef ref) {
     final filters = ref.read(inventoryFiltersProvider.notifier)..clear();
     filters
       ..toggleStatus(StockStatus.lowStock)
       ..toggleStatus(StockStatus.outOfStock);
 
-    context.goNamed(AppRoute.inventoryName);
+    context.goNamed(AppRoute.groceriesName);
   }
 }
 

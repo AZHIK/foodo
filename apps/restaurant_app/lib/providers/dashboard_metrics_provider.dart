@@ -107,7 +107,7 @@ const int _trendDays = 7;
 const Duration _onShiftWindow = Duration(hours: 12);
 
 final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
-  final orders = ref.watch(ordersProvider);
+  final orders = ref.watch(ordersListProvider);
   final items = ref.watch(inventoryItemsListProvider);
   final expenses = ref.watch(otherExpensesProvider);
   final incomes = ref.watch(otherIncomesProvider);
@@ -292,7 +292,7 @@ final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
 /// the shape a manager actually scans: "what happened", not three separate
 /// per-domain logs.
 final dashboardActivityProvider = Provider<List<ActivityEntry>>((ref) {
-  final orders = ref.watch(ordersProvider);
+  final orders = ref.watch(ordersListProvider);
   final metrics = ref.watch(dashboardMetricsProvider);
   final staff = ref.watch(staffMembersProvider).valueOrNull ?? const [];
   final roles = ref.watch(rolesProvider).valueOrNull ?? const [];

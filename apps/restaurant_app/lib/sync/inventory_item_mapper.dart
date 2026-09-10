@@ -3,16 +3,20 @@
 ///
 /// The two shapes don't line up 1:1: `InventoryItem` carries client-only UI
 /// concerns with no backend equivalent (`emoji`, `image`, `description`,
-/// `supplier`, `lastCountedAt`, `trackStock`) and stock genuinely lives in a
-/// separate table server-side. Rather than reshape either side, this is a
-/// pure adapter — `catalogItemId` is the join key `InventoryItem` already
-/// carries for exactly this purpose.
+/// `supplier`, `lastCountedAt`) and stock genuinely lives in a separate table
+/// server-side. Rather than reshape either side, this is a pure adapter —
+/// `catalogItemId` is the join key `InventoryItem` already carries for
+/// exactly this purpose.
 ///
 /// The fields with no backend source are decorative-only against real data:
 /// they render with a sensible default and can be edited locally, but
 /// nothing persists that edit anywhere, so it does not survive the next
 /// cache refresh. Building durable local overrides for them is a follow-up,
-/// not something this mapper does.
+/// not something this mapper does. `trackStock` is the one exception — it is
+/// re-derived from `itemType` on every map rather than left at the model's
+/// default, because getting it wrong is not decorative: a `sellable` item
+/// with no stock-level row would otherwise come back "tracked" with a 0
+/// on-hand quantity and read as out of stock everywhere, POS included.
 library;
 
 import 'package:decimal/decimal.dart';
@@ -49,6 +53,7 @@ InventoryItem inventoryItemFromCachedRow({
   required CachedItem catalogRow,
   CachedStockLevel? stockRow,
 }) {
+  final sellingPrice = catalogRow.sellingPrice == null ? null : _toDouble(catalogRow.sellingPrice);
   return InventoryItem(
     id: catalogRow.id,
     catalogItemId: catalogRow.id,
@@ -61,5 +66,19 @@ InventoryItem inventoryItemFromCachedRow({
     unitCost: _toDouble(catalogRow.unitCost),
     unit: unitOfMeasureLabel(catalogRow.unitOfMeasure),
     isArchived: !catalogRow.isActive,
+    sellingPrice: sellingPrice,
+    // Raw materials never sell through the till, even if a price leaked in.
+    isSellable: catalogRow.itemType != 'raw_material' && sellingPrice != null,
+    itemType: catalogRow.itemType,
+    // The backend has no `track_stock` column — this mirrors the entry-choice
+    // step's own default (`ItemFormNotifier.chooseType`) rather than falling
+    // back to `InventoryItem`'s `true` default. Without this, every synced
+    // `sellable` item would come back "tracked" with a 0 on-hand quantity (no
+    // stock-level row is ever created for a prepared-to-order dish) and
+    // read as out of stock — unsellable at the till the moment it syncs,
+    // even though it was never meant to carry a stock count at all.
+    trackStock: catalogRow.itemType != 'sellable',
+    reorderQuantity: _toDouble(catalogRow.reorderQuantity),
+    allowNegativeStock: catalogRow.allowNegativeStock,
   );
 }

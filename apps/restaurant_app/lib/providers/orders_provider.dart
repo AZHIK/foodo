@@ -1,14 +1,25 @@
-import 'dart:math';
+import 'dart:async';
 
+import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
-import '../data/mock_menu.dart';
 import '../data/mock_orders.dart';
+import '../database/app_database.dart';
 import '../models/cart.dart';
 import '../models/order.dart';
 import '../models/order_totals.dart';
 import '../models/table_query.dart';
+import '../services/pos_api_service.dart';
+import '../sync/order_mapper.dart';
+import '../sync/pending_sale_writer.dart';
+import '../sync/sales_sync_service.dart';
+import '../sync/sync_service.dart';
+import 'database_providers.dart';
+import 'permissions_provider.dart';
+import 'pos_api_provider.dart';
+import 'sync_status_provider.dart';
 import 'table_query_provider.dart';
 
 /// Sortable column keys. Constants rather than raw strings at the call sites,
@@ -39,17 +50,120 @@ enum SalesDateRange {
 // Raw data
 // ---------------------------------------------------------------------------
 
-/// Source of completed sales. Seeded with mock history; new orders placed on
-/// the POS screen are prepended.
-class OrdersNotifier extends Notifier<List<Order>> {
+/// Source of completed sales, backed by POS Service once a store context
+/// exists.
+///
+/// The UI always reads from the local cache — `build()` never blocks on the
+/// network. A live fetch runs in the background on every read to keep that
+/// cache current; if it fails the screen just keeps showing whatever was
+/// last cached — same stale-while-revalidate contract as `InventoryNotifier`.
+///
+/// With no store context at all (no session yet), this falls back to
+/// [MockOrders] rather than an empty list, so screens/tests that don't care
+/// about backend wiring still see a populated demo sales history.
+class OrdersNotifier extends AsyncNotifier<List<Order>> {
+  SalesSyncService get _sync => ref.read(salesSyncServiceProvider);
+  PosApiService get _api => ref.read(posApiServiceProvider);
+
+  String get _businessId {
+    final id = ref.read(currentBusinessIdProvider);
+    if (id == null) throw StateError('No active business context');
+    return id;
+  }
+
   @override
-  List<Order> build() => MockOrders.generate();
+  Future<List<Order>> build() async {
+    final storeId = ref.watch(currentStoreIdProvider);
+    if (storeId == null) return MockOrders.generate();
+
+    var disposed = false;
+    ref.onDispose(() => disposed = true);
+    unawaited(_refreshFromApi(storeId, isDisposed: () => disposed));
+
+    return _loadFromCache(storeId);
+  }
+
+  Future<void> _refreshFromApi(String storeId, {required bool Function() isDisposed}) async {
+    try {
+      await _sync.syncSales(storeId: storeId);
+      if (!isDisposed()) {
+        state = AsyncData(await _loadFromCache(storeId));
+      }
+    } catch (_) {
+      // No permission, offline, or a transient failure — the cached read
+      // from `build()` is what the UI already shows; nothing more to do.
+    }
+  }
+
+  Future<List<Order>> _loadFromCache(String storeId) async {
+    final db = ref.read(appDatabaseProvider);
+
+    final sales = await (db.select(db.cachedSales)
+          ..where((row) => row.storeId.equals(storeId))
+          ..orderBy([(row) => OrderingTerm.desc(row.occurredAt)]))
+        .get();
+
+    final saleIds = sales.map((sale) => sale.id).toSet();
+    final lineRows = saleIds.isEmpty
+        ? const <CachedSaleLineItem>[]
+        : await (db.select(db.cachedSaleLineItems)
+              ..where((row) => row.saleId.isIn(saleIds)))
+            .get();
+    final linesBySaleId = <String, List<CachedSaleLineItem>>{};
+    for (final line in lineRows) {
+      linesBySaleId.putIfAbsent(line.saleId, () => []).add(line);
+    }
+
+    final items = await (db.select(db.cachedItems)
+          ..where((row) => row.businessLocationId.equals(storeId)))
+        .get();
+    final itemsById = {for (final item in items) item.id: item};
+
+    // Recovers each locally-placed order's original "ORD-0042" ticket
+    // number — see `order_mapper.dart`'s `localOrderId` doc comment.
+    final pending = await (db.select(db.pendingSales)
+          ..where((row) => row.storeId.equals(storeId)))
+        .get();
+    final localOrderIdByClientSaleId = {
+      for (final row in pending)
+        if (row.localOrderId != null) row.clientSaleId: row.localOrderId!,
+    };
+
+    return [
+      for (final sale in sales)
+        orderFromCachedRow(
+          sale: sale,
+          lines: linesBySaleId[sale.id] ?? const [],
+          itemsById: itemsById,
+          localOrderId: localOrderIdByClientSaleId[sale.clientSaleId],
+        ),
+    ];
+  }
+
+  /// Re-runs the background sync and waits for it — for the Sales screen's
+  /// refresh button, where the user expects it to reflect real completion
+  /// rather than an instant, still-stale return. A no-op with no store
+  /// context (demo mode has nothing to pull).
+  Future<void> refresh() async {
+    final storeId = ref.read(currentStoreIdProvider);
+    if (storeId == null) return;
+    state = const AsyncLoading<List<Order>>().copyWithPrevious(state);
+    await _sync.syncSales(storeId: storeId);
+    state = AsyncData(await _loadFromCache(storeId));
+  }
 
   /// Converts the open cart into a sale and returns it, so the caller can
   /// navigate straight to its detail route.
   ///
   /// [paymentType] overrides the tender recorded on the cart, for the quick
   /// charge dialog that takes payment without visiting the payment screen.
+  ///
+  /// The order is added to local state immediately so the UI never waits on
+  /// the network; with a store context, writing it to the sync outbox and
+  /// kicking off a sync happen in the background afterward, same
+  /// local-update-now/sync-later shape as `InventoryNotifier.upsert()`. With
+  /// no store context (demo/mock mode), neither happens — same as before
+  /// this order round-tripped through a backend at all.
   Order placeOrder({
     required Cart cart,
     PaymentType? paymentType,
@@ -57,8 +171,9 @@ class OrdersNotifier extends Notifier<List<Order>> {
     String? tableLabel,
     String serverName = 'House',
   }) {
+    final current = state.valueOrNull ?? const <Order>[];
     final order = Order.fromCart(
-      id: nextOrderId(state),
+      id: nextOrderId(current),
       cart: cart,
       paymentType: paymentType,
       placedAt: DateTime.now(),
@@ -66,109 +181,113 @@ class OrdersNotifier extends Notifier<List<Order>> {
       tableLabel: tableLabel,
       serverName: serverName,
     );
-    state = [order, ...state];
+    state = AsyncData([order, ...current]);
+
+    final storeId = ref.read(currentStoreIdProvider);
+    if (storeId != null) {
+      final db = ref.read(appDatabaseProvider);
+      final syncService = ref.read(syncServiceProvider);
+      unawaited(_writeAndSync(db, order, storeId, syncService));
+    }
+
     return order;
   }
 
-  void refund(String orderId) => _setStatus(orderId, OrderStatus.refunded);
+  Future<void> _writeAndSync(
+    AppDatabase db,
+    Order order,
+    String storeId,
+    SyncService syncService,
+  ) async {
+    final written = await PendingSaleWriter(db).writeIfMappable(order, storeId: storeId);
+    if (written) unawaited(syncService.syncNow());
+  }
 
-  void voidOrder(String orderId) => _setStatus(orderId, OrderStatus.voided);
+  Future<void> refund(String orderId, {required String reason}) =>
+      _voidOrRefund(orderId, OrderStatus.refunded, reason: reason);
+
+  Future<void> voidOrder(String orderId, {required String reason}) =>
+      _voidOrRefund(orderId, OrderStatus.voided, reason: reason);
+
+  /// Voids or refunds a sale through the real `void-or-refund` endpoint when
+  /// it has already synced (`serverSaleId` is set) and there's a store
+  /// context; otherwise falls back to a local-only status flip — demo mode,
+  /// or an order whose outbox write hasn't synced yet, same "no
+  /// `catalogItemId` yet → local-only" shape as `InventoryNotifier`'s write
+  /// methods.
+  Future<void> _voidOrRefund(
+    String orderId,
+    OrderStatus newStatus, {
+    required String reason,
+  }) async {
+    final order = _byId(orderId);
+    final storeId = ref.read(currentStoreIdProvider);
+
+    if (order == null || storeId == null || order.serverSaleId == null) {
+      _setStatus(orderId, newStatus);
+      return;
+    }
+
+    await _api.voidOrRefund(
+      businessId: _businessId,
+      saleId: order.serverSaleId!,
+      clientActionId: const Uuid().v4(),
+      newStatus: orderStatusToBackend(newStatus),
+      reason: reason,
+    );
+    await refresh();
+  }
 
   void markPaid(String orderId) => _setStatus(orderId, OrderStatus.paid);
 
   void setFulfillmentStatus(String orderId, FulfillmentStatus status) {
-    state = [
-      for (final order in state)
+    state = AsyncData([
+      for (final order in state.valueOrNull ?? const <Order>[])
         if (order.id == orderId)
           order.copyWith(fulfillmentStatus: status)
         else
           order,
-    ];
+    ]);
   }
 
   void setOrderCourier(String orderId, String courierId) {
-    state = [
-      for (final order in state)
+    state = AsyncData([
+      for (final order in state.valueOrNull ?? const <Order>[])
         if (order.id == orderId)
           order.copyWith(courierId: courierId)
         else
           order,
-    ];
+    ]);
   }
 
-  /// Checks for new orders via the refresh seam. Currently simulates incoming
-  /// orders in mock mode; a real backend would replace this with a WebSocket
-  /// subscription or polling mechanism.
-  Future<void> checkForNewOrders() async {
-    _maybeSimulateIncomingOrder();
-  }
+  /// Pulls the latest sales from the backend — the Sales screen's refresh
+  /// button. A no-op in demo mode, via `refresh()`'s own guard.
+  Future<void> checkForNewOrders() => refresh();
 
-  /// In mock mode, randomly synthesizes a new order to simulate an incoming
-  /// ticket. A real backend would push/pull these instead.
-  void _maybeSimulateIncomingOrder() {
-    final rand = Random();
-
-    // 20% chance on a refresh to simulate a new order arriving.
-    // Not 100% so a user who taps refresh twice sees the list stay still,
-    // matching real-world behavior where taps don't always land on new orders.
-    if (rand.nextDouble() > 0.20) return;
-
-    final menu = MockMenu.items.where((i) => i.isAvailable).toList();
-    if (menu.isEmpty) return;
-
-    final lineCount = 1 + rand.nextInt(3);
-    final picked = <String>{};
-    final lines = <OrderLine>[];
-    for (var l = 0; l < lineCount; l++) {
-      final item = menu[rand.nextInt(menu.length)];
-      if (!picked.add(item.id)) continue;
-      lines.add(
-        OrderLine(
-          itemId: item.id,
-          name: item.name,
-          emoji: item.emoji,
-          unitPrice: item.price,
-          quantity: 1 + rand.nextInt(2),
-        ),
-      );
+  Order? _byId(String id) {
+    for (final order in state.valueOrNull ?? const <Order>[]) {
+      if (order.id == id) return order;
     }
-
-    final newOrder = Order(
-      id: nextOrderId(state),
-      lines: lines,
-      placedAt: DateTime.now(),
-      paymentType: _weightedPayment(rand),
-      status: OrderStatus.paid,
-      taxRate: 0.0825,
-      orderType: [OrderType.dineIn, OrderType.takeaway, OrderType.delivery]
-          [rand.nextInt(3)],
-      fulfillmentStatus: FulfillmentStatus.new_,
-      discountRate: 0,
-      serverName: const ['Ava', 'Marco', 'Priya', 'Dan', 'Yuki', 'Sofia']
-          [rand.nextInt(6)],
-    );
-
-    state = [newOrder, ...state];
-  }
-
-  static PaymentType _weightedPayment(Random rand) {
-    final roll = rand.nextDouble();
-    if (roll < 0.58) return PaymentType.card;
-    if (roll < 0.80) return PaymentType.mobile;
-    if (roll < 0.95) return PaymentType.cash;
-    return PaymentType.giftCard;
+    return null;
   }
 
   void _setStatus(String orderId, OrderStatus status) {
-    state = [
-      for (final order in state)
+    state = AsyncData([
+      for (final order in state.valueOrNull ?? const <Order>[])
         if (order.id == orderId) order.copyWith(status: status) else order,
-    ];
+    ]);
   }
 }
 
-final ordersProvider = NotifierProvider<OrdersNotifier, List<Order>>(
+final ordersProvider = AsyncNotifierProvider<OrdersNotifier, List<Order>>(
   OrdersNotifier.new,
+);
+
+/// The list, unwrapped for widgets/providers that only ever want to render
+/// what's currently known (cached or demo data) without handling
+/// loading/error states themselves — mirrors `inventoryItemsListProvider`.
+final ordersListProvider = Provider<List<Order>>(
+  (ref) => ref.watch(ordersProvider).valueOrNull ?? const [],
 );
 
 /// Continues the ORD-#### sequence from the highest existing id.
@@ -340,7 +459,7 @@ final salesFiltersProvider =
 /// Search + filters + sort in one place, so no filtering logic lives in the
 /// widget tree and the exporters can reuse exactly what the table shows.
 final filteredOrdersProvider = Provider<List<Order>>((ref) {
-  final orders = ref.watch(ordersProvider);
+  final orders = ref.watch(ordersListProvider);
   final query = ref.watch(salesQueryProvider);
   final filters = ref.watch(salesFiltersProvider);
   final search = query.search.trim().toLowerCase();
@@ -382,7 +501,7 @@ final salesSliceProvider = Provider<PageSlice<Order>>(
 );
 
 final orderByIdProvider = Provider.family<Order?, String>((ref, id) {
-  for (final order in ref.watch(ordersProvider)) {
+  for (final order in ref.watch(ordersListProvider)) {
     if (order.id == id) return order;
   }
   return null;

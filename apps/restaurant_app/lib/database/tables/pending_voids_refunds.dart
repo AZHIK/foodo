@@ -5,11 +5,12 @@
 /// idempotency key. Rows are immutable once created; only the sync
 /// bookkeeping columns change locally.
 ///
-/// ⚠️ BACKEND-BLOCKED: POS Service's void/refund endpoint does not
-/// currently accept a client-generated idempotency key the way
-/// `/sales/sync` does, so nothing in `lib/sync` pushes these rows yet.
-/// The table exists so the local schema shape is in place; wiring the
-/// push sync is deferred until that endpoint exists.
+/// POS Service's void/refund endpoint (`POST .../sales/{sale_id}/void-or-refund`)
+/// accepts a `client_action_id` idempotency key, exactly matching this
+/// table's `clientActionId` — void/refund currently goes through a direct
+/// online call (`PosApiService.voidOrRefund`, no outbox) since it is a rare,
+/// normally-online till action; this table's rows are not yet pushed by
+/// anything in `lib/sync`, but the endpoint itself is not the blocker.
 ///
 /// `saleId` references `PendingSales.clientSaleId` (not the local
 /// autoincrement `id`): a void/refund only ever targets a sale that has

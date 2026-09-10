@@ -7,7 +7,6 @@ import '../../models/inventory_item.dart';
 import '../../models/stock_movement.dart';
 import '../../models/table_query.dart';
 import '../../providers/inventory_provider.dart';
-import '../../providers/menu_providers.dart';
 import '../../providers/stock_movement_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
@@ -20,7 +19,7 @@ import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/detail_page/detail_page_scaffold.dart';
 import '../../widgets/dialogs/item_form_dialog.dart';
 import '../../widgets/dialogs/reorder_dialog.dart';
-import 'inventory_screen.dart' show StockStatusTone;
+import 'inventory_groceries_screen.dart' show StockStatusTone;
 import 'stock_adjust_dialog.dart';
 import 'stock_transfer_dialog.dart';
 import 'waste_log_dialog.dart';
@@ -62,6 +61,12 @@ class ItemDetailScreen extends ConsumerWidget {
   }
 }
 
+/// Which tab to land on when there is no back-stack to pop to (a deep link
+/// straight to an item, say) — a pure menu item's natural home is Menu
+/// Items, everything else (raw material or "both") is Groceries.
+String _fallbackTabName(InventoryItem item) =>
+    item.itemType == 'sellable' ? AppRoute.menuItemsName : AppRoute.groceriesName;
+
 // ---------------------------------------------------------------------------
 // Header
 // ---------------------------------------------------------------------------
@@ -78,7 +83,7 @@ class _Header extends ConsumerWidget {
       subtitle: item.sku,
       onBack: () => context.canPop()
           ? context.pop()
-          : context.goNamed(AppRoute.inventoryName),
+          : context.goNamed(_fallbackTabName(item)),
       leading: _Thumbnail(item: item),
       badges: [
         StatusBadge(
@@ -241,7 +246,7 @@ class _OverflowMenu extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     // Leave first: this screen is watching the item that is about to stop
     // existing, and popping afterwards would flash the not-found state.
-    context.canPop() ? context.pop() : context.goNamed(AppRoute.inventoryName);
+    context.canPop() ? context.pop() : context.goNamed(_fallbackTabName(item));
 
     try {
       await ref.read(inventoryItemsProvider.notifier).delete(item.id);
@@ -268,9 +273,21 @@ class _KeyStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final semantic = context.semantic;
+    // An untracked item (the common case for a pure menu item — see
+    // item_form_provider.dart's `chooseType`) has no real stock count behind
+    // it: `stock` is a placeholder, so "Current stock"/"Inventory value"
+    // would be prominently showing a fabricated number. Lead with the
+    // till-relevant figures instead; a tracked item (every grocery, and a
+    // "both" item like a bottled drink) keeps the stock tiles, since those
+    // numbers are real for it.
+    final tiles = item.trackStock ? _stockTiles(context) : _salesTiles(context);
 
-    final tiles = <Widget>[
+    return _tileGrid(context, tiles);
+  }
+
+  List<Widget> _stockTiles(BuildContext context) {
+    final semantic = context.semantic;
+    return [
       SummaryMetricCard(
         label: 'Current stock',
         value: Fmt.quantity(item.stock),
@@ -295,13 +312,56 @@ class _KeyStats extends StatelessWidget {
       ),
       SummaryMetricCard(
         label: 'Low stock at',
-        value: item.trackStock ? Fmt.quantity(item.reorderLevel) : '—',
-        trend: item.trackStock ? 'Warn at or below' : 'Not tracked',
+        value: Fmt.quantity(item.reorderLevel),
+        trend: 'Warn at or below',
         icon: Icons.warning_amber_rounded,
         accent: semantic.warning,
       ),
     ];
+  }
 
+  List<Widget> _salesTiles(BuildContext context) {
+    final semantic = context.semantic;
+    final margin = item.sellingPrice == null
+        ? null
+        : item.sellingPrice! - item.unitCost;
+    final onMenu = item.isSellable && !item.isArchived;
+
+    return [
+      SummaryMetricCard(
+        label: 'Selling price',
+        value: item.sellingPrice == null ? '—' : Fmt.money(item.sellingPrice!),
+        trend: item.sellingPrice == null ? 'Not set' : 'At the till',
+        icon: Icons.point_of_sale_rounded,
+      ),
+      SummaryMetricCard(
+        label: 'Unit cost',
+        value: Fmt.money(item.unitCost),
+        trend: 'Cost basis',
+        icon: Icons.sell_outlined,
+      ),
+      SummaryMetricCard(
+        label: 'Margin',
+        value: margin == null ? '—' : Fmt.money(margin),
+        trend: margin == null ? 'Set a price to see margin' : 'Per item sold',
+        icon: Icons.trending_up_rounded,
+        accent: margin == null
+            ? null
+            : (margin >= 0 ? semantic.success : semantic.danger),
+      ),
+      SummaryMetricCard(
+        label: 'POS availability',
+        value: onMenu ? 'Available' : 'Not listed',
+        trend: onMenu ? 'Showing at the till' : 'Archived or no price set',
+        icon: onMenu
+            ? Icons.check_circle_rounded
+            : Icons.remove_circle_outline_rounded,
+        accent: onMenu ? semantic.success : semantic.warning,
+      ),
+    ];
+  }
+
+  Widget _tileGrid(BuildContext context, List<Widget> tiles) {
     return LayoutBuilder(
       builder: (context, constraints) {
         const spacing = Insets.md;
@@ -591,7 +651,7 @@ class _AboutPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final hasDescription = item.description.trim().isNotEmpty;
-    final linkedMenuItems = ref.watch(menuItemsByInventoryIdProvider(item.id));
+    final onPosMenu = item.isSellable && !item.isArchived;
 
     return DetailPanel(
       title: 'About this item',
@@ -617,6 +677,19 @@ class _AboutPanel extends ConsumerWidget {
             maxColumns: 2,
             minColumnWidth: 220,
             children: [
+              LabeledValue(
+                label: 'Item type',
+                value: switch (item.itemType) {
+                  'raw_material' => 'Grocery',
+                  'sellable' => 'Menu item',
+                  _ => 'Bought and sold',
+                },
+                icon: switch (item.itemType) {
+                  'raw_material' => Icons.shopping_basket_outlined,
+                  'sellable' => Icons.restaurant_menu_rounded,
+                  _ => Icons.swap_horiz_rounded,
+                },
+              ),
               LabeledValue(
                 label: 'Category',
                 value: MockInventory.categoryLabel(item.categoryId),
@@ -652,12 +725,15 @@ class _AboutPanel extends ConsumerWidget {
                     : Fmt.relativeDateTime(item.lastCountedAt!),
                 icon: Icons.event_available_outlined,
               ),
-              if (linkedMenuItems.isNotEmpty)
-                LabeledValue(
-                  label: 'Linked menu item',
-                  value: linkedMenuItems.map((m) => m.name).join(', '),
-                  icon: Icons.restaurant_menu_rounded,
-                ),
+              LabeledValue(
+                label: 'POS menu',
+                value: onPosMenu
+                    ? 'Available for sale (${Fmt.money(item.sellingPrice ?? 0)})'
+                    : 'Not for sale — set a selling price to add it',
+                icon: onPosMenu
+                    ? Icons.point_of_sale_rounded
+                    : Icons.point_of_sale_outlined,
+              ),
             ],
           ),
         ],
@@ -691,7 +767,7 @@ class _NotFound extends StatelessWidget {
                 Text('Item $itemId not found', style: context.text.titleMedium),
                 const SizedBox(height: Insets.lg),
                 FilledButton.icon(
-                  onPressed: () => context.goNamed(AppRoute.inventoryName),
+                  onPressed: () => context.goNamed(AppRoute.groceriesName),
                   icon: const Icon(Icons.inventory_2_outlined, size: 18),
                   label: const Text('Back to inventory'),
                 ),

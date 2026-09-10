@@ -29,7 +29,7 @@ class CustomerDetailScreen extends ConsumerWidget {
 
     if (customer == null) return _NotFound(customerId: customerId);
 
-    final allOrders = ref.watch(ordersProvider);
+    final allOrders = ref.watch(ordersListProvider);
     final customerOrders =
         allOrders.where((o) => o.customerId == customerId).toList();
 

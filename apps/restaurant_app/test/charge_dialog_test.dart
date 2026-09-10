@@ -220,7 +220,7 @@ void main() {
     await tester.tap(chargeButton());
     await tester.pumpAndSettle();
 
-    final order = container.read(ordersProvider).first;
+    final order = container.read(ordersListProvider).first;
     expect(order.paymentType, PaymentType.qris);
     expect(order.amountTendered, isNull);
     // Ticket reset for the next customer.
@@ -235,7 +235,7 @@ void main() {
     await tester.tap(chargeButton());
     await tester.pumpAndSettle();
 
-    final order = container.read(ordersProvider).first;
+    final order = container.read(ordersListProvider).first;
     expect(order.paymentType, PaymentType.cash);
     expect(order.amountTendered, 100);
     expect(container.read(cartProvider).isEmpty, isTrue);

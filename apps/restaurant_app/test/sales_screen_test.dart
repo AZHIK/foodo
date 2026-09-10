@@ -42,14 +42,21 @@ Future<void> scrollDown(WidgetTester tester, [double by = 500]) async {
 
 void main() {
   group('Sales filters', () {
-    ProviderContainer container() {
-      final c = ProviderContainer();
-      addTearDown(c.dispose);
+    // `newTestContainer`, not a bare `ProviderContainer`: `OrdersNotifier`
+    // watches `currentStoreIdProvider`, which routes through `AuthNotifier`,
+    // and that unconditionally needs a working database even to discover
+    // there's no session. Also async because `OrdersNotifier.build()`
+    // resolves asynchronously even in demo mode (no store context seeded
+    // here) — awaiting its `.future` once avoids every call site racing a
+    // read against that resolution.
+    Future<ProviderContainer> container() async {
+      final c = newTestContainer();
+      await c.read(ordersProvider.future);
       return c;
     }
 
-    test('date windows widen from today to all time', () {
-      final c = container();
+    test('date windows widen from today to all time', () async {
+      final c = await container();
       final notifier = c.read(salesFiltersProvider.notifier);
 
       notifier.setRange(SalesDateRange.today);
@@ -70,8 +77,8 @@ void main() {
       expect(all, greaterThan(month));
     });
 
-    test('a custom range includes both end days', () {
-      final c = container();
+    test('a custom range includes both end days', () async {
+      final c = await container();
       final now = DateTime.now();
       final start = DateTime(now.year, now.month, now.day - 3);
 
@@ -86,8 +93,8 @@ void main() {
       expect(rows.any((o) => o.placedAt.day == now.day), isTrue);
     });
 
-    test('payment and status multi-selects compose', () {
-      final c = container();
+    test('payment and status multi-selects compose', () async {
+      final c = await container();
       final notifier = c.read(salesFiltersProvider.notifier);
       notifier.setRange(SalesDateRange.all);
       notifier.togglePayment(PaymentType.card);
@@ -106,8 +113,8 @@ void main() {
       expect(c.read(salesFiltersProvider).activeCount, 2);
     });
 
-    test('clearing keeps the date window the user chose', () {
-      final c = container();
+    test('clearing keeps the date window the user chose', () async {
+      final c = await container();
       final notifier = c.read(salesFiltersProvider.notifier);
       notifier.setRange(SalesDateRange.month);
       notifier.togglePayment(PaymentType.cash);
@@ -118,15 +125,15 @@ void main() {
       expect(c.read(salesFiltersProvider).activeCount, 0);
     });
 
-    test('changing a filter returns to page one', () {
-      final c = container();
+    test('changing a filter returns to page one', () async {
+      final c = await container();
       c.read(salesQueryProvider.notifier).setPage(2);
       c.read(salesFiltersProvider.notifier).toggleStatus(OrderStatus.paid);
       expect(c.read(salesQueryProvider).page, 0);
     });
 
-    test('summary describes exactly what the table shows', () {
-      final c = container();
+    test('summary describes exactly what the table shows', () async {
+      final c = await container();
       c.read(salesFiltersProvider.notifier).setRange(SalesDateRange.all);
 
       final rows = c.read(filteredOrdersProvider);
@@ -143,8 +150,8 @@ void main() {
       expect(c.read(salesSummaryProvider).revenue, 0);
     });
 
-    test('sorting by total then flipping direction', () {
-      final c = container();
+    test('sorting by total then flipping direction', () async {
+      final c = await container();
       c.read(salesFiltersProvider.notifier).setRange(SalesDateRange.all);
       c.read(salesQueryProvider.notifier).setSort(
         SalesSort.total,
@@ -159,10 +166,10 @@ void main() {
       expect(down.first, greaterThanOrEqualTo(down.last));
     });
 
-    test('search matches id, server, payment and line items', () {
-      final c = container();
+    test('search matches id, server, payment and line items', () async {
+      final c = await container();
       c.read(salesFiltersProvider.notifier).setRange(SalesDateRange.all);
-      final target = c.read(ordersProvider).first;
+      final target = c.read(ordersListProvider).first;
 
       c.read(salesQueryProvider.notifier).setSearch(target.id);
       expect(c.read(filteredOrdersProvider).single.id, target.id);

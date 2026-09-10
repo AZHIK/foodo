@@ -3,6 +3,7 @@ from enum import StrEnum
 
 class PermissionCode(StrEnum):
     POS_WRITE = "pos.write"
+    POS_VIEW = "pos.view"
     POS_REFUND = "pos.refund"
     POS_DISCOUNT = "pos.discount"
     INVENTORY_VIEW = "inventory.view"

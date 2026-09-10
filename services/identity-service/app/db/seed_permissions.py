@@ -32,6 +32,11 @@ class PermissionSeed:
 
 PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
     PermissionSeed(PermissionCode.POS_WRITE, "Write POS sales", "Create or update POS sales."),
+    PermissionSeed(
+        PermissionCode.POS_VIEW,
+        "View POS sales",
+        "List sales, view sale details, and view sales summaries.",
+    ),
     PermissionSeed(PermissionCode.POS_REFUND, "Refund POS sale", "Refund a completed POS sale."),
     PermissionSeed(
         PermissionCode.INVENTORY_VIEW,

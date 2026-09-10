@@ -19,6 +19,7 @@ import '../../widgets/data_page/status_badge.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/dialogs/item_form_dialog.dart';
 import '../../widgets/dialogs/reorder_dialog.dart';
+import '../../widgets/inventory/inventory_tab_bar.dart';
 import 'inventory_filter_panel.dart';
 import 'stock_adjust_dialog.dart';
 import 'stock_transfer_dialog.dart';
@@ -39,10 +40,19 @@ extension StockStatusTone on StockStatus {
   };
 }
 
-/// Stock levels, built entirely from the shared data-page layer — this file
-/// contains column config, filters and actions, and no layout of its own.
-class InventoryScreen extends ConsumerWidget {
-  const InventoryScreen({super.key});
+/// Raw materials — everything bought to be used or prepped, not sold as-is.
+///
+/// One of the Inventory section's two views (see [InventoryTabBar]). Query
+/// filters to `item_type IN (raw_material, both)` via [groceryItemsProvider]
+/// — a `both` item (a bottled drink bought and resold unchanged) appears
+/// here *and* on [InventoryMenuItemsScreen], not one or the other, since it
+/// genuinely belongs in both.
+///
+/// Built entirely from the shared data-page layer, the same as the Inventory
+/// screen this replaces — this file contains column config, filters and
+/// actions, and no layout of its own beyond the tab bar.
+class InventoryGroceriesScreen extends ConsumerWidget {
+  const InventoryGroceriesScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -52,108 +62,129 @@ class InventoryScreen extends ConsumerWidget {
     final filters = ref.watch(inventoryFiltersProvider);
     final notifier = ref.read(inventoryQueryProvider.notifier);
 
-    return DataPageScaffold(
-      title: 'Inventory',
-      subtitle:
-          '${summary.totalItems} lines tracked across '
-          '${MockInventory.categories.length} categories',
-      // Exports the filtered, sorted list — every matching row, not just the
-      // page on screen.
-      actions: dataPageExportActions<InventoryItem>(
-        context: context,
-        columns: inventoryColumns,
-        rows: ref.watch(filteredInventoryProvider),
-        title: 'Inventory',
-        subtitle: _exportSubtitle(filters, query.search),
-      ),
-      primaryAction: context.isMobile
-          ? SizedBox(
-              height: 40,
-              width: 40,
-              child: Tooltip(
-                message: 'Add item',
-                child: Material(
-                  color: context.colors.primary,
-                  clipBehavior: Clip.antiAlias,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    iconSize: 20,
-                    onPressed: () => showItemFormDialog(context),
-                    icon: const Icon(Icons.add_rounded),
-                    color: context.colors.onPrimary,
-                  ),
-                ),
-              ),
-            )
-          : FilledButton.icon(
-              onPressed: () => showItemFormDialog(context),
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('Add item'),
+    return Column(
+      children: [
+        const InventoryTabBar(active: InventoryTab.groceries),
+        Expanded(
+          child: DataPageScaffold(
+            title: 'Groceries',
+            subtitle:
+                '${summary.totalItems} raw materials tracked across '
+                '${MockInventory.categories.length} categories',
+            // Exports the filtered, sorted list — every matching row, not
+            // just the page on screen.
+            actions: dataPageExportActions<InventoryItem>(
+              context: context,
+              columns: groceryColumns,
+              rows: ref.watch(filteredInventoryProvider),
+              title: 'Groceries',
+              subtitle: _exportSubtitle(filters, query.search),
             ),
-      metrics: [
-        SummaryMetricCard(
-          label: 'Total items',
-          value: '${summary.totalItems}',
-          trend: '${summary.totalItems - summary.needsAttention} fully stocked',
-          icon: Icons.inventory_2_outlined,
-        ),
-        SummaryMetricCard(
-          label: 'Low stock',
-          value: '${summary.lowStockCount}',
-          trend: summary.outOfStockCount == 0
-              ? 'Nothing out of stock'
-              : '${summary.outOfStockCount} out of stock',
-          trendDirection: summary.needsAttention == 0
-              ? TrendDirection.flat
-              : TrendDirection.down,
-          icon: Icons.warning_amber_rounded,
-          accent: context.semantic.warning,
-        ),
-        SummaryMetricCard(
-          label: 'Inventory value',
-          value: Fmt.moneyCompact(summary.totalValue),
-          trend: 'At cost, all categories',
-          icon: Icons.savings_outlined,
-          accent: context.semantic.success,
+            primaryAction: context.isMobile
+                ? SizedBox(
+                    height: 40,
+                    width: 40,
+                    child: Tooltip(
+                      message: 'Add grocery item',
+                      child: Material(
+                        color: context.colors.primary,
+                        clipBehavior: Clip.antiAlias,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          iconSize: 20,
+                          onPressed: () => showItemFormDialog(context),
+                          icon: const Icon(Icons.add_rounded),
+                          color: context.colors.onPrimary,
+                        ),
+                      ),
+                    ),
+                  )
+                : FilledButton.icon(
+                    onPressed: () => showItemFormDialog(context),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Add item'),
+                  ),
+            metrics: [
+              SummaryMetricCard(
+                label: 'Grocery items',
+                value: '${summary.totalItems}',
+                trend: '${summary.totalItems - summary.needsAttention} fully stocked',
+                icon: Icons.shopping_basket_outlined,
+              ),
+              SummaryMetricCard(
+                label: 'Below threshold',
+                value: '${summary.lowStockCount}',
+                trend: summary.outOfStockCount == 0
+                    ? 'Nothing out of stock'
+                    : '${summary.outOfStockCount} out of stock',
+                trendDirection: summary.needsAttention == 0
+                    ? TrendDirection.flat
+                    : TrendDirection.down,
+                icon: Icons.warning_amber_rounded,
+                accent: context.semantic.warning,
+              ),
+              SummaryMetricCard(
+                label: 'Out of stock',
+                value: '${summary.outOfStockCount}',
+                trend: summary.outOfStockCount == 0 ? 'All lines covered' : 'Needs a delivery',
+                trendDirection: summary.outOfStockCount == 0
+                    ? TrendDirection.flat
+                    : TrendDirection.down,
+                icon: Icons.remove_shopping_cart_outlined,
+                accent: context.semantic.danger,
+              ),
+              SummaryMetricCard(
+                label: 'Stock value',
+                value: Fmt.moneyCompact(summary.totalValue),
+                // Cost basis is the item's own unit cost — the last price it
+                // was recorded at, not a fabricated figure.
+                trend: 'At last-known cost',
+                icon: Icons.savings_outlined,
+                accent: context.semantic.success,
+              ),
+            ],
+            toolbar: DataTableToolbar(
+              searchHint: 'Search items, SKU or supplier',
+              searchValue: query.search,
+              onSearchChanged: notifier.setSearch,
+              activeFilterCount: filters.activeCount,
+              onClearFilters: ref.read(inventoryFiltersProvider.notifier).clear,
+              filterBuilder: (_) => const InventoryFilterPanel(),
+              sortOptions: const [
+                SortOption(label: 'Name', field: InventorySort.name),
+                SortOption(label: 'Category', field: InventorySort.category),
+                SortOption(label: 'Stock', field: InventorySort.stock),
+                SortOption(
+                  label: 'Reorder at',
+                  field: InventorySort.reorderLevel,
+                ),
+                SortOption(label: 'Status', field: InventorySort.status),
+              ],
+              sortField: query.sortField,
+              sortAscending: query.ascending,
+              onSortChanged: (field, ascending) =>
+                  notifier.setSort(field, ascending: ascending),
+            ),
+            table: ReusableDataTable<InventoryItem>(
+              columns: groceryColumns,
+              slice: slice,
+              query: query,
+              onSort: notifier.toggleSort,
+              onPageChanged: notifier.setPage,
+              // The row body opens the read-only detail screen; the row's
+              // own "Edit" action still goes straight to the form.
+              onRowTap: (item) => context.pushNamed(
+                AppRoute.itemDetailName,
+                pathParameters: {'itemId': item.id},
+              ),
+              rowActions: _actions(ref),
+            ),
+          ),
         ),
       ],
-      toolbar: DataTableToolbar(
-        searchHint: 'Search items, SKU or supplier',
-        searchValue: query.search,
-        onSearchChanged: notifier.setSearch,
-        activeFilterCount: filters.activeCount,
-        onClearFilters: ref.read(inventoryFiltersProvider.notifier).clear,
-        filterBuilder: (_) => const InventoryFilterPanel(),
-        sortOptions: const [
-          SortOption(label: 'Name', field: InventorySort.name),
-          SortOption(label: 'Category', field: InventorySort.category),
-          SortOption(label: 'Stock', field: InventorySort.stock),
-          SortOption(label: 'Unit cost', field: InventorySort.cost),
-          SortOption(label: 'Status', field: InventorySort.status),
-        ],
-        sortField: query.sortField,
-        sortAscending: query.ascending,
-        onSortChanged: (field, ascending) =>
-            notifier.setSort(field, ascending: ascending),
-      ),
-      table: ReusableDataTable<InventoryItem>(
-        columns: inventoryColumns,
-        slice: slice,
-        query: query,
-        onSort: notifier.toggleSort,
-        onPageChanged: notifier.setPage,
-        // The row body opens the read-only detail screen; the row's own "Edit"
-        // action still goes straight to the form.
-        onRowTap: (item) =>
-            context.pushNamed(
-              AppRoute.itemDetailName,
-              pathParameters: {'itemId': item.id},
-            ),
-        rowActions: _actions(ref),
-      ),
     );
   }
 
@@ -235,8 +266,8 @@ class InventoryScreen extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(inventoryItemsProvider.notifier).delete(item.id);
-      // The ledger goes with the item — orphaned movements would keep counting
-      // against a line that no longer exists.
+      // The ledger goes with the item — orphaned movements would keep
+      // counting against a line that no longer exists.
       ref.read(stockMovementsProvider.notifier).clearForItem(item.id);
       messenger.showSnackBar(SnackBar(content: Text('${item.name} deleted')));
     } catch (e) {
@@ -258,16 +289,19 @@ class InventoryScreen extends ConsumerWidget {
       if (search.trim().isNotEmpty) 'matching "${search.trim()}"',
     ];
 
-    return parts.isEmpty ? 'All items' : 'Filtered by ${parts.join(' · ')}';
+    return parts.isEmpty ? 'All groceries' : 'Filtered by ${parts.join(' · ')}';
   }
 }
 
-/// Column config for the stock table.
+/// Column config for the Groceries table.
 ///
 /// Top-level so the exporters can reuse the exact same definitions — the
 /// spreadsheet then carries the same columns and the same formatting the
-/// screen shows.
-final inventoryColumns = <DataColumnSpec<InventoryItem>>[
+/// screen shows. No "last purchase date/cost" column: Inventory Service does
+/// not track a purchase-order history yet, only the current `unit_cost`
+/// basis (used in the Stock value stat) — a per-purchase figure would have
+/// to be fabricated, so it is left out rather than shown as a guess.
+final groceryColumns = <DataColumnSpec<InventoryItem>>[
   DataColumnSpec(
     label: 'Item',
     field: InventorySort.name,
@@ -279,9 +313,17 @@ final inventoryColumns = <DataColumnSpec<InventoryItem>>[
   DataColumnSpec(
     label: 'Category',
     field: InventorySort.category,
-    flex: 3,
-    minTableWidth: 860,
+    flex: 2,
+    minTableWidth: 760,
     value: (item) => MockInventory.categoryLabel(item.categoryId),
+  ),
+  DataColumnSpec(
+    label: 'Unit',
+    field: 'unit',
+    sortable: false,
+    flex: 1,
+    minTableWidth: 620,
+    value: (item) => item.unit,
   ),
   DataColumnSpec(
     label: 'Stock',
@@ -292,12 +334,13 @@ final inventoryColumns = <DataColumnSpec<InventoryItem>>[
     cellBuilder: (context, item) => _StockCell(item: item),
   ),
   DataColumnSpec(
-    label: 'Unit cost',
-    field: InventorySort.cost,
+    label: 'Reorder at',
+    field: InventorySort.reorderLevel,
     flex: 2,
     numeric: true,
-    minTableWidth: 700,
-    value: (item) => Fmt.money(item.unitCost),
+    minTableWidth: 900,
+    value: (item) =>
+        item.trackStock ? Fmt.quantity(item.reorderLevel) : 'Not tracked',
   ),
   DataColumnSpec(
     label: 'Status',
@@ -309,6 +352,21 @@ final inventoryColumns = <DataColumnSpec<InventoryItem>>[
       label: item.status.label,
       tone: item.status.tone,
       icon: item.status.badgeIcon,
+      dense: true,
+    ),
+  ),
+  DataColumnSpec(
+    label: 'Active',
+    field: 'isActive',
+    sortable: false,
+    role: ColumnRole.tableOnly,
+    width: 96,
+    minTableWidth: 1080,
+    value: (item) => item.isArchived ? 'Archived' : 'Active',
+    cellBuilder: (context, item) => StatusBadge(
+      label: item.isArchived ? 'Archived' : 'Active',
+      tone: item.isArchived ? StatusTone.neutral : StatusTone.positive,
+      icon: item.isArchived ? Icons.archive_outlined : Icons.check_circle_rounded,
       dense: true,
     ),
   ),
@@ -334,8 +392,6 @@ class _ItemCell extends StatelessWidget {
             borderRadius: BorderRadius.circular(Radii.sm),
           ),
           alignment: Alignment.center,
-          // An uploaded photo replaces the emoji placeholder, so a picture
-          // chosen in the item form is visible back on the list.
           child: item.image != null
               ? Image.memory(
                   item.image!.bytes,
@@ -396,8 +452,6 @@ class _StockCell extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: context.text.bodyMedium?.copyWith(
               fontWeight: FontWeight.w700,
-              // A number below the reorder level is the thing a manager is
-              // scanning for, so it carries the warning colour itself.
               color: short ? context.semantic.warning : null,
             ),
           ),
@@ -406,9 +460,7 @@ class _StockCell extends StatelessWidget {
         Text(
           item.unit,
           maxLines: 1,
-          style: context.text.bodySmall?.copyWith(
-            color: colors.onSurfaceVariant,
-          ),
+          style: context.text.bodySmall?.copyWith(color: colors.onSurfaceVariant),
         ),
       ],
     );

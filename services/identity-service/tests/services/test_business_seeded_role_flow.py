@@ -61,6 +61,7 @@ _SUPPLIER_OWNER_REQUIRED = {
 _RESTAURANT_NON_OWNER: dict[str, set[str]] = {
     "Manager": {
         PermissionCode.POS_WRITE.value,
+        PermissionCode.POS_VIEW.value,
         PermissionCode.POS_REFUND.value,
         PermissionCode.INVENTORY_VIEW.value,
         PermissionCode.INVENTORY_ADJUST.value,
@@ -74,6 +75,7 @@ _RESTAURANT_NON_OWNER: dict[str, set[str]] = {
     },
     "Cashier": {
         PermissionCode.POS_WRITE.value,
+        PermissionCode.POS_VIEW.value,
         PermissionCode.INVENTORY_VIEW.value,
     },
     "Kitchen Staff": {

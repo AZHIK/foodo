@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:restaurant_pos/models/inventory_item.dart';
 import 'package:restaurant_pos/models/order.dart';
-import 'package:restaurant_pos/screens/inventory/inventory_screen.dart';
+import 'package:restaurant_pos/screens/inventory/inventory_groceries_screen.dart';
 import 'package:restaurant_pos/screens/sales/sales_screen.dart';
 import 'package:restaurant_pos/utils/export_helper.dart';
 import 'package:restaurant_pos/widgets/data_page/data_column_spec.dart';
@@ -215,7 +215,7 @@ void main() {
   });
 
   group('Real page columns export', () {
-    test('inventory columns produce a populated sheet', () {
+    test('grocery columns produce a populated sheet', () {
       const item = InventoryItem(
         id: 'inv-99',
         sku: 'TST-1',
@@ -226,26 +226,30 @@ void main() {
         reorderLevel: 20,
         unitCost: 4.25,
         unit: 'kg',
+        itemType: 'raw_material',
       );
 
       final sheet = _decode(
         ExportHelper.buildExcelBytes(
-          columns: inventoryColumns,
+          columns: groceryColumns,
           rows: const [item],
-          title: 'Inventory',
+          title: 'Groceries',
         ),
       );
 
       expect(
         sheet.row(0).map((c) => c?.value.toString()).toList(),
-        ['Item', 'Category', 'Stock', 'Unit cost', 'Status'],
+        ['Item', 'Category', 'Unit', 'Stock', 'Reorder at', 'Status', 'Active'],
       );
       final row = sheet.row(1).map((c) => c?.value.toString()).toList();
       expect(row[0], 'Test Item');
       expect(row[1], 'Dry goods');
-      expect(row[2], '14 kg');
+      expect(row[2], 'kg');
+      expect(row[3], '14 kg');
+      expect(row[4], '20');
       // Below the reorder level, so the sheet must say so too.
-      expect(row[4], 'Low stock');
+      expect(row[5], 'Low stock');
+      expect(row[6], 'Active');
     });
 
     test('sales columns export the same values the table shows', () {

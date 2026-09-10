@@ -1,21 +1,40 @@
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm AS builder
+# syntax=docker/dockerfile:1.7
+FROM python:3.12-slim-bookworm AS builder
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install uv==0.12.12
+
+ENV UV_LINK_MODE=copy \
+    UV_HTTP_TIMEOUT=600 \
+    UV_CONCURRENT_DOWNLOADS=4
 
 WORKDIR /app
 
-COPY pyproject.toml README.md ./
-RUN uv sync --no-dev --no-install-project
+COPY pyproject.toml uv.lock README.md ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
 
 COPY . .
-RUN uv sync --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm AS development
+FROM python:3.12-slim-bookworm AS development
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install uv==0.12.12
+
+ENV UV_LINK_MODE=copy \
+    UV_HTTP_TIMEOUT=600 \
+    UV_CONCURRENT_DOWNLOADS=4
 
 WORKDIR /app
 
-COPY pyproject.toml README.md ./
-RUN uv sync --no-install-project
+COPY pyproject.toml uv.lock README.md ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project
 COPY . .
-RUN uv sync && chmod -R a+w /app
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen && chmod -R a+w /app
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \

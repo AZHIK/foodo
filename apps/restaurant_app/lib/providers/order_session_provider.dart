@@ -36,5 +36,5 @@ final tableLabelProvider = Provider<String?>((ref) {
 /// the sale exists. Derived from the sales ledger so the preview and the
 /// eventual order never disagree.
 final nextOrderIdProvider = Provider<String>(
-  (ref) => nextOrderId(ref.watch(ordersProvider)),
+  (ref) => nextOrderId(ref.watch(ordersListProvider)),
 );

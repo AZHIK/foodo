@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../models/menu_item.dart';
 
-/// In-memory stand-in for a menu service.
+/// Synthetic order-history fixture data — **not** the live POS menu.
 ///
-/// Swap this class for an HTTP/DB implementation and only
-/// `lib/providers/menu_providers.dart` needs to change.
+/// `menu_providers.dart` now derives the actual POS grid from the local
+/// inventory cache (see `inventoryItemsListProvider`), so nothing a cashier
+/// sees at the till comes from here any more. This class survives only
+/// because `MockOrders`, `orders_provider.dart` and
+/// `dashboard_metrics_provider.dart` need a stable, varied catalogue of
+/// items to synthesize a plausible-looking sales history and dashboard —
+/// none of that is real persisted data yet either.
 abstract final class MockMenu {
   static MenuCategory? categoryById(String id) {
     for (final category in categories) {

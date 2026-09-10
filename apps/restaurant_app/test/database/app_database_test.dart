@@ -36,8 +36,8 @@ void main() {
       expect(database != null, true);
     });
 
-    test('schema version is 4', () async {
-      expect(database.schemaVersion, 4);
+    test('schema version is 5', () async {
+      expect(database.schemaVersion, 5);
     });
 
     test('LocalUserProfiles table exists and can be queried', () async {
@@ -110,7 +110,7 @@ void main() {
             PendingSalesCompanion.insert(
               clientSaleId: 'sale-uuid-1',
               status: 'completed',
-              businessLocationId: 'loc-123',
+              storeId: 'loc-123',
               paymentMethod: 'cash',
               occurredAt: now,
               createdAt: now,
@@ -261,7 +261,7 @@ void main() {
             PendingSalesCompanion.insert(
               clientSaleId: 'sale-uuid-2',
               status: 'completed',
-              businessLocationId: 'loc-123',
+              storeId: 'loc-123',
               paymentMethod: 'cash',
               occurredAt: now,
               createdAt: now,

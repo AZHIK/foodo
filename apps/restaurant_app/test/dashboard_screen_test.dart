@@ -88,7 +88,7 @@ void main() {
     ) async {
       final container = await pumpDashboard(tester, const Size(1440, 900));
       final metrics = container.read(dashboardMetricsProvider);
-      final orders = container.read(ordersProvider);
+      final orders = container.read(ordersListProvider);
 
       final now = DateTime.now();
       final startOfToday = DateTime(now.year, now.month, now.day);

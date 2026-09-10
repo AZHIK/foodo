@@ -17,7 +17,6 @@ line items, payments, receipts, and local tax configuration.
 cp .env.example .env
 cp ../identity-service/keys/public.pem keys/
 uv sync
-uv run alembic upgrade head
 uv run uvicorn app.main:app --reload
 ```
 
@@ -116,7 +115,6 @@ stage.
 cp .env.example .env
 cp ../identity-service/keys/public.pem keys/   # required for JWT verification
 uv sync
-uv run alembic upgrade head
 uv run uvicorn app.main:app --reload
 ```
 
@@ -135,6 +133,15 @@ A dev profile is also available (hot-reload via volume mount):
 ```bash
 docker compose --profile dev up -d
 docker compose exec api-dev tail -f /dev/null  # attach your editor
+```
+
+## Run migrations
+
+```bash
+docker compose exec api alembic upgrade head
+
+# To create a new migration after adding a model
+docker compose exec api alembic revision --autogenerate -m "description"
 ```
 
 ---

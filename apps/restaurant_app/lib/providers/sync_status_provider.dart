@@ -1,14 +1,13 @@
 /// Sync status and pending sales state exposed to the UI.
 library;
 
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../auth/token_refresh_interceptor.dart';
-import '../auth/token_storage.dart';
 import '../sync/sync_service.dart';
 import '../sync/fake_sync_api.dart';
+import '../sync/http_sync_api.dart';
 import 'database_providers.dart';
-import 'permissions_cache_tick_provider.dart';
+import 'permissions_provider.dart';
+import 'pos_api_provider.dart';
 
 /// Sync status snapshot.
 class SyncStatusState {
@@ -25,53 +24,17 @@ class SyncStatusState {
   });
 }
 
-/// Provides the HTTP Dio client configured with backend base URL and token refresh.
-final dioClientProvider = Provider<Dio>((ref) {
-  // TODO: Replace with real backend URL from config/environment
-  const baseUrl = 'http://localhost:8009/api/v1';
-
-  final dio = Dio(BaseOptions(
-    baseUrl: baseUrl,
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 30),
-    sendTimeout: const Duration(seconds: 30),
-  ));
-
-  // Add logging interceptor in dev mode
-  dio.interceptors.add(LogInterceptor(
-    requestBody: true,
-    responseBody: true,
-  ));
-
-  // Add token refresh interceptor for automatic token refresh on 401.
-  // The interceptor gets its own bare Dio for refresh calls to avoid reentrancy.
-  final tokenStorage = TokenStorage();
-  dio.interceptors.add(TokenRefreshInterceptor(
-    tokenStorage: tokenStorage,
-    baseUrl: baseUrl,
-    profileRepo: ref.watch(localProfileRepositoryProvider),
-    onPermissionsSynced: () => ref.read(permissionsCacheTickProvider.notifier).state++,
-  ));
-
-  return dio;
-});
-
-/// Provides the sync service instance (uses real HTTP API).
+/// Provides the sync service instance: the real HTTP API once a business
+/// context exists, otherwise a fake — same branching shape as
+/// `InventoryNotifier.build()`'s mock fallback, so the outbox has something
+/// to push to (harmlessly) in demo/no-backend mode instead of throwing.
 final syncServiceProvider = Provider<SyncService>((ref) {
   final db = ref.watch(appDatabaseProvider);
-  final dio = ref.watch(dioClientProvider);
+  final businessId = ref.watch(currentBusinessIdProvider);
 
-  // Get bearer token from session (for now, hardcoded; in real app, from auth)
-  const bearerToken = 'your-bearer-token-here'; // TODO: Get from session/auth
-
-  // For this MVP: use fake API to avoid real backend dependency during testing.
-  // To switch to real API, comment out FakeSyncApi and uncomment HttpSyncApi:
-  // final api = HttpSyncApi(
-  //   dio: dio,
-  //   businessId: 'biz-001',
-  //   bearerToken: bearerToken,
-  // );
-  final api = FakeSyncApi(); // Using fake for MVP
+  final api = businessId == null
+      ? FakeSyncApi()
+      : HttpSyncApi(dio: ref.watch(posServiceDioProvider), businessId: businessId);
 
   return SyncService(db: db, api: api);
 });

@@ -15,6 +15,7 @@ import '../../widgets/data_page/export_actions.dart';
 import '../../widgets/data_page/reusable_data_table.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/dialogs/assign_courier_dialog.dart';
+import '../../widgets/dialogs/refund_confirm_dialog.dart';
 import '../../widgets/sales/fulfillment_status_badge.dart';
 import '../../widgets/sales/order_status_badge.dart';
 import 'sales_date_range_selector.dart';
@@ -166,29 +167,17 @@ class SalesScreen extends ConsumerWidget {
     WidgetRef ref,
     Order order,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Refund ${order.id}?'),
-        content: Text(
+    final reason = await showRefundConfirmDialog(
+      context,
+      title: 'Refund ${order.id}?',
+      message:
           '${Fmt.money(order.total)} will be returned to '
           '${order.paymentType.label} and removed from takings.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Refund'),
-          ),
-        ],
-      ),
     );
 
-    if (confirmed != true || !context.mounted) return;
-    ref.read(ordersProvider.notifier).refund(order.id);
+    if (reason == null || !context.mounted) return;
+    await ref.read(ordersProvider.notifier).refund(order.id, reason: reason);
+    if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('${order.id} refunded')));

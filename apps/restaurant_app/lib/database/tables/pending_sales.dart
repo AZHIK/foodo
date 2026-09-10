@@ -30,8 +30,11 @@ class PendingSales extends Table {
   /// The sale arrives in its final state; there is no "open/in-progress".
   TextColumn get status => text()(); // completed|voided|refunded
 
-  /// Location this sale belongs to.
-  TextColumn get businessLocationId => text()();
+  /// Store/location this sale belongs to. Matches the backend's `store_id`
+  /// field on `SaleSyncInput` (renamed from `business_location_id` by
+  /// migration `c3d4e5f6a7b8` — keep this column named to match, since it is
+  /// serialized straight into the sync payload).
+  TextColumn get storeId => text()();
 
   /// Discount applied to the whole sale.
   TextColumn get discountAmount =>

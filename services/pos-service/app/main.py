@@ -45,6 +45,8 @@ app.add_middleware(
 )
 
 # ── Routes ───────────────────────────────────────────────────────────────
+# health stays unprefixed; every real API route is mounted under /api/v1,
+# matching identity-service and inventory-service's convention.
 app.include_router(health.router, prefix="")
-app.include_router(sales.router, prefix="")
-app.include_router(void_refund.router, prefix="")
+app.include_router(sales.router, prefix="/api/v1")
+app.include_router(void_refund.router, prefix="/api/v1")

@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from sqlmodel import Session, select
 
 from app.core.permission_codes import PermissionCode
-from app.db.seed_mappings import POS_SALES_LIST, POS_SALES_SYNC, POS_SALES_VIEW, uniq
+from app.db.seed_mappings import POS_SALES_SYNC, uniq
 from app.models import RoleTemplate, RoleTemplatePermission
 
 
@@ -73,6 +73,7 @@ _AI: tuple[PermissionCode, ...] = (
 
 _POS: tuple[PermissionCode, ...] = (
     PermissionCode.POS_WRITE,
+    PermissionCode.POS_VIEW,
     PermissionCode.POS_REFUND,
 )
 
@@ -106,13 +107,12 @@ _PLATFORM_FULL: tuple[PermissionCode, ...] = (
 
 # ── Non-owner (deferred) template permission sets ─────────────────────
 
-# Restaurant "Manager" — the POS codes requested are resolved onto the existing
-# POS_WRITE enum member (see seed_mappings.py); the inventory codes are now
-# first-class PermissionCode members and are referenced directly.
+# Restaurant "Manager" — POS_SALES_SYNC is resolved onto the existing
+# POS_WRITE enum member (see seed_mappings.py); POS_VIEW and the inventory
+# codes are first-class PermissionCode members and are referenced directly.
 _MANAGER: tuple[PermissionCode, ...] = (
     POS_SALES_SYNC,
-    POS_SALES_VIEW,
-    POS_SALES_LIST,
+    PermissionCode.POS_VIEW,
     PermissionCode.POS_REFUND,
     PermissionCode.INVENTORY_VIEW,
     PermissionCode.INVENTORY_ADJUST,
@@ -127,7 +127,7 @@ _MANAGER: tuple[PermissionCode, ...] = (
 
 _CASHIER: tuple[PermissionCode, ...] = (
     POS_SALES_SYNC,
-    POS_SALES_VIEW,
+    PermissionCode.POS_VIEW,
     PermissionCode.INVENTORY_VIEW,
 )
 

@@ -34,8 +34,8 @@ def _auth_header(
     return {"Authorization": f"Bearer {token}"}
 
 
-SYNC_URL = "/businesses/{business_id}/sales/sync"
-VOID_REFUND_URL = "/businesses/{business_id}/sales/{sale_id}/void-or-refund"
+SYNC_URL = "/api/v1/businesses/{business_id}/sales/sync"
+VOID_REFUND_URL = "/api/v1/businesses/{business_id}/sales/{sale_id}/void-or-refund"
 
 
 async def _create_completed_sale(

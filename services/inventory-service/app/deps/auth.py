@@ -37,12 +37,14 @@ AVAILABLE DEPENDENCY FACTORIES
     Returns ``active_store_id``.
 """
 
+import secrets
 from collections.abc import Awaitable, Callable
 from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import Depends, Header, HTTPException, status
 
+from app.core.config import get_settings
 from app.core.exceptions import ExpiredTokenError, InvalidTokenError
 from app.core.permission_codes import PermissionCode, coerce_permission_code
 from app.core.security import decode_and_verify_access_token
@@ -268,3 +270,27 @@ def require_store_permission(
         return active_store_id
 
     return _check_store_permission
+
+
+async def require_internal_service_token(
+    x_internal_service_token: Annotated[str | None, Header(alias="X-Internal-Service-Token")] = None,
+) -> None:
+    """Dependency: require a shared-secret header for service-to-service calls.
+
+    Not an end-user JWT check — this gates endpoints meant to be called
+    only by other trusted backend services (e.g. POS Service's
+    ``publish_event``, see ``app/api/v1/endpoints/internal_events.py``).
+    Rejects with 401 if the header is missing or doesn't match this
+    service's configured ``internal_service_token`` exactly.
+
+    Uses a constant-time comparison so response timing can't be used to
+    guess the token byte-by-byte.
+    """
+    expected = get_settings().internal_service_token
+    if not x_internal_service_token or not secrets.compare_digest(
+        x_internal_service_token, expected
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or invalid internal service token",
+        )

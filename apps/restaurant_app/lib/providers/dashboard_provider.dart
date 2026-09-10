@@ -43,7 +43,7 @@ class DashboardSummary {
 }
 
 final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
-  final orders = ref.watch(ordersProvider);
+  final orders = ref.watch(ordersListProvider);
   final items = ref.watch(inventoryItemsListProvider);
   final expenses = ref.watch(otherExpensesProvider);
   final incomes = ref.watch(otherIncomesProvider);
@@ -120,7 +120,7 @@ final reorderListProvider = Provider<List<InventoryItem>>((ref) {
 });
 
 final recentOrdersProvider = Provider<List<Order>>((ref) {
-  final orders = [...ref.watch(ordersProvider)]..sort((a, b) => b.placedAt.compareTo(a.placedAt));
+  final orders = [...ref.watch(ordersListProvider)]..sort((a, b) => b.placedAt.compareTo(a.placedAt));
   return orders;
 });
 

@@ -2,21 +2,22 @@
 from the reconciled PermissionCode enum.
 
 The ``PermissionCode`` enum is shared and reconciled across all three services.
-Three POS codes in the agreed seed plan do not exist in it (the enum exposes
-only ``POS_WRITE``/``POS_REFUND`` for the POS domain). Per the stakeholder
-decision we map each absent code onto the closest existing action code:
+One POS code in the agreed seed plan does not exist in it as a distinct
+concept — "sync" is just the write action:
 
     POS_SALES_SYNC             -> POS_WRITE
-    POS_SALES_VIEW             -> POS_WRITE
-    POS_SALES_LIST             -> POS_WRITE
 
 (The equivalent inventory mapping — INVENTORY_WASTE_RECORD/TRANSFER/
 ITEMS_CREATE/ITEMS_UPDATE/ITEMS_DEACTIVATE collapsing onto INVENTORY_ADJUST —
-was removed: inventory-service enforces these as distinct permission codes on
-its write endpoints, so collapsing them here meant a token could never carry
-the exact code an endpoint required, and every inventory write 403'd
-regardless of role. Those five codes are now first-class ``PermissionCode``
-members and are referenced directly from ``app/db/seed_role_templates.py``.)
+was removed for the same reason ``POS_SALES_VIEW``/``POS_SALES_LIST``
+collapsing onto ``POS_WRITE`` was removed below: pos-service's read endpoints
+(list sales, sale detail, sales summary) enforce a distinct ``pos.view`` code,
+so collapsing "view"/"list" onto "write" meant those endpoints were
+permanently 403 for every role *and* granted POS-sync (write) access to
+internal read-only roles like Finance/Data Analyst that only asked for
+"view"/"list". ``POS_VIEW`` is now a first-class ``PermissionCode`` member
+and is referenced directly from ``app/db/seed_role_templates.py`` and
+``app/db/seed_internal_rbac.py``.)
 
 This is a data-seeding convenience only.  Seed modules reference the named
 constants below so the intended (deprecated) vocabulary stays visible alongside
@@ -29,14 +30,10 @@ from app.core.permission_codes import PermissionCode
 
 # --- Named resolution constants (deprecated -> existing) ---
 POS_SALES_SYNC = PermissionCode.POS_WRITE
-POS_SALES_VIEW = PermissionCode.POS_WRITE
-POS_SALES_LIST = PermissionCode.POS_WRITE
 
 # --- Machine-readable mapping (documentation/audit) ----------------------------
 RESOLVED_MAPPING: dict[str, PermissionCode] = {
     "pos.sales.sync": PermissionCode.POS_WRITE,
-    "pos.sales.view": PermissionCode.POS_WRITE,
-    "pos.sales.list": PermissionCode.POS_WRITE,
 }
 
 

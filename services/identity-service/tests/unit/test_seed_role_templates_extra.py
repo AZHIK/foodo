@@ -94,6 +94,7 @@ def test_exact_permissions_for_every_template(session: Session) -> None:
         },
         "Manager": {
             PermissionCode.POS_WRITE.value,
+            PermissionCode.POS_VIEW.value,
             PermissionCode.POS_REFUND.value,
             PermissionCode.INVENTORY_VIEW.value,
             PermissionCode.INVENTORY_ADJUST.value,
@@ -107,6 +108,7 @@ def test_exact_permissions_for_every_template(session: Session) -> None:
         },
         "Cashier": {
             PermissionCode.POS_WRITE.value,
+            PermissionCode.POS_VIEW.value,
             PermissionCode.INVENTORY_VIEW.value,
         },
         "Kitchen Staff": {

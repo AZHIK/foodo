@@ -1,7 +1,10 @@
 /// HTTP implementation of the POS sync API using Dio.
 ///
-/// Calls the real POS Service `/businesses/{business_id}/sales/sync` endpoint.
-/// Requires bearer token auth from the session.
+/// Calls the real POS Service `/businesses/{business_id}/sales/sync`
+/// endpoint. Auth is handled by the Dio client's own interceptor
+/// (`TokenRefreshInterceptor`, attached in `posServiceDioProvider`) — this
+/// class never touches a bearer token itself, matching every other real API
+/// client in the app (`HttpInventoryCatalogApi`, `InventoryApiService`).
 library;
 
 import 'package:dio/dio.dart';
@@ -12,13 +15,9 @@ import 'sync_dtos.dart';
 class HttpSyncApi extends PosSyncApi {
   final Dio _dio;
   final String _businessId;
-  final String _bearerToken;
 
-  HttpSyncApi({
-    required this._dio,
-    required String businessId,
-    required this._bearerToken,
-  })  : _businessId = businessId;
+  HttpSyncApi({required this._dio, required String businessId})
+      : _businessId = businessId;
 
   @override
   Future<SyncBatchResult> syncSales(List<PendingSaleDto> batch) async {
@@ -28,11 +27,6 @@ class HttpSyncApi extends PosSyncApi {
         data: {
           'sales': batch.map((s) => s.toJson()).toList(),
         },
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $_bearerToken',
-          },
-        ),
       );
 
       final results = (response.data['results'] as List<dynamic>)

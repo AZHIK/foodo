@@ -175,7 +175,7 @@ const Map<String, List<String>> _featureRequirements = {
   'inventory_adjust': [AppPermissions.inventoryAdjust],
   'inventory_waste_record': [AppPermissions.inventoryWasteRecord],
   'inventory_transfer': [AppPermissions.inventoryTransfer],
-  'sales_view': [AppPermissions.salesView],
+  'sales_view': [AppPermissions.posView],
   'sales_export': [AppPermissions.salesExport],
   'reports_view': [AppPermissions.reportsView],
   'staff_view': [AppPermissions.staffView],

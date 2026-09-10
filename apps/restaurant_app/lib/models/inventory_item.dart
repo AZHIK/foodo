@@ -66,6 +66,11 @@ class InventoryItem {
     this.trackStock = true,
     this.isArchived = false,
     this.catalogItemId,
+    this.sellingPrice,
+    this.isSellable = false,
+    this.itemType = 'both',
+    this.reorderQuantity = 0,
+    this.allowNegativeStock = false,
   });
 
   final String id;
@@ -113,6 +118,39 @@ class InventoryItem {
   /// Optional: populated when this item is linked to the catalog.
   final String? catalogItemId;
 
+  /// Price charged when this item is sold through the POS. Null means the
+  /// item has never had a price set and cannot appear on the POS menu.
+  final double? sellingPrice;
+
+  /// Whether this item is eligible to appear on the POS menu — true only for
+  /// items the backend marked sellable (or "both") that also carry a
+  /// [sellingPrice]. Raw materials and priceless items never show at the till.
+  final bool isSellable;
+
+  /// The backend's item-type discriminator: `sellable`, `raw_material`, or
+  /// `both`. Drives which of the Inventory section's two views (Groceries,
+  /// Menu Items) this item appears in — it is never forced into just one,
+  /// since a `both` item (a bottled drink bought and resold unchanged) is
+  /// genuinely both a stockroom line and a till item.
+  final String itemType;
+
+  /// How much to reorder when this line falls below [reorderLevel]. Distinct
+  /// from the threshold itself — a case-lot item might trigger a reorder at 5
+  /// units but always reorder 24 at a time.
+  final double reorderQuantity;
+
+  /// Whether this line is allowed to go below zero — a tab kept for an item
+  /// sold before its delivery is logged, rather than blocking the sale.
+  final bool allowNegativeStock;
+
+  /// Whether this item belongs in the Groceries (raw-material) view — every
+  /// item except a pure `sellable` one.
+  bool get isGroceryItem => itemType != 'sellable';
+
+  /// Whether this item belongs in the Menu Items (sellable) view — every item
+  /// except a pure `raw_material` one.
+  bool get isMenuCatalogItem => itemType != 'raw_material';
+
   /// An untracked item is never "low": there is no count to be low against, so
   /// it reports as in stock rather than dragging the low-stock metric down.
   StockStatus get status => !trackStock
@@ -143,10 +181,16 @@ class InventoryItem {
     bool? trackStock,
     bool? isArchived,
     String? catalogItemId,
+    double? sellingPrice,
+    bool? isSellable,
+    String? itemType,
+    double? reorderQuantity,
+    bool? allowNegativeStock,
     // `image: null` cannot mean "remove it" when null already means "leave it
     // alone", so clearing needs its own flag.
     bool clearImage = false,
     bool clearCatalogItemId = false,
+    bool clearSellingPrice = false,
   }) {
     return InventoryItem(
       id: id,
@@ -167,6 +211,13 @@ class InventoryItem {
       catalogItemId: clearCatalogItemId
           ? null
           : (catalogItemId ?? this.catalogItemId),
+      sellingPrice: clearSellingPrice
+          ? null
+          : (sellingPrice ?? this.sellingPrice),
+      isSellable: isSellable ?? this.isSellable,
+      itemType: itemType ?? this.itemType,
+      reorderQuantity: reorderQuantity ?? this.reorderQuantity,
+      allowNegativeStock: allowNegativeStock ?? this.allowNegativeStock,
     );
   }
 

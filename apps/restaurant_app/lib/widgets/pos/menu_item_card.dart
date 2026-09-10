@@ -3,11 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/menu_item.dart';
 import '../../providers/cart_provider.dart';
-import '../../providers/menu_providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
-import '../dialogs/menu_item_form_dialog.dart';
 
 /// A tappable menu tile in the POS grid.
 ///
@@ -39,7 +37,6 @@ class MenuItemCard extends ConsumerWidget {
 
     return _Pressable(
       enabled: available,
-      onLongPress: () => _showContextMenu(context, ref),
       child: Material(
         color: colors.surfaceContainerLowest,
         clipBehavior: Clip.antiAlias,
@@ -92,37 +89,14 @@ class MenuItemCard extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        LayoutBuilder(
-                          builder: (context, constraints) => Row(
-                            children: [
-                              // Price is the one thing a cashier scans for, so
-                              // it gets the heaviest weight on the card.
-                              Expanded(
-                                child: Text(
-                                  Fmt.money(item.price),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    color: colors.onSurface,
-                                  ),
-                                ),
-                              ),
-                              // Prep time yields to the price on a narrow
-                              // card rather than pushing it into an ellipsis.
-                              if (constraints.maxWidth >= 90) ...[
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${item.prepMinutes}m',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: colors.onSurfaceVariant,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ],
+                        Text(
+                          Fmt.money(item.price),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: colors.onSurface,
                           ),
                         ),
                       ],
@@ -134,30 +108,6 @@ class MenuItemCard extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
-
-  void _showContextMenu(BuildContext context, WidgetRef ref) {
-    showMenu(
-      context: context,
-      position: RelativeRect.fill,
-      items: [
-        PopupMenuItem(
-          child: const Text('Edit item'),
-          onTap: () => showMenuItemFormDialog(context, existingItem: item),
-        ),
-        PopupMenuItem(
-          child: const Text('Archive item'),
-          onTap: () {
-            ref.read(menuItemsProvider.notifier).upsert(
-              item.copyWith(isArchived: true),
-            );
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${item.name} archived')),
-            );
-          },
-        ),
-      ],
     );
   }
 }
@@ -191,16 +141,6 @@ class _Artwork extends StatelessWidget {
               Center(
                 child: Text(item.emoji, style: TextStyle(fontSize: glyph)),
               ),
-              if (item.isPopular && available)
-                Positioned(
-                  top: Insets.xs,
-                  left: Insets.xs,
-                  child: Icon(
-                    Icons.star_rounded,
-                    size: 14,
-                    color: context.semantic.warning,
-                  ),
-                ),
               if (!available)
                 Center(
                   child: DecoratedBox(
@@ -229,16 +169,6 @@ class _Artwork extends StatelessWidget {
                   top: Insets.sm,
                   right: Insets.sm,
                   child: _QuantityBadge(quantity: quantity),
-                ),
-              if (item.linkedInventoryItemId != null)
-                Positioned(
-                  bottom: Insets.xs,
-                  left: Insets.xs,
-                  child: Icon(
-                    Icons.link_rounded,
-                    size: 14,
-                    color: colors.primary,
-                  ),
                 ),
             ],
           ),
@@ -290,15 +220,10 @@ class _QuantityBadge extends StatelessWidget {
 /// Tap-scale micro-interaction. Local animation state only — nothing here
 /// belongs in Riverpod.
 class _Pressable extends StatefulWidget {
-  const _Pressable({
-    required this.child,
-    required this.enabled,
-    this.onLongPress,
-  });
+  const _Pressable({required this.child, required this.enabled});
 
   final Widget child;
   final bool enabled;
-  final VoidCallback? onLongPress;
 
   @override
   State<_Pressable> createState() => _PressableState();
@@ -315,18 +240,15 @@ class _PressableState extends State<_Pressable> {
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
 
-    return GestureDetector(
-      onLongPress: widget.onLongPress,
-      child: Listener(
-        onPointerDown: (_) => _set(true),
-        onPointerUp: (_) => _set(false),
-        onPointerCancel: (_) => _set(false),
-        child: AnimatedScale(
-          scale: _pressed ? 0.97 : 1,
-          duration: const Duration(milliseconds: 90),
-          curve: Curves.easeOut,
-          child: widget.child,
-        ),
+    return Listener(
+      onPointerDown: (_) => _set(true),
+      onPointerUp: (_) => _set(false),
+      onPointerCancel: (_) => _set(false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1,
+        duration: const Duration(milliseconds: 90),
+        curve: Curves.easeOut,
+        child: widget.child,
       ),
     );
   }
