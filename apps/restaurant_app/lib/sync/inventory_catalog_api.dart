@@ -13,7 +13,11 @@ class CatalogItemDto {
   final String businessId;
   final String storeId;
   final String name;
-  final String unitOfMeasure;
+
+  /// The backend `Unit` row's UUID (`item.unit_id` on the wire), not the
+  /// old `unit_of_measure` enum string — see `CachedUnits`. Null when the
+  /// item has no unit assigned (a nullable FK server-side).
+  final String? unitId;
 
   /// The backend `Category` row's UUID (`item.category_id` on the wire),
   /// not a free-text label — see `CachedCategories`.
@@ -24,6 +28,7 @@ class CatalogItemDto {
   final Decimal? unitCost;
   final bool allowNegativeStock;
   final String itemType;
+  final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -32,7 +37,7 @@ class CatalogItemDto {
     required this.businessId,
     required this.storeId,
     required this.name,
-    required this.unitOfMeasure,
+    this.unitId,
     this.category,
     required this.reorderThreshold,
     required this.reorderQuantity,
@@ -40,6 +45,7 @@ class CatalogItemDto {
     this.unitCost,
     required this.allowNegativeStock,
     required this.itemType,
+    this.isActive = true,
     required this.createdAt,
     required this.updatedAt,
   });

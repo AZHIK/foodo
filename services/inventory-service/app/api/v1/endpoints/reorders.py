@@ -44,6 +44,7 @@ from app.deps.auth import get_current_claims, require_business_permission
 from app.models.inventory import ActorType, Item, ItemType, MovementType
 from app.models.reorders import Reorder, ReorderStatus
 from app.models.suppliers import Supplier
+from app.models.units import Unit
 from app.schemas.reorders import (
     ReorderCreate,
     ReorderListFilters,
@@ -117,6 +118,14 @@ async def create_reorder(
                 "purchase-received. Reorder its raw-material components instead."
             ),
         )
+    if item.unit_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Item has no unit assigned — set a unit before reordering it.",
+        )
+    unit = (await session.exec(select(Unit).where(Unit.id == item.unit_id))).one_or_none()
+    if unit is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item's unit not found")
 
     supplier = (
         await session.exec(
@@ -136,7 +145,7 @@ async def create_reorder(
         item_id=body.item_id,
         supplier_id=body.supplier_id,
         quantity=body.quantity,
-        unit=item.unit_of_measure.value,
+        unit=unit.code,
         unit_cost=body.unit_cost,
         notes=body.notes,
         ordered_at=datetime.now(UTC),

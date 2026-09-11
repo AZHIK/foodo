@@ -16,7 +16,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import get_settings
-from app.models.inventory import Item, ItemType, StockLevel, UnitOfMeasure
+from app.models.inventory import Item, ItemType, StockLevel
 
 BUSINESS_ID = UUID("00000000-0000-0000-0000-000000000001")
 STORE_ID = UUID("00000000-0000-0000-0000-000000000010")
@@ -36,7 +36,6 @@ async def _create_test_item(
         business_id=BUSINESS_ID,
         store_id=STORE_ID,
         name=name,
-        unit_of_measure=UnitOfMeasure.UNIT,
         reorder_threshold=Decimal("10.000"),
         reorder_quantity=Decimal("20.000"),
         item_type=item_type,

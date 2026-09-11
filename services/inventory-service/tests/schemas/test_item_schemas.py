@@ -9,11 +9,14 @@ from pydantic import ValidationError
 from app.schemas.items import ItemCreate, ItemRead, ItemUpdate
 
 
+UNIT_ID = UUID("33333333-3333-3333-3333-333333333333")
+
+
 class TestItemCreate:
     def test_valid_create_succeeds(self) -> None:
         data = ItemCreate(
             name="Fresh Tomatoes",
-            unit_of_measure="kg",
+            unit_id=UNIT_ID,
             item_type="both",
             reorder_threshold=10.0,
             reorder_quantity=50.0,
@@ -26,7 +29,7 @@ class TestItemCreate:
     def test_valid_create_with_selling_price_succeeds(self) -> None:
         data = ItemCreate(
             name="Jollof Rice",
-            unit_of_measure="unit",
+            unit_id=UNIT_ID,
             item_type="sellable",
             reorder_threshold=10.0,
             reorder_quantity=50.0,
@@ -38,7 +41,7 @@ class TestItemCreate:
     def test_valid_create_with_unit_cost_succeeds(self) -> None:
         data = ItemCreate(
             name="Flour",
-            unit_of_measure="kg",
+            unit_id=UNIT_ID,
             item_type="raw_material",
             reorder_threshold=10.0,
             reorder_quantity=50.0,
@@ -50,11 +53,25 @@ class TestItemCreate:
         # rather than the float literal itself.
         assert data.unit_cost == Decimal("2.45")
 
-    def test_rejects_invalid_unit_of_measure(self) -> None:
+    def test_rejects_invalid_unit_id(self) -> None:
+        """unit_id is a real FK (see app/models/units.py) — a non-UUID value
+        is rejected at the schema layer, not against a fixed enum anymore."""
         with pytest.raises(ValidationError):
             ItemCreate(
                 name="Bad Unit Item",
-                unit_of_measure="stone",  # not in UnitOfMeasure enum
+                unit_id="not-a-uuid",
+                reorder_threshold=5.0,
+                reorder_quantity=20.0,
+                business_id=UUID("11111111-1111-1111-1111-111111111111"),
+                store_id=UUID("22222222-2222-2222-2222-222222222222"),
+            )
+
+    def test_rejects_missing_unit_id(self) -> None:
+        """unit_id is required — every item must count against a real unit."""
+        with pytest.raises(ValidationError):
+            ItemCreate(
+                name="No Unit Item",
+                item_type="both",
                 reorder_threshold=5.0,
                 reorder_quantity=20.0,
                 business_id=UUID("11111111-1111-1111-1111-111111111111"),
@@ -65,7 +82,7 @@ class TestItemCreate:
         with pytest.raises(ValidationError):
             ItemCreate(
                 name="Bad Type Item",
-                unit_of_measure="kg",
+                unit_id=UNIT_ID,
                 item_type="discontinued",  # not in ItemType enum
                 reorder_threshold=5.0,
                 reorder_quantity=20.0,
@@ -86,7 +103,7 @@ class TestItemUpdate:
     def test_partial_update_works(self) -> None:
         data = ItemUpdate(name="Renamed Item")
         assert data.name == "Renamed Item"
-        assert data.unit_of_measure is None
+        assert data.unit_id is None
         assert data.category_id is None
 
     def test_update_selling_price_works(self) -> None:

@@ -15,6 +15,7 @@ CachedItem _item(String id, String name) => CachedItem(
       businessLocationId: 'store-1',
       name: name,
       unitOfMeasure: 'unit',
+      unitId: '',
       reorderThreshold: Decimal.zero,
       reorderQuantity: Decimal.zero,
       allowNegativeStock: false,

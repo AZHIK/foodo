@@ -113,6 +113,19 @@
 /// nullable text column, only its meaning changes (the backend category's
 /// UUID, no longer a raw free-text string), since the backend's own
 /// `item.category` → `item.category_id` migration renamed the wire field.
+///
+/// v10 connects the item unit picker to a real backend (Inventory
+/// Service's `unit` table, migration
+/// `a7b8c9d0e1f2_create_unit_and_migrate_item_unit`): adds the pull-only
+/// cache table `CachedUnits` — global, not business-scoped, mirroring
+/// `CachedCategories`. Unlike `CachedItems.category` above,
+/// `CachedItems.unitOfMeasure` is NOT repurposed: the backend renamed its
+/// wire field (`unit_of_measure` → `unit_id`), so the old column is left
+/// in place, unused, and a new nullable-in-spirit `unitId` column is added
+/// instead (`m.addColumn` can't add a nullable column with no default in
+/// SQLite the way this codebase's Drift version emits it, so it carries a
+/// `''` "unset" sentinel default rather than being genuinely nullable —
+/// see `CachedItems.unitId`'s doc comment).
 library;
 
 import 'package:decimal/decimal.dart';
@@ -138,6 +151,7 @@ import 'tables/cached_customers.dart';
 import 'tables/cached_suppliers.dart';
 import 'tables/cached_reorders.dart';
 import 'tables/cached_categories.dart';
+import 'tables/cached_units.dart';
 import 'tables/local_audit_log.dart';
 
 part 'app_database.g.dart';
@@ -164,6 +178,7 @@ part 'app_database.g.dart';
   CachedSuppliers,
   CachedReorders,
   CachedCategories,
+  CachedUnits,
   LocalAuditLog,
 ])
 class AppDatabase extends _$AppDatabase {
@@ -171,7 +186,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.connection);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -263,6 +278,10 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 9) {
         await m.createTable(cachedCategories);
+      }
+      if (from < 10) {
+        await m.createTable(cachedUnits);
+        await m.addColumn(cachedItems, cachedItems.unitId);
       }
     },
     beforeOpen: (details) async {

@@ -13,6 +13,7 @@ from app.api.v1.endpoints import categories as categories_endpoints
 from app.api.v1.endpoints import items as items_endpoints
 from app.api.v1.endpoints import reorders as reorders_endpoints
 from app.api.v1.endpoints import suppliers as suppliers_endpoints
+from app.api.v1.endpoints import units as units_endpoints
 from app.api.v1.endpoints.internal_events import router as internal_events_router
 from app.api.v1.endpoints.operations import business_router, items_router as ops_items_router
 from app.api.v1.endpoints.reports import router as reports_router
@@ -56,4 +57,5 @@ app.include_router(reports_router, prefix="/api/v1")
 app.include_router(suppliers_endpoints.router, prefix="/api/v1")
 app.include_router(reorders_endpoints.router, prefix="/api/v1")
 app.include_router(categories_endpoints.router, prefix="/api/v1")
+app.include_router(units_endpoints.router, prefix="/api/v1")
 app.include_router(internal_events_router, prefix="/api/v1")

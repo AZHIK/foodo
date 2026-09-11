@@ -22,7 +22,6 @@ from app.models.inventory import (
     ProcessedEvent,
     StockLevel,
     StockMovement,
-    UnitOfMeasure,
 )
 from app.services.stock_movement_service import (
     InsufficientStockError,
@@ -48,7 +47,6 @@ async def _create_item(
         business_id=BUSINESS_ID,
         store_id=STORE_ID,
         name=name,
-        unit_of_measure=UnitOfMeasure.KG,
         reorder_threshold=reorder_threshold,
         reorder_quantity=reorder_quantity,
         allow_negative_stock=allow_negative_stock,

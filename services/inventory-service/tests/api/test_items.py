@@ -13,10 +13,12 @@ from uuid import UUID
 import jwt
 import pytest
 from httpx import AsyncClient
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import get_settings
-from app.models.inventory import Item, ItemType, StockLevel, UnitOfMeasure
+from app.models.inventory import Item, ItemType, StockLevel
+from app.models.units import Unit
 
 # ── Test RSA keypair (copied from test_token_verification.py) ──────────
 TEST_PRIVATE_KEY = """-----BEGIN RSA PRIVATE KEY-----
@@ -100,6 +102,11 @@ def _other_biz_header() -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+async def _kg_unit_id(session: AsyncSession) -> UUID:
+    result = await session.exec(select(Unit).where(Unit.code == "kg"))
+    return result.one().id
+
+
 async def _create_test_item(
     session: AsyncSession,
     name: str = "Test Item",
@@ -112,7 +119,7 @@ async def _create_test_item(
         business_id=BUSINESS_ID,
         store_id=store_id,
         name=name,
-        unit_of_measure=UnitOfMeasure.KG,
+        unit_id=await _kg_unit_id(session),
         reorder_threshold=reorder_threshold,
         reorder_quantity=reorder_quantity,
         item_type=item_type,
@@ -145,15 +152,13 @@ async def _create_stock_level(
 
 @pytest.mark.asyncio
 async def test_full_crud_cycle(
-    client: AsyncClient, db_session: AsyncSession, produce_category_id: str
+    client: AsyncClient, db_session: AsyncSession, produce_category_id: str, kg_unit_id: str
 ) -> None:
-    from sqlmodel import select
-
     """Create → read → update → soft-delete → confirm row still exists."""
     # Create
     create_payload = {
         "name": "Fresh Tomatoes",
-        "unit_of_measure": "kg",
+        "unit_id": kg_unit_id,
         "category_id": produce_category_id,
         "reorder_threshold": 10.0,
         "reorder_quantity": 50.0,
@@ -197,11 +202,11 @@ async def test_full_crud_cycle(
 
 
 @pytest.mark.asyncio
-async def test_create_item_with_selling_price(client: AsyncClient) -> None:
+async def test_create_item_with_selling_price(client: AsyncClient, each_unit_id: str) -> None:
     """Creating an item with selling_price stores and returns it."""
     payload = {
         "name": "Jollof Rice",
-        "unit_of_measure": "unit",
+        "unit_id": each_unit_id,
         "item_type": "sellable",
         "reorder_threshold": 10.0,
         "reorder_quantity": 50.0,
@@ -216,11 +221,13 @@ async def test_create_item_with_selling_price(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_item_without_selling_price_succeeds(client: AsyncClient) -> None:
+async def test_create_item_without_selling_price_succeeds(
+    client: AsyncClient, kg_unit_id: str
+) -> None:
     """Omitting selling_price is genuinely optional — not silently required."""
     payload = {
         "name": "Raw Flour",
-        "unit_of_measure": "kg",
+        "unit_id": kg_unit_id,
         "item_type": "raw_material",
         "reorder_threshold": 10.0,
         "reorder_quantity": 50.0,
@@ -247,7 +254,9 @@ async def test_update_selling_price_via_patch(
 
 
 @pytest.mark.asyncio
-async def test_selling_price_round_trips_without_drift(client: AsyncClient) -> None:
+async def test_selling_price_round_trips_without_drift(
+    client: AsyncClient, each_unit_id: str
+) -> None:
     """selling_price survives create + read + patch without floating-point drift.
 
     The price is sent as a JSON string (exact Decimal) — a float in JSON
@@ -257,7 +266,7 @@ async def test_selling_price_round_trips_without_drift(client: AsyncClient) -> N
     """
     payload = {
         "name": "Precision Item",
-        "unit_of_measure": "unit",
+        "unit_id": each_unit_id,
         "item_type": "both",
         "reorder_threshold": 10.0,
         "reorder_quantity": 50.0,
@@ -287,12 +296,12 @@ async def test_selling_price_round_trips_without_drift(client: AsyncClient) -> N
 
 
 @pytest.mark.asyncio
-async def test_create_item_with_unit_cost(client: AsyncClient) -> None:
+async def test_create_item_with_unit_cost(client: AsyncClient, kg_unit_id: str) -> None:
     """Creating an item with unit_cost stores and returns it, independent of
     selling_price."""
     payload = {
         "name": "Raw Flour",
-        "unit_of_measure": "kg",
+        "unit_id": kg_unit_id,
         "item_type": "raw_material",
         "reorder_threshold": 10.0,
         "reorder_quantity": 50.0,
@@ -320,11 +329,11 @@ async def test_update_unit_cost_via_patch(client: AsyncClient, db_session: Async
 
 
 @pytest.mark.asyncio
-async def test_item_type_omitted_is_rejected(client: AsyncClient) -> None:
+async def test_item_type_omitted_is_rejected(client: AsyncClient, each_unit_id: str) -> None:
     """Confirm the Stage 2 follow-up is enforced all the way through the API."""
     payload = {
         "name": "No Type Item",
-        "unit_of_measure": "unit",
+        "unit_id": each_unit_id,
         "reorder_threshold": 5.0,
         "reorder_quantity": 10.0,
         "store_id": str(STORE_ID),
@@ -380,10 +389,10 @@ async def test_list_no_auth_returns_403(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_no_adjust_perm_returns_403(client: AsyncClient) -> None:
+async def test_create_no_adjust_perm_returns_403(client: AsyncClient, kg_unit_id: str) -> None:
     payload = {
         "name": "Any",
-        "unit_of_measure": "kg",
+        "unit_id": kg_unit_id,
         "reorder_threshold": 1.0,
         "reorder_quantity": 2.0,
         "item_type": "both",
@@ -492,11 +501,12 @@ async def test_wrong_business_rejected_for_list(
 async def test_wrong_business_rejected_for_create(
     client: AsyncClient,
     db_session: AsyncSession,
+    kg_unit_id: str,
 ) -> None:
     wrong_url = f"/api/v1/businesses/{OTHER_BUSINESS_ID}/items"
     payload = {
         "name": "Should Not Create",
-        "unit_of_measure": "kg",
+        "unit_id": kg_unit_id,
         "reorder_threshold": 1.0,
         "reorder_quantity": 2.0,
         "item_type": "both",
@@ -510,11 +520,11 @@ async def test_wrong_business_rejected_for_create(
 
 
 @pytest.mark.asyncio
-async def test_create_requires_items_create_perm(client: AsyncClient) -> None:
+async def test_create_requires_items_create_perm(client: AsyncClient, kg_unit_id: str) -> None:
     """Token with old INVENTORY_ADJUST (but not items.create) is rejected."""
     payload = {
         "name": "Needs Create",
-        "unit_of_measure": "kg",
+        "unit_id": kg_unit_id,
         "reorder_threshold": 1.0,
         "reorder_quantity": 2.0,
         "item_type": "both",

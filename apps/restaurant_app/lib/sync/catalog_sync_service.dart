@@ -23,11 +23,15 @@ class CatalogSyncService {
   /// Error from the last sync attempt, if any.
   String? lastSyncError;
 
-  CatalogSyncService({required this._db, required InventoryCatalogApi api}) : _api = api;
+  CatalogSyncService({required this._db, required InventoryCatalogApi api})
+    : _api = api;
 
   /// Runs [syncCatalog] then [syncStockLevels] for [storeId]. Convenience
   /// for call sites (e.g. right after login) that want both in one call.
-  Future<void> syncAll({required String businessId, required String storeId}) async {
+  Future<void> syncAll({
+    required String businessId,
+    required String storeId,
+  }) async {
     await syncCatalog(storeId: storeId);
     await syncStockLevels(storeId: storeId);
   }
@@ -48,37 +52,42 @@ class CatalogSyncService {
 
       for (final item in items) {
         seenIds.add(item.id);
-        await _db.into(_db.cachedItems).insertOnConflictUpdate(
-          CachedItemsCompanion(
-            id: Value(item.id),
-            businessId: Value(item.businessId),
-            businessLocationId: Value(item.storeId),
-            name: Value(item.name),
-            unitOfMeasure: Value(item.unitOfMeasure),
-            category: Value(item.category),
-            reorderThreshold: Value(item.reorderThreshold),
-            reorderQuantity: Value(item.reorderQuantity),
-            sellingPrice: Value(item.sellingPrice),
-            unitCost: Value(item.unitCost),
-            allowNegativeStock: Value(item.allowNegativeStock),
-            itemType: Value(item.itemType),
-            createdAtServer: Value(item.createdAt),
-            updatedAtServer: Value(item.updatedAt),
-            lastSeenAt: Value(runStartedAt),
-            lastSyncedAt: Value(runStartedAt),
-          ),
-        );
+        await _db
+            .into(_db.cachedItems)
+            .insertOnConflictUpdate(
+              CachedItemsCompanion(
+                id: Value(item.id),
+                businessId: Value(item.businessId),
+                businessLocationId: Value(item.storeId),
+                name: Value(item.name),
+                unitOfMeasure: const Value('unit'),
+                unitId: Value(item.unitId ?? ''),
+                category: Value(item.category),
+                reorderThreshold: Value(item.reorderThreshold),
+                reorderQuantity: Value(item.reorderQuantity),
+                sellingPrice: Value(item.sellingPrice),
+                unitCost: Value(item.unitCost),
+                allowNegativeStock: Value(item.allowNegativeStock),
+                itemType: Value(item.itemType),
+                isActive: Value(item.isActive),
+                createdAtServer: Value(item.createdAt),
+                updatedAtServer: Value(item.updatedAt),
+                lastSeenAt: Value(runStartedAt),
+                lastSyncedAt: Value(runStartedAt),
+              ),
+            );
       }
 
       // Soft-delete items not in this pull (mark inactive). Scoped to this
       // store only — a soft-delete must not touch another store's items
       // cached from a prior business context on this device.
-      final storeItems = await (_db.select(_db.cachedItems)
-            ..where((row) => row.businessLocationId.equals(storeId)))
-          .get();
+      final storeItems = await (_db.select(
+        _db.cachedItems,
+      )..where((row) => row.businessLocationId.equals(storeId))).get();
       for (final item in storeItems) {
         if (!seenIds.contains(item.id) && item.isActive) {
-          await (_db.update(_db.cachedItems)..where((row) => row.id.equals(item.id)))
+          await (_db.update(_db.cachedItems)
+                ..where((row) => row.id.equals(item.id)))
               .write(const CachedItemsCompanion(isActive: Value(false)));
         }
       }
@@ -103,14 +112,16 @@ class CatalogSyncService {
       final levels = await _api.fetchStockLevels(storeId: storeId);
 
       for (final level in levels) {
-        await _db.into(_db.cachedStockLevels).insertOnConflictUpdate(
-          CachedStockLevelsCompanion(
-            itemId: Value(level.itemId),
-            businessLocationId: Value(level.storeId),
-            currentQuantity: Value(level.currentQuantity),
-            cachedAt: Value(runStartedAt),
-          ),
-        );
+        await _db
+            .into(_db.cachedStockLevels)
+            .insertOnConflictUpdate(
+              CachedStockLevelsCompanion(
+                itemId: Value(level.itemId),
+                businessLocationId: Value(level.storeId),
+                currentQuantity: Value(level.currentQuantity),
+                cachedAt: Value(runStartedAt),
+              ),
+            );
       }
 
       lastSyncTime = DateTime.now();

@@ -16,7 +16,6 @@ import 'token_storage.dart';
 /// Handles silent token refresh on 401 responses.
 class TokenRefreshInterceptor extends Interceptor {
   final TokenStorage _tokenStorage;
-  final String _baseUrl;
 
   /// Optional: when given, a successful background refresh also updates
   /// the local `CachedPermissions` table (see `syncPermissionsCache`) —
@@ -52,7 +51,6 @@ class TokenRefreshInterceptor extends Interceptor {
     LocalProfileRepository? profileRepo,
     void Function()? onPermissionsSynced,
   })  : _tokenStorage = tokenStorage,
-        _baseUrl = baseUrl,
         _profileRepo = profileRepo,
         _onPermissionsSynced = onPermissionsSynced {
     // Create a bare Dio instance (no interceptors) for refresh calls.
@@ -174,13 +172,21 @@ class TokenRefreshInterceptor extends Interceptor {
   }
 
   /// Retries a failed request with the new access token.
+  ///
+  /// Uses [requestOptions.baseUrl] — the base URL the ORIGINAL request was
+  /// made against (Inventory/POS/whichever service this interceptor is
+  /// attached to) — not the constructor's `baseUrl` (always Identity
+  /// Service, needed only for the refresh call itself above). Retrying
+  /// against Identity Service's URL would silently send a service's own
+  /// request there instead, 404ing on every 401-triggered retry for any
+  /// non-Identity client.
   Future<Response<dynamic>> _retry(RequestOptions requestOptions) async {
     final tokenSet = await _tokenStorage.getTokenSet();
     if (tokenSet != null) {
       requestOptions.headers['Authorization'] = 'Bearer ${tokenSet.accessToken}';
     }
 
-    final dio = Dio(BaseOptions(baseUrl: _baseUrl));
+    final dio = Dio(BaseOptions(baseUrl: requestOptions.baseUrl));
     return dio.request<dynamic>(
       requestOptions.path,
       options: Options(

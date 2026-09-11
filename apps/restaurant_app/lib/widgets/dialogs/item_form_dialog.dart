@@ -1,11 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/mock_inventory.dart';
 import '../../models/inventory_item.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/item_form_provider.dart';
+import '../../providers/units_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
@@ -120,6 +122,27 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
     // read below builds from the stored item.
     ref.invalidate(_provider);
     final state = ref.read(_provider);
+
+    // Categories/units each sync themselves exactly once per app session
+    // (on the first widget that reads their provider) — reopening this form
+    // later in the same session would otherwise keep showing whatever
+    // taxonomy existed at that first read, even after someone adds a new
+    // category/unit on the backend. Re-syncing every time the form opens is
+    // the one place staleness here actually bites (picking a since-removed
+    // option, or not seeing a newly added one), so it's worth the extra
+    // network round trip — the dropdowns keep showing cached data while
+    // this resolves, no flash of empty state.
+    //
+    // `refresh()` writes `state` synchronously (before its first `await`,
+    // to flip to `AsyncLoading`), and `didChangeDependencies` still counts
+    // as build phase — Riverpod forbids a provider write there even via an
+    // unawaited call. `Future(() {...})` defers the call to a fresh
+    // microtask, after this build finishes.
+    Future(() {
+      if (!mounted) return;
+      unawaited(ref.read(categoriesProvider.notifier).refresh());
+      unawaited(ref.read(unitsProvider.notifier).refresh());
+    });
 
     _name.text = state.name;
     _sku.text = state.sku;
@@ -577,18 +600,26 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
                   ),
             right: LabeledFormField(
               label: 'Unit',
-              child: DropdownButtonFormField<String>(
-                key: ItemFormKeys.unit,
-                initialValue: MockInventory.units.contains(state.unit)
-                    ? state.unit
-                    : MockInventory.units.first,
-                isExpanded: true,
-                items: [
-                  for (final unit in MockInventory.units)
-                    DropdownMenuItem(value: unit, child: Text(unit)),
-                ],
-                onChanged: (value) => notifier.setUnit(value ?? state.unit),
-              ),
+              // Falls back to a single option carrying the current value
+              // while the real taxonomy is still syncing (or offline with
+              // an empty cache) — mirrors the old MockInventory.units
+              // fallback shape without hardcoding a fake unit list.
+              child: Builder(builder: (_) {
+                final abbreviations = [
+                  for (final unit in ref.watch(unitsListProvider)) unit.abbreviation,
+                ];
+                final options = abbreviations.isEmpty ? [state.unit] : abbreviations;
+                return DropdownButtonFormField<String>(
+                  key: ItemFormKeys.unit,
+                  initialValue: options.contains(state.unit) ? state.unit : options.first,
+                  isExpanded: true,
+                  items: [
+                    for (final unit in options)
+                      DropdownMenuItem(value: unit, child: Text(unit)),
+                  ],
+                  onChanged: (value) => notifier.setUnit(value ?? state.unit),
+                );
+              }),
             ),
           ),
         ],

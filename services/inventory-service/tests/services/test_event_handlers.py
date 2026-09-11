@@ -21,7 +21,6 @@ from app.models.inventory import (
     ProcessedEvent,
     StockLevel,
     StockMovement,
-    UnitOfMeasure,
 )
 from app.services.event_handlers import (
     handle_order_confirmed,
@@ -47,7 +46,6 @@ async def _create_item(
         business_id=BUSINESS_ID,
         store_id=STORE_ID,
         name=name,
-        unit_of_measure=UnitOfMeasure.KG,
         category="test",
         reorder_threshold=Decimal("10.000"),
         reorder_quantity=Decimal("20.000"),

@@ -24,16 +24,10 @@ import 'package:decimal/decimal.dart';
 import '../database/app_database.dart';
 import '../models/inventory_item.dart';
 
-/// Backend `unit_of_measure` codes (`kg|g|l|ml|unit|pack`) to the short
-/// display string `InventoryItem.unit` expects next to a quantity.
-String unitOfMeasureLabel(String unitOfMeasure) => switch (unitOfMeasure) {
-      'kg' => 'kg',
-      'g' => 'g',
-      'l' => 'L',
-      'ml' => 'ml',
-      'pack' => 'pack',
-      _ => 'ea',
-    };
+/// Fallback shown when [catalogRow.unitId] doesn't resolve against the
+/// caller's units cache — no unit synced yet, or the item genuinely has
+/// none assigned (a nullable FK server-side).
+const _unresolvedUnitAbbreviation = 'ea';
 
 /// A short, stable, display-only stand-in for a real SKU — real items have
 /// no SKU field on the backend, so this is derived from the id rather than
@@ -49,9 +43,16 @@ double _toDouble(Decimal? value) => value == null ? 0 : double.parse(value.toStr
 /// when a stock-level sync hasn't run yet (or hasn't seen this item) — the
 /// item still renders, just with a `0` on-hand quantity until that catches
 /// up, matching `CachedStockLevels`' own "pull-only, display hint" contract.
+///
+/// [unitAbbreviationById] resolves [catalogRow.unitId] to a display string
+/// (e.g. `L`, `ea`) — a lookup rather than a hardcoded switch, since the
+/// unit taxonomy is now backend-seeded data (`CachedUnits`), not a fixed
+/// enum this mapper can hardcode. The caller (`InventoryNotifier._loadFromCache`)
+/// resolves it once per cache load rather than per row.
 InventoryItem inventoryItemFromCachedRow({
   required CachedItem catalogRow,
   CachedStockLevel? stockRow,
+  Map<String, String> unitAbbreviationById = const {},
 }) {
   final sellingPrice = catalogRow.sellingPrice == null ? null : _toDouble(catalogRow.sellingPrice);
   return InventoryItem(
@@ -64,7 +65,7 @@ InventoryItem inventoryItemFromCachedRow({
     stock: stockRow != null ? _toDouble(stockRow.currentQuantity) : 0,
     reorderLevel: _toDouble(catalogRow.reorderThreshold),
     unitCost: _toDouble(catalogRow.unitCost),
-    unit: unitOfMeasureLabel(catalogRow.unitOfMeasure),
+    unit: unitAbbreviationById[catalogRow.unitId] ?? _unresolvedUnitAbbreviation,
     isArchived: !catalogRow.isActive,
     sellingPrice: sellingPrice,
     // Raw materials never sell through the till, even if a price leaked in.

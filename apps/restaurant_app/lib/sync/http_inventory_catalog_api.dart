@@ -87,7 +87,7 @@ class HttpInventoryCatalogApi extends InventoryCatalogApi {
         businessId: item['business_id'] as String,
         storeId: item['store_id'] as String,
         name: item['name'] as String,
-        unitOfMeasure: item['unit_of_measure'] as String,
+        unitId: item['unit_id'] as String?,
         category: item['category_id'] as String?,
         reorderThreshold: Decimal.parse(item['reorder_threshold'].toString()),
         reorderQuantity: Decimal.parse(item['reorder_quantity'].toString()),
@@ -99,6 +99,7 @@ class HttpInventoryCatalogApi extends InventoryCatalogApi {
             : null,
         allowNegativeStock: item['allow_negative_stock'] as bool? ?? false,
         itemType: item['item_type'] as String,
+        isActive: item['is_active'] as bool? ?? true,
         createdAt: DateTime.parse(item['created_at'] as String),
         updatedAt: DateTime.parse(item['updated_at'] as String),
       );

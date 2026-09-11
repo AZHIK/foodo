@@ -29,14 +29,14 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.inventory import ItemType, UnitOfMeasure
+from app.models.inventory import ItemType
 
 
 class ItemBase(BaseModel):
     """Shared fields for item schemas."""
 
     name: str
-    unit_of_measure: UnitOfMeasure
+    unit_id: UUID
     category_id: UUID | None = None
     reorder_threshold: Decimal
     reorder_quantity: Decimal
@@ -71,7 +71,7 @@ class ItemUpdate(BaseModel):
     """
 
     name: str | None = None
-    unit_of_measure: UnitOfMeasure | None = None
+    unit_id: UUID | None = None
     category_id: UUID | None = None
     reorder_threshold: Decimal | None = None
     reorder_quantity: Decimal | None = None

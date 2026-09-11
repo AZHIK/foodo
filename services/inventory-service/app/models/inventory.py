@@ -45,17 +45,6 @@ from sqlmodel import Field, ForeignKey, SQLModel
 # ═══════════════════════════════════════════════════════════════════════
 
 
-class UnitOfMeasure(str, PyEnum):
-    """Measurement units supported for item quantities."""
-
-    KG = "kg"
-    G = "g"
-    L = "l"
-    ML = "ml"
-    UNIT = "unit"
-    PACK = "pack"
-
-
 class ItemType(str, PyEnum):
     """Classification of an item's role in the business — determines which movement types affect it.
 
@@ -164,10 +153,13 @@ class Item(SQLModel, table=True):
         sa_type=PG_UUID,
     )
     name: str = Field(nullable=False, max_length=255)
-    unit_of_measure: UnitOfMeasure = Field(
+    unit_id: UUID | None = Field(
+        default=None,
         sa_column=Column(
-            SAEnum(UnitOfMeasure, values_callable=_enum_db_values, name="unitofmeasure"),
-            nullable=False,
+            PG_UUID,
+            ForeignKey("unit.id", ondelete="RESTRICT"),
+            nullable=True,
+            index=True,
         ),
     )
     category_id: UUID | None = Field(

@@ -106,7 +106,7 @@ async def create_item(
         business_id=business_id,
         store_id=body.store_id,
         name=body.name,
-        unit_of_measure=body.unit_of_measure,
+        unit_id=body.unit_id,
         category_id=body.category_id,
         reorder_threshold=body.reorder_threshold,
         reorder_quantity=body.reorder_quantity,

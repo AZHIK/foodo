@@ -25,7 +25,6 @@ from app.models import (
     RecipeComponent,
     StockLevel,
     StockMovement,
-    UnitOfMeasure,
 )
 
 
@@ -40,7 +39,6 @@ class TestItemModel:
             business_id=UUID("00000000-0000-0000-0000-000000000001"),
             store_id=UUID("00000000-0000-0000-0000-000000000002"),
             name="Fresh Tomatoes",
-            unit_of_measure=UnitOfMeasure.KG,
             item_type=ItemType.BOTH,
             reorder_threshold=Decimal("10.000"),
             reorder_quantity=Decimal("50.000"),
@@ -48,7 +46,7 @@ class TestItemModel:
         assert isinstance(item.id, UUID)
         assert item.business_id == UUID("00000000-0000-0000-0000-000000000001")
         assert item.name == "Fresh Tomatoes"
-        assert item.unit_of_measure == UnitOfMeasure.KG
+        assert item.unit_id is None
         assert item.reorder_threshold == Decimal("10.000")
         assert item.selling_price is None
         assert item.unit_cost is None
@@ -59,12 +57,26 @@ class TestItemModel:
         assert isinstance(item.created_at, datetime)
         assert isinstance(item.updated_at, datetime)
 
+    def test_create_item_with_unit_id(self) -> None:
+        """unit_id is an FK, not a Postgres enum — a real unit table row (see
+        ``app/models/units.py``) is what a valid value refers to."""
+        unit_id = UUID("00000000-0000-0000-0000-0000000000aa")
+        item = Item(
+            business_id=UUID("00000000-0000-0000-0000-000000000001"),
+            store_id=UUID("00000000-0000-0000-0000-000000000002"),
+            name="Fresh Tomatoes",
+            unit_id=unit_id,
+            item_type=ItemType.BOTH,
+            reorder_threshold=Decimal("10.000"),
+            reorder_quantity=Decimal("50.000"),
+        )
+        assert item.unit_id == unit_id
+
     def test_create_item_with_selling_price(self) -> None:
         item = Item(
             business_id=UUID("00000000-0000-0000-0000-000000000001"),
             store_id=UUID("00000000-0000-0000-0000-000000000002"),
             name="Jollof Rice",
-            unit_of_measure=UnitOfMeasure.UNIT,
             item_type=ItemType.SELLABLE,
             reorder_threshold=Decimal("10.000"),
             reorder_quantity=Decimal("50.000"),
@@ -78,7 +90,6 @@ class TestItemModel:
             business_id=UUID("00000000-0000-0000-0000-000000000001"),
             store_id=UUID("00000000-0000-0000-0000-000000000002"),
             name="Flour",
-            unit_of_measure=UnitOfMeasure.KG,
             item_type=ItemType.RAW_MATERIAL,
             reorder_threshold=Decimal("10.000"),
             reorder_quantity=Decimal("50.000"),
@@ -94,7 +105,6 @@ class TestItemModel:
             business_id=UUID("00000000-0000-0000-0000-000000000001"),
             store_id=UUID("00000000-0000-0000-0000-000000000002"),
             name="Flour",
-            unit_of_measure=UnitOfMeasure.KG,
             item_type=ItemType.RAW_MATERIAL,
             reorder_threshold=Decimal("10.000"),
             reorder_quantity=Decimal("50.000"),
@@ -108,13 +118,6 @@ class TestItemModel:
         assert ItemType.RAW_MATERIAL.value == "raw_material"
         assert ItemType.BOTH.value == "both"
 
-    def test_unit_of_measure_enum_values(self) -> None:
-        assert UnitOfMeasure.KG.value == "kg"
-        assert UnitOfMeasure.G.value == "g"
-        assert UnitOfMeasure.L.value == "l"
-        assert UnitOfMeasure.ML.value == "ml"
-        assert UnitOfMeasure.UNIT.value == "unit"
-        assert UnitOfMeasure.PACK.value == "pack"
 
 
 class TestRecipeComponentModel:
@@ -193,7 +196,6 @@ class TestPersistence:
             business_id=UUID("00000000-0000-0000-0000-000000000001"),
             store_id=UUID("00000000-0000-0000-0000-000000000002"),
             name=f"Test Item{suffix}",
-            unit_of_measure=UnitOfMeasure.KG,
             item_type=ItemType.BOTH,
             reorder_threshold=Decimal("10.000"),
             reorder_quantity=Decimal("50.000"),
@@ -241,7 +243,6 @@ class TestPersistence:
             business_id=UUID("00000000-0000-0000-0000-000000000001"),
             store_id=UUID("00000000-0000-0000-0000-000000000002"),
             name="Precision Priced Item",
-            unit_of_measure=UnitOfMeasure.UNIT,
             item_type=ItemType.BOTH,
             reorder_threshold=Decimal("10.000"),
             reorder_quantity=Decimal("50.000"),
@@ -329,7 +330,6 @@ class TestPersistence:
             business_id=UUID("ffffffff-ffff-ffff-ffff-ffffffffffff"),
             store_id=UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
             name="Cross-Service Item",
-            unit_of_measure=UnitOfMeasure.UNIT,
             item_type=ItemType.BOTH,
             reorder_threshold=Decimal("5.000"),
             reorder_quantity=Decimal("20.000"),

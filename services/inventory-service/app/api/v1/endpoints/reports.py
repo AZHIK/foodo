@@ -21,7 +21,11 @@ lookups land).
 ``item_category`` is now sourced from a further ``Category`` join on
 ``Item.category_id`` (see ``app/models/categories.py``) rather than a raw
 string column — the denormalization rationale above still holds, only the
-source changed.
+source changed. ``item_unit_of_measure`` went through the same change:
+it's now ``Unit.code`` from a further ``Unit`` join on ``Item.unit_id``
+(see ``app/models/units.py``) rather than a Postgres enum column — an
+unresolved (``NULL`` FK) unit reads as ``""`` rather than ``None`` since
+the field's type predates this change and is still a plain ``str``.
 
 ═══════════════════════════════════════════════════════════════════════════
 BELOW_THRESHOLD FILTER — shared logic, same predicate
@@ -51,6 +55,7 @@ from app.core.database import get_db
 from app.deps.auth import require_business_permission
 from app.models.categories import Category
 from app.models.inventory import Item, MovementType, StockLevel, StockMovement
+from app.models.units import Unit
 from app.schemas.movements import StockMovementRead
 from app.schemas.stock_levels import StockLevelRead
 
@@ -101,13 +106,15 @@ async def get_stock_levels(
 
     # Join StockLevel → Item so we can filter/sort on item columns and
     # return denormalized item details — this is the single query that
-    # resolves the Stage 3 open question. Category is a further outer join
-    # (item.category_id is nullable) so item_category can be resolved to a
-    # human-readable name without a second round-trip per row.
+    # resolves the Stage 3 open question. Category and Unit are further
+    # outer joins (item.category_id / item.unit_id are both nullable) so
+    # item_category / item_unit_of_measure can be resolved to human-readable
+    # strings without a second round-trip per row.
     stmt = (
-        select(StockLevel, Item, Category)
+        select(StockLevel, Item, Category, Unit)
         .join(Item, StockLevel.item_id == Item.id)
         .join(Category, Item.category_id == Category.id, isouter=True)
+        .join(Unit, Item.unit_id == Unit.id, isouter=True)
         .where(Item.business_id == business_id)
     )
 
@@ -136,12 +143,12 @@ async def get_stock_levels(
             current_quantity=sl.current_quantity,
             updated_at=sl.updated_at,
             item_name=item.name,
-            item_unit_of_measure=item.unit_of_measure,
+            item_unit_of_measure=unit.code if unit else "",
             item_category=category.name if category else None,
             item_reorder_threshold=item.reorder_threshold,
             item_type=item.item_type,
         )
-        for sl, item, category in rows
+        for sl, item, category, unit in rows
     ]
 
     logger.info(

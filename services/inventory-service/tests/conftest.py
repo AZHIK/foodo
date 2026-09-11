@@ -94,6 +94,23 @@ def _run_alembic_upgrade() -> None:
     )
 
 
+def _seed_units() -> None:
+    """Seed the unit-of-measure taxonomy once per test session.
+
+    Mirrors `_seed_categories()` below — see its docstring for why this uses
+    its own engine/event loop rather than the app's shared one.
+    """
+    from app.db.seed_units import seed_units
+
+    async def _seed() -> None:
+        seed_engine = create_async_engine(TEST_DB_URL)
+        async with AsyncSession(seed_engine) as session:
+            await session.run_sync(lambda sync_session: seed_units(sync_session))
+        await seed_engine.dispose()
+
+    asyncio.run(_seed())
+
+
 def _seed_categories() -> None:
     """Seed the category taxonomy once per test session.
 
@@ -133,6 +150,7 @@ def _migrate_test_database() -> None:
     _ensure_test_database_exists()
     _run_alembic_upgrade()
     _seed_categories()
+    _seed_units()
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -195,3 +213,29 @@ async def _category_id_by_code(code: str) -> str:
 @pytest_asyncio.fixture
 async def produce_category_id() -> str:
     return await _category_id_by_code("produce")
+
+
+async def _unit_id_by_code(code: str) -> str:
+    """Look up a seeded unit's id by its stable code.
+
+    Units are seeded once per test session by `_seed_units()` above, so this
+    just resolves the real (server-generated) id rather than hardcoding one
+    in every test — mirrors `_category_id_by_code`.
+    """
+    from sqlmodel import select
+
+    from app.models.units import Unit
+
+    async with async_session_factory() as session:
+        result = await session.exec(select(Unit).where(Unit.code == code))
+        return str(result.one().id)
+
+
+@pytest_asyncio.fixture
+async def kg_unit_id() -> str:
+    return await _unit_id_by_code("kg")
+
+
+@pytest_asyncio.fixture
+async def each_unit_id() -> str:
+    return await _unit_id_by_code("unit")

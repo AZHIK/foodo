@@ -24,7 +24,6 @@ from app.models.inventory import (
     MovementType,
     StockLevel,
     StockMovement,
-    UnitOfMeasure,
 )
 
 TEST_PRIVATE_KEY = """-----BEGIN RSA PRIVATE KEY-----
@@ -117,7 +116,6 @@ async def _create_item(
         business_id=BUSINESS_ID,
         store_id=store_id,
         name=name,
-        unit_of_measure=UnitOfMeasure.KG,
         category="test",
         reorder_threshold=reorder_threshold,
         reorder_quantity=Decimal("20.000"),

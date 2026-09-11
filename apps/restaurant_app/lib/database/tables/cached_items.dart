@@ -33,7 +33,19 @@ class CachedItems extends Table {
   TextColumn get name => text()();
 
   /// Unit of measure (e.g., 'kg', 'l', 'unit', 'pack').
+  ///
+  /// Dead column, kept only because SQLite can't cheaply drop a NOT NULL
+  /// column without a table rebuild (see `AppDatabase`'s v10 doc comment):
+  /// no longer written or read anywhere — superseded by [unitId] below.
   TextColumn get unitOfMeasure => text()(); // kg|g|l|ml|unit|pack
+
+  /// The backend `Unit` row's UUID (`item.unit_id` on the wire) — see
+  /// `CachedUnits`. Empty string means "not yet resolved" (this column is
+  /// NOT NULL with a `''` default rather than nullable, matching how
+  /// `ItemFormState.categoryId` already treats `''` as its own "unset"
+  /// sentinel, for the same SQLite add-a-NOT-NULL-column-with-a-default
+  /// reason `unitOfMeasure` above can't just become nullable).
+  TextColumn get unitId => text().withDefault(const Constant(''))();
 
   /// Item category (optional) — the backend `Category` row's UUID (see
   /// `CachedCategories`), not a free-text label. Was a raw free-text string

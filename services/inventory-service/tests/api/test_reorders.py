@@ -18,9 +18,10 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import get_settings
-from app.models.inventory import Item, ItemType, StockLevel, StockMovement, UnitOfMeasure
+from app.models.inventory import Item, ItemType, StockLevel, StockMovement
 from app.models.reorders import Reorder, ReorderStatus
 from app.models.suppliers import Supplier
+from app.models.units import Unit
 
 # ── Test RSA keypair (copied from test_token_verification.py) ──────────
 TEST_PRIVATE_KEY = """-----BEGIN RSA PRIVATE KEY-----
@@ -90,6 +91,11 @@ def _auth_header(permissions: list[str] | None = None) -> dict[str, str]:
     return {"Authorization": f"Bearer {_build_token(permissions=permissions)}"}
 
 
+async def _unit_id(session: AsyncSession, code: str = "kg") -> UUID:
+    result = await session.exec(select(Unit).where(Unit.code == code))
+    return result.one().id
+
+
 async def _create_item(
     session: AsyncSession,
     name: str = "Flour",
@@ -99,7 +105,7 @@ async def _create_item(
         business_id=BUSINESS_ID,
         store_id=STORE_ID,
         name=name,
-        unit_of_measure=UnitOfMeasure.KG,
+        unit_id=await _unit_id(session),
         reorder_threshold=Decimal("10.000"),
         reorder_quantity=Decimal("50.000"),
         item_type=item_type,
@@ -131,7 +137,7 @@ async def _create_reorder(
         item_id=item.id,
         supplier_id=supplier.id,
         quantity=quantity,
-        unit=item.unit_of_measure.value,
+        unit="kg",
         unit_cost=Decimal("2.5000"),
         status=status,
         ordered_at=datetime.now(UTC),
@@ -203,6 +209,33 @@ async def test_create_reorder_for_sellable_item_rejected(
 
 
 @pytest.mark.asyncio
+async def test_create_reorder_for_item_with_no_unit_rejected(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """An item whose unit_id is unresolved (NULL FK) cannot be reordered —
+    ``Reorder.unit`` is non-nullable and always denormalized from the item's
+    unit at creation time."""
+    item = Item(
+        business_id=BUSINESS_ID,
+        store_id=STORE_ID,
+        name="No Unit Item",
+        reorder_threshold=Decimal("10.000"),
+        reorder_quantity=Decimal("50.000"),
+        item_type=ItemType.RAW_MATERIAL,
+    )
+    db_session.add(item)
+    await db_session.commit()
+    await db_session.refresh(item)
+    supplier = await _create_supplier(db_session)
+
+    resp = await client.post(
+        API_PREFIX, json=_reorder_payload(item, supplier), headers=AUTH_HEADER
+    )
+    assert resp.status_code == 422
+    assert "unit" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
 async def test_create_reorder_unknown_item_or_supplier_404s(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
@@ -271,7 +304,6 @@ async def test_list_is_business_scoped(client: AsyncClient, db_session: AsyncSes
         business_id=OTHER_BUSINESS_ID,
         store_id=STORE_ID,
         name="Theirs",
-        unit_of_measure=UnitOfMeasure.KG,
         reorder_threshold=Decimal("1"),
         reorder_quantity=Decimal("1"),
         item_type=ItemType.RAW_MATERIAL,

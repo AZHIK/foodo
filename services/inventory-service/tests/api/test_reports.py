@@ -25,8 +25,8 @@ from app.models.inventory import (
     MovementType,
     StockLevel,
     StockMovement,
-    UnitOfMeasure,
 )
+from app.models.units import Unit
 from app.services.stock_movement_service import record_movement
 
 TEST_PRIVATE_KEY = """-----BEGIN RSA PRIVATE KEY-----
@@ -112,6 +112,13 @@ async def _category_id(session: AsyncSession, code: str) -> UUID:
     return result.one().id
 
 
+async def _unit_id(session: AsyncSession, code: str = "kg") -> UUID:
+    """Look up a seeded unit's id by its stable code (see
+    ``a7b8c9d0e1f2_create_unit_and_migrate_item_unit.py``)."""
+    result = await session.exec(select(Unit).where(Unit.code == code))
+    return result.one().id
+
+
 async def _create_item(
     session: AsyncSession,
     name: str = "Test Item",
@@ -124,7 +131,7 @@ async def _create_item(
         business_id=BUSINESS_ID,
         store_id=store_id,
         name=name,
-        unit_of_measure=UnitOfMeasure.KG,
+        unit_id=await _unit_id(session),
         category_id=await _category_id(session, category_code) if category_code else None,
         reorder_threshold=reorder_threshold,
         reorder_quantity=Decimal("20.000"),

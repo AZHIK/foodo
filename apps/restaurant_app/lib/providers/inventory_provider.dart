@@ -6,16 +6,19 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/mock_inventory.dart';
+import '../database/app_database.dart';
 import '../models/inventory_item.dart';
 import '../models/table_query.dart';
 import '../services/inventory_api_service.dart';
 import '../sync/catalog_sync_service.dart';
+import '../sync/inventory_catalog_api.dart';
 import '../sync/inventory_item_mapper.dart';
 import 'categories_provider.dart';
 import 'database_providers.dart';
 import 'inventory_api_provider.dart';
 import 'permissions_provider.dart';
 import 'table_query_provider.dart';
+import 'units_provider.dart';
 
 /// Sortable column keys. Kept as constants rather than raw strings at the call
 /// sites so the column config and the sort switch cannot drift apart.
@@ -69,7 +72,10 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
     return _loadFromCache(storeId);
   }
 
-  Future<void> _refreshFromApi(String storeId, {required bool Function() isDisposed}) async {
+  Future<void> _refreshFromApi(
+    String storeId, {
+    required bool Function() isDisposed,
+  }) async {
     try {
       await _sync.syncCatalog(storeId: storeId);
       await _sync.syncStockLevels(storeId: storeId);
@@ -84,19 +90,32 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
 
   Future<List<InventoryItem>> _loadFromCache(String storeId) async {
     final db = ref.read(appDatabaseProvider);
-    final items = await (db.select(db.cachedItems)
-          ..where((row) => row.businessLocationId.equals(storeId) & row.isActive.equals(true)))
-        .get();
-    final stockLevels = await (db.select(db.cachedStockLevels)
-          ..where((row) => row.businessLocationId.equals(storeId)))
-        .get();
-    final stockByItemId = {for (final level in stockLevels) level.itemId: level};
+    final items =
+        await (db.select(db.cachedItems)..where(
+              (row) =>
+                  row.businessLocationId.equals(storeId) &
+                  row.isActive.equals(true),
+            ))
+            .get();
+    final stockLevels = await (db.select(
+      db.cachedStockLevels,
+    )..where((row) => row.businessLocationId.equals(storeId))).get();
+    final stockByItemId = {
+      for (final level in stockLevels) level.itemId: level,
+    };
+    final units = await db.select(db.cachedUnits).get();
+    final unitAbbreviationById = {
+      for (final unit in units) unit.id: unit.abbreviation,
+    };
 
     return items
-        .map((item) => inventoryItemFromCachedRow(
-              catalogRow: item,
-              stockRow: stockByItemId[item.id],
-            ))
+        .map(
+          (item) => inventoryItemFromCachedRow(
+            catalogRow: item,
+            stockRow: stockByItemId[item.id],
+            unitAbbreviationById: unitAbbreviationById,
+          ),
+        )
         .toList();
   }
 
@@ -134,36 +153,75 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
         ? null
         : Decimal.parse(item.sellingPrice.toString());
 
-    if (item.catalogItemId == null) {
-      await _api.createItem(
-        businessId: _businessId,
-        storeId: storeId,
-        name: item.name,
-        unitOfMeasure: _unitOfMeasureCode(item.unit),
-        itemType: item.itemType,
-        reorderThreshold: Decimal.parse(item.reorderLevel.toString()),
-        reorderQuantity: Decimal.parse(item.reorderQuantity.toString()),
-        categoryId: item.categoryId,
-        unitCost: Decimal.parse(item.unitCost.toString()),
-        sellingPrice: sellingPrice,
-        allowNegativeStock: item.allowNegativeStock,
-      );
-    } else {
-      await _api.updateItem(
-        businessId: _businessId,
-        itemId: item.catalogItemId!,
-        name: item.name,
-        unitOfMeasure: _unitOfMeasureCode(item.unit),
-        categoryId: item.categoryId,
-        reorderThreshold: Decimal.parse(item.reorderLevel.toString()),
-        reorderQuantity: Decimal.parse(item.reorderQuantity.toString()),
-        unitCost: Decimal.parse(item.unitCost.toString()),
-        sellingPrice: sellingPrice,
-        allowNegativeStock: item.allowNegativeStock,
-        itemType: item.itemType,
+    final unitId = unitIdForAbbreviation(
+      ref.read(unitsListProvider),
+      item.unit,
+    );
+    if (unitId == null) {
+      throw StateError(
+        'Unknown unit "${item.unit}" — units may still be syncing. Try again shortly.',
       );
     }
+
+    final saved = item.catalogItemId == null
+        ? await _api.createItem(
+            businessId: _businessId,
+            storeId: storeId,
+            name: item.name,
+            unitId: unitId,
+            itemType: item.itemType,
+            reorderThreshold: Decimal.parse(item.reorderLevel.toString()),
+            reorderQuantity: Decimal.parse(item.reorderQuantity.toString()),
+            categoryId: item.categoryId,
+            unitCost: Decimal.parse(item.unitCost.toString()),
+            sellingPrice: sellingPrice,
+            allowNegativeStock: item.allowNegativeStock,
+          )
+        : await _api.updateItem(
+            businessId: _businessId,
+            itemId: item.catalogItemId!,
+            name: item.name,
+            unitId: unitId,
+            categoryId: item.categoryId,
+            reorderThreshold: Decimal.parse(item.reorderLevel.toString()),
+            reorderQuantity: Decimal.parse(item.reorderQuantity.toString()),
+            unitCost: Decimal.parse(item.unitCost.toString()),
+            sellingPrice: sellingPrice,
+            allowNegativeStock: item.allowNegativeStock,
+            itemType: item.itemType,
+          );
+    await _cacheCatalogItem(saved);
     await refresh();
+  }
+
+  Future<void> _cacheCatalogItem(CatalogItemDto item) async {
+    final now = DateTime.now();
+    final db = ref.read(appDatabaseProvider);
+    await db
+        .into(db.cachedItems)
+        .insertOnConflictUpdate(
+          CachedItemsCompanion(
+            id: Value(item.id),
+            businessId: Value(item.businessId),
+            businessLocationId: Value(item.storeId),
+            name: Value(item.name),
+            unitOfMeasure: const Value('unit'),
+            unitId: Value(item.unitId ?? ''),
+            category: Value(item.category),
+            reorderThreshold: Value(item.reorderThreshold),
+            reorderQuantity: Value(item.reorderQuantity),
+            sellingPrice: Value(item.sellingPrice),
+            unitCost: Value(item.unitCost),
+            allowNegativeStock: Value(item.allowNegativeStock),
+            itemType: Value(item.itemType),
+            isActive: Value(item.isActive),
+            createdAtServer: Value(item.createdAt),
+            updatedAtServer: Value(item.updatedAt),
+            lastSeenAt: Value(now),
+            lastSyncedAt: Value(now),
+          ),
+        );
+    state = AsyncData(await _loadFromCache(item.storeId));
   }
 
   Future<void> delete(String id) async {
@@ -171,17 +229,26 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
     final item = byId(id);
     if (storeId == null || item?.catalogItemId == null) {
       state = AsyncData(
-        (state.valueOrNull ?? const <InventoryItem>[]).where((i) => i.id != id).toList(),
+        (state.valueOrNull ?? const <InventoryItem>[])
+            .where((i) => i.id != id)
+            .toList(),
       );
       return;
     }
-    await _api.deactivateItem(businessId: _businessId, itemId: item!.catalogItemId!);
+    await _api.deactivateItem(
+      businessId: _businessId,
+      itemId: item!.catalogItemId!,
+    );
     await refresh();
   }
 
   /// Applies a relative change via a manual stock adjustment. [reason] must
   /// be at least 3 characters (the backend rejects anything shorter).
-  Future<void> adjustStock(String id, double delta, {String reason = 'Manual count'}) async {
+  Future<void> adjustStock(
+    String id,
+    double delta, {
+    String reason = 'Manual count',
+  }) async {
     final storeId = ref.read(currentStoreIdProvider);
     final item = byId(id);
     if (storeId == null || item?.catalogItemId == null) {
@@ -199,13 +266,21 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
 
   /// Sets stock to an absolute value by adjusting the delta from the current
   /// count — Inventory Service only exposes a relative adjustment endpoint.
-  Future<void> setStock(String id, double value, {String reason = 'Manual count'}) async {
+  Future<void> setStock(
+    String id,
+    double value, {
+    String reason = 'Manual count',
+  }) async {
     final current = byId(id)?.stock ?? 0;
     await adjustStock(id, value - current, reason: reason);
   }
 
   /// Records wasted/spoiled stock. Requires `inventory.waste.record`.
-  Future<void> recordWaste(String id, double quantity, {required String reason}) async {
+  Future<void> recordWaste(
+    String id,
+    double quantity, {
+    required String reason,
+  }) async {
     final storeId = ref.read(currentStoreIdProvider);
     final item = byId(id);
     if (storeId == null || item?.catalogItemId == null) {
@@ -256,15 +331,6 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
           item,
     ]);
   }
-
-  String _unitOfMeasureCode(String displayUnit) => switch (displayUnit) {
-        'kg' => 'kg',
-        'g' => 'g',
-        'L' => 'l',
-        'ml' => 'ml',
-        'pack' => 'pack',
-        _ => 'unit',
-      };
 
   InventoryItem? byId(String id) {
     for (final item in state.valueOrNull ?? const <InventoryItem>[]) {
@@ -460,8 +526,9 @@ final filteredInventoryProvider = Provider<List<InventoryItem>>((ref) {
   final direction = query.ascending ? 1 : -1;
   rows.sort((a, b) {
     final cmp = switch (query.sortField) {
-      InventorySort.category =>
-        categoryLabel(a.categoryId).compareTo(categoryLabel(b.categoryId)),
+      InventorySort.category => categoryLabel(
+        a.categoryId,
+      ).compareTo(categoryLabel(b.categoryId)),
       InventorySort.stock => a.stock.compareTo(b.stock),
       InventorySort.cost => a.unitCost.compareTo(b.unitCost),
       InventorySort.value => a.totalValue.compareTo(b.totalValue),
@@ -616,8 +683,9 @@ final filteredMenuCatalogProvider = Provider<List<InventoryItem>>((ref) {
   final direction = query.ascending ? 1 : -1;
   rows.sort((a, b) {
     final cmp = switch (query.sortField) {
-      MenuItemSort.category =>
-        categoryLabel(a.categoryId).compareTo(categoryLabel(b.categoryId)),
+      MenuItemSort.category => categoryLabel(
+        a.categoryId,
+      ).compareTo(categoryLabel(b.categoryId)),
       MenuItemSort.price => (a.sellingPrice ?? 0).compareTo(
         b.sellingPrice ?? 0,
       ),

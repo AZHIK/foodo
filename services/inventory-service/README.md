@@ -113,20 +113,23 @@ docker compose exec api alembic revision --autogenerate -m "description"
 ## Seed data
 
 Migrations only create schema — they never insert seed rows. After running
-migrations, seed the category taxonomy (Produce, Dairy, Beverages, ...) as a
-separate, explicit step:
+migrations, seed the category taxonomy (Produce, Dairy, Beverages, ...) and
+the unit-of-measure taxonomy (Kilogram, Gram, Liter, ...) as separate,
+explicit steps:
 
 ```bash
-docker compose exec api uv run python scripts/seed_categories.py
+docker compose exec api python scripts/seed_categories.py
+docker compose exec api python scripts/seed_units.py
 ```
 
-Safe to run multiple times — it upserts by each category's stable `code`, so
-re-running after editing `CATEGORY_SEEDS` (`app/db/seed_categories.py`)
-updates existing rows instead of duplicating them.
+Safe to run multiple times — each upserts by its taxonomy's stable `code`, so
+re-running after editing `CATEGORY_SEEDS` (`app/db/seed_categories.py`) or
+`UNIT_SEEDS` (`app/db/seed_units.py`) updates existing rows instead of
+duplicating them.
 
 ## Tests
 
-Run the full suite (195 tests covering CRUD, auth, schemas, movement engine,
+Run the full suite (206 tests covering CRUD, auth, schemas, movement engine,
 operation endpoints, and supplier/reorder endpoints) with a single command:
 
 ```bash

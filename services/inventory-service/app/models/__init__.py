@@ -6,6 +6,7 @@ meaning it maps to a Postgres table.
 Import all models here so SQLModel.metadata is complete for Alembic.
 """
 
+from app.models.categories import Category
 from app.models.inventory import (
     ActorType,
     Item,
@@ -15,13 +16,14 @@ from app.models.inventory import (
     RecipeComponent,
     StockLevel,
     StockMovement,
-    UnitOfMeasure,
 )
 from app.models.reorders import Reorder, ReorderStatus
 from app.models.suppliers import Supplier
+from app.models.units import Unit
 
 __all__ = [
     "ActorType",
+    "Category",
     "Item",
     "ItemType",
     "MovementType",
@@ -32,5 +34,5 @@ __all__ = [
     "StockLevel",
     "StockMovement",
     "Supplier",
-    "UnitOfMeasure",
+    "Unit",
 ]

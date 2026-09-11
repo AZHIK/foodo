@@ -19,10 +19,13 @@ import '../sync/http_categories_catalog_api.dart';
 import '../sync/http_inventory_catalog_api.dart';
 import '../sync/http_reorders_catalog_api.dart';
 import '../sync/http_suppliers_catalog_api.dart';
+import '../sync/http_units_catalog_api.dart';
 import '../sync/inventory_catalog_api.dart';
 import '../sync/purchasing_sync_service.dart';
 import '../sync/reorders_catalog_api.dart';
 import '../sync/suppliers_catalog_api.dart';
+import '../sync/units_catalog_api.dart';
+import '../sync/units_sync_service.dart';
 import 'auth_provider.dart';
 import 'database_providers.dart';
 import 'permissions_cache_tick_provider.dart';
@@ -135,5 +138,21 @@ final categoriesSyncServiceProvider = Provider<CategoriesSyncService>(
   (ref) => CategoriesSyncService(
     db: ref.watch(appDatabaseProvider),
     api: ref.watch(categoriesCatalogApiProvider),
+  ),
+);
+
+/// The one real client for the read-side unit taxonomy pull. Unlike
+/// [suppliersCatalogApiProvider], this needs no business context — units
+/// are global (see `app/models/units.py`) — so it can be read even before a
+/// business context exists.
+final unitsCatalogApiProvider = Provider<UnitsCatalogApi>(
+  (ref) => HttpUnitsCatalogApi(dio: ref.watch(inventoryServiceDioProvider)),
+);
+
+/// Pulls the unit taxonomy into the local cache.
+final unitsSyncServiceProvider = Provider<UnitsSyncService>(
+  (ref) => UnitsSyncService(
+    db: ref.watch(appDatabaseProvider),
+    api: ref.watch(unitsCatalogApiProvider),
   ),
 );

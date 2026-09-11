@@ -17,9 +17,9 @@ class ReorderCreate(BaseModel):
     ``business_id`` comes from the URL path, same convention as
     ``ItemCreate``. ``store_id`` is required — receiving credits a specific
     store's stock level. ``unit`` is deliberately absent: it is always
-    denormalized server-side from the item's own ``unit_of_measure`` at
-    creation time (see ``app/models/reorders.py``'s module docstring), never
-    client-supplied.
+    denormalized server-side from the item's own ``unit_id`` (resolved to
+    the referenced ``Unit.code``) at creation time (see
+    ``app/models/reorders.py``'s module docstring), never client-supplied.
     """
 
     store_id: UUID
