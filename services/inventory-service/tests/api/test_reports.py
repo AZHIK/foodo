@@ -17,6 +17,7 @@ from sqlmodel import select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import get_settings
+from app.models.categories import Category
 from app.models.inventory import (
     ActorType,
     Item,
@@ -104,12 +105,19 @@ def _other_biz_header() -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+async def _category_id(session: AsyncSession, code: str) -> UUID:
+    """Look up a seeded category's id by its stable code (see
+    ``f1a2b3c4d5e6_create_category_and_migrate_item_category.py``)."""
+    result = await session.exec(select(Category).where(Category.code == code))
+    return result.one().id
+
+
 async def _create_item(
     session: AsyncSession,
     name: str = "Test Item",
     store_id: UUID = STORE_ID,
     item_type: ItemType = ItemType.BOTH,
-    category: str | None = "produce",
+    category_code: str | None = "produce",
     reorder_threshold: Decimal = Decimal("10.000"),
 ) -> Item:
     item = Item(
@@ -117,7 +125,7 @@ async def _create_item(
         store_id=store_id,
         name=name,
         unit_of_measure=UnitOfMeasure.KG,
-        category=category,
+        category_id=await _category_id(session, category_code) if category_code else None,
         reorder_threshold=reorder_threshold,
         reorder_quantity=Decimal("20.000"),
         allow_negative_stock=True,
@@ -245,7 +253,7 @@ async def test_stock_includes_item_details(
     item = await _create_item(
         db_session,
         name="Detail Check",
-        category="dry_goods",
+        category_code="dry",
         reorder_threshold=Decimal("5.000"),
         item_type=ItemType.SELLABLE,
     )
@@ -267,7 +275,7 @@ async def test_stock_includes_item_details(
 
     assert row["item_name"] == "Detail Check"
     assert row["item_unit_of_measure"] == "kg"
-    assert row["item_category"] == "dry_goods"
+    assert row["item_category"] == "Dry goods"
     assert row["item_reorder_threshold"] == "5.000"
     assert row["item_type"] == "sellable"
     assert row["current_quantity"] is not None
@@ -280,8 +288,8 @@ async def test_stock_filters_by_category(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
-    item_a = await _create_item(db_session, name="Produce Item", category="produce")
-    item_b = await _create_item(db_session, name="Dairy Item", category="dairy")
+    item_a = await _create_item(db_session, name="Produce Item", category_code="produce")
+    item_b = await _create_item(db_session, name="Dairy Item", category_code="dairy")
     for i in (item_a, item_b):
         await record_movement(
             db=db_session,
@@ -293,7 +301,7 @@ async def test_stock_filters_by_category(
             actor_type=ActorType.USER.value,
         )
 
-    resp = await client.get(f"{STOCK_URL}?category=dairy", headers=AUTH_HEADER)
+    resp = await client.get(f"{STOCK_URL}?category_id={item_b.category_id}", headers=AUTH_HEADER)
     assert resp.status_code == 200, resp.text
     names = [r["item_name"] for r in resp.json()]
     assert "Dairy Item" in names

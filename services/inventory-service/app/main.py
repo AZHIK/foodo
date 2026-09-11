@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.core.telemetry import configure_telemetry
+from app.api.v1.endpoints import categories as categories_endpoints
 from app.api.v1.endpoints import items as items_endpoints
 from app.api.v1.endpoints import reorders as reorders_endpoints
 from app.api.v1.endpoints import suppliers as suppliers_endpoints
@@ -54,4 +55,5 @@ app.include_router(business_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
 app.include_router(suppliers_endpoints.router, prefix="/api/v1")
 app.include_router(reorders_endpoints.router, prefix="/api/v1")
+app.include_router(categories_endpoints.router, prefix="/api/v1")
 app.include_router(internal_events_router, prefix="/api/v1")

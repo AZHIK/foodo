@@ -13,6 +13,9 @@ import '../services/inventory_api_service.dart';
 import '../services/reorder_api_service.dart';
 import '../services/supplier_api_service.dart';
 import '../sync/catalog_sync_service.dart';
+import '../sync/categories_catalog_api.dart';
+import '../sync/categories_sync_service.dart';
+import '../sync/http_categories_catalog_api.dart';
 import '../sync/http_inventory_catalog_api.dart';
 import '../sync/http_reorders_catalog_api.dart';
 import '../sync/http_suppliers_catalog_api.dart';
@@ -117,4 +120,20 @@ final supplierApiServiceProvider = Provider<SupplierApiService>(
 /// The one real client for reorder create/receive/cancel.
 final reorderApiServiceProvider = Provider<ReorderApiService>(
   (ref) => ReorderApiService(dio: ref.watch(inventoryServiceDioProvider)),
+);
+
+/// The one real client for the read-side category taxonomy pull. Unlike
+/// [suppliersCatalogApiProvider], this needs no business context — categories
+/// are global (see `app/models/categories.py`) — so it can be read even
+/// before a business context exists.
+final categoriesCatalogApiProvider = Provider<CategoriesCatalogApi>(
+  (ref) => HttpCategoriesCatalogApi(dio: ref.watch(inventoryServiceDioProvider)),
+);
+
+/// Pulls the category taxonomy into the local cache.
+final categoriesSyncServiceProvider = Provider<CategoriesSyncService>(
+  (ref) => CategoriesSyncService(
+    db: ref.watch(appDatabaseProvider),
+    api: ref.watch(categoriesCatalogApiProvider),
+  ),
 );

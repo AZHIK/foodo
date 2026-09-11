@@ -3149,7 +3149,10 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
   /// Unit of measure (e.g., 'kg', 'l', 'unit', 'pack').
   final String unitOfMeasure;
 
-  /// Item category (optional).
+  /// Item category (optional) — the backend `Category` row's UUID (see
+  /// `CachedCategories`), not a free-text label. Was a raw free-text string
+  /// before migration `f1a2b3c4d5e6_create_category_and_migrate_item_category`;
+  /// the column itself is unchanged, only what it holds.
   final String? category;
 
   /// Reorder threshold quantity.
@@ -15590,6 +15593,424 @@ class CachedReordersCompanion extends UpdateCompanion<CachedReorder> {
   }
 }
 
+class $CachedCategoriesTable extends CachedCategories
+    with TableInfo<$CachedCategoriesTable, CachedCategory> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedCategoriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _codeMeta = const VerificationMeta('code');
+  @override
+  late final GeneratedColumn<String> code = GeneratedColumn<String>(
+    'code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _lastSyncedAtMeta = const VerificationMeta(
+    'lastSyncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
+    'last_synced_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    code,
+    name,
+    sortOrder,
+    isActive,
+    lastSyncedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_categories';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedCategory> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('code')) {
+      context.handle(
+        _codeMeta,
+        code.isAcceptableOrUnknown(data['code']!, _codeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_codeMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('last_synced_at')) {
+      context.handle(
+        _lastSyncedAtMeta,
+        lastSyncedAt.isAcceptableOrUnknown(
+          data['last_synced_at']!,
+          _lastSyncedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastSyncedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedCategory map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedCategory(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      code: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}code'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      lastSyncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_synced_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedCategoriesTable createAlias(String alias) {
+    return $CachedCategoriesTable(attachedDatabase, alias);
+  }
+}
+
+class CachedCategory extends DataClass implements Insertable<CachedCategory> {
+  /// Category UUID (primary key), server-assigned.
+  final String id;
+
+  /// Stable slug (e.g. `produce`) — not used by the UI directly, kept for
+  /// debugging/traceability back to the seed migration.
+  final String code;
+  final String name;
+
+  /// Display ordering for pickers/filters, ascending.
+  final int sortOrder;
+  final bool isActive;
+
+  /// Local timestamp of the most recent pull that included this row.
+  final DateTime lastSyncedAt;
+  const CachedCategory({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.sortOrder,
+    required this.isActive,
+    required this.lastSyncedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['code'] = Variable<String>(code);
+    map['name'] = Variable<String>(name);
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['is_active'] = Variable<bool>(isActive);
+    map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
+    return map;
+  }
+
+  CachedCategoriesCompanion toCompanion(bool nullToAbsent) {
+    return CachedCategoriesCompanion(
+      id: Value(id),
+      code: Value(code),
+      name: Value(name),
+      sortOrder: Value(sortOrder),
+      isActive: Value(isActive),
+      lastSyncedAt: Value(lastSyncedAt),
+    );
+  }
+
+  factory CachedCategory.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedCategory(
+      id: serializer.fromJson<String>(json['id']),
+      code: serializer.fromJson<String>(json['code']),
+      name: serializer.fromJson<String>(json['name']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      lastSyncedAt: serializer.fromJson<DateTime>(json['lastSyncedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'code': serializer.toJson<String>(code),
+      'name': serializer.toJson<String>(name),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'isActive': serializer.toJson<bool>(isActive),
+      'lastSyncedAt': serializer.toJson<DateTime>(lastSyncedAt),
+    };
+  }
+
+  CachedCategory copyWith({
+    String? id,
+    String? code,
+    String? name,
+    int? sortOrder,
+    bool? isActive,
+    DateTime? lastSyncedAt,
+  }) => CachedCategory(
+    id: id ?? this.id,
+    code: code ?? this.code,
+    name: name ?? this.name,
+    sortOrder: sortOrder ?? this.sortOrder,
+    isActive: isActive ?? this.isActive,
+    lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+  );
+  CachedCategory copyWithCompanion(CachedCategoriesCompanion data) {
+    return CachedCategory(
+      id: data.id.present ? data.id.value : this.id,
+      code: data.code.present ? data.code.value : this.code,
+      name: data.name.present ? data.name.value : this.name,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      lastSyncedAt: data.lastSyncedAt.present
+          ? data.lastSyncedAt.value
+          : this.lastSyncedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedCategory(')
+          ..write('id: $id, ')
+          ..write('code: $code, ')
+          ..write('name: $name, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('isActive: $isActive, ')
+          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, code, name, sortOrder, isActive, lastSyncedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedCategory &&
+          other.id == this.id &&
+          other.code == this.code &&
+          other.name == this.name &&
+          other.sortOrder == this.sortOrder &&
+          other.isActive == this.isActive &&
+          other.lastSyncedAt == this.lastSyncedAt);
+}
+
+class CachedCategoriesCompanion extends UpdateCompanion<CachedCategory> {
+  final Value<String> id;
+  final Value<String> code;
+  final Value<String> name;
+  final Value<int> sortOrder;
+  final Value<bool> isActive;
+  final Value<DateTime> lastSyncedAt;
+  final Value<int> rowid;
+  const CachedCategoriesCompanion({
+    this.id = const Value.absent(),
+    this.code = const Value.absent(),
+    this.name = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedCategoriesCompanion.insert({
+    required String id,
+    required String code,
+    required String name,
+    this.sortOrder = const Value.absent(),
+    this.isActive = const Value.absent(),
+    required DateTime lastSyncedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       code = Value(code),
+       name = Value(name),
+       lastSyncedAt = Value(lastSyncedAt);
+  static Insertable<CachedCategory> custom({
+    Expression<String>? id,
+    Expression<String>? code,
+    Expression<String>? name,
+    Expression<int>? sortOrder,
+    Expression<bool>? isActive,
+    Expression<DateTime>? lastSyncedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (code != null) 'code': code,
+      if (name != null) 'name': name,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (isActive != null) 'is_active': isActive,
+      if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedCategoriesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? code,
+    Value<String>? name,
+    Value<int>? sortOrder,
+    Value<bool>? isActive,
+    Value<DateTime>? lastSyncedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedCategoriesCompanion(
+      id: id ?? this.id,
+      code: code ?? this.code,
+      name: name ?? this.name,
+      sortOrder: sortOrder ?? this.sortOrder,
+      isActive: isActive ?? this.isActive,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (code.present) {
+      map['code'] = Variable<String>(code.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (lastSyncedAt.present) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedCategoriesCompanion(')
+          ..write('id: $id, ')
+          ..write('code: $code, ')
+          ..write('name: $name, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('isActive: $isActive, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $LocalAuditLogTable extends LocalAuditLog
     with TableInfo<$LocalAuditLogTable, LocalAuditLogData> {
   @override
@@ -16434,6 +16855,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $CachedReordersTable cachedReorders = $CachedReordersTable(this);
+  late final $CachedCategoriesTable cachedCategories = $CachedCategoriesTable(
+    this,
+  );
   late final $LocalAuditLogTable localAuditLog = $LocalAuditLogTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -16459,6 +16883,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cachedCustomers,
     cachedSuppliers,
     cachedReorders,
+    cachedCategories,
     localAuditLog,
   ];
   @override
@@ -24627,6 +25052,233 @@ typedef $$CachedReordersTableProcessedTableManager =
       CachedReorder,
       PrefetchHooks Function()
     >;
+typedef $$CachedCategoriesTableCreateCompanionBuilder =
+    CachedCategoriesCompanion Function({
+      required String id,
+      required String code,
+      required String name,
+      Value<int> sortOrder,
+      Value<bool> isActive,
+      required DateTime lastSyncedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedCategoriesTableUpdateCompanionBuilder =
+    CachedCategoriesCompanion Function({
+      Value<String> id,
+      Value<String> code,
+      Value<String> name,
+      Value<int> sortOrder,
+      Value<bool> isActive,
+      Value<DateTime> lastSyncedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedCategoriesTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedCategoriesTable> {
+  $$CachedCategoriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get code => $composableBuilder(
+    column: $table.code,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedCategoriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedCategoriesTable> {
+  $$CachedCategoriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get code => $composableBuilder(
+    column: $table.code,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedCategoriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedCategoriesTable> {
+  $$CachedCategoriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get code =>
+      $composableBuilder(column: $table.code, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$CachedCategoriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedCategoriesTable,
+          CachedCategory,
+          $$CachedCategoriesTableFilterComposer,
+          $$CachedCategoriesTableOrderingComposer,
+          $$CachedCategoriesTableAnnotationComposer,
+          $$CachedCategoriesTableCreateCompanionBuilder,
+          $$CachedCategoriesTableUpdateCompanionBuilder,
+          (
+            CachedCategory,
+            BaseReferences<
+              _$AppDatabase,
+              $CachedCategoriesTable,
+              CachedCategory
+            >,
+          ),
+          CachedCategory,
+          PrefetchHooks Function()
+        > {
+  $$CachedCategoriesTableTableManager(
+    _$AppDatabase db,
+    $CachedCategoriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedCategoriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedCategoriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedCategoriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> code = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<DateTime> lastSyncedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedCategoriesCompanion(
+                id: id,
+                code: code,
+                name: name,
+                sortOrder: sortOrder,
+                isActive: isActive,
+                lastSyncedAt: lastSyncedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String code,
+                required String name,
+                Value<int> sortOrder = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                required DateTime lastSyncedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CachedCategoriesCompanion.insert(
+                id: id,
+                code: code,
+                name: name,
+                sortOrder: sortOrder,
+                isActive: isActive,
+                lastSyncedAt: lastSyncedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedCategoriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedCategoriesTable,
+      CachedCategory,
+      $$CachedCategoriesTableFilterComposer,
+      $$CachedCategoriesTableOrderingComposer,
+      $$CachedCategoriesTableAnnotationComposer,
+      $$CachedCategoriesTableCreateCompanionBuilder,
+      $$CachedCategoriesTableUpdateCompanionBuilder,
+      (
+        CachedCategory,
+        BaseReferences<_$AppDatabase, $CachedCategoriesTable, CachedCategory>,
+      ),
+      CachedCategory,
+      PrefetchHooks Function()
+    >;
 typedef $$LocalAuditLogTableCreateCompanionBuilder =
     LocalAuditLogCompanion Function({
       Value<int> id,
@@ -25035,6 +25687,8 @@ class $AppDatabaseManager {
       $$CachedSuppliersTableTableManager(_db, _db.cachedSuppliers);
   $$CachedReordersTableTableManager get cachedReorders =>
       $$CachedReordersTableTableManager(_db, _db.cachedReorders);
+  $$CachedCategoriesTableTableManager get cachedCategories =>
+      $$CachedCategoriesTableTableManager(_db, _db.cachedCategories);
   $$LocalAuditLogTableTableManager get localAuditLog =>
       $$LocalAuditLogTableTableManager(_db, _db.localAuditLog);
 }

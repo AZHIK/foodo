@@ -57,8 +57,8 @@ async def _build_list_query(
 ) -> SelectOfScalar[Item]:
     stmt = select(Item).where(Item.business_id == business_id)
 
-    if filters.category is not None:
-        stmt = stmt.where(Item.category == filters.category)
+    if filters.category_id is not None:
+        stmt = stmt.where(Item.category_id == filters.category_id)
     if filters.is_active is not None:
         stmt = stmt.where(Item.is_active == filters.is_active)
     if filters.store_id is not None:
@@ -107,7 +107,7 @@ async def create_item(
         store_id=body.store_id,
         name=body.name,
         unit_of_measure=body.unit_of_measure,
-        category=body.category,
+        category_id=body.category_id,
         reorder_threshold=body.reorder_threshold,
         reorder_quantity=body.reorder_quantity,
         selling_price=body.selling_price,

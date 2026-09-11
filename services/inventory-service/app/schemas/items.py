@@ -37,7 +37,7 @@ class ItemBase(BaseModel):
 
     name: str
     unit_of_measure: UnitOfMeasure
-    category: str | None = None
+    category_id: UUID | None = None
     reorder_threshold: Decimal
     reorder_quantity: Decimal
     selling_price: Decimal | None = None
@@ -72,7 +72,7 @@ class ItemUpdate(BaseModel):
 
     name: str | None = None
     unit_of_measure: UnitOfMeasure | None = None
-    category: str | None = None
+    category_id: UUID | None = None
     reorder_threshold: Decimal | None = None
     reorder_quantity: Decimal | None = None
     selling_price: Decimal | None = None
@@ -98,7 +98,7 @@ class ItemRead(ItemBase):
 class ItemListFilters(BaseModel):
     """Query-parameter schema for the list-items endpoint (Stage 4)."""
 
-    category: str | None = None
+    category_id: UUID | None = None
     is_active: bool | None = None
     below_threshold: bool | None = None
     store_id: UUID | None = None

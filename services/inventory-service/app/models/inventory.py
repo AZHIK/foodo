@@ -170,7 +170,15 @@ class Item(SQLModel, table=True):
             nullable=False,
         ),
     )
-    category: str | None = Field(default=None, max_length=255)
+    category_id: UUID | None = Field(
+        default=None,
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("category.id", ondelete="RESTRICT"),
+            nullable=True,
+            index=True,
+        ),
+    )
     reorder_threshold: Decimal = Field(
         nullable=False,
         sa_type=Numeric(precision=12, scale=3),

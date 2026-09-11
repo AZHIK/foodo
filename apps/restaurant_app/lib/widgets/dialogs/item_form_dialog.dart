@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/mock_inventory.dart';
 import '../../models/inventory_item.dart';
+import '../../providers/categories_provider.dart';
 import '../../providers/item_form_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
@@ -383,7 +384,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
               isExpanded: true,
               hint: const Text('Select'),
               items: [
-                for (final category in MockInventory.categories)
+                for (final category in ref.watch(categoriesListProvider))
                   DropdownMenuItem(
                     value: category.id,
                     child: Text(

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/mock_inventory.dart';
 import '../../models/inventory_item.dart';
 import '../../models/stock_movement.dart';
 import '../../models/table_query.dart';
+import '../../providers/categories_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/stock_movement_provider.dart';
 import '../../router/app_router.dart';
@@ -696,8 +696,11 @@ class _AboutPanel extends ConsumerWidget {
               ),
               LabeledValue(
                 label: 'Category',
-                value: MockInventory.categoryLabel(item.categoryId),
-                icon: MockInventory.categoryById(item.categoryId)?.icon ??
+                value: categoryLabelFrom(
+                  ref.watch(categoriesListProvider),
+                  item.categoryId,
+                ),
+                icon: ref.watch(categoryByIdProvider(item.categoryId))?.icon ??
                     Icons.category_outlined,
               ),
               LabeledValue(

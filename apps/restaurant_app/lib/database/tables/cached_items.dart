@@ -35,7 +35,10 @@ class CachedItems extends Table {
   /// Unit of measure (e.g., 'kg', 'l', 'unit', 'pack').
   TextColumn get unitOfMeasure => text()(); // kg|g|l|ml|unit|pack
 
-  /// Item category (optional).
+  /// Item category (optional) — the backend `Category` row's UUID (see
+  /// `CachedCategories`), not a free-text label. Was a raw free-text string
+  /// before migration `f1a2b3c4d5e6_create_category_and_migrate_item_category`;
+  /// the column itself is unchanged, only what it holds.
   TextColumn get category => text().nullable()();
 
   /// Reorder threshold quantity.

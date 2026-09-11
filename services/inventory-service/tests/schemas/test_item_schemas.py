@@ -87,7 +87,7 @@ class TestItemUpdate:
         data = ItemUpdate(name="Renamed Item")
         assert data.name == "Renamed Item"
         assert data.unit_of_measure is None
-        assert data.category is None
+        assert data.category_id is None
 
     def test_update_selling_price_works(self) -> None:
         data = ItemUpdate(selling_price=Decimal("29.99"))

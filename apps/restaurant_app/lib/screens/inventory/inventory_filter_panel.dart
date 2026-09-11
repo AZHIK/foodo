@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/mock_inventory.dart';
 import '../../models/inventory_item.dart';
+import '../../providers/categories_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../theme/breakpoints.dart';
 import '../../widgets/data_page/filter_controls.dart';
@@ -25,6 +25,7 @@ class InventoryFilterPanel extends ConsumerWidget {
     final presentCategoryIds = {
       for (final item in ref.watch(groceryItemsProvider)) item.categoryId,
     };
+    final categories = ref.watch(categoriesListProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -34,12 +35,12 @@ class InventoryFilterPanel extends ConsumerWidget {
           title: 'Category',
           child: FilterChipGroup<String>(
             options: [
-              for (final c in MockInventory.categories)
+              for (final c in categories)
                 if (presentCategoryIds.contains(c.id)) c.id,
             ],
             selected: filters.categoryIds,
-            labelOf: MockInventory.categoryLabel,
-            iconOf: (id) => MockInventory.categoryById(id)?.icon,
+            labelOf: (id) => categoryLabelFrom(categories, id),
+            iconOf: (id) => categoryByIdFrom(categories, id)?.icon,
             onToggle: notifier.toggleCategory,
           ),
         ),

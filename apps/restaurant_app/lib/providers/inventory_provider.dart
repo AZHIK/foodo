@@ -11,6 +11,7 @@ import '../models/table_query.dart';
 import '../services/inventory_api_service.dart';
 import '../sync/catalog_sync_service.dart';
 import '../sync/inventory_item_mapper.dart';
+import 'categories_provider.dart';
 import 'database_providers.dart';
 import 'inventory_api_provider.dart';
 import 'permissions_provider.dart';
@@ -142,7 +143,7 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
         itemType: item.itemType,
         reorderThreshold: Decimal.parse(item.reorderLevel.toString()),
         reorderQuantity: Decimal.parse(item.reorderQuantity.toString()),
-        category: item.categoryId,
+        categoryId: item.categoryId,
         unitCost: Decimal.parse(item.unitCost.toString()),
         sellingPrice: sellingPrice,
         allowNegativeStock: item.allowNegativeStock,
@@ -153,7 +154,7 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
         itemId: item.catalogItemId!,
         name: item.name,
         unitOfMeasure: _unitOfMeasureCode(item.unit),
-        category: item.categoryId,
+        categoryId: item.categoryId,
         reorderThreshold: Decimal.parse(item.reorderLevel.toString()),
         reorderQuantity: Decimal.parse(item.reorderQuantity.toString()),
         unitCost: Decimal.parse(item.unitCost.toString()),
@@ -444,24 +445,23 @@ final filteredInventoryProvider = Provider<List<InventoryItem>>((ref) {
   final query = ref.watch(inventoryQueryProvider);
   final filters = ref.watch(inventoryFiltersProvider);
   final search = query.search.trim().toLowerCase();
+  final categories = ref.watch(categoriesListProvider);
+  String categoryLabel(String id) => categoryLabelFrom(categories, id);
 
   final rows = items.where((item) {
     if (!filters.matches(item)) return false;
     if (search.isEmpty) return true;
     return item.name.toLowerCase().contains(search) ||
         item.sku.toLowerCase().contains(search) ||
-        MockInventory.categoryLabel(item.categoryId)
-            .toLowerCase()
-            .contains(search) ||
+        categoryLabel(item.categoryId).toLowerCase().contains(search) ||
         item.supplier.toLowerCase().contains(search);
   }).toList();
 
   final direction = query.ascending ? 1 : -1;
   rows.sort((a, b) {
     final cmp = switch (query.sortField) {
-      InventorySort.category => MockInventory.categoryLabel(
-        a.categoryId,
-      ).compareTo(MockInventory.categoryLabel(b.categoryId)),
+      InventorySort.category =>
+        categoryLabel(a.categoryId).compareTo(categoryLabel(b.categoryId)),
       InventorySort.stock => a.stock.compareTo(b.stock),
       InventorySort.cost => a.unitCost.compareTo(b.unitCost),
       InventorySort.value => a.totalValue.compareTo(b.totalValue),
@@ -602,23 +602,22 @@ final filteredMenuCatalogProvider = Provider<List<InventoryItem>>((ref) {
   final query = ref.watch(menuItemsQueryProvider);
   final filters = ref.watch(menuItemFiltersProvider);
   final search = query.search.trim().toLowerCase();
+  final categories = ref.watch(categoriesListProvider);
+  String categoryLabel(String id) => categoryLabelFrom(categories, id);
 
   final rows = items.where((item) {
     if (!filters.matches(item)) return false;
     if (search.isEmpty) return true;
     return item.name.toLowerCase().contains(search) ||
         item.sku.toLowerCase().contains(search) ||
-        MockInventory.categoryLabel(item.categoryId)
-            .toLowerCase()
-            .contains(search);
+        categoryLabel(item.categoryId).toLowerCase().contains(search);
   }).toList();
 
   final direction = query.ascending ? 1 : -1;
   rows.sort((a, b) {
     final cmp = switch (query.sortField) {
-      MenuItemSort.category => MockInventory.categoryLabel(
-        a.categoryId,
-      ).compareTo(MockInventory.categoryLabel(b.categoryId)),
+      MenuItemSort.category =>
+        categoryLabel(a.categoryId).compareTo(categoryLabel(b.categoryId)),
       MenuItemSort.price => (a.sellingPrice ?? 0).compareTo(
         b.sellingPrice ?? 0,
       ),

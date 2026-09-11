@@ -144,7 +144,9 @@ async def _create_stock_level(
 
 
 @pytest.mark.asyncio
-async def test_full_crud_cycle(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_full_crud_cycle(
+    client: AsyncClient, db_session: AsyncSession, produce_category_id: str
+) -> None:
     from sqlmodel import select
 
     """Create → read → update → soft-delete → confirm row still exists."""
@@ -152,7 +154,7 @@ async def test_full_crud_cycle(client: AsyncClient, db_session: AsyncSession) ->
     create_payload = {
         "name": "Fresh Tomatoes",
         "unit_of_measure": "kg",
-        "category": "produce",
+        "category_id": produce_category_id,
         "reorder_threshold": 10.0,
         "reorder_quantity": 50.0,
         "allow_negative_stock": False,
@@ -174,7 +176,7 @@ async def test_full_crud_cycle(client: AsyncClient, db_session: AsyncSession) ->
     assert resp.json()["name"] == "Fresh Tomatoes"
 
     # Update
-    update_payload = {"name": "Roma Tomatoes", "category": "imported_produce"}
+    update_payload = {"name": "Roma Tomatoes"}
     resp = await client.patch(f"{API_PREFIX}/{item_id}", json=update_payload, headers=AUTH_HEADER)
     assert resp.status_code == 200, resp.text
     assert resp.json()["name"] == "Roma Tomatoes"
@@ -455,14 +457,16 @@ async def test_pagination_behaves_correctly(client: AsyncClient, db_session: Asy
 
 
 @pytest.mark.asyncio
-async def test_list_filters_by_category(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_list_filters_by_category(
+    client: AsyncClient, db_session: AsyncSession, produce_category_id: str
+) -> None:
     await _create_test_item(db_session, name="Apple",)
     item2 = await _create_test_item(db_session, name="Banana")
-    item2.category = "fruit"
+    item2.category_id = UUID(produce_category_id)
     db_session.add(item2)
     await db_session.commit()
 
-    resp = await client.get(f"{API_PREFIX}?category=fruit", headers=AUTH_HEADER)
+    resp = await client.get(f"{API_PREFIX}?category_id={produce_category_id}", headers=AUTH_HEADER)
     assert resp.status_code == 200
     names = [i["name"] for i in resp.json()]
     assert "Banana" in names

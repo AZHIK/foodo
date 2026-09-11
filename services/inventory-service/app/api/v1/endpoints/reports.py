@@ -18,6 +18,11 @@ wrapping, and keeping the join visible at the API boundary makes it easy
 to optimise later (e.g. add ``store_name`` when cross-service
 lookups land).
 
+``item_category`` is now sourced from a further ``Category`` join on
+``Item.category_id`` (see ``app/models/categories.py``) rather than a raw
+string column — the denormalization rationale above still holds, only the
+source changed.
+
 ═══════════════════════════════════════════════════════════════════════════
 BELOW_THRESHOLD FILTER — shared logic, same predicate
 ═══════════════════════════════════════════════════════════════════════════
@@ -44,6 +49,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.database import get_db
 from app.deps.auth import require_business_permission
+from app.models.categories import Category
 from app.models.inventory import Item, MovementType, StockLevel, StockMovement
 from app.schemas.movements import StockMovementRead
 from app.schemas.stock_levels import StockLevelRead
@@ -59,7 +65,7 @@ router = APIRouter(prefix="/businesses/{business_id}", tags=["reports"])
 
 class StockLevelFilters(BaseModel):
     store_id: UUID | None = None
-    category: str | None = None
+    category_id: UUID | None = None
     below_threshold: bool | None = None
 
 
@@ -95,24 +101,27 @@ async def get_stock_levels(
 
     # Join StockLevel → Item so we can filter/sort on item columns and
     # return denormalized item details — this is the single query that
-    # resolves the Stage 3 open question.
+    # resolves the Stage 3 open question. Category is a further outer join
+    # (item.category_id is nullable) so item_category can be resolved to a
+    # human-readable name without a second round-trip per row.
     stmt = (
-        select(StockLevel, Item)
+        select(StockLevel, Item, Category)
         .join(Item, StockLevel.item_id == Item.id)
+        .join(Category, Item.category_id == Category.id, isouter=True)
         .where(Item.business_id == business_id)
     )
 
     if filters.store_id is not None:
         stmt = stmt.where(StockLevel.store_id == filters.store_id)
-    if filters.category is not None:
-        stmt = stmt.where(Item.category == filters.category)
+    if filters.category_id is not None:
+        stmt = stmt.where(Item.category_id == filters.category_id)
     if filters.below_threshold:
         stmt = stmt.where(StockLevel.current_quantity <= Item.reorder_threshold)
 
     sort_map = {
         "name": Item.name,
         "current_quantity": StockLevel.current_quantity,
-        "category": Item.category,
+        "category": Category.name,
     }
     stmt = stmt.order_by(sort_map[sort_by].asc().nullslast())
     stmt = stmt.offset(offset).limit(limit)
@@ -128,11 +137,11 @@ async def get_stock_levels(
             updated_at=sl.updated_at,
             item_name=item.name,
             item_unit_of_measure=item.unit_of_measure,
-            item_category=item.category,
+            item_category=category.name if category else None,
             item_reorder_threshold=item.reorder_threshold,
             item_type=item.item_type,
         )
-        for sl, item in rows
+        for sl, item, category in rows
     ]
 
     logger.info(

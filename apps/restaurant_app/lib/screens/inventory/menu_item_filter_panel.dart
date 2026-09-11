@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/mock_inventory.dart';
+import '../../providers/categories_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../widgets/data_page/filter_controls.dart';
 
@@ -22,6 +22,7 @@ class MenuItemFilterPanel extends ConsumerWidget {
     final presentCategoryIds = {
       for (final item in ref.watch(menuCatalogItemsProvider)) item.categoryId,
     };
+    final categories = ref.watch(categoriesListProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -31,12 +32,12 @@ class MenuItemFilterPanel extends ConsumerWidget {
           title: 'Category',
           child: FilterChipGroup<String>(
             options: [
-              for (final c in MockInventory.categories)
+              for (final c in categories)
                 if (presentCategoryIds.contains(c.id)) c.id,
             ],
             selected: filters.categoryIds,
-            labelOf: MockInventory.categoryLabel,
-            iconOf: (id) => MockInventory.categoryById(id)?.icon,
+            labelOf: (id) => categoryLabelFrom(categories, id),
+            iconOf: (id) => categoryByIdFrom(categories, id)?.icon,
             onToggle: notifier.toggleCategory,
           ),
         ),

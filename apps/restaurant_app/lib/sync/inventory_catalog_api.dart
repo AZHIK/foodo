@@ -14,6 +14,9 @@ class CatalogItemDto {
   final String storeId;
   final String name;
   final String unitOfMeasure;
+
+  /// The backend `Category` row's UUID (`item.category_id` on the wire),
+  /// not a free-text label — see `CachedCategories`.
   final String? category;
   final Decimal reorderThreshold;
   final Decimal reorderQuantity;

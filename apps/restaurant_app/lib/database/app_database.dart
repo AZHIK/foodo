@@ -103,6 +103,16 @@
 /// the API with no offline queue (see `InventoryNotifier`'s doc comment in
 /// `inventory_provider.dart`), and Suppliers/Reorders follow that same
 /// convention rather than Finance/Customers' outbox pattern.
+///
+/// v9 connects the product-category picker to a real backend (Inventory
+/// Service's `category` table, migration
+/// `f1a2b3c4d5e6_create_category_and_migrate_item_category`): adds the
+/// pull-only cache table `CachedCategories` — global, not business-scoped,
+/// mirroring `CachedSuppliers`' shape minus `businessId`/soft-delete.
+/// `CachedItems.category` is NOT renamed or altered here — it stays a
+/// nullable text column, only its meaning changes (the backend category's
+/// UUID, no longer a raw free-text string), since the backend's own
+/// `item.category` → `item.category_id` migration renamed the wire field.
 library;
 
 import 'package:decimal/decimal.dart';
@@ -127,6 +137,7 @@ import 'tables/customer_entries.dart';
 import 'tables/cached_customers.dart';
 import 'tables/cached_suppliers.dart';
 import 'tables/cached_reorders.dart';
+import 'tables/cached_categories.dart';
 import 'tables/local_audit_log.dart';
 
 part 'app_database.g.dart';
@@ -152,6 +163,7 @@ part 'app_database.g.dart';
   CachedCustomers,
   CachedSuppliers,
   CachedReorders,
+  CachedCategories,
   LocalAuditLog,
 ])
 class AppDatabase extends _$AppDatabase {
@@ -159,7 +171,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.connection);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -248,6 +260,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 8) {
         await m.createTable(cachedSuppliers);
         await m.createTable(cachedReorders);
+      }
+      if (from < 9) {
+        await m.createTable(cachedCategories);
       }
     },
     beforeOpen: (details) async {

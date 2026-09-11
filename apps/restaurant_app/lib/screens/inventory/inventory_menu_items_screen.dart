@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/mock_inventory.dart';
 import '../../models/inventory_item.dart';
+import '../../providers/categories_provider.dart';
 import '../../providers/dashboard_metrics_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/stock_movement_provider.dart';
@@ -308,7 +308,7 @@ final menuItemColumns = <DataColumnSpec<InventoryItem>>[
     field: MenuItemSort.category,
     flex: 3,
     minTableWidth: 700,
-    value: (item) => MockInventory.categoryLabel(item.categoryId),
+    value: (item) => categoryLabelForId(item.categoryId),
   ),
   DataColumnSpec(
     label: 'Price',

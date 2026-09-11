@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/mock_inventory.dart';
 import '../../models/inventory_item.dart';
+import '../../providers/categories_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/stock_movement_provider.dart';
 import '../../router/app_router.dart';
@@ -70,7 +70,7 @@ class InventoryGroceriesScreen extends ConsumerWidget {
             title: 'Groceries',
             subtitle:
                 '${summary.totalItems} raw materials tracked across '
-                '${MockInventory.categories.length} categories',
+                '${ref.watch(categoriesListProvider).length} categories',
             // Exports the filtered, sorted list — every matching row, not
             // just the page on screen.
             actions: dataPageExportActions<InventoryItem>(
@@ -315,7 +315,7 @@ final groceryColumns = <DataColumnSpec<InventoryItem>>[
     field: InventorySort.category,
     flex: 2,
     minTableWidth: 760,
-    value: (item) => MockInventory.categoryLabel(item.categoryId),
+    value: (item) => categoryLabelForId(item.categoryId),
   ),
   DataColumnSpec(
     label: 'Unit',

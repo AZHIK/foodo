@@ -94,6 +94,33 @@ def _run_alembic_upgrade() -> None:
     )
 
 
+def _seed_categories() -> None:
+    """Seed the category taxonomy once per test session.
+
+    Seeding is NOT part of the migration itself (see
+    ``f1a2b3c4d5e6_create_category_and_migrate_item_category``'s docstring)
+    — it's a deliberate, separate step in every environment, exactly like
+    running ``scripts/seed_categories.py`` after migrating a real deployment.
+
+    Uses its own engine rather than the app's shared ``engine``/
+    ``async_session_factory`` — same reasoning as
+    ``_ensure_test_database_exists``'s ``admin_engine``: this runs inside
+    its own ``asyncio.run()`` loop, and a connection opened here would
+    otherwise be pooled against a now-closed loop once that call returns,
+    breaking a later `await` against the shared engine from pytest-asyncio's
+    own loop ("Event loop is closed").
+    """
+    from app.db.seed_categories import seed_categories
+
+    async def _seed() -> None:
+        seed_engine = create_async_engine(TEST_DB_URL)
+        async with AsyncSession(seed_engine) as session:
+            await session.run_sync(lambda sync_session: seed_categories(sync_session))
+        await seed_engine.dispose()
+
+    asyncio.run(_seed())
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _migrate_test_database() -> None:
     """Build the test schema with REAL migrations once per test session.
@@ -105,6 +132,7 @@ def _migrate_test_database() -> None:
     """
     _ensure_test_database_exists()
     _run_alembic_upgrade()
+    _seed_categories()
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -146,3 +174,24 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Provide an isolated DB session backed by the test database."""
     async with async_session_factory() as session:
         yield session
+
+
+async def _category_id_by_code(code: str) -> str:
+    """Look up a seeded category's id by its stable code.
+
+    Categories are seeded once per test session by `_seed_categories()`
+    above, so this just resolves the real (server-generated) id rather than
+    hardcoding one in every test.
+    """
+    from sqlmodel import select
+
+    from app.models.categories import Category
+
+    async with async_session_factory() as session:
+        result = await session.exec(select(Category).where(Category.code == code))
+        return str(result.one().id)
+
+
+@pytest_asyncio.fixture
+async def produce_category_id() -> str:
+    return await _category_id_by_code("produce")

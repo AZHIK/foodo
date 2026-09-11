@@ -55,7 +55,7 @@ class TestItemModel:
         assert item.allow_negative_stock is False
         assert item.item_type == ItemType.BOTH
         assert item.is_active is True
-        assert item.category is None
+        assert item.category_id is None
         assert isinstance(item.created_at, datetime)
         assert isinstance(item.updated_at, datetime)
 
