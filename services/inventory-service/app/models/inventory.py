@@ -88,6 +88,12 @@ class MovementType(str, PyEnum):
     ``sale.refunded`` event).  Both are semantically distinct from
     ``manual_adjustment`` — an audit report should be able to count
     reversal movements separately from manual corrections.
+
+    ``production_input`` / ``production_output`` — the two legs of a
+    Stage 2 production event: raw materials consumed and the sellable
+    item produced.  Distinct types (not ``manual_adjustment``) so a
+    kitchen audit can answer "how much rice went into Pilau" without
+    disentangling corrections.
     """
 
     SALE = "sale"
@@ -98,6 +104,8 @@ class MovementType(str, PyEnum):
     TRANSFER_OUT = "transfer_out"
     SALE_REVERSAL = "sale_reversal"
     REFUND_REVERSAL = "refund_reversal"
+    PRODUCTION_INPUT = "production_input"
+    PRODUCTION_OUTPUT = "production_output"
 
 
 class ActorType(str, PyEnum):
@@ -221,15 +229,22 @@ class Item(SQLModel, table=True):
     )
 
 
-class RecipeComponent(SQLModel, table=True):
-    """Bill-of-materials relationship between a sellable item and its raw materials.
+class Recipe(SQLModel, table=True):
+    """A named bill-of-materials for one sellable item (Stage 1: Recipe CRUD).
 
-    **Deliberately unused in MVP.**  This table exists now so that
-    bill-of-materials support (exploding a manufactured item into its
-    component stock deductions) is additive later — a new service or
-    endpoint that references this table, not a schema migration.  Do not
-    seed, query, or reference this table from any business logic in
-    Stage 1–5 of the Inventory Service build.
+    A "recipe" is a GROUP of ``RecipeComponent`` rows sharing one header.
+    The header exists so whole-recipe operations are single actions — "delete
+    this recipe" is one row delete, not N coordinated component deletes —
+    and so the MVP rule "one active recipe per sellable item" has a natural
+    home (the ``UNIQUE`` on ``sellable_item_id``) instead of a racy
+    application-level check. It also carries recipe-level metadata (``name``,
+    which defaults to the sellable item's own name but may diverge if recipe
+    variants ever land).
+
+    ``business_id`` follows this module's cross-service convention: a plain
+    indexed UUID with no FK (Identity Service owns that table). ``name`` is
+    snapshot at creation — renaming the sellable item later does not rewrite
+    history here.
     """
 
     id: UUID = Field(
@@ -238,11 +253,72 @@ class RecipeComponent(SQLModel, table=True):
         nullable=False,
         sa_type=PG_UUID,
     )
+    business_id: UUID = Field(
+        nullable=False,
+        index=True,
+        sa_type=PG_UUID,
+    )
     sellable_item_id: UUID = Field(
         sa_column=Column(
             PG_UUID,
             ForeignKey("item.id", ondelete="CASCADE"),
             nullable=False,
+            unique=True,
+        ),
+    )
+    name: str = Field(nullable=False, max_length=255)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_type=DateTime(timezone=True),
+        sa_column_kwargs={"server_default": func.now()},
+        nullable=False,
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_type=DateTime(timezone=True),
+        sa_column_kwargs={
+            "server_default": func.now(),
+            "onupdate": func.now(),
+        },
+        nullable=False,
+    )
+
+
+class RecipeComponent(SQLModel, table=True):
+    """One ingredient line of a ``Recipe``: a raw material and the quantity
+    of it required to produce one unit of the recipe's sellable item.
+
+    Rewired in Stage 1 from ``sellable_item_id`` to ``recipe_id`` — the
+    header owns the sellable link (and its uniqueness), components are dumb
+    rows. The ``(recipe_id, raw_material_item_id)`` unique constraint keeps
+    the same ingredient from being listed twice on one recipe; changing an
+    amount is an update of the row, not a second row.
+
+    Quantities are in the raw material item's own unit (see
+    ``RecipeComponentRead`` — reads resolve the unit code so owners see
+    "200g Rice", not a bare number).
+    """
+
+    __table_args__ = (
+        UniqueConstraint(
+            "recipe_id",
+            "raw_material_item_id",
+            name="uq_recipe_components_recipe_ingredient",
+        ),
+    )
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        nullable=False,
+        sa_type=PG_UUID,
+    )
+    recipe_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("recipe.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
         ),
     )
     raw_material_item_id: UUID = Field(
@@ -253,6 +329,134 @@ class RecipeComponent(SQLModel, table=True):
         ),
     )
     quantity_required: Decimal = Field(
+        nullable=False,
+        sa_type=Numeric(precision=12, scale=3),
+    )
+
+
+class ProductionEvent(SQLModel, table=True):
+    """One recorded production run (Stage 2): raw materials in, sellable out.
+
+    A production is a third kind of stock transaction, distinct from sales
+    and purchases — it exists because a flat sale/purchase model cannot
+    answer "how much rice does my Pilau consume".  The ingredient math comes
+    from the linked ``Recipe``; this row records what was actually measured
+    and confirmed.
+
+    ``suggested_output_quantity`` is the recipe-computed output (leading
+    quantity ÷ leading requirement); ``actual_output_quantity`` is what the
+    owner confirmed (portions may be bigger/smaller).  Both are kept — the
+    gap between them is the over-portioning signal for future AI insights.
+
+    ``store_id`` is the sellable item's store (see ``production_service`` —
+    derived, not client-supplied).  ``occurred_at`` is the business time of
+    the run (server-set in MVP; the filterable field for history), while
+    ``created_at`` is row-creation time.
+
+    Production rows are RECORDS, like movements: never updated or deleted by
+    application code.  ``recipe_id`` is RESTRICT (not CASCADE) so deleting a
+    recipe with production history is refused instead of silently destroying
+    that history — see the recipes endpoint's 409 mapping.
+    """
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        nullable=False,
+        sa_type=PG_UUID,
+    )
+    business_id: UUID = Field(
+        nullable=False,
+        index=True,
+        sa_type=PG_UUID,
+    )
+    store_id: UUID = Field(
+        nullable=False,
+        index=True,
+        sa_type=PG_UUID,
+    )
+    recipe_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("recipe.id", ondelete="RESTRICT"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    leading_component_item_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("item.id", ondelete="RESTRICT"),
+            nullable=False,
+        ),
+    )
+    leading_quantity_used: Decimal = Field(
+        nullable=False,
+        sa_type=Numeric(precision=12, scale=3),
+    )
+    suggested_output_quantity: Decimal = Field(
+        nullable=False,
+        sa_type=Numeric(precision=12, scale=3),
+    )
+    actual_output_quantity: Decimal = Field(
+        nullable=False,
+        sa_type=Numeric(precision=12, scale=3),
+    )
+    actor_id: UUID | None = Field(default=None, sa_type=PG_UUID)
+    occurred_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_type=DateTime(timezone=True),
+        sa_column_kwargs={"server_default": func.now()},
+        nullable=False,
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_type=DateTime(timezone=True),
+        sa_column_kwargs={"server_default": func.now()},
+        nullable=False,
+    )
+
+
+class ProductionEventComponent(SQLModel, table=True):
+    """One ingredient actually consumed by a ``ProductionEvent``.
+
+    Not a copy of the recipe — the recipe says what SHOULD go in per unit,
+    this says what DID go in for this run (recipe ratio × leading quantity).
+    The leading ingredient's own row equals ``leading_quantity_used``
+    exactly (no float round-trip through the ratio).  One row per
+    ingredient per event, enforced by the unique constraint.
+    """
+
+    __table_args__ = (
+        UniqueConstraint(
+            "production_event_id",
+            "raw_material_item_id",
+            name="uq_production_components_event_ingredient",
+        ),
+    )
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        nullable=False,
+        sa_type=PG_UUID,
+    )
+    production_event_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("productionevent.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    raw_material_item_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("item.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+    )
+    quantity_consumed: Decimal = Field(
         nullable=False,
         sa_type=Numeric(precision=12, scale=3),
     )

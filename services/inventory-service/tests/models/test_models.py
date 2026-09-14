@@ -22,6 +22,7 @@ from app.models import (
     ItemType,
     MovementType,
     ProcessedEvent,
+    Recipe,
     RecipeComponent,
     StockLevel,
     StockMovement,
@@ -120,10 +121,22 @@ class TestItemModel:
 
 
 
+class TestRecipeModel:
+    def test_create_recipe_minimal(self) -> None:
+        recipe = Recipe(
+            business_id=UUID("00000000-0000-0000-0000-000000000001"),
+            sellable_item_id=UUID("00000000-0000-0000-0000-000000000002"),
+            name="Pilau",
+        )
+        assert isinstance(recipe.id, UUID)
+        assert recipe.name == "Pilau"
+        assert isinstance(recipe.created_at, datetime)
+
+
 class TestRecipeComponentModel:
     def test_create_recipe_component(self) -> None:
         rc = RecipeComponent(
-            sellable_item_id=UUID("00000000-0000-0000-0000-000000000001"),
+            recipe_id=UUID("00000000-0000-0000-0000-000000000001"),
             raw_material_item_id=UUID("00000000-0000-0000-0000-000000000002"),
             quantity_required=Decimal("2.500"),
         )
@@ -313,9 +326,9 @@ class TestPersistence:
         await db_session.rollback()
 
     async def test_fk_enforced_for_recipe_component(self, db_session: AsyncSession) -> None:
-        """Inserting a recipe_component with a non-existent sellable_item_id fails."""
+        """Inserting a recipe_component with a non-existent recipe_id fails."""
         rc = RecipeComponent(
-            sellable_item_id=UUID("00000000-0000-0000-0000-000000009999"),
+            recipe_id=UUID("00000000-0000-0000-0000-000000009999"),
             raw_material_item_id=UUID("00000000-0000-0000-0000-000000009998"),
             quantity_required=Decimal("2.500"),
         )

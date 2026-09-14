@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/inventory_item.dart';
+import '../../models/permission.dart';
 import '../../models/stock_movement.dart';
 import '../../models/table_query.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/inventory_provider.dart';
+import '../../providers/permissions_provider.dart';
+import '../../providers/production_provider.dart';
 import '../../providers/stock_movement_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
@@ -20,6 +23,8 @@ import '../../widgets/detail_page/detail_page_scaffold.dart';
 import '../../widgets/dialogs/item_form_dialog.dart';
 import '../../widgets/dialogs/reorder_dialog.dart';
 import 'inventory_groceries_screen.dart' show StockStatusTone;
+import 'recipe_form_dialog.dart';
+import 'record_production_dialog.dart';
 import 'stock_adjust_dialog.dart';
 import 'stock_transfer_dialog.dart';
 import 'waste_log_dialog.dart';
@@ -385,48 +390,62 @@ class _KeyStats extends StatelessWidget {
 // Quick actions
 // ---------------------------------------------------------------------------
 
-class _QuickActions extends StatelessWidget {
+class _QuickActions extends ConsumerWidget {
   const _QuickActions({required this.item});
 
   final InventoryItem item;
 
   @override
-  Widget build(BuildContext context) {
-    // Nothing to adjust, waste or move on a line that is not counted.
-    if (!item.trackStock) return const SizedBox.shrink();
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Nothing to adjust, waste or move on a line that is not counted —
+    // except production and recipe management, which live outside that
+    // guard: the items being made are very often untracked
+    // prepared-to-order lines, which is exactly what recipes and production
+    // events are for.
+    final recipeAction = _recipeAction(context, ref);
+    if (!item.trackStock && !_canProduce(ref) && recipeAction == null) {
+      return const SizedBox.shrink();
+    }
 
     final buttons = <Widget>[
-      FilledButton.icon(
-        onPressed: () => showStockAdjustDialog(context, item),
-        icon: const Icon(Icons.tune_rounded, size: 18),
-        label: const Text('Adjust stock'),
-      ),
-      // A sellable-only item can never be purchase-received (see
-      // `stock_movement_service.py`'s `_COMPATIBILITY_RULES`) — reordering
-      // it would always fail at receive time, so the action isn't offered.
-      if (item.itemType != 'sellable')
+      if (_canProduce(ref)) _RecordProductionButton(item: item),
+      if (recipeAction != null) recipeAction,
+      // Everything below counts physical stock, so it stays behind the
+      // tracked guard — an untracked line with a recipe shows only the
+      // production button above.
+      if (item.trackStock) ...[
+        FilledButton.icon(
+          onPressed: () => showStockAdjustDialog(context, item),
+          icon: const Icon(Icons.tune_rounded, size: 18),
+          label: const Text('Adjust stock'),
+        ),
+        // A sellable-only item can never be purchase-received (see
+        // `stock_movement_service.py`'s `_COMPATIBILITY_RULES`) — reordering
+        // it would always fail at receive time, so the action isn't offered.
+        if (item.itemType != 'sellable')
+          OutlinedButton.icon(
+            onPressed: () => showReorderDialog(context, item),
+            icon: const Icon(Icons.shopping_cart_outlined, size: 18),
+            label: const Text('Create reorder'),
+          ),
         OutlinedButton.icon(
-          onPressed: () => showReorderDialog(context, item),
-          icon: const Icon(Icons.shopping_cart_outlined, size: 18),
-          label: const Text('Create reorder'),
+          onPressed: item.stock == 0
+              ? null
+              : () => showWasteLogDialog(context, item),
+          icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+          label: const Text('Log waste'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: item.stock == 0 ? null : context.semantic.warning,
+          ),
         ),
-      OutlinedButton.icon(
-        onPressed: item.stock == 0
-            ? null
-            : () => showWasteLogDialog(context, item),
-        icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-        label: const Text('Log waste'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: item.stock == 0 ? null : context.semantic.warning,
+        OutlinedButton.icon(
+          onPressed: item.stock == 0
+              ? null
+              : () => showStockTransferDialog(context, item),
+          icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+          label: const Text('Transfer stock'),
         ),
-      ),
-      OutlinedButton.icon(
-        onPressed: item.stock == 0
-            ? null
-            : () => showStockTransferDialog(context, item),
-        icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-        label: const Text('Transfer stock'),
-      ),
+      ],
     ];
 
     return LayoutBuilder(
@@ -455,6 +474,81 @@ class _QuickActions extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  /// Whether the record-production action applies: the line is backed by a
+  /// backend item with a defined recipe, and the session may record runs.
+  /// Demo-mode rows (no `catalogItemId`) and recipe-less items get nothing.
+  bool _canProduce(WidgetRef ref) {
+    final catalogId = item.catalogItemId;
+    if (catalogId == null) return false;
+    if (!ref.watch(hasPermissionProvider(AppPermissions.productionCreate))) {
+      return false;
+    }
+    return ref
+            .watch(recipesCatalogProvider)
+            .valueOrNull
+            ?.any((recipe) => recipe.sellableItemId == catalogId) ??
+        false;
+  }
+
+  /// The recipe management action for this line, if any applies: "Edit
+  /// recipe" where one is defined (needs `recipes.update`), "Add recipe"
+  /// where none is (needs `recipes.create`). Demo-mode rows get nothing —
+  /// recipes genuinely need the backend's atomic catalog.
+  Widget? _recipeAction(BuildContext context, WidgetRef ref) {
+    final catalogId = item.catalogItemId;
+    if (catalogId == null) return null;
+    final recipe = ref
+        .watch(recipesCatalogProvider)
+        .valueOrNull
+        ?.where((r) => r.sellableItemId == catalogId)
+        .firstOrNull;
+    if (recipe != null &&
+        ref.watch(hasPermissionProvider(AppPermissions.recipesUpdate))) {
+      return OutlinedButton.icon(
+        onPressed: () => showRecipeFormDialog(context, recipe: recipe),
+        icon: const Icon(Icons.receipt_long_outlined, size: 18),
+        label: const Text('Edit recipe'),
+      );
+    }
+    if (recipe == null &&
+        ref.watch(hasPermissionProvider(AppPermissions.recipesCreate))) {
+      return OutlinedButton.icon(
+        onPressed: () =>
+            showRecipeFormDialog(context, sellable: item),
+        icon: const Icon(Icons.add_rounded, size: 18),
+        label: const Text('Add recipe'),
+      );
+    }
+    return null;
+  }
+}
+
+/// Opens the record-production dialog for this line's recipe.
+///
+/// Rendered only when [_QuickActions._canProduce] holds, so the recipe
+/// lookup here always succeeds — the `!` documents that invariant rather
+/// than hiding a real null case.
+class _RecordProductionButton extends ConsumerWidget {
+  const _RecordProductionButton({required this.item});
+
+  final InventoryItem item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recipe = ref
+        .watch(recipesCatalogProvider)
+        .valueOrNull
+        ?.where((r) => r.sellableItemId == item.catalogItemId)
+        .firstOrNull;
+    if (recipe == null) return const SizedBox.shrink();
+
+    return FilledButton.icon(
+      onPressed: () => showRecordProductionDialog(context, recipe),
+      icon: const Icon(Icons.soup_kitchen_outlined, size: 18),
+      label: const Text('Record production'),
     );
   }
 }

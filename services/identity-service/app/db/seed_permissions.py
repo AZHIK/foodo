@@ -39,6 +39,11 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
     ),
     PermissionSeed(PermissionCode.POS_REFUND, "Refund POS sale", "Refund a completed POS sale."),
     PermissionSeed(
+        PermissionCode.POS_DISCOUNT,
+        "Apply POS discounts",
+        "Apply a discount to a POS sale.",
+    ),
+    PermissionSeed(
         PermissionCode.INVENTORY_VIEW,
         "View inventory",
         "View stock levels, expiry risk, and inventory history.",
@@ -72,6 +77,51 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
         PermissionCode.INVENTORY_TRANSFER,
         "Transfer inventory",
         "Move stock between store locations.",
+    ),
+    PermissionSeed(
+        PermissionCode.SALES_VIEW,
+        "View sales",
+        "List sales and view sale details.",
+    ),
+    PermissionSeed(
+        PermissionCode.SALES_EXPORT,
+        "Export sales",
+        "Export sales records for external reporting.",
+    ),
+    PermissionSeed(
+        PermissionCode.REPORTS_VIEW,
+        "View reports",
+        "View business reports and analytics.",
+    ),
+    PermissionSeed(
+        PermissionCode.SETTINGS_STORE,
+        "Manage store settings",
+        "Change store name, address, and trading setup.",
+    ),
+    PermissionSeed(
+        PermissionCode.SETTINGS_TAX,
+        "Manage tax settings",
+        "Change tax rates and tax behaviour.",
+    ),
+    PermissionSeed(
+        PermissionCode.SETTINGS_DEVICES,
+        "Manage devices",
+        "Register and manage store devices and terminals.",
+    ),
+    PermissionSeed(
+        PermissionCode.SETTINGS_BILLING,
+        "Manage billing",
+        "View and change billing and subscription details.",
+    ),
+    PermissionSeed(
+        PermissionCode.COURIERS_VIEW,
+        "View couriers",
+        "View the courier list and availability.",
+    ),
+    PermissionSeed(
+        PermissionCode.INSIGHTS_VIEW,
+        "View insights",
+        "View business insights and recommendations.",
     ),
     PermissionSeed(
         PermissionCode.PROCUREMENT_CREATE,
@@ -210,6 +260,38 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
         PermissionCode.SUPPLIERS_DELETE,
         "Delete suppliers",
         "Remove a supplier record.",
+    ),
+    # Recipes
+    PermissionSeed(
+        PermissionCode.RECIPES_VIEW,
+        "View recipes",
+        "Browse bills-of-materials for sellable items, with resolved ingredients.",
+    ),
+    PermissionSeed(
+        PermissionCode.RECIPES_CREATE,
+        "Create recipes",
+        "Define a new bill-of-materials for a sellable item.",
+    ),
+    PermissionSeed(
+        PermissionCode.RECIPES_UPDATE,
+        "Update recipes",
+        "Replace a recipe's ingredient list or rename it.",
+    ),
+    PermissionSeed(
+        PermissionCode.RECIPES_DELETE,
+        "Delete recipes",
+        "Remove a recipe from a sellable item.",
+    ),
+    # Production
+    PermissionSeed(
+        PermissionCode.PRODUCTION_CREATE,
+        "Record production",
+        "Record a production run, consuming ingredients and stocking output.",
+    ),
+    PermissionSeed(
+        PermissionCode.PRODUCTION_VIEW,
+        "View production history",
+        "Browse recorded production runs and their ingredient consumption.",
     ),
     # Users (platform staff)
     PermissionSeed(

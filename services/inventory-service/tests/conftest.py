@@ -47,7 +47,10 @@ from app.main import app  # noqa: E402
 
 APP_TABLES = (
     "item",
+    "recipe",
     "recipecomponent",
+    "productionevent",
+    "productioneventcomponent",
     "stocklevel",
     "stockmovement",
     "processedevent",
@@ -179,7 +182,8 @@ async def _clean_tables() -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         await conn.execute(
             text(
-                "TRUNCATE TABLE item, recipecomponent, stocklevel, "
+                "TRUNCATE TABLE item, recipe, recipecomponent, productionevent, "
+                "productioneventcomponent, stocklevel, "
                 "stockmovement, processedevent, reorder, supplier "
                 "RESTART IDENTITY CASCADE"
             )

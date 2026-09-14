@@ -59,6 +59,16 @@ class PermissionCode(StrEnum):
     SUPPLIERS_CREATE = "suppliers.create"
     SUPPLIERS_UPDATE = "suppliers.update"
     SUPPLIERS_DELETE = "suppliers.delete"
+    # ── Recipes (enforced by Inventory Service's recipes endpoints — see
+    # services/inventory-service/app/api/v1/endpoints/recipes.py) ─────────
+    RECIPES_VIEW = "recipes.view"
+    RECIPES_CREATE = "recipes.create"
+    RECIPES_UPDATE = "recipes.update"
+    RECIPES_DELETE = "recipes.delete"
+    # ── Production (enforced by Inventory Service's production endpoints —
+    # see services/inventory-service/app/api/v1/endpoints/production.py) ──
+    PRODUCTION_CREATE = "production.create"
+    PRODUCTION_VIEW = "production.view"
     PROCUREMENT_CREATE = "procurement.create"
     PROCUREMENT_APPROVE = "procurement.approve"
     PROCUREMENT_AUTO_ORDER_ENABLE = "procurement.auto_order.enable"

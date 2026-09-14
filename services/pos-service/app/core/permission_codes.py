@@ -71,6 +71,18 @@ class PermissionCode(StrEnum):
     SUPPLIERS_UPDATE = "suppliers.update"
     SUPPLIERS_DELETE = "suppliers.delete"
 
+    # ── Recipes (cross-service reference — enforced by
+    # Inventory Service) ────────────────────────
+    RECIPES_VIEW = "recipes.view"
+    RECIPES_CREATE = "recipes.create"
+    RECIPES_UPDATE = "recipes.update"
+    RECIPES_DELETE = "recipes.delete"
+
+    # ── Production (cross-service reference — enforced by
+    # Inventory Service) ────────────────────────
+    PRODUCTION_CREATE = "production.create"
+    PRODUCTION_VIEW = "production.view"
+
     # ── Procurement ────────────────────────────
     PROCUREMENT_CREATE = "procurement.create"
     PROCUREMENT_APPROVE = "procurement.approve"

@@ -63,6 +63,176 @@ class InventoryApiException implements Exception {
       'InventoryApiException: $message${statusCode != null ? ' (HTTP $statusCode)' : ''}';
 }
 
+/// One ingredient line of a recipe, with resolved item details.
+class RecipeIngredientDto {
+  final String rawMaterialItemId;
+  final String rawMaterialName;
+  final String rawMaterialUnit;
+  final Decimal quantityRequired;
+
+  RecipeIngredientDto({
+    required this.rawMaterialItemId,
+    required this.rawMaterialName,
+    required this.rawMaterialUnit,
+    required this.quantityRequired,
+  });
+
+  factory RecipeIngredientDto.fromJson(Map<String, dynamic> json) =>
+      RecipeIngredientDto(
+        rawMaterialItemId: json['raw_material_item_id'] as String,
+        rawMaterialName: json['raw_material_name'] as String,
+        rawMaterialUnit: json['raw_material_unit'] as String? ?? '',
+        quantityRequired: Decimal.parse(
+          json['quantity_required'].toString(),
+        ),
+      );
+}
+
+/// One ingredient line on a recipe create/update payload: just the raw
+/// item id and the quantity in that item's own unit.
+class RecipeComponentInput {
+  RecipeComponentInput({
+    required this.rawMaterialItemId,
+    required this.quantityRequired,
+  });
+
+  final String rawMaterialItemId;
+  final Decimal quantityRequired;
+
+  Map<String, dynamic> toJson() => {
+        'raw_material_item_id': rawMaterialItemId,
+        'quantity_required': quantityRequired.toString(),
+      };
+}
+
+/// A recipe header with its full ingredient set.
+class RecipeDto {
+  final String id;
+  final String businessId;
+  final String sellableItemId;
+  final String sellableItemName;
+  final String name;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final List<RecipeIngredientDto> components;
+
+  RecipeDto({
+    required this.id,
+    required this.businessId,
+    required this.sellableItemId,
+    required this.sellableItemName,
+    required this.name,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.components,
+  });
+
+  factory RecipeDto.fromJson(Map<String, dynamic> json) => RecipeDto(
+        id: json['id'] as String,
+        businessId: json['business_id'] as String,
+        sellableItemId: json['sellable_item_id'] as String,
+        sellableItemName: json['sellable_item_name'] as String,
+        name: json['name'] as String,
+        createdAt: DateTime.parse(json['created_at'] as String),
+        updatedAt: DateTime.parse(json['updated_at'] as String),
+        components: (json['components'] as List<dynamic>)
+            .cast<Map<String, dynamic>>()
+            .map(RecipeIngredientDto.fromJson)
+            .toList(),
+      );
+}
+
+/// One ingredient consumed by a production event, with resolved item details.
+class ProductionComponentDto {
+  final String id;
+  final String rawMaterialItemId;
+  final String rawMaterialName;
+  final String rawMaterialUnit;
+  final Decimal quantityConsumed;
+
+  ProductionComponentDto({
+    required this.id,
+    required this.rawMaterialItemId,
+    required this.rawMaterialName,
+    required this.rawMaterialUnit,
+    required this.quantityConsumed,
+  });
+
+  factory ProductionComponentDto.fromJson(Map<String, dynamic> json) =>
+      ProductionComponentDto(
+        id: json['id'] as String,
+        rawMaterialItemId: json['raw_material_item_id'] as String,
+        rawMaterialName: json['raw_material_name'] as String,
+        rawMaterialUnit: json['raw_material_unit'] as String? ?? '',
+        quantityConsumed: Decimal.parse(json['quantity_consumed'].toString()),
+      );
+}
+
+/// A recorded production run: measured input plus suggested vs actual output.
+class ProductionEventDto {
+  final String id;
+  final String businessId;
+  final String storeId;
+  final String recipeId;
+  final String recipeName;
+  final String sellableItemId;
+  final String sellableItemName;
+  final String leadingComponentItemId;
+  final Decimal leadingQuantityUsed;
+  final Decimal suggestedOutputQuantity;
+  final Decimal actualOutputQuantity;
+  final String? actorId;
+  final DateTime occurredAt;
+  final DateTime createdAt;
+  final List<ProductionComponentDto> components;
+
+  ProductionEventDto({
+    required this.id,
+    required this.businessId,
+    required this.storeId,
+    required this.recipeId,
+    required this.recipeName,
+    required this.sellableItemId,
+    required this.sellableItemName,
+    required this.leadingComponentItemId,
+    required this.leadingQuantityUsed,
+    required this.suggestedOutputQuantity,
+    required this.actualOutputQuantity,
+    this.actorId,
+    required this.occurredAt,
+    required this.createdAt,
+    required this.components,
+  });
+
+  factory ProductionEventDto.fromJson(Map<String, dynamic> json) =>
+      ProductionEventDto(
+        id: json['id'] as String,
+        businessId: json['business_id'] as String,
+        storeId: json['store_id'] as String,
+        recipeId: json['recipe_id'] as String,
+        recipeName: json['recipe_name'] as String,
+        sellableItemId: json['sellable_item_id'] as String,
+        sellableItemName: json['sellable_item_name'] as String,
+        leadingComponentItemId: json['leading_component_item_id'] as String,
+        leadingQuantityUsed: Decimal.parse(
+          json['leading_quantity_used'].toString(),
+        ),
+        suggestedOutputQuantity: Decimal.parse(
+          json['suggested_output_quantity'].toString(),
+        ),
+        actualOutputQuantity: Decimal.parse(
+          json['actual_output_quantity'].toString(),
+        ),
+        actorId: json['actor_id'] as String?,
+        occurredAt: DateTime.parse(json['occurred_at'] as String),
+        createdAt: DateTime.parse(json['created_at'] as String),
+        components: (json['components'] as List<dynamic>)
+            .cast<Map<String, dynamic>>()
+            .map(ProductionComponentDto.fromJson)
+            .toList(),
+      );
+}
+
 class InventoryApiService {
   const InventoryApiService({required this._dio});
 
@@ -252,6 +422,159 @@ class InventoryApiService {
           .cast<Map<String, dynamic>>()
           .map(StockMovementDto.fromJson)
           .toList();
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Records a production run against a recipe. Requires `production.create`.
+  /// [actualOutputQuantity] is optional — omit it and the server commits the
+  /// computed suggestion, so callers never have to echo it back.
+  Future<ProductionEventDto> recordProduction({
+    required String businessId,
+    required String recipeId,
+    required String leadingItemId,
+    required Decimal leadingQuantityUsed,
+    Decimal? actualOutputQuantity,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/businesses/$businessId/recipes/$recipeId/produce',
+        data: {
+          'leading_item_id': leadingItemId,
+          'leading_quantity_used': leadingQuantityUsed.toString(),
+          if (actualOutputQuantity != null)
+            'actual_output_quantity': actualOutputQuantity.toString(),
+        },
+      );
+      return ProductionEventDto.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Lists production history, newest first. Requires `production.view`.
+  /// [from]/[to] are calendar dates (inclusive) on the event's occurred time.
+  Future<List<ProductionEventDto>> fetchProductionEvents({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/businesses/$businessId/production-events',
+        queryParameters: {
+          if (from != null) 'from': _isoDate(from),
+          if (to != null) 'to': _isoDate(to),
+          'limit': limit,
+          'offset': offset,
+        },
+      );
+      return (response.data as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(ProductionEventDto.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Full detail for one production event. Requires `production.view`.
+  Future<ProductionEventDto> fetchProductionEvent({
+    required String businessId,
+    required String eventId,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/businesses/$businessId/production-events/$eventId',
+      );
+      return ProductionEventDto.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  static String _isoDate(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
+
+  /// Lists this business's recipes with resolved ingredients.
+  /// Requires `recipes.view`.
+  Future<List<RecipeDto>> fetchRecipes({
+    required String businessId,
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/businesses/$businessId/recipes',
+        queryParameters: {'limit': limit, 'offset': offset},
+      );
+      return (response.data as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(RecipeDto.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Creates a recipe for a sellable item. Requires `recipes.create`.
+  /// At least one component is required — the backend rejects an empty set.
+  Future<RecipeDto> createRecipe({
+    required String businessId,
+    required String sellableItemId,
+    String? name,
+    required List<RecipeComponentInput> components,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/businesses/$businessId/recipes',
+        data: {
+          'sellable_item_id': sellableItemId,
+          if (name != null) 'name': name,
+          'components': [for (final c in components) c.toJson()],
+        },
+      );
+      return RecipeDto.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Replaces a recipe's component list as a full set (plus optional rename).
+  /// Requires `recipes.update`. Lines absent from [components] are deleted.
+  Future<RecipeDto> updateRecipe({
+    required String businessId,
+    required String recipeId,
+    String? name,
+    required List<RecipeComponentInput> components,
+  }) async {
+    try {
+      final response = await _dio.patch(
+        '/businesses/$businessId/recipes/$recipeId',
+        data: {
+          if (name != null) 'name': name,
+          'components': [for (final c in components) c.toJson()],
+        },
+      );
+      return RecipeDto.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Hard-deletes a recipe. Requires `recipes.delete`. Refused with a 409
+  /// when production runs were recorded against it.
+  Future<void> deleteRecipe({
+    required String businessId,
+    required String recipeId,
+  }) async {
+    try {
+      await _dio.delete('/businesses/$businessId/recipes/$recipeId');
     } on DioException catch (e) {
       _rethrowAsInventoryError(e);
     }

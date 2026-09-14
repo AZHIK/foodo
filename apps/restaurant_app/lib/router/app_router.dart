@@ -20,6 +20,7 @@ import '../screens/inventory/inventory_groceries_screen_gated.dart';
 import '../screens/inventory/inventory_menu_items_screen_gated.dart';
 import '../screens/insights/ai_insights_screen.dart';
 import '../screens/inventory/item_detail_screen.dart';
+import '../screens/inventory/production_history_screen_gated.dart';
 import '../screens/inventory/reorders_screen_gated.dart';
 import '../screens/suppliers/suppliers_screen_gated.dart';
 import '../screens/placeholder/module_placeholder_screen.dart';
@@ -199,6 +200,9 @@ abstract final class AppRoute {
   static const reordersPath = '/reorders';
   static const reordersName = 'reorders';
 
+  static const productionPath = '/production';
+  static const productionName = 'production';
+
   static const suppliersPath = '/suppliers';
   static const suppliersName = 'suppliers';
 
@@ -223,6 +227,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   );
   final reordersNavigatorKey = GlobalKey<NavigatorState>(
     debugLabel: 'reorders',
+  );
+  final productionNavigatorKey = GlobalKey<NavigatorState>(
+    debugLabel: 'production',
   );
   final suppliersNavigatorKey = GlobalKey<NavigatorState>(
     debugLabel: 'suppliers',
@@ -372,6 +379,17 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 path: AppRoute.reordersPath,
                 name: AppRoute.reordersName,
                 builder: (context, state) => const ReordersScreenGated(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: productionNavigatorKey,
+            routes: [
+              GoRoute(
+                path: AppRoute.productionPath,
+                name: AppRoute.productionName,
+                builder: (context, state) =>
+                    const ProductionHistoryScreenGated(),
               ),
             ],
           ),

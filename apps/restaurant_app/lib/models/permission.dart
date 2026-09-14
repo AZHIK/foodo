@@ -76,6 +76,12 @@ abstract final class AppPermissions {
   static const inventoryItemsDeactivate = 'inventory.items.deactivate';
   static const inventoryWasteRecord = 'inventory.waste.record';
   static const inventoryTransfer = 'inventory.transfer';
+  static const productionCreate = 'production.create';
+  static const productionView = 'production.view';
+  static const recipesView = 'recipes.view';
+  static const recipesCreate = 'recipes.create';
+  static const recipesUpdate = 'recipes.update';
+  static const recipesDelete = 'recipes.delete';
 
   static const salesView = 'sales.view';
   static const salesExport = 'sales.export';
@@ -175,6 +181,36 @@ abstract final class AppPermissions {
           id: inventoryTransfer,
           label: 'Transfer stock',
           description: 'Move stock between store locations',
+        ),
+        Permission(
+          id: productionCreate,
+          label: 'Record production',
+          description: 'Consume ingredients and stock finished dishes',
+        ),
+        Permission(
+          id: productionView,
+          label: 'View production history',
+          description: 'See recorded production runs and consumption',
+        ),
+        Permission(
+          id: recipesView,
+          label: 'View recipes',
+          description: 'See bills of materials for menu items',
+        ),
+        Permission(
+          id: recipesCreate,
+          label: 'Add recipes',
+          description: 'Define bills of materials for menu items',
+        ),
+        Permission(
+          id: recipesUpdate,
+          label: 'Edit recipes',
+          description: 'Change recipe ingredients or rename recipes',
+        ),
+        Permission(
+          id: recipesDelete,
+          label: 'Delete recipes',
+          description: 'Remove bills of materials from menu items',
         ),
         Permission(
           id: inventoryItemsDeactivate,

@@ -81,6 +81,12 @@ _MOVEMENTS_ALLOWED_FOR_ANY: frozenset[MovementType] = frozenset(
         MovementType.TRANSFER_OUT,
         MovementType.SALE_REVERSAL,
         MovementType.REFUND_REVERSAL,
+        # Production legs are transformations/corrections, not sales or
+        # purchases — a production_input on a `both` ingredient or a
+        # production_output on a `both` sellable must not trip the
+        # sale/purchase item_type rules (Stage 2).
+        MovementType.PRODUCTION_INPUT,
+        MovementType.PRODUCTION_OUTPUT,
     }
 )
 
@@ -94,6 +100,8 @@ _COMPATIBILITY_RULES: dict[ItemType, frozenset[MovementType]] = {
             MovementType.TRANSFER_OUT,
             MovementType.SALE_REVERSAL,
             MovementType.REFUND_REVERSAL,
+            MovementType.PRODUCTION_INPUT,
+            MovementType.PRODUCTION_OUTPUT,
         }
     ),
     ItemType.RAW_MATERIAL: frozenset(
@@ -105,6 +113,8 @@ _COMPATIBILITY_RULES: dict[ItemType, frozenset[MovementType]] = {
             MovementType.TRANSFER_OUT,
             MovementType.SALE_REVERSAL,
             MovementType.REFUND_REVERSAL,
+            MovementType.PRODUCTION_INPUT,
+            MovementType.PRODUCTION_OUTPUT,
         }
     ),
     ItemType.BOTH: frozenset(
@@ -117,6 +127,8 @@ _COMPATIBILITY_RULES: dict[ItemType, frozenset[MovementType]] = {
             MovementType.TRANSFER_OUT,
             MovementType.SALE_REVERSAL,
             MovementType.REFUND_REVERSAL,
+            MovementType.PRODUCTION_INPUT,
+            MovementType.PRODUCTION_OUTPUT,
         }
     ),
 }
