@@ -94,6 +94,11 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
         "View business reports and analytics.",
     ),
     PermissionSeed(
+        PermissionCode.REPORTS_EXPORT,
+        "Export reports",
+        "Export report tables to CSV, Excel, or PDF.",
+    ),
+    PermissionSeed(
         PermissionCode.SETTINGS_STORE,
         "Manage store settings",
         "Change store name, address, and trading setup.",

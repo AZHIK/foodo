@@ -22,6 +22,7 @@ import '../screens/insights/ai_insights_screen.dart';
 import '../screens/inventory/item_detail_screen.dart';
 import '../screens/inventory/production_history_screen_gated.dart';
 import '../screens/inventory/reorders_screen_gated.dart';
+import '../screens/reports/reports_screen_gated.dart';
 import '../screens/suppliers/suppliers_screen_gated.dart';
 import '../screens/placeholder/module_placeholder_screen.dart';
 import '../screens/pos/pos_screen.dart';
@@ -444,13 +445,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoute.reportsPath,
                 name: AppRoute.reportsName,
-                builder: (context, state) => const ModulePlaceholderScreen(
-                  title: 'Reports',
-                  icon: Icons.insights_rounded,
-                  blurb:
-                      'Daily takings, item mix and staff performance land '
-                      'here once the reporting service is wired up.',
-                ),
+                builder: (context, state) => const ReportsScreenGated(),
               ),
             ],
           ),

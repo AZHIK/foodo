@@ -27,7 +27,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.models.inventory import ItemType
 
@@ -99,6 +99,25 @@ class ItemRead(ItemBase):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+    # Raw storage key — excluded from the wire. Exists only so the
+    # ``image_url`` computed field below can tell "has a photo" from
+    # "no photo" without a second query.
+    image_path: str | None = Field(default=None, exclude=True)
+
+    @computed_field
+    @property
+    def image_url(self) -> str | None:
+        """Service-relative URL of the item's product photo, or null.
+
+        Resolved by the app against Inventory Service's base URL (which
+        already ends in ``/api/v1``) — the same convention every other
+        endpoint path in this service follows. Null means no photo; the
+        app falls back to its placeholder.
+        """
+        if not self.image_path:
+            return None
+        return f"/businesses/{self.business_id}/items/{self.id}/image"
 
 
 class ItemListFilters(BaseModel):

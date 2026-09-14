@@ -10,6 +10,7 @@ import '../auth/token_refresh_interceptor.dart';
 import '../auth/token_storage.dart';
 import '../config/api_config.dart';
 import '../services/pos_api_service.dart';
+import '../services/pos_reports_api_service.dart';
 import '../sync/http_pos_catalog_api.dart';
 import '../sync/pos_catalog_api.dart';
 import '../sync/sales_sync_service.dart';
@@ -64,4 +65,11 @@ final salesSyncServiceProvider = Provider<SalesSyncService>((ref) {
 /// The one real client for void/refund.
 final posApiServiceProvider = Provider<PosApiService>(
   (ref) => PosApiService(dio: ref.watch(posServiceDioProvider)),
+);
+
+/// The one real client for aggregated POS reports (takings, mix, staff,
+/// finance). Same Dio, separate class so reporting reads stay distinct
+/// from the void/refund write path.
+final posReportsApiServiceProvider = Provider<PosReportsApiService>(
+  (ref) => PosReportsApiService(dio: ref.watch(posServiceDioProvider)),
 );

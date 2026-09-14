@@ -70,6 +70,7 @@ class CatalogSyncService {
                 allowNegativeStock: Value(item.allowNegativeStock),
                 itemType: Value(item.itemType),
                 isActive: Value(item.isActive),
+                imageUrl: Value(item.imageUrl),
                 createdAtServer: Value(item.createdAt),
                 updatedAtServer: Value(item.updatedAt),
                 lastSeenAt: Value(runStartedAt),

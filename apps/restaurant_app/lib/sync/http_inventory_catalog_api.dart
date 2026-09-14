@@ -102,6 +102,7 @@ class HttpInventoryCatalogApi extends InventoryCatalogApi {
         isActive: item['is_active'] as bool? ?? true,
         createdAt: DateTime.parse(item['created_at'] as String),
         updatedAt: DateTime.parse(item['updated_at'] as String),
+        imageUrl: item['image_url'] as String?,
       );
 
   StockLevelDto _stockLevelFromJson(Map<String, dynamic> level) => StockLevelDto(

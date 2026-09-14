@@ -32,6 +32,11 @@ class CatalogItemDto {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  /// Service-relative URL of the item's product photo (e.g.
+  /// `/businesses/{businessId}/items/{id}/image`), resolved against
+  /// Inventory Service's base URL. Null when the item has no photo.
+  final String? imageUrl;
+
   CatalogItemDto({
     required this.id,
     required this.businessId,
@@ -48,6 +53,7 @@ class CatalogItemDto {
     this.isActive = true,
     required this.createdAt,
     required this.updatedAt,
+    this.imageUrl,
   });
 }
 

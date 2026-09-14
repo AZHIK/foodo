@@ -16,6 +16,7 @@ class PermissionCode(StrEnum):
     SALES_VIEW = "sales.view"
     SALES_EXPORT = "sales.export"
     REPORTS_VIEW = "reports.view"
+    REPORTS_EXPORT = "reports.export"
     # Not yet enforced by any endpoint — no settings resource exists in this
     # service today. Added so a business owner's custom-role editor can
     # reference these business-facing concepts now; a future settings/POS

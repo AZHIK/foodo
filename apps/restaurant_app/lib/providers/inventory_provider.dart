@@ -134,7 +134,16 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
   /// Creates a new item via the API, then refreshes. Falls back to a purely
   /// local insert when there's no store context (demo/mock mode) so the
   /// "Add item" form keeps working in that mode too.
-  Future<void> upsert(InventoryItem item) async {
+  ///
+  /// The photo stays optional — no photo, no photo step. But when
+  /// [item.image] holds freshly picked photo bytes the photo is part of the
+  /// save: it is uploaded right after the create/update, and if that upload
+  /// fails the save fails. For a create the just-made item is deactivated
+  /// again (best-effort rollback) so a failed photo cannot leave a
+  /// photo-less item behind; the form stays open with everything intact for
+  /// a retry. When [deleteRemoteImage] is true the server-side photo is
+  /// removed instead.
+  Future<void> upsert(InventoryItem item, {bool deleteRemoteImage = false}) async {
     final storeId = ref.read(currentStoreIdProvider);
     if (storeId == null) {
       final current = state.valueOrNull ?? const <InventoryItem>[];
@@ -203,7 +212,72 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
       saved,
       openingQuantity: isCreate ? openingQuantity : null,
     );
+    final remoteId = saved.id;
+    try {
+      if (item.image != null) {
+        final withPhoto = await _api.uploadItemImage(
+          businessId: _businessId,
+          itemId: remoteId,
+          filename: item.image!.name,
+          bytes: item.image!.bytes,
+        );
+        // Record the URL immediately so the photo shows without waiting
+        // for the pull below — the pull rewrites the same value.
+        final db = ref.read(appDatabaseProvider);
+        await (db.update(db.cachedItems)..where((row) => row.id.equals(remoteId)))
+            .write(CachedItemsCompanion(imageUrl: Value(withPhoto.imageUrl)));
+      } else if (deleteRemoteImage) {
+        await _api.deleteItemImage(
+          businessId: _businessId,
+          itemId: remoteId,
+        );
+      }
+    } on InventoryApiException catch (e) {
+      if (isCreate) {
+        // The photo was part of this save, so the save as a whole fails:
+        // roll the just-created item back (best effort — even if the
+        // rollback itself fails, the error below still reports the photo
+        // as the cause and the form keeps everything for a retry).
+        await _rollbackCreatedItem(remoteId);
+        throw InventoryApiException(
+          'Photo upload failed — the item was not saved: ${e.message}',
+          e.statusCode,
+        );
+      }
+      throw InventoryApiException(
+        'Item saved but its photo could not be synced: ${e.message}',
+        e.statusCode,
+      );
+    }
     await refresh();
+  }
+
+  /// Best-effort rollback of a just-created item whose photo upload failed.
+  ///
+  /// Deactivates the server-side row (ignored when it fails — the thrown
+  /// photo error already explains the outcome) and drops the optimistic
+  /// local cache row, so neither the list nor the next sync resurrects an
+  /// item the user was told was not saved.
+  Future<void> _rollbackCreatedItem(String remoteId) async {
+    try {
+      await _api.deactivateItem(
+        businessId: _businessId,
+        itemId: remoteId,
+      );
+    } on InventoryApiException {
+      // Best effort only — e.g. missing `inventory.items.deactivate`.
+    }
+    final db = ref.read(appDatabaseProvider);
+    await (db.delete(db.cachedItems)..where((row) => row.id.equals(remoteId)))
+        .go();
+    await (db.delete(
+      db.cachedStockLevels,
+    )..where((row) => row.itemId.equals(remoteId)))
+        .go();
+    final current = state.valueOrNull ?? const <InventoryItem>[];
+    state = AsyncData(
+      current.where((i) => i.catalogItemId != remoteId).toList(),
+    );
   }
 
   Future<void> _cacheCatalogItem(
@@ -230,6 +304,7 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
             allowNegativeStock: Value(item.allowNegativeStock),
             itemType: Value(item.itemType),
             isActive: Value(item.isActive),
+            imageUrl: Value(item.imageUrl),
             createdAtServer: Value(item.createdAt),
             updatedAtServer: Value(item.updatedAt),
             lastSeenAt: Value(now),

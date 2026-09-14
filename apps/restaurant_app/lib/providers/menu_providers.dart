@@ -29,6 +29,8 @@ MenuItem _toMenuItem(InventoryItem item) {
     price: item.sellingPrice ?? 0,
     categoryId: item.categoryId,
     emoji: item.emoji,
+    imageUrl: item.imageUrl,
+    image: item.image,
     isAvailable: available,
     linkedInventoryItemId: item.id,
   );

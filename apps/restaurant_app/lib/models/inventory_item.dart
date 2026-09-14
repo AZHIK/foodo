@@ -6,8 +6,9 @@ import 'package:flutter/material.dart';
 ///
 /// Bytes rather than a path because the app runs on web as well as desktop and
 /// mobile, and `dart:io` is not available there — [Image.memory] is the one
-/// renderer that works on every target. A real build would upload these and
-/// keep a URL instead.
+/// renderer that works on every target. Freshly picked (not yet uploaded)
+/// photos live here; once uploaded, the server copy is referenced by
+/// [InventoryItem.imageUrl] and these bytes are dropped on the next sync.
 @immutable
 class ItemImage {
   const ItemImage({required this.name, required this.bytes});
@@ -63,6 +64,7 @@ class InventoryItem {
     this.description = '',
     this.lastCountedAt,
     this.image,
+    this.imageUrl,
     this.trackStock = true,
     this.isArchived = false,
     this.catalogItemId,
@@ -104,6 +106,12 @@ class InventoryItem {
 
   /// Product photo, when one has been uploaded. [emoji] is the fallback.
   final ItemImage? image;
+
+  /// Service-relative URL of the server-side product photo (see
+  /// `CatalogItemDto.imageUrl`), or null when the item has no photo.
+  /// Freshly picked photos live in [image] until the save uploads them;
+  /// after the next sync the bytes come from this URL instead.
+  final String? imageUrl;
 
   /// False for items counted by eye rather than by unit — a bottomless
   /// condiment, a service charge line. Their stock numbers are meaningless, so
@@ -178,6 +186,7 @@ class InventoryItem {
     String? description,
     DateTime? lastCountedAt,
     ItemImage? image,
+    String? imageUrl,
     bool? trackStock,
     bool? isArchived,
     String? catalogItemId,
@@ -206,6 +215,7 @@ class InventoryItem {
       description: description ?? this.description,
       lastCountedAt: lastCountedAt ?? this.lastCountedAt,
       image: clearImage ? null : (image ?? this.image),
+      imageUrl: imageUrl ?? this.imageUrl,
       trackStock: trackStock ?? this.trackStock,
       isArchived: isArchived ?? this.isArchived,
       catalogItemId: clearCatalogItemId

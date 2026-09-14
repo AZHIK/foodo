@@ -233,6 +233,143 @@ class ProductionEventDto {
       );
 }
 
+/// One item's recorded waste in a window: quantity and cost.
+class WasteLineDto {
+  final String itemId;
+  final String itemName;
+  final String itemUnit;
+  final Decimal quantityWasted;
+  final Decimal costWasted;
+
+  WasteLineDto({
+    required this.itemId,
+    required this.itemName,
+    required this.itemUnit,
+    required this.quantityWasted,
+    required this.costWasted,
+  });
+
+  factory WasteLineDto.fromJson(Map<String, dynamic> json) => WasteLineDto(
+        itemId: json['item_id'] as String,
+        itemName: json['item_name'] as String,
+        itemUnit: json['item_unit'] as String? ?? '',
+        quantityWasted: Decimal.parse(json['quantity_wasted'].toString()),
+        costWasted: Decimal.parse(json['cost_wasted'].toString()),
+      );
+}
+
+/// Waste in a window: per-item lines plus the total cost.
+class WasteSummaryDto {
+  final List<WasteLineDto> lines;
+  final Decimal totalCostWasted;
+
+  WasteSummaryDto({required this.lines, required this.totalCostWasted});
+
+  factory WasteSummaryDto.fromJson(Map<String, dynamic> json) =>
+      WasteSummaryDto(
+        lines: (json['lines'] as List<dynamic>)
+            .cast<Map<String, dynamic>>()
+            .map(WasteLineDto.fromJson)
+            .toList(),
+        totalCostWasted: Decimal.parse(
+          json['total_cost_wasted'].toString(),
+        ),
+      );
+}
+
+/// One ingredient's total consumption across production runs in a window.
+class IngredientConsumptionDto {
+  final String rawMaterialItemId;
+  final String rawMaterialName;
+  final String rawMaterialUnit;
+  final Decimal quantityConsumed;
+
+  IngredientConsumptionDto({
+    required this.rawMaterialItemId,
+    required this.rawMaterialName,
+    required this.rawMaterialUnit,
+    required this.quantityConsumed,
+  });
+
+  factory IngredientConsumptionDto.fromJson(Map<String, dynamic> json) =>
+      IngredientConsumptionDto(
+        rawMaterialItemId: json['raw_material_item_id'] as String,
+        rawMaterialName: json['raw_material_name'] as String,
+        rawMaterialUnit: json['raw_material_unit'] as String? ?? '',
+        quantityConsumed: Decimal.parse(
+          json['quantity_consumed'].toString(),
+        ),
+      );
+}
+
+/// Production in a window: run counts, suggested-vs-actual totals, and the
+/// over-portioning gap (actual minus suggested).
+class ProductionSummaryDto {
+  final int runs;
+  final Decimal suggestedTotal;
+  final Decimal actualTotal;
+  final Decimal overPortionedBy;
+  final List<IngredientConsumptionDto> ingredientsConsumed;
+
+  ProductionSummaryDto({
+    required this.runs,
+    required this.suggestedTotal,
+    required this.actualTotal,
+    required this.overPortionedBy,
+    required this.ingredientsConsumed,
+  });
+
+  factory ProductionSummaryDto.fromJson(Map<String, dynamic> json) =>
+      ProductionSummaryDto(
+        runs: json['runs'] as int,
+        suggestedTotal: Decimal.parse(json['suggested_total'].toString()),
+        actualTotal: Decimal.parse(json['actual_total'].toString()),
+        overPortionedBy: Decimal.parse(json['over_portioned_by'].toString()),
+        ingredientsConsumed:
+            (json['ingredients_consumed'] as List<dynamic>)
+                .cast<Map<String, dynamic>>()
+                .map(IngredientConsumptionDto.fromJson)
+                .toList(),
+      );
+}
+
+/// One category's share of current inventory value.
+class StockValuationLineDto {
+  final String? category;
+  final int itemCount;
+  final Decimal totalValue;
+
+  StockValuationLineDto({
+    this.category,
+    required this.itemCount,
+    required this.totalValue,
+  });
+
+  factory StockValuationLineDto.fromJson(Map<String, dynamic> json) =>
+      StockValuationLineDto(
+        category: json['category'] as String?,
+        itemCount: json['item_count'] as int,
+        totalValue: Decimal.parse(json['total_value'].toString()),
+      );
+}
+
+/// Current inventory value (on-hand × unit cost): a snapshot, not a window.
+class StockValuationDto {
+  final Decimal totalValue;
+  final List<StockValuationLineDto> lines;
+
+  StockValuationDto({required this.totalValue, required this.lines});
+
+  factory StockValuationDto.fromJson(Map<String, dynamic> json) =>
+      StockValuationDto(
+        totalValue: Decimal.parse(json['total_value'].toString()),
+        lines: (json['lines'] as List<dynamic>)
+            .cast<Map<String, dynamic>>()
+            .map(StockValuationLineDto.fromJson)
+            .toList(),
+      );
+}
+
 class InventoryApiService {
   const InventoryApiService({required this._dio});
 
@@ -257,6 +394,7 @@ class InventoryApiService {
         isActive: item['is_active'] as bool? ?? true,
         createdAt: DateTime.parse(item['created_at'] as String),
         updatedAt: DateTime.parse(item['updated_at'] as String),
+        imageUrl: item['image_url'] as String?,
       );
 
   Never _rethrowAsInventoryError(DioException e) {
@@ -354,6 +492,63 @@ class InventoryApiService {
   }) async {
     try {
       await _dio.delete('/businesses/$businessId/items/$itemId');
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Uploads (or replaces) an item's product photo. Requires
+  /// `inventory.items.update`. JPEG, PNG, or WebP up to 5 MB — matching
+  /// what the backend accepts and what the picker advertises.
+  Future<CatalogItemDto> uploadItemImage({
+    required String businessId,
+    required String itemId,
+    required String filename,
+    required List<int> bytes,
+  }) async {
+    try {
+      final form = FormData.fromMap({
+        'file': MultipartFile.fromBytes(bytes, filename: filename),
+      });
+      final response = await _dio.put(
+        '/businesses/$businessId/items/$itemId/image',
+        data: form,
+      );
+      return _itemFromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Removes an item's product photo (idempotent). Requires
+  /// `inventory.items.update`.
+  Future<CatalogItemDto> deleteItemImage({
+    required String businessId,
+    required String itemId,
+  }) async {
+    try {
+      final response = await _dio.delete(
+        '/businesses/$businessId/items/$itemId/image',
+      );
+      return _itemFromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Downloads an item's product photo bytes. Requires `inventory.view`.
+  /// Callers cache the bytes themselves (see `itemPhotoProvider`) — this
+  /// is a plain fetch, so every display site doesn't re-solve auth.
+  Future<List<int>> fetchItemImageBytes({
+    required String businessId,
+    required String itemId,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/businesses/$businessId/items/$itemId/image',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return (response.data as List<dynamic>).cast<int>();
     } on DioException catch (e) {
       _rethrowAsInventoryError(e);
     }
@@ -517,6 +712,65 @@ class InventoryApiService {
           .cast<Map<String, dynamic>>()
           .map(RecipeDto.fromJson)
           .toList();
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Waste recorded in a window, per item with cost. Requires
+  /// `reports.view`.
+  Future<WasteSummaryDto> fetchWasteSummary({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/businesses/$businessId/waste-summary',
+        queryParameters: {
+          if (from != null) 'from': _isoDate(from),
+          if (to != null) 'to': _isoDate(to),
+        },
+      );
+      return WasteSummaryDto.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Production runs in a window with suggested-vs-actual totals. Requires
+  /// `reports.view`.
+  Future<ProductionSummaryDto> fetchProductionSummary({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/businesses/$businessId/production-summary',
+        queryParameters: {
+          if (from != null) 'from': _isoDate(from),
+          if (to != null) 'to': _isoDate(to),
+        },
+      );
+      return ProductionSummaryDto.fromJson(
+        response.data as Map<String, dynamic>,
+      );
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Current inventory value, total and by category. Requires
+  /// `reports.view`. A snapshot — no window applies.
+  Future<StockValuationDto> fetchStockValuation({
+    required String businessId,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/businesses/$businessId/stock-valuation',
+      );
+      return StockValuationDto.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       _rethrowAsInventoryError(e);
     }

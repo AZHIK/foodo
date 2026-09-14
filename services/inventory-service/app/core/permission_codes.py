@@ -44,6 +44,10 @@ class PermissionCode(StrEnum):
     # ── Production (enforced here — see app/api/v1/endpoints/production.py)
     PRODUCTION_CREATE = "production.create"
     PRODUCTION_VIEW = "production.view"
+    # ── Reports (cross-service reference — enforced by POS Service and by
+    # this service's reports endpoints) ───────────────────────────────────
+    REPORTS_VIEW = "reports.view"
+    REPORTS_EXPORT = "reports.export"
     PROCUREMENT_CREATE = "procurement.create"
     PROCUREMENT_APPROVE = "procurement.approve"
     PROCUREMENT_AUTO_ORDER_ENABLE = "procurement.auto_order.enable"

@@ -20,6 +20,7 @@ import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/dialogs/item_form_dialog.dart';
 import '../../widgets/dialogs/reorder_dialog.dart';
 import '../../widgets/inventory/inventory_tab_bar.dart';
+import '../../widgets/item_photo.dart';
 import 'inventory_filter_panel.dart';
 import 'stock_adjust_dialog.dart';
 import 'stock_transfer_dialog.dart';
@@ -392,14 +393,13 @@ class _ItemCell extends StatelessWidget {
             borderRadius: BorderRadius.circular(Radii.sm),
           ),
           alignment: Alignment.center,
-          child: item.image != null
-              ? Image.memory(
-                  item.image!.bytes,
-                  fit: BoxFit.cover,
-                  width: 36,
-                  height: 36,
-                )
-              : Text(item.emoji, style: const TextStyle(fontSize: 18)),
+          child: ItemPhoto(
+            emoji: item.emoji,
+            emojiSize: 18,
+            bytes: item.image?.bytes,
+            imageUrl: item.imageUrl,
+            catalogItemId: item.catalogItemId,
+          ),
         ),
         const SizedBox(width: Insets.md),
         Expanded(

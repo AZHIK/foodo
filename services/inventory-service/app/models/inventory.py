@@ -212,6 +212,12 @@ class Item(SQLModel, table=True):
         ),
     )
     is_active: bool = Field(default=True, nullable=False)
+    # Storage key of the item's product photo (see
+    # ``app/services/item_image_storage.py``), e.g.
+    # ``"<business_id>/<item_id>.jpg"``. Null means no photo — callers fall
+    # back to the display placeholder. Photos are replaced in place (one
+    # photo per item), never versioned.
+    image_path: str | None = Field(default=None, max_length=512)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_type=DateTime(timezone=True),

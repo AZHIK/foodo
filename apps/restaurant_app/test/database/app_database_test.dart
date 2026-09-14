@@ -36,8 +36,8 @@ void main() {
       expect(database != null, true);
     });
 
-    test('schema version is 10', () async {
-      expect(database.schemaVersion, 10);
+    test('schema version is 11', () async {
+      expect(database.schemaVersion, 11);
     });
 
     test('LocalUserProfiles table exists and can be queried', () async {
@@ -162,6 +162,49 @@ void main() {
       final items = await database.select(database.cachedItems).get();
       expect(items.length, 1);
       expect(items.first.name, 'Tomato');
+      // No photo synced yet — the UI falls back to its placeholder.
+      expect(items.first.imageUrl == null, true);
+    });
+
+    test('CachedItems.imageUrl round-trips a synced photo URL', () async {
+      final now = DateTime.now();
+
+      await database.into(database.cachedItems).insert(
+            CachedItemsCompanion.insert(
+              id: 'item-uuid-2',
+              businessId: 'biz-123',
+              businessLocationId: 'loc-456',
+              name: 'Pilau',
+              unitOfMeasure: 'ea',
+              reorderThreshold: Decimal.fromInt(10),
+              reorderQuantity: Decimal.fromInt(20),
+              itemType: 'sellable',
+              createdAtServer: now,
+              updatedAtServer: now,
+              lastSeenAt: now,
+              lastSyncedAt: now,
+              imageUrl: const Value(
+                '/businesses/biz-123/items/item-uuid-2/image',
+              ),
+            ),
+          );
+
+      final item = await (database.select(database.cachedItems)
+            ..where((row) => row.id.equals('item-uuid-2')))
+          .getSingle();
+      expect(
+        item.imageUrl,
+        '/businesses/biz-123/items/item-uuid-2/image',
+      );
+
+      // A photo removed server-side clears on the next pull.
+      await (database.update(database.cachedItems)
+            ..where((row) => row.id.equals('item-uuid-2')))
+          .write(const CachedItemsCompanion(imageUrl: Value(null)));
+      final cleared = await (database.select(database.cachedItems)
+            ..where((row) => row.id.equals('item-uuid-2')))
+          .getSingle();
+      expect(cleared.imageUrl == null, true);
     });
 
     test('LocalUserProfiles.lastRevocationCheckAt defaults to null and is settable', () async {

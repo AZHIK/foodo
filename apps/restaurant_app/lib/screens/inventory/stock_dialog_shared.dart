@@ -10,6 +10,7 @@ import '../../providers/stock_movement_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/item_photo.dart';
 import '../../widgets/labeled_form_field.dart';
 
 /// Width the three stock dialogs share. Narrower than the item form, which has
@@ -63,14 +64,13 @@ class StockItemContext extends StatelessWidget {
               color: colors.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(Radii.sm),
             ),
-            child: item.image != null
-                ? Image.memory(
-                    item.image!.bytes,
-                    fit: BoxFit.cover,
-                    width: 40,
-                    height: 40,
-                  )
-                : Text(item.emoji, style: const TextStyle(fontSize: 20)),
+            child: ItemPhoto(
+              emoji: item.emoji,
+              emojiSize: 20,
+              bytes: item.image?.bytes,
+              imageUrl: item.imageUrl,
+              catalogItemId: item.catalogItemId,
+            ),
           ),
           const SizedBox(width: Insets.md),
           Expanded(

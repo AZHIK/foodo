@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'inventory_item.dart';
+
 /// A menu category, e.g. "Starters" or "Drinks".
 ///
 /// [id] is the stable key used for filtering; a backend would supply the same
@@ -35,6 +37,7 @@ class MenuItem {
     required this.categoryId,
     required this.emoji,
     this.imageUrl,
+    this.image,
     this.isAvailable = true,
     this.isPopular = false,
     this.prepMinutes = 10,
@@ -54,8 +57,14 @@ class MenuItem {
   /// offline while still giving each card a distinct look.
   final String emoji;
 
-  /// Populated once a backend serves real photography.
+  /// Service-relative URL of the server-side product photo, mapped through
+  /// from the linked inventory item. Null means no photo — the card shows
+  /// the emoji instead.
   final String? imageUrl;
+
+  /// Freshly picked local photo bytes, mapped through from the linked
+  /// inventory item. Wins over [imageUrl] until the next sync drops it.
+  final ItemImage? image;
 
   final bool isAvailable;
   final bool isPopular;
@@ -77,6 +86,7 @@ class MenuItem {
     String? categoryId,
     String? emoji,
     String? imageUrl,
+    ItemImage? image,
     bool? isAvailable,
     bool? isPopular,
     int? prepMinutes,
@@ -92,6 +102,7 @@ class MenuItem {
       categoryId: categoryId ?? this.categoryId,
       emoji: emoji ?? this.emoji,
       imageUrl: imageUrl ?? this.imageUrl,
+      image: image ?? this.image,
       isAvailable: isAvailable ?? this.isAvailable,
       isPopular: isPopular ?? this.isPopular,
       prepMinutes: prepMinutes ?? this.prepMinutes,

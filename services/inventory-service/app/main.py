@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.core.telemetry import configure_telemetry
 from app.api.v1.endpoints import categories as categories_endpoints
+from app.api.v1.endpoints import item_images as item_images_endpoints
 from app.api.v1.endpoints import items as items_endpoints
 from app.api.v1.endpoints import production as production_endpoints
 from app.api.v1.endpoints import recipes as recipes_endpoints
@@ -53,6 +54,7 @@ app.add_middleware(
 
 app.include_router(health.router, prefix="")
 app.include_router(items_endpoints.router, prefix="/api/v1")
+app.include_router(item_images_endpoints.router, prefix="/api/v1")
 app.include_router(ops_items_router, prefix="/api/v1")
 app.include_router(business_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")

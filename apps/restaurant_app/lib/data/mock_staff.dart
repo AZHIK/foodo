@@ -59,6 +59,7 @@ abstract final class MockStaff {
         AppPermissions.salesView,
         AppPermissions.salesExport,
         AppPermissions.reportsView,
+        AppPermissions.reportsExport,
         AppPermissions.staffView,
         AppPermissions.staffAssign,
         AppPermissions.settingsStore,

@@ -86,6 +86,7 @@ abstract final class AppPermissions {
   static const salesView = 'sales.view';
   static const salesExport = 'sales.export';
   static const reportsView = 'reports.view';
+  static const reportsExport = 'reports.export';
 
   static const customersView = 'customers.view';
   static const customersCreate = 'customers.create';
@@ -238,6 +239,11 @@ abstract final class AppPermissions {
           id: reportsView,
           label: 'View reports',
           description: 'Takings, item mix and staff performance',
+        ),
+        Permission(
+          id: reportsExport,
+          label: 'Export reports',
+          description: 'Download report tables as PDF or Excel',
         ),
       ],
     ),

@@ -110,6 +110,8 @@ _PLATFORM_FULL: tuple[PermissionCode, ...] = (
 # Restaurant "Manager" — POS_SALES_SYNC is resolved onto the existing
 # POS_WRITE enum member (see seed_mappings.py); POS_VIEW and the inventory
 # codes are first-class PermissionCode members and are referenced directly.
+# REPORTS_VIEW/EXPORT match the frontend's Manager role (mock_staff.dart):
+# managers read every report section and may export the tables.
 _MANAGER: tuple[PermissionCode, ...] = (
     POS_SALES_SYNC,
     PermissionCode.POS_VIEW,
@@ -121,6 +123,8 @@ _MANAGER: tuple[PermissionCode, ...] = (
     PermissionCode.INVENTORY_ITEMS_CREATE,
     PermissionCode.INVENTORY_ITEMS_UPDATE,
     PermissionCode.INVENTORY_ITEMS_DEACTIVATE,
+    PermissionCode.REPORTS_VIEW,
+    PermissionCode.REPORTS_EXPORT,
     PermissionCode.USER_BUSINESS_ROLES_VIEW,
     PermissionCode.USER_BUSINESS_ROLES_ASSIGN,
 )
@@ -134,6 +138,7 @@ _CASHIER: tuple[PermissionCode, ...] = (
 _KITCHEN_STAFF: tuple[PermissionCode, ...] = (
     PermissionCode.INVENTORY_VIEW,
     PermissionCode.INVENTORY_WASTE_RECORD,
+    PermissionCode.REPORTS_VIEW,
 )
 
 _STOCK_CONTROLLER: tuple[PermissionCode, ...] = (
@@ -143,6 +148,7 @@ _STOCK_CONTROLLER: tuple[PermissionCode, ...] = (
     PermissionCode.INVENTORY_TRANSFER,
     PermissionCode.INVENTORY_ITEMS_CREATE,
     PermissionCode.INVENTORY_ITEMS_UPDATE,
+    PermissionCode.REPORTS_VIEW,
 )
 
 _SALES_ADMIN: tuple[PermissionCode, ...] = (

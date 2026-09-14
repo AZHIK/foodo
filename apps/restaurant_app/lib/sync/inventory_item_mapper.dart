@@ -2,11 +2,16 @@
 /// onto the UI's `InventoryItem` model.
 ///
 /// The two shapes don't line up 1:1: `InventoryItem` carries client-only UI
-/// concerns with no backend equivalent (`emoji`, `image`, `description`,
-/// `supplier`, `lastCountedAt`) and stock genuinely lives in a separate table
+/// concerns with no backend equivalent (`emoji`, `description`, `supplier`,
+/// `lastCountedAt`) and stock genuinely lives in a separate table
 /// server-side. Rather than reshape either side, this is a pure adapter —
 /// `catalogItemId` is the join key `InventoryItem` already carries for
 /// exactly this purpose.
+///
+/// Freshly picked photo bytes (`image`) are one of those client-only
+/// concerns — but unlike the decorative fields, they have a durable server
+/// counterpart: `imageUrl`, synced from the catalog like any other column.
+/// A photo removed server-side clears here on the next pull.
 ///
 /// The fields with no backend source are decorative-only against real data:
 /// they render with a sensible default and can be edited locally, but
@@ -81,5 +86,6 @@ InventoryItem inventoryItemFromCachedRow({
     trackStock: catalogRow.itemType != 'sellable',
     reorderQuantity: _toDouble(catalogRow.reorderQuantity),
     allowNegativeStock: catalogRow.allowNegativeStock,
+    imageUrl: catalogRow.imageUrl,
   );
 }

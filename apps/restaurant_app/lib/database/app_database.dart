@@ -186,7 +186,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.connection);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -282,6 +282,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 10) {
         await m.createTable(cachedUnits);
         await m.addColumn(cachedItems, cachedItems.unitId);
+      }
+      if (from < 11) {
+        await m.addColumn(cachedItems, cachedItems.imageUrl);
       }
     },
     beforeOpen: (details) async {

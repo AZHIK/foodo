@@ -22,6 +22,7 @@ import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/detail_page/detail_page_scaffold.dart';
 import '../../widgets/dialogs/item_form_dialog.dart';
 import '../../widgets/dialogs/reorder_dialog.dart';
+import '../../widgets/item_photo.dart';
 import 'inventory_groceries_screen.dart' show StockStatusTone;
 import 'recipe_form_dialog.dart';
 import 'record_production_dialog.dart';
@@ -139,14 +140,13 @@ class _Thumbnail extends StatelessWidget {
         borderRadius: BorderRadius.circular(Radii.md),
         border: Border.all(color: context.semantic.hairline),
       ),
-      child: item.image != null
-          ? Image.memory(
-              item.image!.bytes,
-              fit: BoxFit.cover,
-              width: _size,
-              height: _size,
-            )
-          : Text(item.emoji, style: const TextStyle(fontSize: 24)),
+      child: ItemPhoto(
+        emoji: item.emoji,
+        emojiSize: 24,
+        bytes: item.image?.bytes,
+        imageUrl: item.imageUrl,
+        catalogItemId: item.catalogItemId,
+      ),
     );
   }
 }

@@ -57,6 +57,16 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8100
 
+    # ── Item product photos ──────────────────────
+    # Local-disk storage for item image uploads (see
+    # ``app/services/item_image_storage.py``) — same MVP tradeoff as POS
+    # Service's receipt storage: no cloud bucket exists in this repo yet, so
+    # files live on a mounted volume. Single-node only; the volume must be
+    # part of the backup story alongside the Postgres dump.
+    item_image_storage_root: str = "/var/lib/foodlink/item_images"
+    # Matches the "up to 5 MB" hint the app's image picker shows.
+    item_image_max_bytes: int = 5 * 1024 * 1024
+
 
 @lru_cache
 def get_settings() -> Settings:

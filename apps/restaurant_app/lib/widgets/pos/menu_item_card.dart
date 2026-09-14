@@ -6,6 +6,7 @@ import '../../providers/cart_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
+import '../item_photo.dart';
 
 /// A tappable menu tile in the POS grid.
 ///
@@ -129,8 +130,9 @@ class _Artwork extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Emoji stands in for photography; scaling it off the box keeps the
-        // tile looking deliberate at every column count.
+        // Emoji stands in for photography when the item has no photo;
+        // scaling it off the box keeps the tile looking deliberate at
+        // every column count.
         final glyph = (constraints.maxHeight * 0.48).clamp(20.0, 44.0);
 
         return Container(
@@ -139,7 +141,13 @@ class _Artwork extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               Center(
-                child: Text(item.emoji, style: TextStyle(fontSize: glyph)),
+                child: ItemPhoto(
+                  emoji: item.emoji,
+                  emojiSize: glyph,
+                  bytes: item.image?.bytes,
+                  imageUrl: item.imageUrl,
+                  catalogItemId: item.linkedInventoryItemId,
+                ),
               ),
               if (!available)
                 Center(

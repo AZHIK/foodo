@@ -89,6 +89,12 @@ class CachedItems extends Table {
   /// Local timestamp of the last catalog sync that touched this row.
   DateTimeColumn get lastSyncedAt => dateTime()();
 
+  /// Service-relative URL of the item's product photo (see `CatalogItemDto.imageUrl`).
+  /// Nullable: null means "no photo on the server" and the UI falls back to
+  /// its placeholder. Synced from the catalog pull like every other column —
+  /// a photo removed server-side clears this on the next pull.
+  TextColumn get imageUrl => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

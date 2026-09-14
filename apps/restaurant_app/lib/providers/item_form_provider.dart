@@ -24,6 +24,7 @@ class ItemFormState {
     required this.isArchived,
     this.description = '',
     this.image,
+    this.imageCleared = false,
     this.sellingPrice = '',
     this.itemType = '',
     this.reorderQuantity = '',
@@ -80,6 +81,13 @@ class ItemFormState {
   final bool trackStock;
   final bool isArchived;
   final ItemImage? image;
+
+  /// True once the user explicitly removes the photo in this editing
+  /// session. Distinct from `image == null` (which is also true when the
+  /// item simply has no photo, or when its photo lives server-side as
+  /// `imageUrl`): only an explicit removal deletes the server-side photo
+  /// on save, so an untouched photo survives an unrelated edit.
+  final bool imageCleared;
 
   /// Blank means "not for sale" — the item stays off the POS menu until a
   /// price is set. Kept as text like the other numeric fields so a half-typed
@@ -224,6 +232,9 @@ class ItemFormState {
       isArchived: isArchived ?? this.isArchived,
       description: description ?? this.description,
       image: clearImage ? null : (image ?? this.image),
+      // Picking a new photo un-removes a removal: the save uploads the new
+      // bytes instead of deleting the server-side photo.
+      imageCleared: clearImage ? true : (image != null ? false : imageCleared),
       sellingPrice: sellingPrice ?? this.sellingPrice,
       itemType: clearItemType ? '' : (itemType ?? this.itemType),
       reorderQuantity: reorderQuantity ?? this.reorderQuantity,
@@ -365,7 +376,13 @@ class ItemFormNotifier
             itemType: itemType,
           );
 
-    await inventory.upsert(item);
+    await inventory.upsert(
+      item,
+      // Only an explicit in-session removal deletes the server-side photo:
+      // `state.image == null` alone would also nuke the photo on any
+      // unrelated edit, since synced items carry no local bytes.
+      deleteRemoteImage: state.imageCleared && (existing?.imageUrl != null),
+    );
     return item;
   }
 

@@ -52,6 +52,7 @@ COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app /app
 RUN rm -rf /app/tests /app/.pytest_cache /app/.ruff_cache /app/uv.lock && \
     chmod -R a+r /app/keys
+RUN mkdir -p /var/lib/foodlink/item_images && chown -R foodlink:foodlink /var/lib/foodlink
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \

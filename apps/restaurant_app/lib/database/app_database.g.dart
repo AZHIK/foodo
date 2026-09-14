@@ -2888,6 +2888,17 @@ class $CachedItemsTable extends CachedItems
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _imageUrlMeta = const VerificationMeta(
+    'imageUrl',
+  );
+  @override
+  late final GeneratedColumn<String> imageUrl = GeneratedColumn<String>(
+    'image_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2908,6 +2919,7 @@ class $CachedItemsTable extends CachedItems
     updatedAtServer,
     lastSeenAt,
     lastSyncedAt,
+    imageUrl,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3043,6 +3055,12 @@ class $CachedItemsTable extends CachedItems
     } else if (isInserting) {
       context.missing(_lastSyncedAtMeta);
     }
+    if (data.containsKey('image_url')) {
+      context.handle(
+        _imageUrlMeta,
+        imageUrl.isAcceptableOrUnknown(data['image_url']!, _imageUrlMeta),
+      );
+    }
     return context;
   }
 
@@ -3132,6 +3150,10 @@ class $CachedItemsTable extends CachedItems
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_synced_at'],
       )!,
+      imageUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}image_url'],
+      ),
     );
   }
 
@@ -3222,6 +3244,12 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
 
   /// Local timestamp of the last catalog sync that touched this row.
   final DateTime lastSyncedAt;
+
+  /// Service-relative URL of the item's product photo (see `CatalogItemDto.imageUrl`).
+  /// Nullable: null means "no photo on the server" and the UI falls back to
+  /// its placeholder. Synced from the catalog pull like every other column —
+  /// a photo removed server-side clears this on the next pull.
+  final String? imageUrl;
   const CachedItem({
     required this.id,
     required this.businessId,
@@ -3241,6 +3269,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
     required this.updatedAtServer,
     required this.lastSeenAt,
     required this.lastSyncedAt,
+    this.imageUrl,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3281,6 +3310,9 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
     map['updated_at_server'] = Variable<DateTime>(updatedAtServer);
     map['last_seen_at'] = Variable<DateTime>(lastSeenAt);
     map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
+    if (!nullToAbsent || imageUrl != null) {
+      map['image_url'] = Variable<String>(imageUrl);
+    }
     return map;
   }
 
@@ -3310,6 +3342,9 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
       updatedAtServer: Value(updatedAtServer),
       lastSeenAt: Value(lastSeenAt),
       lastSyncedAt: Value(lastSyncedAt),
+      imageUrl: imageUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(imageUrl),
     );
   }
 
@@ -3339,6 +3374,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
       updatedAtServer: serializer.fromJson<DateTime>(json['updatedAtServer']),
       lastSeenAt: serializer.fromJson<DateTime>(json['lastSeenAt']),
       lastSyncedAt: serializer.fromJson<DateTime>(json['lastSyncedAt']),
+      imageUrl: serializer.fromJson<String?>(json['imageUrl']),
     );
   }
   @override
@@ -3363,6 +3399,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
       'updatedAtServer': serializer.toJson<DateTime>(updatedAtServer),
       'lastSeenAt': serializer.toJson<DateTime>(lastSeenAt),
       'lastSyncedAt': serializer.toJson<DateTime>(lastSyncedAt),
+      'imageUrl': serializer.toJson<String?>(imageUrl),
     };
   }
 
@@ -3385,6 +3422,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
     DateTime? updatedAtServer,
     DateTime? lastSeenAt,
     DateTime? lastSyncedAt,
+    Value<String?> imageUrl = const Value.absent(),
   }) => CachedItem(
     id: id ?? this.id,
     businessId: businessId ?? this.businessId,
@@ -3404,6 +3442,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
     updatedAtServer: updatedAtServer ?? this.updatedAtServer,
     lastSeenAt: lastSeenAt ?? this.lastSeenAt,
     lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+    imageUrl: imageUrl.present ? imageUrl.value : this.imageUrl,
   );
   CachedItem copyWithCompanion(CachedItemsCompanion data) {
     return CachedItem(
@@ -3447,6 +3486,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
       lastSyncedAt: data.lastSyncedAt.present
           ? data.lastSyncedAt.value
           : this.lastSyncedAt,
+      imageUrl: data.imageUrl.present ? data.imageUrl.value : this.imageUrl,
     );
   }
 
@@ -3470,7 +3510,8 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
           ..write('createdAtServer: $createdAtServer, ')
           ..write('updatedAtServer: $updatedAtServer, ')
           ..write('lastSeenAt: $lastSeenAt, ')
-          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('imageUrl: $imageUrl')
           ..write(')'))
         .toString();
   }
@@ -3495,6 +3536,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
     updatedAtServer,
     lastSeenAt,
     lastSyncedAt,
+    imageUrl,
   );
   @override
   bool operator ==(Object other) =>
@@ -3517,7 +3559,8 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
           other.createdAtServer == this.createdAtServer &&
           other.updatedAtServer == this.updatedAtServer &&
           other.lastSeenAt == this.lastSeenAt &&
-          other.lastSyncedAt == this.lastSyncedAt);
+          other.lastSyncedAt == this.lastSyncedAt &&
+          other.imageUrl == this.imageUrl);
 }
 
 class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
@@ -3539,6 +3582,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
   final Value<DateTime> updatedAtServer;
   final Value<DateTime> lastSeenAt;
   final Value<DateTime> lastSyncedAt;
+  final Value<String?> imageUrl;
   final Value<int> rowid;
   const CachedItemsCompanion({
     this.id = const Value.absent(),
@@ -3559,6 +3603,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
     this.updatedAtServer = const Value.absent(),
     this.lastSeenAt = const Value.absent(),
     this.lastSyncedAt = const Value.absent(),
+    this.imageUrl = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CachedItemsCompanion.insert({
@@ -3580,6 +3625,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
     required DateTime updatedAtServer,
     required DateTime lastSeenAt,
     required DateTime lastSyncedAt,
+    this.imageUrl = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        businessId = Value(businessId),
@@ -3612,6 +3658,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
     Expression<DateTime>? updatedAtServer,
     Expression<DateTime>? lastSeenAt,
     Expression<DateTime>? lastSyncedAt,
+    Expression<String>? imageUrl,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3635,6 +3682,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
       if (updatedAtServer != null) 'updated_at_server': updatedAtServer,
       if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
       if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+      if (imageUrl != null) 'image_url': imageUrl,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3658,6 +3706,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
     Value<DateTime>? updatedAtServer,
     Value<DateTime>? lastSeenAt,
     Value<DateTime>? lastSyncedAt,
+    Value<String?>? imageUrl,
     Value<int>? rowid,
   }) {
     return CachedItemsCompanion(
@@ -3679,6 +3728,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
       updatedAtServer: updatedAtServer ?? this.updatedAtServer,
       lastSeenAt: lastSeenAt ?? this.lastSeenAt,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      imageUrl: imageUrl ?? this.imageUrl,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3752,6 +3802,9 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
     if (lastSyncedAt.present) {
       map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
     }
+    if (imageUrl.present) {
+      map['image_url'] = Variable<String>(imageUrl.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3779,6 +3832,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
           ..write('updatedAtServer: $updatedAtServer, ')
           ..write('lastSeenAt: $lastSeenAt, ')
           ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('imageUrl: $imageUrl, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -19187,6 +19241,7 @@ typedef $$CachedItemsTableCreateCompanionBuilder =
       required DateTime updatedAtServer,
       required DateTime lastSeenAt,
       required DateTime lastSyncedAt,
+      Value<String?> imageUrl,
       Value<int> rowid,
     });
 typedef $$CachedItemsTableUpdateCompanionBuilder =
@@ -19209,6 +19264,7 @@ typedef $$CachedItemsTableUpdateCompanionBuilder =
       Value<DateTime> updatedAtServer,
       Value<DateTime> lastSeenAt,
       Value<DateTime> lastSyncedAt,
+      Value<String?> imageUrl,
       Value<int> rowid,
     });
 
@@ -19314,6 +19370,11 @@ class $$CachedItemsTableFilterComposer
     column: $table.lastSyncedAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get imageUrl => $composableBuilder(
+    column: $table.imageUrl,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$CachedItemsTableOrderingComposer
@@ -19414,6 +19475,11 @@ class $$CachedItemsTableOrderingComposer
     column: $table.lastSyncedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get imageUrl => $composableBuilder(
+    column: $table.imageUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CachedItemsTableAnnotationComposer
@@ -19503,6 +19569,9 @@ class $$CachedItemsTableAnnotationComposer
     column: $table.lastSyncedAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get imageUrl =>
+      $composableBuilder(column: $table.imageUrl, builder: (column) => column);
 }
 
 class $$CachedItemsTableTableManager
@@ -19554,6 +19623,7 @@ class $$CachedItemsTableTableManager
                 Value<DateTime> updatedAtServer = const Value.absent(),
                 Value<DateTime> lastSeenAt = const Value.absent(),
                 Value<DateTime> lastSyncedAt = const Value.absent(),
+                Value<String?> imageUrl = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedItemsCompanion(
                 id: id,
@@ -19574,6 +19644,7 @@ class $$CachedItemsTableTableManager
                 updatedAtServer: updatedAtServer,
                 lastSeenAt: lastSeenAt,
                 lastSyncedAt: lastSyncedAt,
+                imageUrl: imageUrl,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -19596,6 +19667,7 @@ class $$CachedItemsTableTableManager
                 required DateTime updatedAtServer,
                 required DateTime lastSeenAt,
                 required DateTime lastSyncedAt,
+                Value<String?> imageUrl = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedItemsCompanion.insert(
                 id: id,
@@ -19616,6 +19688,7 @@ class $$CachedItemsTableTableManager
                 updatedAtServer: updatedAtServer,
                 lastSeenAt: lastSeenAt,
                 lastSyncedAt: lastSyncedAt,
+                imageUrl: imageUrl,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
