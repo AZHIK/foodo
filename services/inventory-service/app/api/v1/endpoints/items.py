@@ -20,7 +20,8 @@ Business-context binding is enforced at the shared dependency level
 
 from __future__ import annotations
 
-from typing import Annotated
+from decimal import Decimal
+from typing import Annotated, Any
 from uuid import UUID
 
 import structlog
@@ -30,9 +31,10 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.sql.expression import SelectOfScalar
 
 from app.core.database import get_db
-from app.deps.auth import require_business_permission
-from app.models.inventory import Item, StockLevel
+from app.deps.auth import get_current_claims, require_business_permission
+from app.models.inventory import ActorType, Item, MovementType, StockLevel
 from app.schemas.items import ItemCreate, ItemListFilters, ItemRead, ItemUpdate
+from app.services.stock_movement_service import record_movement
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/businesses/{business_id}/items", tags=["items"])
@@ -85,6 +87,7 @@ async def create_item(
     body: ItemCreate,
     session: Annotated[AsyncSession, Depends(get_db)],
     _jwt_biz_id: Annotated[str, Depends(require_business_permission("inventory.items.create"))],
+    claims: Annotated[dict[str, Any], Depends(get_current_claims)],
 ) -> Item:
     """Create a new item for the business.
 
@@ -116,8 +119,33 @@ async def create_item(
         item_type=body.item_type,
     )
     session.add(item)
-    await session.commit()
-    await session.refresh(item)
+    # Flush (no commit) so item.id exists for the opening-stock movement
+    # below — the movement's commit then persists both rows atomically.
+    await session.flush()
+
+    initial_qty = body.initial_quantity or Decimal("0")
+    if initial_qty > 0:
+        raw_sub = claims.get("sub")
+        try:
+            actor_id = UUID(raw_sub) if raw_sub else None
+        except ValueError:
+            actor_id = None
+        await record_movement(
+            db=session,
+            item_id=item.id,
+            business_id=business_id,
+            store_id=body.store_id,
+            quantity_delta=initial_qty,
+            movement_type=MovementType.MANUAL_ADJUSTMENT,
+            actor_type=ActorType.USER.value,
+            actor_id=actor_id,
+            reason="Opening stock",
+        )
+        # record_movement(commit=True) already committed + refreshed.
+        await session.refresh(item)
+    else:
+        await session.commit()
+        await session.refresh(item)
 
     logger.info(
         "item.created",
@@ -126,6 +154,7 @@ async def create_item(
         store_id=str(body.store_id),
         name=item.name,
         item_type=str(item.item_type),
+        initial_quantity=str(initial_qty),
     )
     return item
 

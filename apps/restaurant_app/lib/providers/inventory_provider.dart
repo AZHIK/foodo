@@ -163,7 +163,15 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
       );
     }
 
-    final saved = item.catalogItemId == null
+    final isCreate = item.catalogItemId == null;
+    // Untracked items carry no count — never send opening stock for
+    // them, otherwise a prepared-to-order dish would gain a stock
+    // row and read as a stockroom line.
+    final openingQuantity = isCreate && item.trackStock
+        ? Decimal.parse(item.stock.toString())
+        : Decimal.zero;
+
+    final saved = isCreate
         ? await _api.createItem(
             businessId: _businessId,
             storeId: storeId,
@@ -176,6 +184,7 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
             unitCost: Decimal.parse(item.unitCost.toString()),
             sellingPrice: sellingPrice,
             allowNegativeStock: item.allowNegativeStock,
+            initialQuantity: openingQuantity,
           )
         : await _api.updateItem(
             businessId: _businessId,
@@ -190,11 +199,17 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
             allowNegativeStock: item.allowNegativeStock,
             itemType: item.itemType,
           );
-    await _cacheCatalogItem(saved);
+    await _cacheCatalogItem(
+      saved,
+      openingQuantity: isCreate ? openingQuantity : null,
+    );
     await refresh();
   }
 
-  Future<void> _cacheCatalogItem(CatalogItemDto item) async {
+  Future<void> _cacheCatalogItem(
+    CatalogItemDto item, {
+    Decimal? openingQuantity,
+  }) async {
     final now = DateTime.now();
     final db = ref.read(appDatabaseProvider);
     await db
@@ -221,6 +236,27 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
             lastSyncedAt: Value(now),
           ),
         );
+    // Optimistic opening-stock row. The backend creates the stock level
+    // atomically with the item, but this notifier must not depend on the
+    // follow-up stock sync (a separate pull that can lag, page past, or
+    // fail silently inside `CatalogSyncService`) to display the quantity
+    // the user just typed — without this, a fresh item reads as 0 until
+    // that pull converges. The next successful sync upserts the same value
+    // over this row, so there is nothing to reconcile. Zero is skipped on
+    // purpose: the backend creates no level row for a zero opening, and
+    // the mapper already renders a missing row as 0.
+    if (openingQuantity != null && openingQuantity > Decimal.zero) {
+      await db
+          .into(db.cachedStockLevels)
+          .insertOnConflictUpdate(
+            CachedStockLevelsCompanion(
+              itemId: Value(item.id),
+              businessLocationId: Value(item.storeId),
+              currentQuantity: Value(openingQuantity),
+              cachedAt: Value(now),
+            ),
+          );
+    }
     state = AsyncData(await _loadFromCache(item.storeId));
   }
 

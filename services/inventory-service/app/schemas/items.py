@@ -27,7 +27,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.inventory import ItemType
 
@@ -59,6 +59,12 @@ class ItemCreate(ItemBase):
     """
 
     store_id: UUID
+
+    # Opening on-hand quantity at the item's store. Optional, defaults to 0.
+    # Must be >= 0 — opening stock is never negative. When > 0 the create
+    # endpoint records it as a MANUAL_ADJUSTMENT movement ("Opening stock")
+    # so stock_levels and the audit trail stay consistent.
+    initial_quantity: Decimal = Field(default=Decimal("0"), ge=Decimal("0"))
 
 
 class ItemUpdate(BaseModel):

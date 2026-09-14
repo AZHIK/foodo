@@ -100,6 +100,9 @@ class InventoryApiService {
   }
 
   /// Creates a new item. Requires `inventory.items.create`.
+  /// [initialQuantity] is the opening on-hand stock — sent as
+  /// `initial_quantity` so the backend can create the stock level +
+  /// audit movement atomically with the item.
   Future<CatalogItemDto> createItem({
     required String businessId,
     required String storeId,
@@ -112,6 +115,7 @@ class InventoryApiService {
     Decimal? sellingPrice,
     Decimal? unitCost,
     bool allowNegativeStock = false,
+    Decimal? initialQuantity,
   }) async {
     try {
       final response = await _dio.post(
@@ -127,6 +131,8 @@ class InventoryApiService {
           if (sellingPrice != null) 'selling_price': sellingPrice.toString(),
           if (unitCost != null) 'unit_cost': unitCost.toString(),
           'allow_negative_stock': allowNegativeStock,
+          if (initialQuantity != null)
+            'initial_quantity': initialQuantity.toString(),
         },
       );
       return _itemFromJson(response.data as Map<String, dynamic>);
