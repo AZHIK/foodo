@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:restaurant_pos/models/dashboard_chart_data.dart';
 import 'package:restaurant_pos/theme/app_theme.dart';
+import 'package:restaurant_pos/utils/formatters.dart';
 import 'package:restaurant_pos/widgets/dashboard/category_donut_chart.dart';
 import 'package:restaurant_pos/widgets/dashboard/revenue_trend_chart.dart';
 
@@ -64,11 +65,11 @@ void main() {
     testWidgets('drops the Y axis on a narrow card', (tester) async {
       // Wide: the money gutter is worth its width.
       await pumpChart(tester, RevenueTrendChart(points: _revenue), 900);
-      expect(find.textContaining(r'$'), findsWidgets);
+      expect(find.textContaining(Fmt.currencySymbol), findsWidgets);
 
       // Narrow: gridlines carry the scale instead.
       await pumpChart(tester, RevenueTrendChart(points: _revenue), 320);
-      expect(find.textContaining(r'$'), findsNothing);
+      expect(find.textContaining(Fmt.currencySymbol), findsNothing);
     });
 
     testWidgets('axis labels are compact — never clipped cents', (
@@ -76,7 +77,7 @@ void main() {
     ) async {
       await pumpChart(tester, RevenueTrendChart(points: _revenue), 900);
 
-      // "$5,500.00" is what a full money format would render into a 46px
+      // "TSh 5,500" is what a full money format would render into a 46px
       // gutter, and it clips. The axis uses magnitudes instead.
       expect(find.textContaining('.00'), findsNothing);
       expect(find.textContaining('k'), findsWidgets);

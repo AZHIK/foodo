@@ -214,19 +214,20 @@ class RevenueTrendChart extends StatelessWidget {
 
   /// Axis money: no cents, thousands as "k".
   ///
-  /// [Fmt.moneyCompact] keeps cents below $10k, which renders "$5,500.00" and
+  /// [Fmt.moneyCompact] keeps cents below 10k, which renders "TSh 5,500" and
   /// then clips inside a 46px gutter — an axis wants the magnitude, not the
   /// exact figure.
   static String _axisMoney(double value) {
+    final symbol = Fmt.currencySymbol;
     if (value >= 1000) {
       final thousands = value / 1000;
-      return '\$${thousands.toStringAsFixed(thousands >= 10 ? 0 : 1)}k';
+      return '$symbol${thousands.toStringAsFixed(thousands >= 10 ? 0 : 1)}k';
     }
-    return '\$${value.round()}';
+    return '$symbol${value.round()}';
   }
 
   /// Rounds the top of the scale up to a number a person would choose, so the
-  /// gridlines land on readable values instead of $1,847.32.
+  /// gridlines land on readable values instead of "TSh 1,847".
   ///
   /// The ladder is deliberately fine-grained: jumping straight from 2.5 to 5
   /// puts a peak of 3,480 on a 5,500 scale and leaves the line hugging the

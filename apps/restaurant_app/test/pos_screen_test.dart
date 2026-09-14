@@ -86,7 +86,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      final charge = tester.getRect(find.textContaining('Charge \$'));
+      final charge = tester.getRect(find.textContaining('Charge '));
       expect(
         charge.bottom,
         lessThanOrEqualTo(844 - keyboard),
@@ -170,7 +170,7 @@ void main() {
 
       expect(container.read(cartProvider).itemCount, 1);
       // The line, its total and the ticket total all land in the panel.
-      expect(find.textContaining('Charge \$'), findsOneWidget);
+      expect(find.textContaining('Charge '), findsOneWidget);
     });
 
     testWidgets('stepper raises and clears the line', (tester) async {

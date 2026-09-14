@@ -160,7 +160,14 @@ final autoPrintReceiptProvider = Provider<bool>(
 /// control follows. The labels are formatted through [Fmt.money], so the
 /// currency itself is still decided in exactly one place.
 final cashQuickAmountsProvider = Provider<List<double>>(
-  (ref) => const [5, 10, 20, 50],
+  (ref) => switch (ref.watch(
+    storeSettingsProvider.select((s) => s.currency),
+  )) {
+    // Whole-unit cash economies: useful notes, not pocket change.
+    Currency.tzs => const [1000, 2000, 5000, 10000],
+    Currency.idr => const [10000, 20000, 50000, 100000],
+    _ => const [5, 10, 20, 50],
+  },
 );
 
 /// Signed-in staff member, used as the default server on new orders.

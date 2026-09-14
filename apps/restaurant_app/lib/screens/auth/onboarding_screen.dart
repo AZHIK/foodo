@@ -134,7 +134,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _taxRate = TextEditingController(text: '8.25');
   final _taxId = TextEditingController();
   final _registrationNumber = TextEditingController();
-  Currency _currency = Currency.usd;
+  Currency _currency = Currency.tzs;
   OrderType _orderType = OrderType.dineIn;
 
   // Step 4
@@ -703,7 +703,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           label: 'Tax rate',
           isRequired: true,
           helper: 'Applied to every ticket. '
-              'Prices will read as ${Fmt.moneyIn(_currency, _currency == Currency.idr ? 48000 : 48)}',
+              'Prices will read as ${Fmt.moneyIn(_currency, _currency.decimalDigits == 0 ? 48000 : 48)}',
           child: TextField(
             key: OnboardingKeys.taxRate,
             controller: _taxRate,

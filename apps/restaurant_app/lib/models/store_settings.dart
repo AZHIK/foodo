@@ -8,6 +8,10 @@ import 'order.dart';
 /// symbol without its locale puts the group separators in the wrong places, and
 /// a locale without its symbol prints the wrong currency entirely.
 enum Currency {
+  // `en_TZ` rather than `sw_TZ`: identical grouping ("TSh4,800"), but the
+  // compact form stays "TSh12K" instead of intl's Swahili "TSh elfu 12",
+  // which reads backwards on a summary tile.
+  tzs('TZS', 'TSh', 'en_TZ', 'Tanzanian shilling'),
   usd('USD', r'$', 'en_US', 'US dollar'),
   eur('EUR', '€', 'de_DE', 'Euro'),
   gbp('GBP', '£', 'en_GB', 'Pound sterling'),
@@ -22,9 +26,10 @@ enum Currency {
   final String locale;
   final String description;
 
-  /// Rupiah is quoted in whole units — "Rp 48.000,50" is not a price anyone
-  /// writes — where the rest of these carry cents.
-  int get decimalDigits => this == Currency.idr ? 0 : 2;
+  /// Rupiah and shilling prices are quoted in whole units — "Rp 48.000" and
+  /// "TSh 4,800" are not prices anyone writes with cents — where the rest of
+  /// these carry two decimals.
+  int get decimalDigits => this == Currency.idr || this == Currency.tzs ? 0 : 2;
 
   String get label => '$code · $symbol';
 }
@@ -107,7 +112,7 @@ class StoreSettings {
     this.taxRate = 0.0825,
     this.taxInclusive = false,
     this.serviceChargeRate = 0,
-    this.currency = Currency.usd,
+    this.currency = Currency.tzs,
     this.defaultOrderType = OrderType.dineIn,
     this.receiptPrefix = 'INV-',
     this.autoPrintReceipt = true,

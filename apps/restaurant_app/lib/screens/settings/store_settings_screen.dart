@@ -304,7 +304,7 @@ class _SampleAmount extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sample = currency == Currency.idr ? 48000.0 : 48.0;
+    final sample = currency.decimalDigits == 0 ? 48000.0 : 48.0;
 
     return Row(
       children: [

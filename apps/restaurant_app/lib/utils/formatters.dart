@@ -12,10 +12,10 @@ abstract final class Fmt {
   /// `WidgetRef` to print a price. The app root watches `currencyProvider` and
   /// calls [use] before the tree below it builds, so the value is always the
   /// configured one by the time anything reads it.
-  static Currency _currency = Currency.usd;
+  static Currency _currency = Currency.tzs;
 
-  static NumberFormat _money = _moneyFormat(Currency.usd);
-  static NumberFormat _compactMoney = _compactFormat(Currency.usd);
+  static NumberFormat _money = _moneyFormat(Currency.tzs);
+  static NumberFormat _compactMoney = _compactFormat(Currency.tzs);
 
   static Currency get currency => _currency;
 
@@ -72,7 +72,7 @@ abstract final class Fmt {
     return double.tryParse(cleaned);
   }
 
-  /// Shortens to `$1.2K` past four figures — keeps summary tiles from wrapping.
+  /// Shortens to `TSh 12K` past four figures — keeps summary tiles from wrapping.
   static String moneyCompact(double value) =>
       value.abs() >= 10000 ? _compactMoney.format(value) : _money.format(value);
 

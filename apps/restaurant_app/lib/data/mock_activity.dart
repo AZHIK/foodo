@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/activity_entry.dart';
 import '../models/business_role.dart';
 import '../models/staff_member.dart';
+import '../utils/formatters.dart';
 import '../widgets/data_page/status_badge.dart';
 import 'mock_inventory.dart';
 
@@ -102,7 +103,8 @@ abstract final class MockActivity {
         id: id,
         at: at,
         title: 'Opened a till shift',
-        detail: 'Float \$${(150 + rand.nextInt(4) * 50)}.00 counted in',
+        detail: 'Float ${Fmt.money((150 + rand.nextInt(4) * 50).toDouble())} '
+            'counted in',
         icon: Icons.lock_open_rounded,
       );
 
@@ -116,7 +118,7 @@ abstract final class MockActivity {
       id: id,
       at: at,
       title: 'Processed order #${1000 + rand.nextInt(90)}',
-      detail: '\$${total.toStringAsFixed(2)} · '
+      detail: '${Fmt.money(total)} · '
           '${rand.nextBool() ? 'Card' : 'Cash'}',
       icon: Icons.point_of_sale_outlined,
       tone: StatusTone.positive,
@@ -129,7 +131,7 @@ abstract final class MockActivity {
       id: id,
       at: at,
       title: 'Refunded order #${1000 + rand.nextInt(90)}',
-      detail: '\$${total.toStringAsFixed(2)} returned to card',
+      detail: '${Fmt.money(total)} returned to card',
       icon: Icons.undo_rounded,
       tone: StatusTone.danger,
     );

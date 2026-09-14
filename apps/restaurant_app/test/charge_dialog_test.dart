@@ -76,7 +76,7 @@ void main() {
     matching: find.byType(SelectableOptionCard),
   );
 
-  /// The dialog's only filled button — "Charge $x.xx", whose label carries the
+  /// The dialog's only filled button — "Charge <total>", whose label carries the
   /// live total and so cannot be matched by exact text.
   Finder chargeButton() => find.descendant(
     of: find.byType(ChargeDialog),
@@ -210,15 +210,22 @@ void main() {
     tester,
   ) async {
     final container = await openDialog(tester, const Size(1440, 900));
+    final amounts = container.read(cashQuickAmountsProvider);
 
-    await tester.tap(find.text('+\$20.00'));
+    await tester.tap(find.text('+${Fmt.money(amounts[2])}'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('+\$5.00'));
+    await tester.tap(find.text('+${Fmt.money(amounts[0])}'));
     await tester.pumpAndSettle();
 
-    expect(container.read(paymentDetailsProvider).amountTendered, 25);
+    expect(
+      container.read(paymentDetailsProvider).amountTendered,
+      amounts[2] + amounts[0],
+    );
     // The chips write through to the field the cashier is looking at.
-    expect(find.text('25.00'), findsOneWidget);
+    expect(
+      find.text(Fmt.editableAmount(amounts[2] + amounts[0])),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a card tender asks for no amount and charges straight away', (

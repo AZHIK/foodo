@@ -292,7 +292,7 @@ void main() {
         '/settings/store-settings',
       );
 
-      expect(Fmt.money(48), startsWith(r'$'));
+      expect(Fmt.money(48), startsWith('TSh'));
 
       container.read(storeSettingsProvider.notifier).setCurrency(Currency.gbp);
       await tester.pumpAndSettle();
@@ -302,7 +302,7 @@ void main() {
 
       // Left as the app found it: Fmt is a static, so a currency set here
       // would otherwise leak into whichever test runs next.
-      container.read(storeSettingsProvider.notifier).setCurrency(Currency.usd);
+      container.read(storeSettingsProvider.notifier).setCurrency(Currency.tzs);
       await tester.pumpAndSettle();
     });
 
