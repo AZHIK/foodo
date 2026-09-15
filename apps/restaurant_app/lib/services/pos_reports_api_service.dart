@@ -9,6 +9,9 @@ library;
 import 'package:decimal/decimal.dart';
 import 'package:dio/dio.dart';
 
+import '../constants/api_paths.dart';
+import '../constants/app_limits.dart';
+
 /// One calendar day of takings.
 class DailyTakingsDayDto {
   final DateTime date;
@@ -177,7 +180,7 @@ class PosReportsApiService {
   }) async {
     try {
       final response = await _dio.get(
-        '/businesses/$businessId/reports/daily-takings',
+        PosApiPaths.dailyTakings(businessId),
         queryParameters: _window(from, to),
       );
       return ((response.data as Map<String, dynamic>)['days'] as List<dynamic>)
@@ -194,11 +197,11 @@ class PosReportsApiService {
     required String businessId,
     DateTime? from,
     DateTime? to,
-    int limit = 50,
+    int limit = AppLimits.reportsItemMixLimit,
   }) async {
     try {
       final response = await _dio.get(
-        '/businesses/$businessId/reports/item-mix',
+        PosApiPaths.itemMix(businessId),
         queryParameters: {..._window(from, to), 'limit': limit},
       );
       return ((response.data as Map<String, dynamic>)['lines'] as List<dynamic>)
@@ -218,7 +221,7 @@ class PosReportsApiService {
   }) async {
     try {
       final response = await _dio.get(
-        '/businesses/$businessId/reports/staff-performance',
+        PosApiPaths.staffPerformance(businessId),
         queryParameters: _window(from, to),
       );
       return ((response.data as Map<String, dynamic>)['lines'] as List<dynamic>)
@@ -239,7 +242,7 @@ class PosReportsApiService {
   }) async {
     try {
       final response = await _dio.get(
-        '/businesses/$businessId/reports/finance-summary',
+        PosApiPaths.financeSummary(businessId),
         queryParameters: _window(from, to),
       );
       return FinanceSummaryDto.fromJson(response.data as Map<String, dynamic>);

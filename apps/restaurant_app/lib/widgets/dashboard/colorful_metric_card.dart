@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../theme/dashboard_colors.dart';
@@ -216,7 +217,7 @@ class _TrendBadge extends StatelessWidget {
             child: Text(
               // One decimal below 10%, none above — "+3.4%" is useful,
               // "+128.0%" is just wider.
-              '${percent < 10 ? percent.toStringAsFixed(1) : percent.round()}%',
+              AppStrings.trendPercent(percent),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: context.text.labelSmall?.copyWith(

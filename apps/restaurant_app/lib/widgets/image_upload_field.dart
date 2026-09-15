@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../constants/app_limits.dart';
+import '../constants/app_strings.dart';
 import '../theme/app_theme.dart';
 import '../theme/breakpoints.dart';
 
@@ -20,8 +22,8 @@ class ImageUploadField extends StatefulWidget {
     required this.onPicked,
     required this.onRemoved,
     this.size = 190,
-    this.label = 'Upload image',
-    this.hint = 'PNG or JPG · up to 5 MB',
+    this.label = AppStrings.uploadImage,
+    this.hint = AppStrings.imageHint,
     this.enabled = true,
   });
 
@@ -62,9 +64,9 @@ class _ImageUploadFieldState extends State<ImageUploadField> {
         source: ImageSource.gallery,
         // Downscaled on the way in: a phone camera original is many megabytes
         // of memory for a thumbnail that renders at 190px.
-        maxWidth: 1200,
-        maxHeight: 1200,
-        imageQuality: 85,
+        maxWidth: AppLimits.pickerMaxWidth,
+        maxHeight: AppLimits.pickerMaxHeight,
+        imageQuality: AppLimits.pickerQuality,
       );
       if (file == null) return;
 
@@ -199,7 +201,7 @@ class _ImageUploadFieldState extends State<ImageUploadField> {
           right: Insets.xs,
           child: _OverlayButton(
             icon: Icons.close_rounded,
-            tooltip: 'Remove image',
+            tooltip: AppStrings.removeImage,
             onPressed: widget.enabled ? widget.onRemoved : null,
           ),
         ),

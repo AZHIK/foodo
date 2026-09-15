@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/customer.dart';
+import '../../constants/app_limits.dart';
+import '../../constants/app_strings.dart';
 import '../../models/order.dart';
 import '../../models/permission.dart';
 import '../../models/table_query.dart';
@@ -69,7 +71,7 @@ class _Header extends ConsumerWidget {
             onPressed: () => showCustomerFormDialog(context,
                 existingCustomer: customer),
             icon: const Icon(Icons.edit_outlined, size: 18),
-            label: const Text('Edit'),
+            label: const Text(AppStrings.editAction),
           ),
       ],
     );
@@ -85,30 +87,30 @@ class _ProfilePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final tiles = <Widget>[
       SummaryMetricCard(
-        label: 'Orders placed',
+        label: AppStrings.ordersPlaced,
         value: '${customer.totalOrders}',
-        trend: 'Total transactions',
+        trend: AppStrings.totalTransactions,
         icon: Icons.receipt_long_rounded,
       ),
       SummaryMetricCard(
-        label: 'Total spent',
+        label: AppStrings.totalSpentMetric,
         value: Fmt.money(customer.totalSpent),
-        trend: 'Lifetime value',
+        trend: AppStrings.lifetimeValue,
         icon: Icons.savings_outlined,
         accent: context.semantic.success,
       ),
       SummaryMetricCard(
-        label: 'Average order',
+        label: AppStrings.averageOrderMetric,
         value: customer.totalOrders == 0
-            ? '—'
+            ? AppStrings.emDash
             : Fmt.money(customer.totalSpent / customer.totalOrders),
-        trend: 'Per order',
+        trend: AppStrings.perOrder,
         icon: Icons.trending_up_rounded,
       ),
     ];
 
     return DetailPanel(
-      title: 'Profile',
+      title: AppStrings.profilePanel,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -123,24 +125,24 @@ class _ProfilePanel extends StatelessWidget {
             children: [
               if (customer.email case final email?)
                 LabeledValue(
-                  label: 'Email',
+                  label: AppStrings.emailField,
                   value: email,
                   icon: Icons.email_outlined,
                 ),
               if (customer.addressLine1 case final address?)
                 LabeledValue(
-                  label: 'Address',
+                  label: AppStrings.addressField,
                   value: address,
                   icon: Icons.location_on_outlined,
                 ),
               LabeledValue(
-                label: 'Joined',
+                label: AppStrings.joinedField,
                 value: Fmt.relativeDateTime(customer.createdAt),
                 icon: Icons.event_available_outlined,
               ),
               if (customer.lastOrderAt != null)
                 LabeledValue(
-                  label: 'Last order',
+                  label: AppStrings.lastOrderField,
                   value: Fmt.relativeDateTime(customer.lastOrderAt!),
                   icon: Icons.history_rounded,
                 ),
@@ -167,20 +169,20 @@ class _OrderHistoryPanel extends StatefulWidget {
 
 class _OrderHistoryPanelState extends State<_OrderHistoryPanel> {
   int _page = 0;
-  static const _pageSize = 8;
 
   @override
   Widget build(BuildContext context) {
     final orders = [...widget.orders];
     orders.sort((a, b) => b.placedAt.compareTo(a.placedAt));
 
-    final tableQuery = TableQuery(page: _page, pageSize: _pageSize);
+    final tableQuery =
+        TableQuery(page: _page, pageSize: AppLimits.tablePageSizeDense);
     final slice = PageSlice.of(orders, tableQuery);
 
     return DetailPanel(
-      title: 'Order history',
+      title: AppStrings.orderHistory,
       trailing: Text(
-        '${widget.orders.length} orders',
+        AppStrings.orderHistoryCount(widget.orders.length),
         style: context.text.bodySmall?.copyWith(
           color: context.colors.onSurfaceVariant,
         ),
@@ -190,7 +192,7 @@ class _OrderHistoryPanelState extends State<_OrderHistoryPanel> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: Insets.xl),
                 child: Text(
-                  'No orders yet',
+                  AppStrings.noOrdersYet,
                   style: context.text.bodyMedium?.copyWith(
                     color: context.colors.onSurfaceVariant,
                   ),
@@ -353,12 +355,12 @@ class _NotFound extends StatelessWidget {
                 ),
                 const SizedBox(height: Insets.lg),
                 Text(
-                  'Customer not found',
+                  AppStrings.customerNotFound,
                   style: context.text.titleMedium,
                 ),
                 const SizedBox(height: Insets.md),
                 Text(
-                  '$customerId doesn\'t exist',
+                  AppStrings.customerMissing(customerId),
                   style: context.text.bodyMedium?.copyWith(
                     color: context.colors.onSurfaceVariant,
                   ),
@@ -367,7 +369,7 @@ class _NotFound extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: () => context.goNamed(AppRoute.customersName),
                   icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                  label: const Text('Back to customers'),
+                  label: const Text(AppStrings.backToCustomers),
                 ),
               ],
             ),

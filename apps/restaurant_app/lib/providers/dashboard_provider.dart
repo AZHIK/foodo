@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/activity_entry.dart';
+import '../constants/app_durations.dart';
 import '../models/inventory_item.dart';
 import '../models/order.dart';
 import '../models/stock_movement.dart';
@@ -50,7 +51,7 @@ final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
 
   final now = DateTime.now();
   final startOfToday = DateTime(now.year, now.month, now.day);
-  final startOfYesterday = startOfToday.subtract(const Duration(days: 1));
+  final startOfYesterday = startOfToday.subtract(AppDurations.singleDay);
 
   var takingsToday = 0.0;
   var takingsYesterday = 0.0;

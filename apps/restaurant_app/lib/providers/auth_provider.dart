@@ -22,9 +22,11 @@ import '../auth/auth_dtos.dart';
 import '../auth/identity_service_api.dart';
 import '../auth/jwt_decoder.dart';
 import '../auth/permissions_cache_sync.dart';
+import '../auth/api_log_interceptor.dart';
 import '../auth/token_refresh_interceptor.dart';
 import '../auth/token_storage.dart';
 import '../config/api_config.dart';
+import '../constants/app_durations.dart';
 import '../database/app_database.dart';
 import '../database/local_profile_repository.dart';
 import '../sync/catalog_sync_service.dart';
@@ -183,7 +185,7 @@ class AuthNotifier extends Notifier<AuthContext> {
     final newTokenSet = TokenSet(
       accessToken: refreshed.accessToken,
       refreshToken: refreshed.refreshToken,
-      expiresAt: DateTime.now().add(const Duration(minutes: 15)),
+      expiresAt: DateTime.now().add(AppDurations.sessionLifetime),
       userId: tokenSet.userId,
     );
     await _tokenStorage.saveTokenSet(newTokenSet);
@@ -431,7 +433,7 @@ class AuthNotifier extends Notifier<AuthContext> {
 
       // Save tokens (access token may have changed after context switch).
       final expiresAt = DateTime.now().add(
-        const Duration(minutes: 15), // Assume 15-min TTL (env config default)
+        AppDurations.sessionLifetime, // Assume 15-min TTL (env config default)
       );
       await _tokenStorage.saveTokenSet(
         TokenSet(
@@ -604,9 +606,9 @@ final identityServiceDioProvider = Provider<Dio>((ref) {
 
   final dio = Dio(BaseOptions(
     baseUrl: baseUrl,
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 30),
-    sendTimeout: const Duration(seconds: 30),
+    connectTimeout: AppDurations.connectTimeout,
+    receiveTimeout: AppDurations.receiveTimeout,
+    sendTimeout: AppDurations.sendTimeout,
   ));
 
   // Auto-attaches the current access token to every request and silently
@@ -622,10 +624,7 @@ final identityServiceDioProvider = Provider<Dio>((ref) {
   ));
 
   // Add logging for debugging.
-  dio.interceptors.add(LogInterceptor(
-    requestBody: true,
-    responseBody: true,
-  ));
+  dio.interceptors.add(const ApiLogInterceptor());
 
   return dio;
 });

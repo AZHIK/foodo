@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/customer.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/customers_provider.dart';
 import '../../theme/breakpoints.dart';
 import '../../widgets/labeled_form_field.dart';
@@ -93,7 +94,9 @@ class _CustomerFormDialogState extends ConsumerState<_CustomerFormDialog> {
       if (!mounted) return;
       Navigator.of(context).pop(saved);
       messenger.showSnackBar(
-        SnackBar(content: Text(isEdit ? '${saved.name} updated' : '${saved.name} added')),
+        SnackBar(
+          content: Text(AppStrings.customerSaved(saved.name, isEdit)),
+        ),
       );
     } on CustomerOfflineMutationException catch (e) {
       if (!mounted) return;
@@ -102,7 +105,7 @@ class _CustomerFormDialogState extends ConsumerState<_CustomerFormDialog> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+      messenger.showSnackBar(SnackBar(content: Text(AppStrings.saveFailed(e))));
     }
   }
 
@@ -114,11 +117,11 @@ class _CustomerFormDialogState extends ConsumerState<_CustomerFormDialog> {
       key: _formKey,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       child: ResponsiveFormDialog(
-        title: isEdit ? 'Edit customer' : 'Add customer',
+        title: isEdit ? AppStrings.editCustomer : AppStrings.addCustomerTitle,
         actions: [
           OutlinedButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: _saving ? null : _save,
@@ -128,65 +131,67 @@ class _CustomerFormDialogState extends ConsumerState<_CustomerFormDialog> {
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(isEdit ? 'Save changes' : 'Add customer'),
+                : Text(
+                    isEdit ? AppStrings.saveChanges : AppStrings.addCustomerTitle,
+                  ),
           ),
         ],
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SectionLabel('Contact info'),
+            const SectionLabel(AppStrings.contactInfo),
             const SizedBox(height: Insets.md),
             LabeledFormField(
-              label: 'Name',
+              label: AppStrings.nameColumn,
               isRequired: true,
               child: TextFormField(
                 controller: _name,
                 textCapitalization: TextCapitalization.words,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
-                  hintText: 'Full name',
+                  hintText: AppStrings.fullNameHint,
                 ),
                 validator: (value) => (value ?? '').trim().isEmpty
-                    ? 'Enter a name'
+                    ? AppStrings.enterNameError
                     : null,
               ),
             ),
             const SizedBox(height: Insets.lg),
             LabeledFormField(
-              label: 'Phone',
+              label: AppStrings.phoneLabel,
               isRequired: true,
               child: TextFormField(
                 controller: _phone,
                 textInputAction: TextInputAction.next,
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
-                  hintText: '+1 (555) 123-4567',
+                  hintText: AppStrings.phoneExample2,
                 ),
                 validator: (value) => (value ?? '').trim().isEmpty
-                    ? 'Enter a phone number'
+                    ? AppStrings.enterPhoneError
                     : null,
               ),
             ),
             const SizedBox(height: Insets.lg),
             LabeledFormField(
-              label: 'Email',
+              label: AppStrings.emailLabel,
               child: TextFormField(
                 controller: _email,
                 textInputAction: TextInputAction.next,
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
-                  hintText: 'email@example.com',
+                  hintText: AppStrings.emailExample2,
                 ),
               ),
             ),
             const SizedBox(height: Insets.lg),
             LabeledFormField(
-              label: 'Address',
+              label: AppStrings.addressLabel,
               child: TextFormField(
                 controller: _address,
                 textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
-                  hintText: 'Street address (optional)',
+                  hintText: AppStrings.addressExample2,
                 ),
               ),
             ),

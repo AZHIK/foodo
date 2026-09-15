@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../constants/app_durations.dart';
+import '../constants/app_limits.dart';
 import '../models/ai_insight.dart';
 import '../models/inventory_item.dart';
 import '../models/stock_movement.dart';
@@ -67,7 +69,7 @@ List<AiInsight> _stockInsights(Ref ref, List<InventoryItem> items) {
             'out of stock',
         body:
             'These cannot be sold or prepped until a delivery lands. '
-            '${out.take(3).map((i) => i.name).join(', ')}'
+            '${out.take(AppLimits.lowStockNamesShown).map((i) => i.name).join(', ')}'
             '${out.length > 3 ? ' and ${out.length - 3} more' : ''}.',
         category: InsightCategory.stock,
         priority: InsightPriority.urgent,
@@ -117,7 +119,7 @@ List<AiInsight> _wasteInsights(
   List<InventoryItem> items,
   List<StockMovement> movements,
 ) {
-  final since = DateTime.now().subtract(const Duration(days: 30));
+  final since = DateTime.now().subtract(AppDurations.analyticsWindow);
   final costById = {for (final item in items) item.id: item.unitCost};
   final nameById = {for (final item in items) item.id: item.name};
 

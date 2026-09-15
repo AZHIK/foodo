@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/inventory_item.dart';
+import '../../constants/app_durations.dart';
+import '../../constants/app_strings.dart';
+import '../../constants/app_strings.dart';
 import '../../models/permission.dart';
 import '../../models/supplier.dart';
 import '../../providers/permissions_provider.dart';
@@ -73,14 +76,15 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
     if (!_formKey.currentState!.validate()) return;
     if (_supplierId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select a supplier')),
+        const SnackBar(content: Text(AppStrings.selectSupplierFirst)),
       );
       return;
     }
 
     final quantity = double.tryParse(_quantity.text.trim()) ?? 0;
     final unitCost = double.tryParse(_unitCost.text.trim()) ?? 0;
-    final expectedDays = int.tryParse(_expectedDays.text.trim()) ?? 7;
+    final expectedDays = int.tryParse(_expectedDays.text.trim()) ??
+        AppDurations.defaultLeadTime.inDays;
 
     setState(() => _saving = true);
     try {
@@ -100,8 +104,11 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'Reorder created: ${Fmt.quantity(quantity)} ${widget.item.unit} '
-            'of ${widget.item.name}',
+            AppStrings.reorderCreated(
+              Fmt.quantity(quantity),
+              widget.item.unit,
+              widget.item.name,
+            ),
           ),
         ),
       );
@@ -121,11 +128,11 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
       key: _formKey,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       child: ResponsiveFormDialog(
-        title: 'Create reorder for ${widget.item.name}',
+        title: AppStrings.createReorderFor(widget.item.name),
         actions: [
           OutlinedButton(
             onPressed: _saving ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: _saving ? null : _save,
@@ -135,16 +142,16 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Create reorder'),
+                : const Text(AppStrings.createReorder),
           ),
         ],
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SectionLabel('Reorder details'),
+            const SectionLabel(AppStrings.reorderDetails),
             const SizedBox(height: Insets.md),
             LabeledFormField(
-              label: 'Current stock',
+              label: AppStrings.currentStockReadonly,
               child: Container(
                 padding: const EdgeInsets.all(Insets.md),
                 decoration: BoxDecoration(
@@ -153,7 +160,10 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
                   borderRadius: BorderRadius.circular(Insets.md),
                 ),
                 child: Text(
-                  '${Fmt.quantity(widget.item.stock)} ${widget.item.unit}',
+                  AppStrings.stockValue(
+                    Fmt.quantity(widget.item.stock),
+                    widget.item.unit,
+                  ),
                   style: context.text.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -162,13 +172,13 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
             ),
             const SizedBox(height: Insets.lg),
             LabeledFormField(
-              label: 'Supplier',
+              label: AppStrings.supplierPickLabel,
               isRequired: true,
               child: supplier == null
                   ? OutlinedButton.icon(
                       onPressed: _pickSupplier,
                       icon: const Icon(Icons.storefront_outlined, size: 18),
-                      label: const Text('Select supplier'),
+                      label: const Text(AppStrings.selectSupplierButton),
                     )
                   : Container(
                       padding: const EdgeInsets.symmetric(
@@ -191,7 +201,7 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
                           ),
                           TextButton(
                             onPressed: _pickSupplier,
-                            child: const Text('Change'),
+                            child: const Text(AppStrings.changeSupplier),
                           ),
                         ],
                       ),
@@ -199,7 +209,7 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
             ),
             const SizedBox(height: Insets.lg),
             LabeledFormField(
-              label: 'Quantity to order',
+              label: AppStrings.quantityToOrder,
               isRequired: true,
               child: TextFormField(
                 controller: _quantity,
@@ -210,17 +220,19 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
                   suffixText: widget.item.unit,
                 ),
                 validator: (value) {
-                  if ((value ?? '').trim().isEmpty) return 'Enter quantity';
+                  if ((value ?? '').trim().isEmpty) {
+                    return AppStrings.enterQuantity;
+                  }
                   final parsed = double.tryParse(value?.trim() ?? '');
-                  if (parsed == null) return 'Enter a number';
-                  if (parsed <= 0) return 'Enter a positive number';
+                  if (parsed == null) return AppStrings.enterNumberError;
+                  if (parsed <= 0) return AppStrings.enterPositive;
                   return null;
                 },
               ),
             ),
             const SizedBox(height: Insets.lg),
             LabeledFormField(
-              label: 'Unit cost',
+              label: AppStrings.unitCostLabel,
               isRequired: true,
               child: TextFormField(
                 controller: _unitCost,
@@ -232,29 +244,31 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
                   prefixText: Fmt.currencySymbol,
                 ),
                 validator: (value) {
-                  if ((value ?? '').trim().isEmpty) return 'Enter unit cost';
+                  if ((value ?? '').trim().isEmpty) {
+                    return AppStrings.enterUnitCost;
+                  }
                   final parsed = double.tryParse(value?.trim() ?? '');
-                  if (parsed == null) return 'Enter a number';
-                  if (parsed < 0) return 'Enter a non-negative number';
+                  if (parsed == null) return AppStrings.enterNumberError;
+                  if (parsed < 0) return AppStrings.enterNonNegative;
                   return null;
                 },
               ),
             ),
             const SizedBox(height: Insets.lg),
             LabeledFormField(
-              label: 'Expected delivery (days)',
+              label: AppStrings.expectedDaysLabel,
               child: TextFormField(
                 controller: _expectedDays,
                 keyboardType: TextInputType.number,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
-                  hintText: '7',
-                  suffixText: 'days',
+                  hintText: AppStrings.deliveryHint,
+                  suffixText: AppStrings.daysSuffix,
                 ),
                 validator: (value) {
                   if (value?.trim().isNotEmpty ?? false) {
                     if (int.tryParse(value?.trim() ?? '') == null) {
-                      return 'Enter a whole number';
+                      return AppStrings.wholeNumber;
                     }
                   }
                   return null;
@@ -263,13 +277,13 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
             ),
             const SizedBox(height: Insets.lg),
             LabeledFormField(
-              label: 'Notes (optional)',
+              label: AppStrings.notesOptional,
               child: TextFormField(
                 controller: _notes,
                 maxLines: 3,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  hintText: 'Special requests or notes for supplier...',
+                  hintText: AppStrings.supplierNotesExample,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(Insets.md),
                   ),
@@ -325,7 +339,7 @@ class _SupplierPickerDialogState extends ConsumerState<_SupplierPickerDialog> {
         : allSuppliers.where((s) => s.name.toLowerCase().contains(query)).toList();
 
     return AlertDialog(
-      title: const Text('Select a supplier'),
+      title: const Text(AppStrings.selectSupplierTitle),
       contentPadding: const EdgeInsets.fromLTRB(Insets.lg, Insets.md, Insets.lg, Insets.sm),
       content: SizedBox(
         width: widget.width,
@@ -337,7 +351,7 @@ class _SupplierPickerDialogState extends ConsumerState<_SupplierPickerDialog> {
               autofocus: widget.autofocus,
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.search_rounded),
-                hintText: 'Search suppliers',
+                hintText: AppStrings.searchSuppliers,
               ),
               onChanged: (value) => setState(() => _search = value),
             ),
@@ -349,7 +363,7 @@ class _SupplierPickerDialogState extends ConsumerState<_SupplierPickerDialog> {
                       padding: const EdgeInsets.symmetric(vertical: Insets.xl),
                       child: Center(
                         child: Text(
-                          'No matching suppliers',
+                          AppStrings.noMatchingSuppliers,
                           style: context.text.bodyMedium
                               ?.copyWith(color: context.colors.onSurfaceVariant),
                         ),
@@ -378,7 +392,7 @@ class _SupplierPickerDialogState extends ConsumerState<_SupplierPickerDialog> {
                   }
                 },
                 icon: const Icon(Icons.add_business_outlined, size: 18),
-                label: const Text('Add new supplier'),
+                label: const Text(AppStrings.addNewSupplier),
               ),
             ],
           ],
@@ -387,7 +401,7 @@ class _SupplierPickerDialogState extends ConsumerState<_SupplierPickerDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text(AppStrings.cancel),
         ),
       ],
     );

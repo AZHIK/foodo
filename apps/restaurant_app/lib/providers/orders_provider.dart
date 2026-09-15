@@ -6,6 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../data/mock_orders.dart';
+import '../constants/app_durations.dart';
+import '../constants/app_limits.dart';
+import '../constants/app_strings.dart';
 import '../database/app_database.dart';
 import '../models/cart.dart';
 import '../models/order.dart';
@@ -38,11 +41,11 @@ abstract final class SalesSort {
 
 /// Date windows offered by the header selector and the filter panel.
 enum SalesDateRange {
-  today('Today'),
-  week('This week'),
-  month('This month'),
-  all('All time'),
-  custom('Custom');
+  today(AppStrings.todayRange),
+  week(AppStrings.weekRange),
+  month(AppStrings.monthRange),
+  all(AppStrings.allTimeRange),
+  custom(AppStrings.customRange);
 
   const SalesDateRange(this.label);
   final String label;
@@ -312,7 +315,7 @@ String nextOrderId(List<Order> orders) {
     final n = int.tryParse(order.id.split('-').last);
     if (n != null && n > highest) highest = n;
   }
-  return 'ORD-${(highest + 1).toString().padLeft(4, '0')}';
+  return 'ORD-${(highest + 1).toString().padLeft(AppLimits.orderNumberWidth, '0')}';
 }
 
 // ---------------------------------------------------------------------------
@@ -325,7 +328,7 @@ final salesQueryProvider = NotifierProvider<TableQueryNotifier, TableQuery>(
     const TableQuery(
       sortField: SalesSort.date,
       ascending: false,
-      pageSize: 8,
+      pageSize: AppLimits.tablePageSizeDense,
     ),
   ),
 );
@@ -367,17 +370,17 @@ class SalesFilters {
     return switch (range) {
       SalesDateRange.today => DateTimeRange(
         start: today,
-        end: today.add(const Duration(days: 1)),
+        end: today.add(AppDurations.singleDay),
       ),
       // Calendar week starting Monday, not a rolling seven days — "this week"
       // means the week you are in.
       SalesDateRange.week => DateTimeRange(
         start: today.subtract(Duration(days: today.weekday - 1)),
-        end: today.add(const Duration(days: 1)),
+        end: today.add(AppDurations.singleDay),
       ),
       SalesDateRange.month => DateTimeRange(
         start: DateTime(now.year, now.month),
-        end: today.add(const Duration(days: 1)),
+        end: today.add(AppDurations.singleDay),
       ),
       SalesDateRange.all => null,
       SalesDateRange.custom => customRange == null
@@ -389,7 +392,7 @@ class SalesFilters {
                 customRange!.end.year,
                 customRange!.end.month,
                 customRange!.end.day,
-              ).add(const Duration(days: 1)),
+              ).add(AppDurations.singleDay),
             ),
     };
   }

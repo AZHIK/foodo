@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 
+import '../constants/app_strings.dart';
+
 enum CourierStatus {
-  active('Active', 'Available for deliveries'),
-  inactive('Inactive', 'Not available');
+  active(AppStrings.activeStatus, AppStrings.courierAvailable),
+  inactive(AppStrings.inactiveStatus, AppStrings.courierUnavailable);
 
   const CourierStatus(this.label, this.subtitle);
   final String label;

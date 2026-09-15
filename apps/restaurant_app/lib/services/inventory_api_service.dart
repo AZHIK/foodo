@@ -10,6 +10,8 @@ library;
 import 'package:decimal/decimal.dart';
 import 'package:dio/dio.dart';
 
+import '../constants/api_paths.dart';
+import '../constants/app_limits.dart';
 import '../sync/inventory_catalog_api.dart' show CatalogItemDto;
 
 /// A single stock movement, as returned by the adjust/waste/transfer
@@ -427,7 +429,7 @@ class InventoryApiService {
   }) async {
     try {
       final response = await _dio.post(
-        '/businesses/$businessId/items',
+        InventoryApiPaths.items(businessId),
         data: {
           'store_id': storeId,
           'name': name,
@@ -466,7 +468,7 @@ class InventoryApiService {
   }) async {
     try {
       final response = await _dio.patch(
-        '/businesses/$businessId/items/$itemId',
+        InventoryApiPaths.item(businessId, itemId),
         data: {
           if (name != null) 'name': name,
           if (unitId != null) 'unit_id': unitId,
@@ -491,15 +493,15 @@ class InventoryApiService {
     required String itemId,
   }) async {
     try {
-      await _dio.delete('/businesses/$businessId/items/$itemId');
+      await _dio.delete(InventoryApiPaths.item(businessId, itemId));
     } on DioException catch (e) {
       _rethrowAsInventoryError(e);
     }
   }
 
   /// Uploads (or replaces) an item's product photo. Requires
-  /// `inventory.items.update`. JPEG, PNG, or WebP up to 5 MB — matching
-  /// what the backend accepts and what the picker advertises.
+  /// `inventory.items.update`. JPEG, PNG, or WebP up to `AppLimits.imageMaxBytes` —
+  /// matching what the backend accepts and what the picker advertises.
   Future<CatalogItemDto> uploadItemImage({
     required String businessId,
     required String itemId,
@@ -511,7 +513,7 @@ class InventoryApiService {
         'file': MultipartFile.fromBytes(bytes, filename: filename),
       });
       final response = await _dio.put(
-        '/businesses/$businessId/items/$itemId/image',
+        InventoryApiPaths.itemImage(businessId, itemId),
         data: form,
       );
       return _itemFromJson(response.data as Map<String, dynamic>);
@@ -528,7 +530,7 @@ class InventoryApiService {
   }) async {
     try {
       final response = await _dio.delete(
-        '/businesses/$businessId/items/$itemId/image',
+        InventoryApiPaths.itemImage(businessId, itemId),
       );
       return _itemFromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -545,7 +547,7 @@ class InventoryApiService {
   }) async {
     try {
       final response = await _dio.get(
-        '/businesses/$businessId/items/$itemId/image',
+        InventoryApiPaths.itemImage(businessId, itemId),
         options: Options(responseType: ResponseType.bytes),
       );
       return (response.data as List<dynamic>).cast<int>();
@@ -555,8 +557,8 @@ class InventoryApiService {
   }
 
   /// Manually adjusts stock by a positive or negative delta. Requires
-  /// `inventory.adjust`. [reason] must be at least 3 characters — the
-  /// backend rejects anything shorter with a 422.
+  /// `inventory.adjust`. [reason] must be at least `AppLimits.adjustReasonMinLength`
+  /// characters — the backend rejects anything shorter with a 422.
   Future<StockMovementDto> adjustStock({
     required String businessId,
     required String itemId,
@@ -565,7 +567,7 @@ class InventoryApiService {
   }) async {
     try {
       final response = await _dio.post(
-        '/businesses/$businessId/items/$itemId/adjust',
+        InventoryApiPaths.itemAdjust(businessId, itemId),
         data: {'quantity_delta': quantityDelta.toString(), 'reason': reason},
       );
       return StockMovementDto.fromJson(response.data as Map<String, dynamic>);
@@ -584,7 +586,7 @@ class InventoryApiService {
   }) async {
     try {
       final response = await _dio.post(
-        '/businesses/$businessId/items/$itemId/waste',
+        InventoryApiPaths.itemWaste(businessId, itemId),
         data: {'quantity': quantity.toString(), 'reason': reason},
       );
       return StockMovementDto.fromJson(response.data as Map<String, dynamic>);
@@ -605,7 +607,7 @@ class InventoryApiService {
   }) async {
     try {
       final response = await _dio.post(
-        '/businesses/$businessId/transfer',
+        InventoryApiPaths.transfer(businessId),
         data: {
           'item_id': itemId,
           'source_store_id': sourceStoreId,
@@ -634,7 +636,7 @@ class InventoryApiService {
   }) async {
     try {
       final response = await _dio.post(
-        '/businesses/$businessId/recipes/$recipeId/produce',
+        InventoryApiPaths.produce(businessId, recipeId),
         data: {
           'leading_item_id': leadingItemId,
           'leading_quantity_used': leadingQuantityUsed.toString(),
@@ -654,12 +656,12 @@ class InventoryApiService {
     required String businessId,
     DateTime? from,
     DateTime? to,
-    int limit = 100,
+    int limit = AppLimits.catalogFetchPageSize,
     int offset = 0,
   }) async {
     try {
       final response = await _dio.get(
-        '/businesses/$businessId/production-events',
+        InventoryApiPaths.productionEvents(businessId),
         queryParameters: {
           if (from != null) 'from': _isoDate(from),
           if (to != null) 'to': _isoDate(to),
@@ -683,7 +685,7 @@ class InventoryApiService {
   }) async {
     try {
       final response = await _dio.get(
-        '/businesses/$businessId/production-events/$eventId',
+        InventoryApiPaths.productionEvent(businessId, eventId),
       );
       return ProductionEventDto.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -700,12 +702,12 @@ class InventoryApiService {
   /// Requires `recipes.view`.
   Future<List<RecipeDto>> fetchRecipes({
     required String businessId,
-    int limit = 100,
+    int limit = AppLimits.catalogFetchPageSize,
     int offset = 0,
   }) async {
     try {
       final response = await _dio.get(
-        '/businesses/$businessId/recipes',
+        InventoryApiPaths.recipes(businessId),
         queryParameters: {'limit': limit, 'offset': offset},
       );
       return (response.data as List<dynamic>)
@@ -726,7 +728,7 @@ class InventoryApiService {
   }) async {
     try {
       final response = await _dio.get(
-        '/businesses/$businessId/waste-summary',
+        InventoryApiPaths.wasteSummary(businessId),
         queryParameters: {
           if (from != null) 'from': _isoDate(from),
           if (to != null) 'to': _isoDate(to),
@@ -747,7 +749,7 @@ class InventoryApiService {
   }) async {
     try {
       final response = await _dio.get(
-        '/businesses/$businessId/production-summary',
+        InventoryApiPaths.productionSummary(businessId),
         queryParameters: {
           if (from != null) 'from': _isoDate(from),
           if (to != null) 'to': _isoDate(to),
@@ -768,7 +770,7 @@ class InventoryApiService {
   }) async {
     try {
       final response = await _dio.get(
-        '/businesses/$businessId/stock-valuation',
+        InventoryApiPaths.stockValuation(businessId),
       );
       return StockValuationDto.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -786,7 +788,7 @@ class InventoryApiService {
   }) async {
     try {
       final response = await _dio.post(
-        '/businesses/$businessId/recipes',
+        InventoryApiPaths.recipes(businessId),
         data: {
           'sellable_item_id': sellableItemId,
           if (name != null) 'name': name,
@@ -809,7 +811,7 @@ class InventoryApiService {
   }) async {
     try {
       final response = await _dio.patch(
-        '/businesses/$businessId/recipes/$recipeId',
+        InventoryApiPaths.recipe(businessId, recipeId),
         data: {
           if (name != null) 'name': name,
           'components': [for (final c in components) c.toJson()],
@@ -828,7 +830,7 @@ class InventoryApiService {
     required String recipeId,
   }) async {
     try {
-      await _dio.delete('/businesses/$businessId/recipes/$recipeId');
+      await _dio.delete(InventoryApiPaths.recipe(businessId, recipeId));
     } on DioException catch (e) {
       _rethrowAsInventoryError(e);
     }

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../constants/app_limits.dart';
+
 /// Search + sort + pagination state for one data page.
 ///
 /// Deliberately free of any UI or domain types: a page's provider owns one of
@@ -12,7 +14,7 @@ class TableQuery {
     this.sortField,
     this.ascending = true,
     this.page = 0,
-    this.pageSize = 10,
+    this.pageSize = AppLimits.tablePageSize,
   });
 
   final String search;
@@ -93,7 +95,7 @@ class PageSlice<T> {
   /// Slices [all] for [query], clamping the page so a shrinking result set
   /// can never leave the caller on an empty page.
   static PageSlice<T> of<T>(List<T> all, TableQuery query) {
-    final pageSize = query.pageSize <= 0 ? 10 : query.pageSize;
+    final pageSize = query.pageSize <= 0 ? AppLimits.tablePageSize : query.pageSize;
     final pageCount = all.isEmpty ? 1 : (all.length / pageSize).ceil();
     final page = query.page.clamp(0, pageCount - 1);
     final start = page * pageSize;

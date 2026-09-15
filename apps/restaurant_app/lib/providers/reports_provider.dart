@@ -11,6 +11,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/inventory_api_service.dart';
+import '../constants/app_durations.dart';
+import '../constants/app_strings.dart';
 import '../services/pos_reports_api_service.dart';
 import 'inventory_api_provider.dart';
 import 'inventory_provider.dart';
@@ -38,7 +40,7 @@ class ReportsDateFilter {
 DateTime _thirtyDaysAgo() {
   final now = DateTime.now();
   return DateTime(now.year, now.month, now.day).subtract(
-    const Duration(days: 29),
+    AppDurations.reportsDefaultLookback,
   );
 }
 
@@ -155,7 +157,7 @@ final resolvedItemMixProvider = Provider<List<ResolvedItemMixLine>>((ref) {
     for (final line in lines)
       ResolvedItemMixLine(
         line: line,
-        name: nameByCatalogId[line.itemId] ?? 'Unknown item',
+        name: nameByCatalogId[line.itemId] ?? AppStrings.unknownItem,
       ),
   ];
 });

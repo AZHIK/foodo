@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../constants/app_durations.dart';
+import '../../constants/app_limits.dart';
+import '../../constants/app_strings.dart';
 import '../../models/session.dart';
 import '../../providers/roles_provider.dart';
 import '../../providers/session_provider.dart';
@@ -36,7 +39,7 @@ class PinUnlockScreen extends ConsumerStatefulWidget {
 }
 
 class _PinUnlockScreenState extends ConsumerState<PinUnlockScreen> {
-  static const _pinLength = 6;
+  static const _pinLength = AppLimits.pinLength;
 
   String _entered = '';
   bool _error = false;
@@ -70,7 +73,7 @@ class _PinUnlockScreenState extends ConsumerState<PinUnlockScreen> {
           .read(sessionProvider)
           .lockoutSecondsLeft(DateTime.now());
 
-      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      _ticker = Timer.periodic(AppDurations.ticker, (_) {
         if (!mounted) return;
 
         if (_secondsLeft <= 1) {
@@ -113,7 +116,7 @@ class _PinUnlockScreenState extends ConsumerState<PinUnlockScreen> {
 
     if (ok) {
       setState(() => _success = true);
-      Future<void>.delayed(const Duration(milliseconds: 420), () {
+      Future<void>.delayed(AppDurations.shake, () {
         if (!mounted) return;
         context.go(ref.read(sessionProvider).entryRoute);
       });
@@ -147,7 +150,7 @@ class _PinUnlockScreenState extends ConsumerState<PinUnlockScreen> {
         children: [
           AuthLink(
             key: PinUnlockKeys.otpFallback,
-            label: 'Sign in with OTP instead',
+            label: AppStrings.signInWithOtp,
             icon: Icons.sms_outlined,
             // Available during a lockout on purpose: someone who has genuinely
             // forgotten their PIN should not be stuck watching a timer with no
@@ -157,7 +160,7 @@ class _PinUnlockScreenState extends ConsumerState<PinUnlockScreen> {
           if (session.hasSavedProfiles)
             AuthLink(
               key: PinUnlockKeys.switchProfile,
-              label: 'Switch profile',
+              label: AppStrings.switchProfile,
               onPressed: () => context.goNamed(AppRoute.profilesName),
             ),
         ],
@@ -253,7 +256,7 @@ class _Entry extends StatelessWidget {
                   )
                 : !error
                 ? Text(
-                    'Enter your $length-digit PIN',
+                    AppStrings.enterPin(length),
                     style: context.text.bodySmall?.copyWith(
                       color: context.colors.onSurfaceVariant,
                     ),
@@ -262,9 +265,8 @@ class _Entry extends StatelessWidget {
                     // The remaining count only appears once one has been used,
                     // so a first slip is a nudge rather than a warning.
                     attemptsLeft <= 1
-                        ? 'Incorrect PIN — last attempt'
-                        : 'Incorrect PIN, try again '
-                              '($attemptsLeft attempts left)',
+                        ? AppStrings.incorrectPinLast
+                        : AppStrings.incorrectPinLeft(attemptsLeft),
                     key: PinUnlockKeys.error,
                     textAlign: TextAlign.center,
                     style: context.text.bodySmall?.copyWith(
@@ -317,13 +319,13 @@ class _LockedOut extends StatelessWidget {
         ),
         const SizedBox(height: Insets.lg),
         Text(
-          'Too many attempts',
+          AppStrings.tooManyAttempts,
           textAlign: TextAlign.center,
           style: context.text.titleMedium,
         ),
         const SizedBox(height: Insets.xs),
         Text(
-          'For everyone\'s safety the till is locked for a moment.',
+          AppStrings.tillLockedMoment,
           textAlign: TextAlign.center,
           style: context.text.bodySmall?.copyWith(
             color: context.colors.onSurfaceVariant,
@@ -332,7 +334,7 @@ class _LockedOut extends StatelessWidget {
         const SizedBox(height: Insets.xl),
         Center(
           child: Text(
-            '$secondsLeft',
+            AppStrings.countdownSeconds(secondsLeft),
             style: context.text.displaySmall?.copyWith(
               color: danger,
               fontWeight: FontWeight.w800,
@@ -341,7 +343,9 @@ class _LockedOut extends StatelessWidget {
           ),
         ),
         Text(
-          secondsLeft == 1 ? 'second remaining' : 'seconds remaining',
+          secondsLeft == 1
+              ? AppStrings.secondRemaining
+              : AppStrings.secondsRemaining,
           textAlign: TextAlign.center,
           style: context.text.bodySmall?.copyWith(
             color: context.colors.onSurfaceVariant,

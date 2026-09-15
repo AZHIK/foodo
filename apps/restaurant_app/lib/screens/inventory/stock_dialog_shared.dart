@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/inventory_item.dart';
+import '../../constants/app_strings.dart';
 import '../../models/stock_movement.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/staff_provider.dart';
@@ -85,7 +86,11 @@ class StockItemContext extends StatelessWidget {
                   style: context.text.titleSmall,
                 ),
                 Text(
-                  '${item.sku} · ${Fmt.quantity(item.stock)} ${item.unit} in stock',
+                  AppStrings.stockOnHand(
+                    item.sku,
+                    Fmt.quantity(item.stock),
+                    item.unit,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: context.text.bodySmall?.copyWith(
@@ -109,7 +114,7 @@ class StockQuantityField extends StatelessWidget {
     required this.controller,
     required this.item,
     required this.onChanged,
-    this.label = 'Quantity',
+    this.label = AppStrings.quantityLabel,
     this.helper,
     this.errorText,
     this.autofocus = true,
@@ -142,7 +147,7 @@ class StockQuantityField extends StatelessWidget {
         inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$'))],
         onChanged: onChanged,
         decoration: InputDecoration(
-          hintText: '0',
+          hintText: AppStrings.quantityHint,
           suffixText: item.unit,
           errorText: errorText,
         ),
@@ -156,8 +161,8 @@ class StockNotesField extends StatelessWidget {
   const StockNotesField({
     super.key,
     required this.controller,
-    this.label = 'Notes',
-    this.hint = 'Anything worth recording',
+    this.label = AppStrings.notesLabel,
+    this.hint = AppStrings.notesHint,
   });
 
   final TextEditingController controller;

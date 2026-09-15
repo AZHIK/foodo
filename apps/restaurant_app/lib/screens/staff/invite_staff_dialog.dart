@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/identity_service_api.dart' show AuthException;
+import '../../constants/app_limits.dart';
+import '../../constants/app_strings.dart';
 import '../../models/business_role.dart';
 import '../../models/permission.dart';
 import '../../models/staff_member.dart';
@@ -85,7 +87,7 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
       final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop();
       messenger.showSnackBar(
-        SnackBar(content: Text('Invite sent to ${_name.text.trim()}')),
+        SnackBar(content: Text(AppStrings.inviteSentTo(_name.text.trim()))),
       );
     } on AuthException catch (e) {
       // Surfaces the backend's own message verbatim (e.g. its real 409
@@ -94,14 +96,14 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
       setState(() {
         _submitting = false;
         _submitError = e.statusCode == null
-            ? 'Staff management requires an internet connection.'
+            ? AppStrings.staffNeedsInternet
             : e.message;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _submitting = false;
-        _submitError = 'Something went wrong sending the invite.';
+        _submitError = AppStrings.inviteFailed;
       });
     }
   }
@@ -114,12 +116,12 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
       key: _formKey,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       child: ResponsiveFormDialog(
-        title: 'Invite staff',
+        title: AppStrings.inviteStaffTitle,
         width: 520,
         actions: [
           OutlinedButton(
             onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: _canSubmit ? _submit : null,
@@ -129,7 +131,7 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
                     width: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Send invite'),
+                : const Text(AppStrings.sendInvite),
           ),
         ],
         child: Column(
@@ -151,14 +153,15 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
               const SizedBox(height: Insets.lg),
             ],
             LabeledFormField(
-              label: 'Full name',
+              label: AppStrings.fullNameLabel,
               isRequired: true,
               child: TextFormField(
                 controller: _name,
                 autofocus: true,
                 textCapitalization: TextCapitalization.words,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(hintText: 'e.g. Tomas Alvarez'),
+                decoration:
+                    const InputDecoration(hintText: AppStrings.teammateExample),
                 onChanged: (_) => setState(() {}),
                 validator: validateName,
               ),
@@ -166,26 +169,26 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
             const SizedBox(height: Insets.lg),
 
             LabeledFormField(
-              label: 'Phone',
+              label: AppStrings.phoneLabel,
               isRequired: true,
-              helper: "Their invite is sent to this number — it's how the backend finds or creates their account",
+              helper: AppStrings.invitePhoneHelper,
               child: TextFormField(
                 controller: _phone,
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.next,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(9),
+                  LengthLimitingTextInputFormatter(AppLimits.tzPhoneDigits),
                 ],
                 decoration: InputDecoration(
-                  hintText: '6XXXXXXXX or 7XXXXXXXX',
+                  hintText: AppStrings.phoneExample,
                   errorText: _phone.text.isEmpty || isValidTanzanianPhone(_phone.text)
                       ? null
                       : tanzanianPhoneHint,
                   prefixIcon: Padding(
                     padding: const EdgeInsets.only(left: Insets.lg, right: Insets.sm),
-                    child: Text(
-                      '+255',
+                  child: Text(
+                    AppStrings.dialCode,
                       style: context.text.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: context.colors.onSurfaceVariant,
@@ -238,12 +241,12 @@ class _AddRoleDialogState extends ConsumerState<AddRoleDialog> {
     ];
 
     return ResponsiveFormDialog(
-      title: 'Add a role',
+      title: AppStrings.addRoleTitle,
       width: 480,
       actions: [
         OutlinedButton(
           onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text(AppStrings.cancel),
         ),
         FilledButton(
           onPressed: _roleId != null && !_submitting ? _submit : null,
@@ -253,7 +256,7 @@ class _AddRoleDialogState extends ConsumerState<AddRoleDialog> {
                   width: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Add role'),
+              : const Text(AppStrings.addRoleButton),
         ),
       ],
       child: Column(
@@ -286,7 +289,7 @@ class _AddRoleDialogState extends ConsumerState<AddRoleDialog> {
           ],
           if (available.isEmpty)
             Text(
-              'They already hold every role at this business.',
+              AppStrings.holdsAllRoles,
               style: context.text.bodySmall?.copyWith(color: context.colors.onSurfaceVariant),
             )
           else
@@ -316,25 +319,31 @@ class _AddRoleDialogState extends ConsumerState<AddRoleDialog> {
           );
 
       if (!mounted) return;
-      final roleName = ref.read(roleByIdProvider(roleId))?.name ?? 'the role';
+      final roleName =
+          ref.read(roleByIdProvider(roleId))?.name ??
+          AppStrings.roleFallbackName;
       final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop();
       messenger.showSnackBar(
-        SnackBar(content: Text('${widget.member.name} now has $roleName')),
+        SnackBar(
+          content: Text(
+            AppStrings.memberHasRole(widget.member.name, roleName),
+          ),
+        ),
       );
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {
         _submitting = false;
         _submitError = e.statusCode == null
-            ? 'Staff management requires an internet connection.'
+            ? AppStrings.staffNeedsInternet
             : e.message;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _submitting = false;
-        _submitError = 'Something went wrong adding the role.';
+        _submitError = AppStrings.addRoleFailed;
       });
     }
   }
@@ -360,7 +369,7 @@ class RolePickerField extends StatelessWidget {
   /// How many permissions to name before summarising the rest. Three is enough
   /// to characterise a role without turning the dialog into a permission
   /// matrix of its own.
-  static const int _previewCount = 3;
+  static const int _previewCount = AppLimits.rolePreviewCount;
 
   @override
   Widget build(BuildContext context) {
@@ -371,12 +380,12 @@ class RolePickerField extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         LabeledFormField(
-          label: 'Role',
+          label: AppStrings.roleLabel2,
           isRequired: true,
           child: DropdownButtonFormField<String>(
             initialValue: value,
             isExpanded: true,
-            hint: const Text('Select a role'),
+            hint: const Text(AppStrings.selectRoleHint),
             items: [
               for (final role in roles)
                 DropdownMenuItem(
@@ -389,7 +398,7 @@ class RolePickerField extends StatelessWidget {
                 ),
             ],
             onChanged: onChanged,
-            validator: (v) => v == null ? 'Pick a role' : null,
+            validator: (v) => v == null ? AppStrings.pickRole : null,
           ),
         ),
         if (selected != null) ...[
@@ -452,7 +461,7 @@ class _RolePreview extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: Insets.sm),
               child: Text(
-                'This role grants no permissions yet.',
+                AppStrings.roleWithoutPermissions,
                 style: context.text.bodySmall?.copyWith(
                   color: context.semantic.warning,
                 ),
@@ -466,7 +475,7 @@ class _RolePreview extends StatelessWidget {
               children: [
                 for (final id in shown)
                   _PermissionChip(label: AppPermissions.labelFor(id)),
-                if (extra > 0) _PermissionChip(label: '+$extra more'),
+                if (extra > 0) _PermissionChip(label: AppStrings.extraRoles(extra)),
               ],
             ),
           ],
@@ -520,4 +529,4 @@ class _PermissionChip extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 String? validateName(String? value) =>
-    (value ?? '').trim().isEmpty ? 'Enter their full name' : null;
+    (value ?? '').trim().isEmpty ? AppStrings.enterFullName : null;

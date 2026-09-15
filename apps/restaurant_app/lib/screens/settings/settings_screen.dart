@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../providers/preferences_provider.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/roles_provider.dart';
 import '../../providers/session_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -28,67 +29,68 @@ class SettingsScreen extends ConsumerWidget {
     final roles = ref.watch(rolesProvider).valueOrNull ?? const [];
     final themeMode = ref.watch(themeModeProvider);
     final density = ref.watch(tableDensityProvider);
-    final staffName = ref.watch(sessionStaffProvider)?.name ?? 'Not signed in';
+    final staffName =
+        ref.watch(sessionStaffProvider)?.name ?? AppStrings.notSignedIn;
     final pad = Insets.page(context.formFactor);
 
     final entries = <_SettingsEntry>[
       _SettingsEntry(
         icon: Icons.storefront_outlined,
-        title: 'Business profile',
-        subtitle: 'Name, logo, brand colour and contact details',
-        value: profile?.name ?? 'Loading...',
+        title: AppStrings.businessProfileEntry,
+        subtitle: AppStrings.businessProfileBlurb,
+        value: profile?.name ?? AppStrings.loadingEllipsis,
         onTap: () => context.goNamed(AppRoute.businessProfileName),
       ),
       _SettingsEntry(
         icon: Icons.percent_rounded,
-        title: 'Store settings',
-        subtitle: 'Tax, currency, receipts and trading hours',
+        title: AppStrings.storeSettingsEntry,
+        subtitle: AppStrings.storeSettingsBlurb,
         value:
             '${Fmt.percent(settings.taxRate)} '
-            '${settings.taxInclusive ? 'inclusive' : 'on top'} · '
+            '${settings.taxInclusive ? AppStrings.taxInclusive : AppStrings.taxOnTop} · '
             '${settings.currency.code}',
         onTap: () => context.goNamed(AppRoute.storeSettingsName),
       ),
       _SettingsEntry(
         icon: Icons.store_mall_directory_outlined,
-        title: 'Store locations',
-        subtitle: 'Sites this business trades from',
+        title: AppStrings.storeLocationsEntry,
+        subtitle: AppStrings.storeLocationsBlurb,
         value: locations.active == locations.total
-            ? '${locations.total} locations'
-            : '${locations.active} of ${locations.total} active',
+            ? AppStrings.locationCount(locations.total)
+            : AppStrings.locationsActive(locations.active, locations.total),
         onTap: () => context.goNamed(AppRoute.storeManagementName),
       ),
       _SettingsEntry(
         icon: Icons.groups_outlined,
-        title: 'Staff & roles',
-        subtitle: 'Who works here and what they can do',
-        value: '${staff.total} staff · ${roles.length} roles',
+        title: AppStrings.staffRolesEntry,
+        subtitle: AppStrings.staffRolesBlurb,
+        value: AppStrings.staffRolesValue(staff.total, roles.length),
         onTap: () => context.goNamed(AppRoute.staffName),
       ),
       _SettingsEntry(
         icon: Icons.person_outline_rounded,
-        title: 'Account',
-        subtitle: 'Your own profile, PIN and sign-in security',
+        title: AppStrings.accountEntry,
+        subtitle: AppStrings.accountBlurb,
         value: staffName,
         onTap: () => context.goNamed(AppRoute.accountName),
       ),
       _SettingsEntry(
         icon: Icons.tune_rounded,
-        title: 'App preferences',
-        subtitle: 'Theme, notifications and table density on this device',
+        title: AppStrings.appPrefsEntry,
+        subtitle: AppStrings.appPrefsBlurb,
         value:
             '${switch (themeMode) {
-              ThemeMode.system => 'System',
-              ThemeMode.light => 'Light',
-              ThemeMode.dark => 'Dark',
+              ThemeMode.system => AppStrings.themeSystem,
+              ThemeMode.light => AppStrings.themeLight,
+              ThemeMode.dark => AppStrings.themeDark,
             }} · ${density.label}',
         onTap: () => context.goNamed(AppRoute.appPreferencesName),
       ),
       _SettingsEntry(
         icon: Icons.print_outlined,
-        title: 'Devices & printers',
-        subtitle: 'Terminals, receipt printers and cash drawers',
-        value: 'Not configured',
+        title: AppStrings.devicesEntry,
+        subtitle: AppStrings.devicesBlurb,
+        value: AppStrings.notConfigured,
         // Further down the roadmap; the row is here so the index reflects the
         // real shape of Settings rather than only the parts that are built.
         enabled: false,
@@ -139,7 +141,7 @@ class _SettingsHeader extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Settings',
+                AppStrings.settingsTitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: context.text.titleLarge?.copyWith(
@@ -148,7 +150,7 @@ class _SettingsHeader extends StatelessWidget {
                 ),
               ),
               Text(
-                'How this business and this terminal are configured',
+                AppStrings.settingsSubtitle,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: context.text.bodySmall?.copyWith(
@@ -264,7 +266,7 @@ class _SettingsCard extends StatelessWidget {
               );
 
               final value = Text(
-                entry.enabled ? entry.value : 'Coming soon',
+                entry.enabled ? entry.value : AppStrings.comingSoon,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: inline ? TextAlign.end : TextAlign.start,

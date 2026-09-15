@@ -6,9 +6,11 @@ library;
 
 import 'package:dio/dio.dart';
 
+import '../constants/api_paths.dart';
+import '../constants/app_limits.dart';
 import 'suppliers_catalog_api.dart';
 
-const _pageSize = 100;
+const _pageSize = AppLimits.catalogFetchPageSize;
 
 /// HTTP client for fetching the supplier directory from Inventory Service
 /// via Dio.
@@ -27,7 +29,7 @@ class HttpSuppliersCatalogApi extends SuppliersCatalogApi {
       var offset = 0;
       while (true) {
         final response = await _dio.get(
-          '/businesses/$_businessId/suppliers',
+          InventoryApiPaths.suppliers(_businessId),
           queryParameters: {
             'limit': _pageSize,
             'offset': offset,

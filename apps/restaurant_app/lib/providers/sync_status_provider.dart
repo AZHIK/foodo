@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../constants/app_durations.dart';
 import '../sync/sync_service.dart';
 import '../sync/fake_sync_api.dart';
 import '../sync/http_sync_api.dart';
@@ -59,6 +60,6 @@ final syncStatusProvider = StreamProvider<SyncStatusState>((ref) async* {
     );
 
     // Poll every 2 seconds (in a real app, this would use proper notifications).
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(AppDurations.syncPollDelay);
   }
 });

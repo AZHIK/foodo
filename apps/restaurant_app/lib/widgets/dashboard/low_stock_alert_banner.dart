@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../models/inventory_item.dart';
+import '../../constants/app_limits.dart';
+import '../../constants/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 
@@ -24,7 +26,7 @@ class LowStockAlertBanner extends StatelessWidget {
   final VoidCallback onTap;
 
   /// How many item names to spell out before summarising the remainder.
-  static const int _named = 3;
+  static const int _named = AppLimits.lowStockNamesShown;
 
   @override
   Widget build(BuildContext context) {
@@ -41,9 +43,8 @@ class LowStockAlertBanner extends StatelessWidget {
     final extra = items.length - _named;
 
     final headline = outCount > 0
-        ? '$outCount out of stock, ${items.length - outCount} running low'
-        : '${items.length} ${items.length == 1 ? 'line needs' : 'lines need'} '
-              'reordering';
+        ? AppStrings.stockAlertHeadline(outCount, items.length - outCount)
+        : AppStrings.reorderNeeded(items.length);
 
     return Material(
       color: semantic.warningContainer,
@@ -81,7 +82,9 @@ class LowStockAlertBanner extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      extra > 0 ? '$names and $extra more' : names,
+                      extra > 0
+                          ? AppStrings.namesAndMore(names, extra)
+                          : names,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: context.text.bodySmall?.copyWith(

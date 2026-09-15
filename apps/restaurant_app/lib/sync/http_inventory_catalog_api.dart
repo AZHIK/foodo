@@ -9,13 +9,15 @@ library;
 
 import 'package:decimal/decimal.dart';
 import 'package:dio/dio.dart';
+import '../constants/api_paths.dart';
+import '../constants/app_limits.dart';
 import 'inventory_catalog_api.dart';
 
 /// Both list endpoints cap a single page at 100 rows (backend-enforced) and
 /// default to 20 — a full-catalog sync must page through until a page comes
 /// back short of [_pageSize], or a business with more than one page of items
 /// would silently sync only its first 20/100.
-const _pageSize = 100;
+const _pageSize = AppLimits.catalogFetchPageSize;
 
 /// HTTP client for fetching catalog items and stock levels from Inventory
 /// Service via Dio.
@@ -33,7 +35,7 @@ class HttpInventoryCatalogApi extends InventoryCatalogApi {
       var offset = 0;
       while (true) {
         final response = await _dio.get(
-          '/businesses/$_businessId/items',
+          InventoryApiPaths.items(_businessId),
           queryParameters: {
             'store_id': storeId,
             'limit': _pageSize,
@@ -61,7 +63,7 @@ class HttpInventoryCatalogApi extends InventoryCatalogApi {
       var offset = 0;
       while (true) {
         final response = await _dio.get(
-          '/businesses/$_businessId/stock',
+          InventoryApiPaths.stock(_businessId),
           queryParameters: {
             'store_id': storeId,
             'limit': _pageSize,

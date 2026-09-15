@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import 'data_column_spec.dart';
@@ -157,7 +158,7 @@ class RowActionsMenu<T> extends StatelessWidget {
     final colors = context.colors;
 
     return PopupMenuButton<DataRowAction<T>>(
-      tooltip: 'Row actions',
+      tooltip: AppStrings.rowActions,
       icon: Icon(
         Icons.more_horiz_rounded,
         size: 18,

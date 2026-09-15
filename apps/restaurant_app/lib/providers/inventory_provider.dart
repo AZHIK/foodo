@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/mock_inventory.dart';
+import '../constants/app_limits.dart';
 import '../database/app_database.dart';
 import '../models/inventory_item.dart';
 import '../models/table_query.dart';
@@ -502,7 +503,7 @@ final menuCatalogItemsProvider = Provider<List<InventoryItem>>(
 
 final inventoryQueryProvider = NotifierProvider<TableQueryNotifier, TableQuery>(
   () => TableQueryNotifier(
-    const TableQuery(sortField: InventorySort.name, pageSize: 8),
+    const TableQuery(sortField: InventorySort.name, pageSize: AppLimits.tablePageSizeDense),
   ),
 );
 
@@ -723,7 +724,7 @@ abstract final class MenuItemSort {
 
 final menuItemsQueryProvider = NotifierProvider<TableQueryNotifier, TableQuery>(
   () => TableQueryNotifier(
-    const TableQuery(sortField: MenuItemSort.name, pageSize: 8),
+    const TableQuery(sortField: MenuItemSort.name, pageSize: AppLimits.tablePageSizeDense),
   ),
 );
 

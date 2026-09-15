@@ -3,15 +3,21 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../auth/auth_dtos.dart';
+import '../constants/app_strings.dart';
+import '../theme/app_theme.dart';
 
 /// Business types from backend.
 enum BusinessType {
-  restaurant('Restaurant', Icons.restaurant_rounded, 'restaurant'),
-  supplier('Supplier', Icons.local_shipping_rounded, 'supplier'),
-  farmer('Farmer', Icons.agriculture_rounded, 'farmer'),
-  distributor('Distributor', Icons.warehouse_rounded, 'distributor'),
-  platformOperator('Platform Operator', Icons.public_rounded, 'platform_operator'),
-  other('Other', Icons.storefront_rounded, 'restaurant'); // default fallback
+  restaurant(AppStrings.restaurantType, Icons.restaurant_rounded, 'restaurant'),
+  supplier(AppStrings.supplierType, Icons.local_shipping_rounded, 'supplier'),
+  farmer(AppStrings.farmerType, Icons.agriculture_rounded, 'farmer'),
+  distributor(AppStrings.distributorType, Icons.warehouse_rounded, 'distributor'),
+  platformOperator(
+    AppStrings.platformOperatorType,
+    Icons.public_rounded,
+    'platform_operator',
+  ),
+  other(AppStrings.otherType, Icons.storefront_rounded, 'restaurant'); // default fallback
 
   const BusinessType(this.label, this.icon, this.backendValue);
 
@@ -67,7 +73,7 @@ class BusinessProfile {
     this.cuisineType,
     this.logo,
     this.licenseDocumentUrl,
-    this.brandColor = const Color(0xFF0B6B57),
+    this.brandColor = AppTheme.seed,
     this.logoBytes,
   });
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../constants/app_durations.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/session_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../theme/app_theme.dart';
@@ -26,7 +28,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   /// Long enough to register as deliberate, short enough that a cashier
   /// opening the till at 7am does not notice waiting.
-  static const _brandMoment = Duration(milliseconds: 1200);
+  static const _brandMoment = AppDurations.splashBrand;
 
   /// An [AnimationController] rather than a [Timer], and not only because it
   /// drives the progress bar: a pending timer survives `pumpAndSettle` and
@@ -84,7 +86,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     ),
                     const SizedBox(height: Insets.xs),
                     Text(
-                      'Point of sale',
+                      AppStrings.pointOfSale,
                       textAlign: TextAlign.center,
                       style: context.text.bodySmall?.copyWith(
                         color: context.colors.onSurfaceVariant,
@@ -139,7 +141,7 @@ class _LoadingBar extends StatelessWidget {
         ),
         const SizedBox(height: Insets.md),
         Text(
-          'Preparing your terminal',
+          AppStrings.preparingTerminal,
           style: context.text.bodySmall?.copyWith(
             color: context.colors.onSurfaceVariant,
           ),

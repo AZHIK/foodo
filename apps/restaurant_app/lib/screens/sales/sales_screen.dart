@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/order.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/orders_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../router/app_router.dart';
@@ -37,13 +38,12 @@ class SalesScreen extends ConsumerWidget {
     final notifier = ref.read(salesQueryProvider.notifier);
 
     final period = filters.range == SalesDateRange.custom
-        ? 'the selected period'
+        ? AppStrings.selectedPeriod
         : filters.range.label.toLowerCase();
 
     return DataPageScaffold(
-      title: 'Sales',
-      subtitle:
-          'Orders, takings and refunds across ${Fmt.longDate(DateTime.now())}',
+      title: AppStrings.salesTitle,
+      subtitle: AppStrings.salesSubtitle(Fmt.longDate(DateTime.now())),
       // Exports the filtered, sorted list — every matching row, not just the
       // page on screen.
       actions: [
@@ -51,13 +51,13 @@ class SalesScreen extends ConsumerWidget {
           onPressed: () async =>
               ref.read(ordersProvider.notifier).checkForNewOrders(),
           icon: const Icon(Icons.refresh_rounded),
-          tooltip: 'Check for new orders',
+          tooltip: AppStrings.checkNewOrders,
         ),
         ...dataPageExportActions<Order>(
           context: context,
           columns: salesColumns,
           rows: ref.watch(filteredOrdersProvider),
-          title: 'Sales',
+          title: AppStrings.salesTitle,
           subtitle: _exportSubtitle(filters, query.search),
         ),
       ],
@@ -66,24 +66,24 @@ class SalesScreen extends ConsumerWidget {
       primaryAction: const SalesDateRangeSelector(),
       metrics: [
         SummaryMetricCard(
-          label: 'Total sales',
+          label: AppStrings.totalSales,
           value: Fmt.moneyCompact(summary.revenue),
-          trend: 'Net of refunds, $period',
+          trend: AppStrings.netOfRefunds(period),
           icon: Icons.payments_rounded,
         ),
         SummaryMetricCard(
-          label: 'Orders',
+          label: AppStrings.ordersMetric,
           value: '${summary.orderCount}',
-          trend: '${summary.itemCount} items sold',
+          trend: AppStrings.itemsSold(summary.itemCount),
           icon: Icons.receipt_long_rounded,
           accent: context.colors.tertiary,
         ),
         SummaryMetricCard(
-          label: 'Average order',
+          label: AppStrings.averageOrder,
           value: Fmt.money(summary.averageOrderValue),
           trend: summary.refundedCount == 0
-              ? 'No refunds in this view'
-              : '${summary.refundedCount} refunded',
+              ? AppStrings.noRefundsInView
+              : AppStrings.refundedCount(summary.refundedCount),
           trendDirection: summary.refundedCount == 0
               ? TrendDirection.flat
               : TrendDirection.down,
@@ -92,20 +92,23 @@ class SalesScreen extends ConsumerWidget {
         ),
       ],
       toolbar: DataTableToolbar(
-        searchHint: 'Search order, server, item or payment',
+        searchHint: AppStrings.searchOrders,
         searchValue: query.search,
         onSearchChanged: notifier.setSearch,
         activeFilterCount: filters.activeCount,
         onClearFilters: ref.read(salesFiltersProvider.notifier).clear,
         filterBuilder: (_) => const SalesFilterPanel(),
         sortOptions: const [
-          SortOption(label: 'Date', field: SalesSort.date),
-          SortOption(label: 'Order', field: SalesSort.orderId),
-          SortOption(label: 'Items', field: SalesSort.items),
-          SortOption(label: 'Total', field: SalesSort.total),
-          SortOption(label: 'Payment', field: SalesSort.payment),
-          SortOption(label: 'Fulfillment', field: SalesSort.fulfillment),
-          SortOption(label: 'Status', field: SalesSort.status),
+          SortOption(label: AppStrings.dateSort, field: SalesSort.date),
+          SortOption(label: AppStrings.orderSort, field: SalesSort.orderId),
+          SortOption(label: AppStrings.itemsSort, field: SalesSort.items),
+          SortOption(label: AppStrings.totalSort, field: SalesSort.total),
+          SortOption(label: AppStrings.paymentSort, field: SalesSort.payment),
+          SortOption(
+            label: AppStrings.fulfillmentSort,
+            field: SalesSort.fulfillment,
+          ),
+          SortOption(label: AppStrings.statusSort, field: SalesSort.status),
         ],
         sortField: query.sortField,
         sortAscending: query.ascending,
@@ -126,19 +129,19 @@ class SalesScreen extends ConsumerWidget {
 
   List<DataRowAction<Order>> _actions(WidgetRef ref) => [
     DataRowAction(
-      label: 'View detail',
+      label: AppStrings.viewDetail,
       icon: Icons.open_in_new_rounded,
       onSelected: (context, order) =>
           context.go(AppRoute.orderDetail(order.id)),
     ),
     DataRowAction(
-      label: 'Assign courier',
+      label: AppStrings.assignCourier,
       icon: Icons.two_wheeler_rounded,
       isEnabled: (order) => order.orderType == OrderType.delivery,
       onSelected: (context, order) => showAssignCourierDialog(context, order),
     ),
     DataRowAction(
-      label: 'Refund order',
+      label: AppStrings.refundOrder,
       icon: Icons.undo_rounded,
       isDestructive: true,
       // A ticket can only be refunded once, and a voided one never took money.
@@ -146,7 +149,7 @@ class SalesScreen extends ConsumerWidget {
       onSelected: (context, order) => _confirmRefund(context, ref, order),
     ),
     DataRowAction(
-      label: 'Print receipt',
+      label: AppStrings.printReceipt,
       icon: Icons.print_outlined,
       // Numbered under the store's configured prefix rather than by ticket id,
       // so a reprint carries the same number the original paper did.
@@ -154,8 +157,10 @@ class SalesScreen extends ConsumerWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Receipt ${ref.read(receiptPrefixProvider)}'
-                '${order.receiptSuffix} sent to printer',
+                AppStrings.receiptSentWithNumber(
+                  ref.read(receiptPrefixProvider),
+                  order.receiptSuffix,
+                ),
               ),
             ),
           ),
@@ -169,10 +174,11 @@ class SalesScreen extends ConsumerWidget {
   ) async {
     final reason = await showRefundConfirmDialog(
       context,
-      title: 'Refund ${order.id}?',
-      message:
-          '${Fmt.money(order.total)} will be returned to '
-          '${order.paymentType.label} and removed from takings.',
+      title: AppStrings.refundTitle(order.id),
+      message: AppStrings.refundBody(
+        Fmt.money(order.total),
+        order.paymentType.label,
+      ),
     );
 
     if (reason == null || !context.mounted) return;
@@ -180,7 +186,9 @@ class SalesScreen extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('${order.id} refunded')));
+    ).showSnackBar(
+      SnackBar(content: Text(AppStrings.orderRefunded(order.id))),
+    );
   }
 
   /// Records on the exported file which view produced it — a takings report
@@ -192,7 +200,8 @@ class SalesScreen extends ConsumerWidget {
         filters.payments.map((p) => p.label).join(', '),
       if (filters.statuses.isNotEmpty)
         filters.statuses.map((s) => s.label).join(', '),
-      if (search.trim().isNotEmpty) 'matching "${search.trim()}"',
+      if (search.trim().isNotEmpty)
+        AppStrings.exportMatching(search.trim()),
     ];
 
     return parts.join(' · ');
@@ -205,7 +214,7 @@ class SalesScreen extends ConsumerWidget {
 /// spreadsheet then carries the same columns the screen shows.
 final salesColumns = <DataColumnSpec<Order>>[
   DataColumnSpec(
-    label: 'Order',
+    label: AppStrings.orderColumn,
     field: SalesSort.orderId,
     role: ColumnRole.primary,
     flex: 4,
@@ -213,7 +222,7 @@ final salesColumns = <DataColumnSpec<Order>>[
     cellBuilder: (context, order) => _OrderCell(order: order),
   ),
   DataColumnSpec(
-    label: 'Date & time',
+    label: AppStrings.dateTimeColumn,
     field: SalesSort.date,
     flex: 4,
     minTableWidth: 640,
@@ -228,7 +237,7 @@ final salesColumns = <DataColumnSpec<Order>>[
     ),
   ),
   DataColumnSpec(
-    label: 'Items',
+    label: AppStrings.itemsSort,
     field: SalesSort.items,
     flex: 2,
     numeric: true,
@@ -236,7 +245,7 @@ final salesColumns = <DataColumnSpec<Order>>[
     value: (order) => '${order.itemCount}',
   ),
   DataColumnSpec(
-    label: 'Total',
+    label: AppStrings.totalSort,
     field: SalesSort.total,
     flex: 3,
     numeric: true,
@@ -244,14 +253,14 @@ final salesColumns = <DataColumnSpec<Order>>[
     cellBuilder: (context, order) => _TotalCell(order: order),
   ),
   DataColumnSpec(
-    label: 'Payment',
+    label: AppStrings.paymentSort,
     field: SalesSort.payment,
     flex: 3,
     minTableWidth: 900,
     value: (order) => order.paymentType.label,
   ),
   DataColumnSpec(
-    label: 'Fulfillment',
+    label: AppStrings.fulfillmentSort,
     field: SalesSort.fulfillment,
     role: ColumnRole.status,
     width: 124,
@@ -261,7 +270,7 @@ final salesColumns = <DataColumnSpec<Order>>[
         FulfillmentStatusBadge(status: order.fulfillmentStatus, dense: true),
   ),
   DataColumnSpec(
-    label: 'Status',
+    label: AppStrings.statusSort,
     field: SalesSort.status,
     role: ColumnRole.status,
     width: 124,
@@ -305,7 +314,7 @@ class _OrderCell extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  'NEW',
+                  AppStrings.recentBadge,
                   style: context.text.labelSmall?.copyWith(
                     color: context.colors.onPrimaryContainer,
                     fontWeight: FontWeight.w600,

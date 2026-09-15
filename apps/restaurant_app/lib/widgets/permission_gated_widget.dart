@@ -8,7 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/permission_enforcement.dart';
-import '../models/user_permissions.dart';
+import '../constants/app_strings.dart';
+import '../theme/app_theme.dart';
+import '../theme/breakpoints.dart';
 
 /// Wraps a widget with permission gating.
 ///
@@ -48,7 +50,7 @@ class PermissionGatedWidget extends ConsumerWidget {
         if (hasPermission) {
           return child;
         }
-        return onDenied?.call('You lack permission for this action') ??
+        return onDenied?.call(AppStrings.lackingPermission) ??
             _defaultDeniedWidget();
       },
       loading: () => _loadingWidget(),
@@ -63,15 +65,20 @@ class PermissionGatedWidget extends ConsumerWidget {
   }
 
   static Widget _defaultDeniedWidget() {
-    return Opacity(
-      opacity: 0.5,
-      child: Tooltip(
-        message: 'You do not have permission to perform this action',
-        child: Container(
-          color: Colors.grey.withOpacity(0.2),
-          child: const Text(
-            'No permission',
-            style: TextStyle(color: Colors.grey, fontSize: 12),
+    return Builder(
+      builder: (context) => Opacity(
+        opacity: 0.5,
+        child: Tooltip(
+          message: AppStrings.lackingPermission,
+          child: Container(
+            color: context.colors.onSurfaceVariant.withValues(alpha: 0.2),
+            child: Text(
+              AppStrings.noPermission,
+              style: TextStyle(
+                color: context.colors.onSurfaceVariant,
+                fontSize: 12,
+              ),
+            ),
           ),
         ),
       ),
@@ -79,14 +86,16 @@ class PermissionGatedWidget extends ConsumerWidget {
   }
 
   static Widget _defaultUnknownWidget() {
-    return Tooltip(
-      message: 'Offline mode: permissions unavailable',
-      child: Container(
-        color: Colors.orange.withOpacity(0.1),
-        padding: const EdgeInsets.all(8),
-        child: const Text(
-          'Offline mode',
-          style: TextStyle(color: Colors.orange, fontSize: 12),
+    return Builder(
+      builder: (context) => Tooltip(
+        message: AppStrings.offlinePermissionsTooltip,
+        child: Container(
+          color: context.semantic.warning.withValues(alpha: 0.1),
+          padding: const EdgeInsets.all(8),
+          child: Text(
+            AppStrings.offlineMode,
+            style: TextStyle(color: context.semantic.warning, fontSize: 12),
+          ),
         ),
       ),
     );
@@ -101,13 +110,15 @@ class PermissionGatedWidget extends ConsumerWidget {
   }
 
   static Widget _errorWidget(String message) {
-    return Tooltip(
-      message: message,
-      child: Container(
-        color: Colors.red.withOpacity(0.1),
-        child: const Text(
-          'Error',
-          style: TextStyle(color: Colors.red, fontSize: 12),
+    return Builder(
+      builder: (context) => Tooltip(
+        message: message,
+        child: Container(
+          color: context.semantic.danger.withValues(alpha: 0.1),
+          child: Text(
+            AppStrings.errorTitle,
+            style: TextStyle(color: context.semantic.danger, fontSize: 12),
+          ),
         ),
       ),
     );
@@ -144,9 +155,7 @@ class PermissionGatedButton extends ConsumerWidget {
     return checkFuture.when(
       data: (hasPermission) {
         return Tooltip(
-          message: hasPermission
-              ? ''
-              : 'You lack permission for this action',
+          message: hasPermission ? '' : AppStrings.lackingPermission,
           child: FilledButton(
             onPressed: hasPermission ? onPressed : null,
             child: child,
@@ -165,7 +174,7 @@ class PermissionGatedButton extends ConsumerWidget {
         // If offline, show disabled state
         if (error is PermissionUnknownException) {
           return Tooltip(
-            message: 'Offline: permission check unavailable',
+            message: AppStrings.offlineCheckUnavailable,
             child: FilledButton(
               onPressed: null,
               child: child,
@@ -195,6 +204,8 @@ class PermissionGatedScreen extends ConsumerWidget {
   const PermissionGatedScreen({
     required this.requiredPermission,
     required this.child,
+    this.title,
+    this.feature,
     this.onDenied,
     this.onUnknown,
     this.key,
@@ -202,6 +213,17 @@ class PermissionGatedScreen extends ConsumerWidget {
 
   final String requiredPermission;
   final Widget child;
+
+  /// Feature name for the fallback screens (`'Reports'` renders
+  /// `'Reports Access Denied'`). Custom [onDenied]/[onUnknown] builders
+  /// still win when provided — this only standardizes the screens that
+  /// repeated the same denied/offline layout eleven times over.
+  final String? title;
+
+  /// Denied-headline base when it differs from [title] (e.g. appbar
+  /// `'Other expenses'` but `'Finance Access Denied'`). Defaults to [title].
+  final String? feature;
+
   final Widget Function(String reason)? onDenied;
   final Widget Function(String reason)? onUnknown;
   final Key? key;
@@ -215,8 +237,8 @@ class PermissionGatedScreen extends ConsumerWidget {
         if (hasPermission) {
           return child;
         }
-        return onDenied?.call('You lack permission to access this screen') ??
-            _deniedScreen();
+        return onDenied?.call(AppStrings.lackingScreenPermission) ??
+            _deniedScreen(title, feature ?? title);
       },
       loading: () => const Scaffold(
         body: Center(
@@ -225,38 +247,82 @@ class PermissionGatedScreen extends ConsumerWidget {
       ),
       error: (error, _) {
         if (error is PermissionUnknownException) {
-          return onUnknown?.call(error.message) ?? _unknownScreen();
+          return onUnknown?.call(error.message) ?? _unknownScreen(title);
         }
         return _errorScreen(error.toString());
       },
     );
   }
 
-  static Widget _deniedScreen() {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Access Denied')),
-      body: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Text(
-            'You do not have permission to access this screen.',
-            textAlign: TextAlign.center,
+  static Widget _deniedScreen(String? title, String? feature) {
+    if (title == null || feature == null) {
+      return const _LegacyDeniedScreen();
+    }
+    return Builder(
+      builder: (context) => Scaffold(
+        appBar: AppBar(title: Text(title)),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(Insets.lg),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.lock_outline,
+                  size: 48,
+                  color: context.colors.onSurfaceVariant,
+                ),
+                const SizedBox(height: Insets.lg),
+                Text(
+                  AppStrings.accessDeniedFor(feature),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: Insets.sm),
+                Text(
+                  AppStrings.lackingScreenPermission,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  static Widget _unknownScreen() {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Offline Mode')),
-      body: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Text(
-            'Permission check unavailable while offline.\n'
-            'This feature may be disabled in offline mode.',
-            textAlign: TextAlign.center,
+  static Widget _unknownScreen(String? title) {
+    if (title == null) {
+      return const _LegacyUnknownScreen();
+    }
+    return Builder(
+      builder: (context) => Scaffold(
+        appBar: AppBar(title: Text(title)),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(Insets.lg),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.cloud_off,
+                  size: 48,
+                  color: context.semantic.warning,
+                ),
+                const SizedBox(height: Insets.lg),
+                const Text(
+                  AppStrings.offlineMode,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: Insets.sm),
+                const Text(
+                  AppStrings.offlineSubtitle,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -265,12 +331,55 @@ class PermissionGatedScreen extends ConsumerWidget {
 
   static Widget _errorScreen(String message) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Error')),
+      appBar: AppBar(title: const Text(AppStrings.errorTitle)),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(Insets.lg),
           child: Text(
-            'Permission check failed: $message',
+            '${AppStrings.permissionCheckFailed}: $message',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Pre-title fallback: the generic denied screen for callers that don't
+/// name their feature.
+class _LegacyDeniedScreen extends StatelessWidget {
+  const _LegacyDeniedScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text(AppStrings.accessDenied)),
+      body: Center(
+        child: Padding(
+          padding: EdgeInsets.all(Insets.lg),
+          child: Text(
+            AppStrings.permissionDeniedHint,
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Pre-title fallback: the generic offline screen.
+class _LegacyUnknownScreen extends StatelessWidget {
+  const _LegacyUnknownScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text(AppStrings.offlineMode)),
+      body: Center(
+        child: Padding(
+          padding: EdgeInsets.all(Insets.lg),
+          child: Text(
+            AppStrings.offlinePermissionsHint,
             textAlign: TextAlign.center,
           ),
         ),

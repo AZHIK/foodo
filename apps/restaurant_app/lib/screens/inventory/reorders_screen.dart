@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/permission.dart';
+import '../../constants/app_strings.dart';
 import '../../models/reorder.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/permissions_provider.dart';
@@ -31,7 +32,7 @@ class ReordersScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reorders'),
+        title: const Text(AppStrings.reordersTitle),
         elevation: 0,
       ),
       body: ListView(
@@ -41,9 +42,9 @@ class ReordersScreen extends ConsumerWidget {
             children: [
               Expanded(
                 child: SummaryMetricCard(
-                  label: 'Pending',
+                  label: AppStrings.pendingMetric,
                   value: '${pending.length}',
-                  trend: 'Awaiting delivery',
+                  trend: AppStrings.awaitingDelivery,
                   icon: Icons.shopping_cart_outlined,
                   accent: context.semantic.warning,
                 ),
@@ -51,9 +52,9 @@ class ReordersScreen extends ConsumerWidget {
               const SizedBox(width: Insets.md),
               Expanded(
                 child: SummaryMetricCard(
-                  label: 'Received',
+                  label: AppStrings.receivedMetric,
                   value: '${received.length}',
-                  trend: 'Stock added',
+                  trend: AppStrings.stockAdded,
                   icon: Icons.check_circle_rounded,
                   accent: context.semantic.success,
                 ),
@@ -61,9 +62,9 @@ class ReordersScreen extends ConsumerWidget {
               const SizedBox(width: Insets.md),
               Expanded(
                 child: SummaryMetricCard(
-                  label: 'On order',
+                  label: AppStrings.onOrderMetric,
                   value: Fmt.moneyCompact(totalOnOrder),
-                  trend: 'Total value',
+                  trend: AppStrings.totalValueMetric,
                   icon: Icons.attach_money_rounded,
                 ),
               ),
@@ -71,19 +72,28 @@ class ReordersScreen extends ConsumerWidget {
           ),
           const SizedBox(height: Insets.xl),
           if (pending.isNotEmpty) ...[
-            Text('Pending (${pending.length})', style: context.text.titleMedium),
+            Text(
+              AppStrings.pendingCount(pending.length),
+              style: context.text.titleMedium,
+            ),
             const SizedBox(height: Insets.md),
             ...pending.map((r) => _ReorderTile(reorder: r)),
             const SizedBox(height: Insets.xl),
           ],
           if (received.isNotEmpty) ...[
-            Text('Received (${received.length})', style: context.text.titleMedium),
+            Text(
+              AppStrings.receivedCount(received.length),
+              style: context.text.titleMedium,
+            ),
             const SizedBox(height: Insets.md),
             ...received.map((r) => _ReorderTile(reorder: r)),
             const SizedBox(height: Insets.xl),
           ],
           if (cancelled.isNotEmpty) ...[
-            Text('Cancelled (${cancelled.length})', style: context.text.titleMedium),
+            Text(
+              AppStrings.cancelledCount(cancelled.length),
+              style: context.text.titleMedium,
+            ),
             const SizedBox(height: Insets.md),
             ...cancelled.map((r) => _ReorderTile(reorder: r)),
           ],
@@ -95,7 +105,7 @@ class ReordersScreen extends ConsumerWidget {
                   children: [
                     Icon(Icons.shopping_cart_outlined, size: 48, color: context.colors.onSurfaceVariant),
                     const SizedBox(height: Insets.md),
-                    Text('No reorders yet', style: context.text.bodyMedium?.copyWith(color: context.colors.onSurfaceVariant)),
+                    Text(AppStrings.noReordersYet, style: context.text.bodyMedium?.copyWith(color: context.colors.onSurfaceVariant)),
                   ],
                 ),
               ),
@@ -114,19 +124,21 @@ class _ReorderTile extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Receive this reorder?'),
+        title: const Text(AppStrings.receiveReorderTitle),
         content: Text(
-          'This adds ${Fmt.quantity(reorder.quantity)} ${reorder.unit} to stock. '
-          'This cannot be undone.',
+          AppStrings.receiveReorderAdds(
+            Fmt.quantity(reorder.quantity),
+            reorder.unit,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Receive'),
+            child: const Text(AppStrings.receiveAction),
           ),
         ],
       ),
@@ -136,9 +148,13 @@ class _ReorderTile extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(reordersProvider.notifier).receive(reorder);
-      messenger.showSnackBar(const SnackBar(content: Text('Reorder received — stock updated')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text(AppStrings.reorderReceivedMessage)),
+      );
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Could not receive: $e')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.receiveFailed(e))),
+      );
     }
   }
 
@@ -146,16 +162,16 @@ class _ReorderTile extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Cancel this reorder?'),
-        content: const Text('This cannot be undone.'),
+        title: const Text(AppStrings.cancelReorderTitle),
+        content: const Text(AppStrings.cannotBeUndone),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep it'),
+            child: const Text(AppStrings.keepIt),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Cancel reorder'),
+            child: const Text(AppStrings.cancelReorderAction),
           ),
         ],
       ),
@@ -165,9 +181,13 @@ class _ReorderTile extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(reordersProvider.notifier).cancel(reorder);
-      messenger.showSnackBar(const SnackBar(content: Text('Reorder cancelled')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text(AppStrings.reorderCancelledMessage)),
+      );
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Could not cancel: $e')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.cancelFailed(e))),
+      );
     }
   }
 
@@ -197,11 +217,14 @@ class _ReorderTile extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item?.name ?? 'Unknown', style: context.text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    Text(item?.name ?? AppStrings.unknown, style: context.text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                     const SizedBox(height: Insets.xs),
                     Text(
-                      '${Fmt.quantity(reorder.quantity)} ${reorder.unit} from '
-                      '${supplier?.name ?? 'Unknown supplier'}',
+                      AppStrings.reorderTileSubtitle(
+                        Fmt.quantity(reorder.quantity),
+                        reorder.unit,
+                        supplier?.name,
+                      ),
                       style: context.text.bodySmall?.copyWith(color: context.colors.onSurfaceVariant),
                     ),
                   ],
@@ -215,33 +238,33 @@ class _ReorderTile extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Unit Cost', style: context.text.labelSmall?.copyWith(color: context.colors.onSurfaceVariant)),
+                Text(AppStrings.unitCostColumn, style: context.text.labelSmall?.copyWith(color: context.colors.onSurfaceVariant)),
                 Text(Fmt.money(reorder.unitCost), style: context.text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
               ]),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text('Total', style: context.text.labelSmall?.copyWith(color: context.colors.onSurfaceVariant)),
+                Text(AppStrings.totalColumn, style: context.text.labelSmall?.copyWith(color: context.colors.onSurfaceVariant)),
                 Text(Fmt.money(reorder.total), style: context.text.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: context.colors.primary)),
               ]),
               if (reorder.status == ReorderStatus.pending && reorder.expectedAt != null)
                 Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text('Expected', style: context.text.labelSmall?.copyWith(color: context.colors.onSurfaceVariant)),
+                  Text(AppStrings.expectedLabel, style: context.text.labelSmall?.copyWith(color: context.colors.onSurfaceVariant)),
                   Text(Fmt.relativeDateTime(reorder.expectedAt!), style: context.text.bodySmall),
                 ]),
               if (reorder.status == ReorderStatus.received && reorder.receivedAt != null)
                 Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text('Received', style: context.text.labelSmall?.copyWith(color: context.colors.onSurfaceVariant)),
+                  Text(AppStrings.receivedLabel, style: context.text.labelSmall?.copyWith(color: context.colors.onSurfaceVariant)),
                   Text(Fmt.relativeDateTime(reorder.receivedAt!), style: context.text.bodySmall),
                 ]),
               if (reorder.status == ReorderStatus.cancelled && reorder.cancelledAt != null)
                 Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text('Cancelled', style: context.text.labelSmall?.copyWith(color: context.colors.onSurfaceVariant)),
+                  Text(AppStrings.cancelledLabel, style: context.text.labelSmall?.copyWith(color: context.colors.onSurfaceVariant)),
                   Text(Fmt.relativeDateTime(reorder.cancelledAt!), style: context.text.bodySmall),
                 ]),
             ],
           ),
           if (reorder.notes != null) ...[
             const SizedBox(height: Insets.md),
-            Text('Notes: ${reorder.notes}', style: context.text.bodySmall?.copyWith(fontStyle: FontStyle.italic, color: context.colors.onSurfaceVariant)),
+            Text(AppStrings.notesLine(reorder.notes!), style: context.text.bodySmall?.copyWith(fontStyle: FontStyle.italic, color: context.colors.onSurfaceVariant)),
           ],
           if (reorder.status == ReorderStatus.pending && (canReceive || canCancel)) ...[
             const SizedBox(height: Insets.md),
@@ -251,14 +274,14 @@ class _ReorderTile extends ConsumerWidget {
                 if (canCancel)
                   TextButton(
                     onPressed: () => _cancel(context, ref),
-                    child: const Text('Cancel'),
+                    child: const Text(AppStrings.cancel),
                   ),
                 if (canReceive) ...[
                   const SizedBox(width: Insets.sm),
                   FilledButton.icon(
                     onPressed: () => _receive(context, ref),
                     icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
-                    label: const Text('Receive'),
+                    label: const Text(AppStrings.receiveAction),
                   ),
                 ],
               ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
 import '../utils/formatters.dart';
 import '../widgets/data_page/status_badge.dart';
 
@@ -9,11 +10,11 @@ import '../widgets/data_page/status_badge.dart';
 /// auditable fact on its own — a sale, a spill and a transfer are three very
 /// different conversations with a supplier.
 enum StockMovementType {
-  restock('Restock'),
-  sale('Sale'),
-  waste('Waste'),
-  adjustment('Adjustment'),
-  transfer('Transfer');
+  restock(AppStrings.restockMovement),
+  sale(AppStrings.saleMovement),
+  waste(AppStrings.wasteMovement),
+  adjustment(AppStrings.adjustmentMovement),
+  transfer(AppStrings.transferMovement);
 
   const StockMovementType(this.label);
   final String label;

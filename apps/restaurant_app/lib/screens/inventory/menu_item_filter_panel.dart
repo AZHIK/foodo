@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../constants/app_strings.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../widgets/data_page/filter_controls.dart';
@@ -29,7 +30,7 @@ class MenuItemFilterPanel extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         FilterSection(
-          title: 'Category',
+          title: AppStrings.categoryLabel,
           child: FilterChipGroup<String>(
             options: [
               for (final c in categories)

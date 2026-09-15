@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/inventory_provider.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/production_provider.dart';
 import '../../services/inventory_api_service.dart';
 import '../../theme/app_theme.dart';
@@ -99,11 +100,11 @@ class _RecordProductionDialogState
 
   String? get _error {
     if (_leadingAmount == null) return null;
-    if (_leadingAmount! <= 0) return 'Enter an amount greater than zero';
+    if (_leadingAmount! <= 0) return AppStrings.amountPositive;
     final actualText = _actualQty.text.trim();
     if (actualText.isNotEmpty &&
         (_actualAmount == null || _actualAmount! <= 0)) {
-      return 'Confirmed output must be greater than zero';
+      return AppStrings.confirmedPositive;
     }
     return null;
   }
@@ -155,9 +156,15 @@ class _RecordProductionDialogState
         SnackBar(
           content: Text(
             recorded == suggested
-                ? 'Recorded ${Fmt.quantity(recorded)} × ${event.sellableItemName}'
-                : 'Recorded ${Fmt.quantity(recorded)} × ${event.sellableItemName} '
-                    '(suggested ${Fmt.quantity(suggested)})',
+                ? AppStrings.productionRecorded(
+                    Fmt.quantity(recorded),
+                    event.sellableItemName,
+                  )
+                : AppStrings.productionRecordedAdjusted(
+                    Fmt.quantity(recorded),
+                    event.sellableItemName,
+                    Fmt.quantity(suggested),
+                  ),
           ),
         ),
       );
@@ -168,7 +175,9 @@ class _RecordProductionDialogState
       if (!mounted) return;
       setState(() => _submitting = false);
       final message = e is InventoryApiException ? e.message : e.toString();
-      messenger.showSnackBar(SnackBar(content: Text('Could not record: $message')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.recordFailed(message))),
+      );
     }
   }
 
@@ -182,18 +191,18 @@ class _RecordProductionDialogState
     );
 
     return ResponsiveFormDialog(
-      title: 'Record production',
+      title: AppStrings.recordProductionTitle,
       width: kStockDialogWidth,
       actions: [
         OutlinedButton(
           key: ProductionDialogKeys.cancel,
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text(AppStrings.cancel),
         ),
         FilledButton(
           key: ProductionDialogKeys.submit,
           onPressed: _canSubmit ? _submit : null,
-          child: const Text('Record production'),
+          child: const Text(AppStrings.recordProductionTitle),
         ),
       ],
       child: Column(
@@ -202,8 +211,8 @@ class _RecordProductionDialogState
           _RecipeContext(recipe: recipe),
           const SizedBox(height: Insets.xl),
           LabeledFormField(
-            label: 'Measured ingredient',
-            helper: 'What you actually put on the scale',
+            label: AppStrings.measuredIngredient,
+            helper: AppStrings.measuredHelper,
             isRequired: true,
             child: DropdownButtonFormField<String>(
               key: ProductionDialogKeys.leading,
@@ -214,7 +223,10 @@ class _RecordProductionDialogState
                   DropdownMenuItem(
                     value: component.rawMaterialItemId,
                     child: Text(
-                      '${component.rawMaterialName} (${component.rawMaterialUnit})',
+                      AppStrings.ingredientOption(
+                        component.rawMaterialName,
+                        component.rawMaterialUnit,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -229,7 +241,7 @@ class _RecordProductionDialogState
           ),
           const SizedBox(height: Insets.lg),
           LabeledFormField(
-            label: 'Quantity used',
+            label: AppStrings.quantityUsed,
             isRequired: true,
             child: TextFormField(
               key: ProductionDialogKeys.leadingQty,
@@ -240,7 +252,7 @@ class _RecordProductionDialogState
                 FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
               ],
               decoration: InputDecoration(
-                hintText: '0',
+                hintText: AppStrings.quantityHint,
                 suffixText: leading.rawMaterialUnit,
                 errorText: _error,
               ),
@@ -256,16 +268,18 @@ class _RecordProductionDialogState
             ),
             const SizedBox(height: Insets.lg),
             StockPreviewLine(
-              label: 'Suggested output',
-              value:
-                  '${Fmt.quantity(preview.suggestedOutput)} × ${recipe.sellableItemName}',
+              label: AppStrings.suggestedOutput,
+              value: AppStrings.outputValue(
+                Fmt.quantity(preview.suggestedOutput),
+                recipe.sellableItemName,
+              ),
               tone: context.semantic.success,
               icon: Icons.soup_kitchen_outlined,
             ),
             const SizedBox(height: Insets.lg),
             LabeledFormField(
-              label: 'Confirmed output',
-              helper: 'Leave blank to accept the suggestion',
+              label: AppStrings.confirmedOutput,
+              helper: AppStrings.acceptSuggestionHint,
               child: TextFormField(
                 key: ProductionDialogKeys.actualQty,
                 controller: _actualQty,
@@ -273,7 +287,8 @@ class _RecordProductionDialogState
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
                 ],
-                decoration: const InputDecoration(hintText: 'Same as suggested'),
+                decoration:
+                    const InputDecoration(hintText: AppStrings.sameAsSuggested),
                 onChanged: (value) {
                   _actualEdited = value.trim().isNotEmpty;
                   setState(() {});
@@ -328,8 +343,15 @@ class _RecipeContext extends StatelessWidget {
           ),
           const SizedBox(height: Insets.xs),
           Text(
-            'Makes ${recipe.sellableItemName} · per unit needs '
-            '${recipe.components.map((c) => '${Fmt.quantity(_reqOf(c))} ${c.rawMaterialUnit} ${c.rawMaterialName}').join(' + ')}',
+            AppStrings.makesRecipe(
+              recipe.sellableItemName,
+              recipe.components
+                  .map(
+                    (c) =>
+                        '${Fmt.quantity(_reqOf(c))} ${c.rawMaterialUnit} ${c.rawMaterialName}',
+                  )
+                  .join(' + '),
+            ),
             style: context.text.bodySmall?.copyWith(
               color: colors.onSurfaceVariant,
             ),
@@ -372,7 +394,7 @@ class _ConsumptionPreview extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Will consume',
+            AppStrings.willConsume,
             style: context.text.labelLarge,
           ),
           const SizedBox(height: Insets.sm),
@@ -423,8 +445,11 @@ class _ConsumptionLine extends StatelessWidget {
             ),
           ),
           Text(
-            '${Fmt.quantity(needed)} ${component.rawMaterialUnit}'
-            ' · ${Fmt.quantity(onHand)} in stock',
+            AppStrings.consumptionLine(
+              Fmt.quantity(needed),
+              component.rawMaterialUnit,
+              Fmt.quantity(onHand),
+            ),
             style: context.text.bodySmall?.copyWith(
               color: short ? context.semantic.warning : colors.onSurfaceVariant,
               fontWeight: short ? FontWeight.w700 : null,

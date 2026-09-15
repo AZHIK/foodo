@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/business_profile.dart';
 import '../models/order.dart';
 import '../models/store_settings.dart';
+import '../theme/app_theme.dart';
 import 'business_api_provider.dart';
 
 /// App-wide theme mode.
@@ -84,7 +85,7 @@ final receiptFooterProvider = Provider<String>(
 final brandColorProvider = Provider<Color>(
   (ref) {
     final profile = ref.watch(businessProfileProvider);
-    return profile?.brandColor ?? const Color(0xFF0B6B57);
+    return profile?.brandColor ?? AppTheme.seed;
   },
 );
 

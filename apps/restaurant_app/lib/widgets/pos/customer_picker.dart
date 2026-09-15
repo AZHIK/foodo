@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/permission.dart';
+import '../../constants/app_limits.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/customers_provider.dart';
 import '../../providers/order_session_provider.dart';
 import '../../providers/permissions_provider.dart';
@@ -44,7 +46,7 @@ class CustomerPickerField extends ConsumerWidget {
       return OutlinedButton.icon(
         onPressed: () => showCustomerPickerDialog(context, ref),
         icon: const Icon(Icons.person_search_outlined, size: 18),
-        label: const Text('Walk-in — attach a customer'),
+        label: const Text(AppStrings.walkInAttachCustomer),
       );
     }
 
@@ -60,7 +62,9 @@ class CustomerPickerField extends ConsumerWidget {
           CircleAvatar(
             radius: 16,
             child: Text(
-              customer.name.isEmpty ? '?' : customer.name[0].toUpperCase(),
+              customer.name.isEmpty
+                  ? AppStrings.unknownInitial
+                  : customer.name[0].toUpperCase(),
             ),
           ),
           const SizedBox(width: Insets.md),
@@ -86,10 +90,10 @@ class CustomerPickerField extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => showCustomerPickerDialog(context, ref),
-            child: const Text('Change'),
+            child: const Text(AppStrings.change),
           ),
           IconButton(
-            tooltip: 'Remove customer',
+            tooltip: AppStrings.removeCustomer,
             icon: const Icon(Icons.close_rounded, size: 20),
             onPressed: () => ref.read(selectedCustomerIdProvider.notifier).state = null,
           ),
@@ -145,16 +149,16 @@ class _CustomerPickerDialogState extends ConsumerState<_CustomerPickerDialog> {
             final sorted = [...allCustomers]
               ..sort((a, b) => (b.lastOrderAt ?? DateTime(1970))
                   .compareTo(a.lastOrderAt ?? DateTime(1970)));
-            return sorted.take(20).toList();
+            return sorted.take(AppLimits.customerPickerSuggestions).toList();
           })()
         : allCustomers
             .where((c) =>
                 c.name.toLowerCase().contains(query) || c.phone.toLowerCase().contains(query))
-            .take(20)
+            .take(AppLimits.customerPickerSuggestions)
             .toList();
 
     return AlertDialog(
-      title: const Text('Attach a customer'),
+      title: const Text(AppStrings.attachCustomer),
       contentPadding: const EdgeInsets.fromLTRB(Insets.lg, Insets.md, Insets.lg, Insets.sm),
       content: SizedBox(
         width: widget.width,
@@ -166,14 +170,14 @@ class _CustomerPickerDialogState extends ConsumerState<_CustomerPickerDialog> {
               autofocus: widget.autofocus,
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.search_rounded),
-                hintText: 'Search name or phone',
+                hintText: AppStrings.searchNameOrPhone,
               ),
               onChanged: (value) => setState(() => _search = value),
             ),
             const SizedBox(height: Insets.sm),
             ListTile(
               leading: const Icon(Icons.person_off_outlined),
-              title: const Text('No customer (walk-in)'),
+              title: const Text(AppStrings.noCustomerWalkIn),
               onTap: () => Navigator.of(context).pop('no-customer-sentinel'),
             ),
             const Divider(height: 1),
@@ -184,7 +188,7 @@ class _CustomerPickerDialogState extends ConsumerState<_CustomerPickerDialog> {
                       padding: const EdgeInsets.symmetric(vertical: Insets.xl),
                       child: Center(
                         child: Text(
-                          'No matching customers',
+                          AppStrings.noMatchingCustomers,
                           style: context.text.bodyMedium
                               ?.copyWith(color: context.colors.onSurfaceVariant),
                         ),
@@ -220,7 +224,7 @@ class _CustomerPickerDialogState extends ConsumerState<_CustomerPickerDialog> {
                   }
                 },
                 icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-                label: const Text('Add new customer'),
+                label: const Text(AppStrings.addNewCustomer),
               ),
             ],
           ],
@@ -229,7 +233,7 @@ class _CustomerPickerDialogState extends ConsumerState<_CustomerPickerDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text(AppStrings.cancel),
         ),
       ],
     );

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../auth/identity_service_api.dart' show AuthException;
 import '../../models/business_role.dart';
+import '../../constants/app_strings.dart';
 import '../../models/permission.dart';
 import '../../models/staff_member.dart';
 import '../../providers/permissions_provider.dart';
@@ -49,7 +50,7 @@ class StaffDetailScreen extends ConsumerWidget {
         // imply a stock controller is bad at selling rather than not doing it.
         if (performance.applies) _PerformanceBlock(performance: performance),
         DetailPanel(
-          title: 'Recent activity',
+          title: AppStrings.recentActivity,
           child: ActivityTimeline(
             entries: activity,
             emptyState: _NoActivity(member: member),
@@ -95,7 +96,7 @@ class _Header extends ConsumerWidget {
           OutlinedButton.icon(
             onPressed: () => showAddRoleDialog(context, member),
             icon: const Icon(Icons.badge_outlined, size: 18),
-            label: const Text('Add role'),
+            label: const Text(AppStrings.addRole),
           ),
         _OverflowMenu(member: member),
       ],
@@ -116,7 +117,7 @@ class _OverflowMenu extends ConsumerWidget {
     if (!canRevoke || member.roles.isEmpty) return const SizedBox.shrink();
 
     return PopupMenuButton<String>(
-      tooltip: 'More actions',
+      tooltip: AppStrings.moreActions,
       position: PopupMenuPosition.under,
       icon: const Icon(Icons.more_horiz_rounded),
       onSelected: (value) => switch (value) {
@@ -135,7 +136,7 @@ class _OverflowMenu extends ConsumerWidget {
               ),
               const SizedBox(width: Insets.md),
               Text(
-                'Remove from team',
+                AppStrings.removeFromTeam,
                 style: TextStyle(color: context.semantic.danger),
               ),
             ],
@@ -149,21 +150,19 @@ class _OverflowMenu extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Remove ${member.name}?'),
+        title: Text(AppStrings.removeMemberTitle(member.name)),
         content: Text(
-          member.roles.length > 1
-              ? 'This revokes all ${member.roles.length} of their roles at this business.'
-              : 'This revokes their role at this business.',
+          AppStrings.revokeRolesBody(member.roles.length),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: dialogContext.semantic.danger),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Remove'),
+            child: const Text(AppStrings.removeAction),
           ),
         ],
       ),
@@ -191,8 +190,8 @@ class _OverflowMenu extends ConsumerWidget {
       SnackBar(
         content: Text(
           failures == 0
-              ? '${member.name} removed from the team'
-              : "Couldn't remove all of ${member.name}'s roles — try again",
+              ? AppStrings.memberRemoved(member.name)
+              : AppStrings.removeRolesFailed(member.name),
         ),
       ),
     );
@@ -211,30 +210,32 @@ class _ContactPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DetailPanel(
-      title: 'Contact',
+      title: AppStrings.contactPanel,
       child: LabeledValueGrid(
         maxColumns: 2,
         minColumnWidth: 240,
         children: [
           LabeledValue(
-            label: 'Email',
+            label: AppStrings.emailField,
             value: member.email,
             icon: Icons.mail_outline_rounded,
           ),
           LabeledValue(
-            label: 'Phone',
+            label: AppStrings.phoneLabel,
             value: member.phone,
             icon: Icons.phone_outlined,
           ),
           LabeledValue(
-            label: member.isPending ? 'Invited' : 'Joined',
+            label: member.isPending
+                ? AppStrings.invitedValue
+                : AppStrings.joinedValue,
             value: Fmt.dayMonthTime(member.joinedAt),
             icon: Icons.event_outlined,
           ),
           LabeledValue(
-            label: 'Last active',
+            label: AppStrings.lastActiveField,
             value: member.lastActiveAt == null
-                ? 'Never signed in'
+                ? AppStrings.neverSignedIn
                 : Fmt.relativeDateTime(member.lastActiveAt!),
             icon: Icons.schedule_rounded,
           ),
@@ -258,7 +259,7 @@ class _AccessPanel extends ConsumerWidget {
     final canRevoke = ref.watch(hasPermissionProvider(AppPermissions.staffRevoke));
 
     return DetailPanel(
-      title: 'Access',
+      title: AppStrings.accessPanel,
       trailing: canAssign
           ? TextButton(
               onPressed: () => showAddRoleDialog(context, member),
@@ -267,7 +268,7 @@ class _AccessPanel extends ConsumerWidget {
                 minimumSize: const Size(0, 32),
                 visualDensity: VisualDensity.compact,
               ),
-              child: const Text('Add'),
+              child: const Text(AppStrings.addAction),
             )
           : null,
       child: Column(
@@ -276,7 +277,7 @@ class _AccessPanel extends ConsumerWidget {
         children: [
           if (member.roles.isEmpty)
             Text(
-              'No roles at this business.',
+              AppStrings.noRolesHere,
               style: context.text.bodySmall?.copyWith(color: colors.onSurfaceVariant),
             )
           else
@@ -294,7 +295,7 @@ class _AccessPanel extends ConsumerWidget {
             const Divider(height: 1),
             const SizedBox(height: Insets.lg),
             LabeledValue(
-              label: 'Invite message',
+              label: AppStrings.inviteMessage,
               value: note,
               icon: Icons.chat_bubble_outline_rounded,
               maxLines: 5,
@@ -316,12 +317,18 @@ class _AccessPanel extends ConsumerWidget {
           .read(staffMembersProvider.notifier)
           .revokeRole(userId: member.id, roleId: assignment.roleId);
       messenger.showSnackBar(
-        SnackBar(content: Text('${assignment.roleName} removed from ${member.name}')),
+        SnackBar(
+          content: Text(
+            AppStrings.roleRemovedFrom(assignment.roleName, member.name),
+          ),
+        ),
       );
     } on AuthException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text('Could not remove that role')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text(AppStrings.couldNotRemoveRole)),
+      );
     }
   }
 }
@@ -354,7 +361,7 @@ class _RoleRow extends StatelessWidget {
               RoleBadge(role: role),
               const SizedBox(height: Insets.sm),
               Text(
-                role?.description ?? 'This role no longer exists.',
+                role?.description ?? AppStrings.roleGone,
                 style: context.text.bodySmall?.copyWith(color: colors.onSurfaceVariant),
               ),
               if (role != null) ...[
@@ -369,7 +376,7 @@ class _RoleRow extends StatelessWidget {
         ),
         if (canRevoke)
           IconButton(
-            tooltip: 'Remove this role',
+            tooltip: AppStrings.removeRoleTooltip,
             visualDensity: VisualDensity.compact,
             icon: Icon(Icons.close_rounded, size: 18, color: colors.onSurfaceVariant),
             onPressed: onRevoke,
@@ -392,21 +399,23 @@ class _PerformanceBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final tiles = <Widget>[
       SummaryMetricCard(
-        label: 'Orders today',
+        label: AppStrings.ordersToday,
         value: '${performance.ordersToday}',
-        trend: performance.ordersToday == 0 ? 'Not on shift' : 'On the till',
+        trend: performance.ordersToday == 0
+            ? AppStrings.notOnShift
+            : AppStrings.onTheTill,
         icon: Icons.receipt_long_outlined,
       ),
       SummaryMetricCard(
-        label: 'Orders this week',
+        label: AppStrings.ordersThisWeek,
         value: '${performance.ordersThisWeek}',
-        trend: 'Last 7 days',
+        trend: AppStrings.last7Days,
         icon: Icons.date_range_outlined,
       ),
       SummaryMetricCard(
-        label: 'Sales handled',
+        label: AppStrings.salesHandled,
         value: Fmt.moneyCompact(performance.salesHandled),
-        trend: 'Last 7 days',
+        trend: AppStrings.last7Days,
         icon: Icons.payments_outlined,
         accent: context.semantic.success,
       ),
@@ -456,8 +465,8 @@ class _NoActivity extends StatelessWidget {
           const SizedBox(height: Insets.sm),
           Text(
             member.isPending
-                ? 'Nothing yet — this invite has not been accepted'
-                : 'No activity recorded',
+                ? AppStrings.noInviteActivity
+                : AppStrings.noActivityRecorded,
             textAlign: TextAlign.center,
             style: context.text.bodyMedium?.copyWith(
               color: colors.onSurfaceVariant,
@@ -492,7 +501,7 @@ class _NotFound extends StatelessWidget {
                 ),
                 const SizedBox(height: Insets.md),
                 Text(
-                  'Staff member $staffId not found',
+                  AppStrings.staffNotFound(staffId),
                   textAlign: TextAlign.center,
                   style: context.text.titleMedium,
                 ),
@@ -500,7 +509,7 @@ class _NotFound extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: () => context.goNamed(AppRoute.staffName),
                   icon: const Icon(Icons.groups_outlined, size: 18),
-                  label: const Text('Back to staff'),
+                  label: const Text(AppStrings.backToStaff),
                 ),
               ],
             ),

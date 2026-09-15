@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/notification.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/notifications_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
@@ -21,13 +22,13 @@ class NotificationsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: const Text(AppStrings.notificationsTitle),
         elevation: 0,
         actions: [
           if (notifications.isNotEmpty)
             TextButton(
               onPressed: () => notifier.markAllRead(),
-              child: const Text('Mark all read'),
+              child: const Text(AppStrings.markAllRead),
             ),
           IconButton(
             onPressed: () => context.pop(),
@@ -49,12 +50,12 @@ class NotificationsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: Insets.lg),
                     Text(
-                      'No notifications yet',
+                      AppStrings.noNotificationsYet,
                       style: context.text.titleMedium,
                     ),
                     const SizedBox(height: Insets.md),
                     Text(
-                      'Orders, low stock alerts and insights will appear here',
+                      AppStrings.notificationsEmptyHint,
                       style: context.text.bodyMedium?.copyWith(
                         color: context.colors.onSurfaceVariant,
                       ),
@@ -192,7 +193,7 @@ class _NotificationTile extends StatelessWidget {
                         if (!notification.isRead)
                           TextButton(
                             onPressed: onMarkRead,
-                            child: const Text('Mark as read'),
+                            child: const Text(AppStrings.markAsRead),
                           ),
                       ],
                     ),

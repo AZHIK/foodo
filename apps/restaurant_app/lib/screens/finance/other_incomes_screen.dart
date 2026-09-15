@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/mock_finance.dart';
+import '../../constants/app_strings.dart';
 import '../../models/other_income.dart';
 import '../../models/permission.dart';
 import '../../providers/other_expenses_provider.dart' show FinanceOfflineMutationException;
@@ -38,13 +39,13 @@ class OtherIncomesScreen extends ConsumerWidget {
         const FinanceTabBar(active: FinanceTab.incomes),
         Expanded(
           child: DataPageScaffold(
-            title: 'Other incomes',
-            subtitle: 'Ad-hoc revenue outside point-of-sale transactions',
+            title: AppStrings.otherIncomesTitle,
+            subtitle: AppStrings.otherIncomesSubtitle,
             actions: dataPageExportActions<OtherIncome>(
               context: context,
               columns: otherIncomeColumns,
               rows: ref.watch(filteredOtherIncomesProvider),
-              title: 'Other incomes',
+              title: AppStrings.otherIncomesTitle,
               subtitle: _exportSubtitle(filters, query.search),
             ),
             // Hidden rather than shown-disabled — see other_expenses_screen.dart.
@@ -55,7 +56,7 @@ class OtherIncomesScreen extends ConsumerWidget {
                     height: 40,
                     width: 40,
                     child: Tooltip(
-                      message: 'Add income',
+                      message: AppStrings.addIncome,
                       child: Material(
                         color: context.colors.primary,
                         clipBehavior: Clip.antiAlias,
@@ -75,43 +76,57 @@ class OtherIncomesScreen extends ConsumerWidget {
                 : FilledButton.icon(
                     onPressed: () => showOtherIncomeFormDialog(context),
                     icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Add income'),
+                    label: const Text(AppStrings.addIncome),
                   ),
             metrics: [
               SummaryMetricCard(
-                label: 'Total other income',
+                label: AppStrings.totalOtherIncome,
                 value: Fmt.moneyCompact(summary.total),
-                trend: 'In current view',
+                trend: AppStrings.inCurrentView,
                 icon: Icons.arrow_downward_rounded,
               ),
               SummaryMetricCard(
-                label: 'Entries',
+                label: AppStrings.entriesMetric,
                 value: '${summary.entryCount}',
-                trend: 'Tracked in view',
+                trend: AppStrings.trackedInView,
                 icon: Icons.receipt_long_rounded,
                 accent: context.colors.tertiary,
               ),
               SummaryMetricCard(
-                label: 'Average entry',
+                label: AppStrings.averageEntry,
                 value: Fmt.money(summary.average),
-                trend: summary.entryCount == 0 ? 'No entries' : '${summary.entryCount} sources',
+                trend: summary.entryCount == 0
+                    ? AppStrings.noEntries
+                    : AppStrings.entrySources(summary.entryCount),
                 icon: Icons.trending_up_rounded,
                 accent: context.semantic.success,
               ),
             ],
             toolbar: DataTableToolbar(
-              searchHint: 'Search description, source or category',
+              searchHint: AppStrings.searchIncomes,
               searchValue: query.search,
               onSearchChanged: notifier.setSearch,
               activeFilterCount: filters.activeCount,
               onClearFilters: ref.read(otherIncomeFiltersProvider.notifier).clear,
               filterBuilder: (_) => const OtherIncomeFilterPanel(),
               sortOptions: const [
-                SortOption(label: 'Date', field: OtherIncomeSort.date),
-                SortOption(label: 'Category', field: OtherIncomeSort.category),
-                SortOption(label: 'Description', field: OtherIncomeSort.description),
-                SortOption(label: 'Amount', field: OtherIncomeSort.amount),
-                SortOption(label: 'Payment', field: OtherIncomeSort.payment),
+                SortOption(label: AppStrings.dateSort, field: OtherIncomeSort.date),
+                SortOption(
+                  label: AppStrings.categorySort,
+                  field: OtherIncomeSort.category,
+                ),
+                SortOption(
+                  label: AppStrings.descriptionSort,
+                  field: OtherIncomeSort.description,
+                ),
+                SortOption(
+                  label: AppStrings.amountSort,
+                  field: OtherIncomeSort.amount,
+                ),
+                SortOption(
+                  label: AppStrings.paymentSort,
+                  field: OtherIncomeSort.payment,
+                ),
               ],
               sortField: query.sortField,
               sortAscending: query.ascending,
@@ -126,13 +141,13 @@ class OtherIncomesScreen extends ConsumerWidget {
               rowActions: [
                 if (canUpdate)
                   DataRowAction(
-                    label: 'Edit',
+                    label: AppStrings.editAction,
                     icon: Icons.edit_outlined,
                     onSelected: (c, i) => showOtherIncomeFormDialog(c, existingIncome: i),
                   ),
                 if (canDelete)
                   DataRowAction(
-                    label: 'Delete',
+                    label: AppStrings.deleteAction,
                     icon: Icons.delete_outline_rounded,
                     isDestructive: true,
                     onSelected: (c, i) => _confirmDelete(c, ref, i),
@@ -149,11 +164,17 @@ class OtherIncomesScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Delete ${income.description}?'),
-        content: const Text('This income entry will be removed and cannot be recovered.'),
+        title: Text(AppStrings.deleteIncomeTitle(income.description)),
+        content: const Text(AppStrings.deleteIncomeBody),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(AppStrings.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(AppStrings.deleteAction),
+          ),
         ],
       ),
     );
@@ -161,7 +182,11 @@ class OtherIncomesScreen extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(otherIncomesProvider.notifier).delete(income.id);
-      messenger.showSnackBar(SnackBar(content: Text('${income.description} deleted')));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(AppStrings.incomeDeleted(income.description)),
+        ),
+      );
     } on FinanceOfflineMutationException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -171,19 +196,25 @@ class OtherIncomesScreen extends ConsumerWidget {
     final parts = <String>[
       if (filters.categoryIds.isNotEmpty) filters.categoryIds.map((id) => MockFinance.incomeCategoryLabel(id)).join(', '),
       if (filters.payments.isNotEmpty) filters.payments.map((p) => p.label).join(', '),
-      if (filters.dateRange != null) 'between ${filters.dateRange!.start.month}/${filters.dateRange!.start.day} and ${filters.dateRange!.end.month}/${filters.dateRange!.end.day}',
-      if (search.trim().isNotEmpty) 'matching "$search"',
+      if (filters.dateRange != null)
+        AppStrings.financeExportBetween(
+          '${filters.dateRange!.start.month}',
+          '${filters.dateRange!.start.day}',
+          '${filters.dateRange!.end.month}',
+          '${filters.dateRange!.end.day}',
+        ),
+      if (search.trim().isNotEmpty) AppStrings.exportMatching(search),
     ];
-    return parts.isEmpty ? 'All entries' : parts.join(' · ');
+    return parts.isEmpty ? AppStrings.allEntries : parts.join(' · ');
   }
 }
 
 final otherIncomeColumns = <DataColumnSpec<OtherIncome>>[
-  DataColumnSpec(label: 'Date', field: OtherIncomeSort.date, flex: 2, value: (i) => Fmt.dayMonth(i.date)),
-  DataColumnSpec(label: 'Description', field: OtherIncomeSort.description, role: ColumnRole.primary, flex: 5, value: (i) => i.description, cellBuilder: (c, i) => _DescriptionCell(income: i)),
-  DataColumnSpec(label: 'Category', field: OtherIncomeSort.category, flex: 3, minTableWidth: 700, value: (i) => MockFinance.incomeCategoryLabel(i.categoryId)),
-  DataColumnSpec(label: 'Payment', field: OtherIncomeSort.payment, flex: 2, minTableWidth: 860, value: (i) => i.paymentType.label),
-  DataColumnSpec(label: 'Amount', field: OtherIncomeSort.amount, flex: 2, numeric: true, value: (i) => Fmt.money(i.amount)),
+  DataColumnSpec(label: AppStrings.dateSort, field: OtherIncomeSort.date, flex: 2, value: (i) => Fmt.dayMonth(i.date)),
+  DataColumnSpec(label: AppStrings.descriptionSort, field: OtherIncomeSort.description, role: ColumnRole.primary, flex: 5, value: (i) => i.description, cellBuilder: (c, i) => _DescriptionCell(income: i)),
+  DataColumnSpec(label: AppStrings.categorySort, field: OtherIncomeSort.category, flex: 3, minTableWidth: 700, value: (i) => MockFinance.incomeCategoryLabel(i.categoryId)),
+  DataColumnSpec(label: AppStrings.paymentSort, field: OtherIncomeSort.payment, flex: 2, minTableWidth: 860, value: (i) => i.paymentType.label),
+  DataColumnSpec(label: AppStrings.amountSort, field: OtherIncomeSort.amount, flex: 2, numeric: true, value: (i) => Fmt.money(i.amount)),
 ];
 
 class _DescriptionCell extends StatelessWidget {
@@ -202,7 +233,7 @@ class _DescriptionCell extends StatelessWidget {
             if (income.receipt != null) ...[const SizedBox(width: 8), Icon(Icons.attach_file_rounded, size: 14, color: context.colors.onSurfaceVariant)],
           ],
         ),
-        Text(income.source.isNotEmpty ? income.source : '—', maxLines: 1, overflow: TextOverflow.ellipsis, style: context.text.bodySmall?.copyWith(color: context.colors.onSurfaceVariant)),
+        Text(income.source.isNotEmpty ? income.source : AppStrings.emDash, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.text.bodySmall?.copyWith(color: context.colors.onSurfaceVariant)),
       ],
     );
   }

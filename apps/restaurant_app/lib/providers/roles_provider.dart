@@ -6,6 +6,7 @@ import 'dart:convert';
 
 import '../auth/staff_rbac_api.dart';
 import '../auth/staff_rbac_dtos.dart';
+import '../constants/app_limits.dart';
 import '../database/app_database.dart';
 import '../models/business_role.dart';
 import '../models/table_query.dart';
@@ -321,7 +322,7 @@ final roleStaffCountsProvider = Provider<Map<String, int>>((ref) {
 /// rather than paginating five rows across two pages.
 final rolesQueryProvider = NotifierProvider<TableQueryNotifier, TableQuery>(
   () => TableQueryNotifier(
-    const TableQuery(sortField: RoleSort.name, pageSize: 50),
+    const TableQuery(sortField: RoleSort.name, pageSize: AppLimits.rolesPageSize),
   ),
 );
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/supplier.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/suppliers_provider.dart';
 import '../../theme/breakpoints.dart';
 import '../labeled_form_field.dart';
@@ -103,7 +104,7 @@ class _SupplierFormDialogState extends ConsumerState<_SupplierFormDialog> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+      messenger.showSnackBar(SnackBar(content: Text(AppStrings.saveFailed(e))));
     }
   }
 

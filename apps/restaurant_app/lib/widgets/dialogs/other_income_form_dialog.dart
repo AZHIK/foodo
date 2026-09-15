@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/mock_finance.dart';
+import '../../constants/app_strings.dart';
 import '../../models/other_income.dart';
 import '../../models/order.dart';
 import '../../models/permission.dart';
@@ -62,12 +63,14 @@ class _OtherIncomeFormDialogState extends ConsumerState<OtherIncomeFormDialog> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    widget.incomeId == null ? 'Add income' : 'Edit income',
+                    widget.incomeId == null
+                        ? AppStrings.addIncomeTitle
+                        : AppStrings.editIncomeTitle,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: Insets.lg),
                   LabeledFormField(
-                    label: 'Date',
+                    label: AppStrings.dateLabel,
                     child: SizedBox(
                       width: double.infinity,
                       child: FilledButton.tonal(
@@ -88,7 +91,7 @@ class _OtherIncomeFormDialogState extends ConsumerState<OtherIncomeFormDialog> {
                   ),
                   const SizedBox(height: Insets.lg),
                   LabeledFormField(
-                    label: 'Category',
+                    label: AppStrings.categoryLabel,
                     child: DropdownButtonFormField<String>(
                       initialValue: state.categoryId.isEmpty ? null : state.categoryId,
                       items: MockFinance.incomeCategories
@@ -103,33 +106,33 @@ class _OtherIncomeFormDialogState extends ConsumerState<OtherIncomeFormDialog> {
                         }
                       },
                       validator: (val) =>
-                          val == null ? 'Category is required' : null,
+                          val == null ? AppStrings.categoryRequired : null,
                     ),
                   ),
                   const SizedBox(height: Insets.lg),
                   LabeledFormField(
-                    label: 'Description',
+                    label: AppStrings.descriptionLabel,
                     child: TextFormField(
                       initialValue: state.description,
                       onChanged: notifier.setDescription,
                       validator: (val) => val?.isEmpty ?? true
-                          ? 'Description is required'
+                          ? AppStrings.descriptionRequired
                           : null,
                     ),
                   ),
                   const SizedBox(height: Insets.lg),
                   LabeledFormField(
-                    label: 'Amount',
+                    label: AppStrings.amountLabel,
                     child: TextFormField(
                       initialValue: state.amount,
                       onChanged: notifier.setAmount,
                       keyboardType: TextInputType.number,
                       validator: (val) {
                         if (val?.isEmpty ?? true) {
-                          return 'Amount is required';
+                          return AppStrings.amountRequired;
                         }
                         if (double.tryParse(val!) == null) {
-                          return 'Enter a valid amount';
+                          return AppStrings.validAmount;
                         }
                         return null;
                       },
@@ -137,7 +140,7 @@ class _OtherIncomeFormDialogState extends ConsumerState<OtherIncomeFormDialog> {
                   ),
                   const SizedBox(height: Insets.lg),
                   LabeledFormField(
-                    label: 'Payment Method',
+                    label: AppStrings.paymentMethodLabel,
                     child: DropdownButtonFormField<PaymentType>(
                       initialValue: state.paymentType,
                       items: PaymentType.values
@@ -155,7 +158,7 @@ class _OtherIncomeFormDialogState extends ConsumerState<OtherIncomeFormDialog> {
                   ),
                   const SizedBox(height: Insets.lg),
                   LabeledFormField(
-                    label: 'Source (optional)',
+                    label: AppStrings.sourceOptional,
                     child: TextFormField(
                       initialValue: state.source,
                       onChanged: notifier.setSource,
@@ -163,7 +166,7 @@ class _OtherIncomeFormDialogState extends ConsumerState<OtherIncomeFormDialog> {
                   ),
                   const SizedBox(height: Insets.lg),
                   LabeledFormField(
-                    label: 'Note (optional)',
+                    label: AppStrings.noteOptional,
                     child: TextFormField(
                       initialValue: state.note,
                       onChanged: notifier.setNote,
@@ -173,13 +176,13 @@ class _OtherIncomeFormDialogState extends ConsumerState<OtherIncomeFormDialog> {
                   if (canUploadReceipt) ...[
                     const SizedBox(height: Insets.lg),
                     LabeledFormField(
-                      label: 'Receipt (optional)',
+                      label: AppStrings.receiptOptional,
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: ImageUploadField(
                           image: state.receiptBytes,
                           size: 120,
-                          label: 'Upload receipt',
+                          label: AppStrings.uploadReceipt,
                           onPicked: notifier.setReceipt,
                           onRemoved: notifier.clearReceipt,
                         ),
@@ -192,7 +195,7 @@ class _OtherIncomeFormDialogState extends ConsumerState<OtherIncomeFormDialog> {
                     children: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
+                        child: const Text(AppStrings.cancel),
                       ),
                       const SizedBox(width: Insets.md),
                       FilledButton(
@@ -204,7 +207,9 @@ class _OtherIncomeFormDialogState extends ConsumerState<OtherIncomeFormDialog> {
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
                             : Text(
-                                widget.incomeId == null ? 'Add' : 'Update',
+                                widget.incomeId == null
+                                    ? AppStrings.addAction
+                                    : AppStrings.updateAction,
                               ),
                       ),
                     ],
@@ -233,7 +238,7 @@ class _OtherIncomeFormDialogState extends ConsumerState<OtherIncomeFormDialog> {
       Navigator.of(context).pop();
       messenger.showSnackBar(
         SnackBar(
-          content: Text(isEdit ? 'Income updated' : 'Income added'),
+          content: Text(AppStrings.incomeSaved(isEdit)),
         ),
       );
     } on FinanceOfflineMutationException catch (e) {
@@ -243,7 +248,7 @@ class _OtherIncomeFormDialogState extends ConsumerState<OtherIncomeFormDialog> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+      messenger.showSnackBar(SnackBar(content: Text(AppStrings.saveFailed(e))));
     }
   }
 }

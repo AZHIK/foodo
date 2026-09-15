@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/inventory_item.dart';
+import '../constants/app_limits.dart';
+import '../constants/app_strings.dart';
 import 'inventory_provider.dart';
 
 /// Everything the item form is holding, mid-edit.
@@ -117,17 +119,17 @@ class ItemFormState {
   // -------------------------------------------------------------------
 
   static String? validateName(String? value) =>
-      (value ?? '').trim().isEmpty ? 'Give the item a name' : null;
+      (value ?? '').trim().isEmpty ? AppStrings.giveItemName : null;
 
   static String? validateCategory(String? value) =>
-      (value ?? '').isEmpty ? 'Pick a category' : null;
+      (value ?? '').isEmpty ? AppStrings.pickCategory : null;
 
   static String? validateUnitCost(String? value) {
     final text = (value ?? '').trim();
-    if (text.isEmpty) return 'Enter a unit cost';
+    if (text.isEmpty) return AppStrings.enterUnitCost;
     final parsed = double.tryParse(text);
-    if (parsed == null) return 'Enter a number';
-    if (parsed < 0) return 'Cost cannot be negative';
+    if (parsed == null) return AppStrings.enterNumberError;
+    if (parsed < 0) return AppStrings.negativeCost;
     return null;
   }
 
@@ -138,8 +140,8 @@ class ItemFormState {
     final text = (value ?? '').trim();
     if (text.isEmpty) return null;
     final parsed = double.tryParse(text);
-    if (parsed == null) return 'Enter a number';
-    if (parsed < 0) return 'Cannot be negative';
+    if (parsed == null) return AppStrings.enterNumberError;
+    if (parsed < 0) return AppStrings.negativeNumber;
     return null;
   }
 
@@ -147,8 +149,8 @@ class ItemFormState {
     final text = (value ?? '').trim();
     if (text.isEmpty) return null;
     final parsed = double.tryParse(text);
-    if (parsed == null) return 'Enter a number';
-    if (parsed < 0) return 'Cannot be negative';
+    if (parsed == null) return AppStrings.enterNumberError;
+    if (parsed < 0) return AppStrings.negativeNumber;
     return null;
   }
 
@@ -160,11 +162,11 @@ class ItemFormState {
   static String? validateSellingPrice(String? value, {required bool isRequired}) {
     final text = (value ?? '').trim();
     if (text.isEmpty) {
-      return isRequired ? 'Enter a selling price to sell this at the till' : null;
+      return isRequired ? AppStrings.sellingPriceRequired : null;
     }
     final parsed = double.tryParse(text);
-    if (parsed == null) return 'Enter a number';
-    if (parsed < 0) return 'Cannot be negative';
+    if (parsed == null) return AppStrings.enterNumberError;
+    if (parsed < 0) return AppStrings.negativeNumber;
     return null;
   }
 
@@ -174,8 +176,8 @@ class ItemFormState {
     final text = (value ?? '').trim();
     if (text.isEmpty) return null;
     final parsed = double.tryParse(text);
-    if (parsed == null) return 'Enter a number';
-    if (parsed < 0) return 'Cannot be negative';
+    if (parsed == null) return AppStrings.enterNumberError;
+    if (parsed < 0) return AppStrings.negativeNumber;
     return null;
   }
 
@@ -393,7 +395,7 @@ class ItemFormNotifier
     final prefix = letters.isEmpty
         ? 'NEW'
         : letters.substring(0, letters.length < 3 ? letters.length : 3);
-    return '$prefix-${DateTime.now().millisecondsSinceEpoch % 10000}';
+    return '$prefix-${DateTime.now().millisecondsSinceEpoch % AppLimits.skuSuffixMod}';
   }
 }
 

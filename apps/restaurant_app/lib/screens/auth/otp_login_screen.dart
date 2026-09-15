@@ -5,6 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../constants/app_durations.dart';
+import '../../constants/app_limits.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/session_provider.dart';
 import '../../router/app_router.dart';
@@ -33,9 +36,9 @@ class OtpLoginScreen extends ConsumerStatefulWidget {
 }
 
 class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
-  static const _codeLength = 6;
-  static const _resendCooldown = Duration(seconds: 30);
-  static const _verifyDelay = Duration(milliseconds: 800);
+  static const _codeLength = AppLimits.otpCodeLength;
+  static const _resendCooldown = AppDurations.otpResendCooldown;
+  static const _verifyDelay = AppDurations.otpFakeVerifyDelay;
 
   final _phone = TextEditingController();
   final _phoneFocus = FocusNode();
@@ -84,7 +87,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
   Future<void> _sendCode() async {
     final digits = _phone.text.replaceAll(RegExp(r'\D'), '');
     if (digits.isEmpty) {
-      setState(() => _phoneError = 'Enter your phone number');
+      setState(() => _phoneError = AppStrings.enterPhoneNumber);
       return;
     }
     if (!isValidTanzanianPhone(digits)) {
@@ -97,7 +100,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
       await ref.read(sessionProvider.notifier).requestOtp('+255$digits');
     } catch (e) {
       if (!mounted) return;
-      setState(() => _phoneError = 'Failed to send code: $e');
+      setState(() => _phoneError = AppStrings.sendCodeFailed(e));
       return;
     }
 
@@ -116,7 +119,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
     _cooldown?.cancel();
     setState(() => _secondsLeft = _resendCooldown.inSeconds);
 
-    _cooldown = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _cooldown = Timer.periodic(AppDurations.ticker, (timer) {
       if (!mounted) return timer.cancel();
       setState(() => _secondsLeft--);
       if (_secondsLeft <= 0) timer.cancel();
@@ -180,7 +183,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
       if (!mounted) return;
       setState(() {
         _verifying = false;
-        _codeError = 'That code is not right. Check your messages.';
+        _codeError = AppStrings.codeNotRight;
         _shakeToken++;
         for (final controller in _digits) {
           controller.clear();
@@ -205,19 +208,19 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
-      title: _codeSent ? 'Enter your code' : 'Sign in',
+      title: _codeSent ? AppStrings.enterYourCode : AppStrings.signIn,
       subtitle: _codeSent
-          ? 'We sent a 6-digit code to ${_formattedPhone()}'
-          : 'Use the phone number your manager registered',
+          ? AppStrings.codeSentTo(_formattedPhone())
+          : AppStrings.useRegisteredPhone,
       footer: _codeSent
           ? null
           : AuthLink(
-              label: 'Back to profiles',
+              label: AppStrings.backToProfiles,
               icon: Icons.arrow_back_rounded,
               onPressed: () => context.goNamed(AppRoute.profilesName),
             ),
       child: AnimatedSize(
-        duration: const Duration(milliseconds: 220),
+        duration: AppDurations.screen,
         curve: Curves.easeOutCubic,
         alignment: Alignment.topCenter,
         child: _codeSent ? _buildCodeStep(context) : _buildPhoneStep(context),
@@ -237,7 +240,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         LabeledFormField(
-          label: 'Phone number',
+          label: AppStrings.phoneNumber,
           isRequired: true,
           child: TextField(
             key: OtpLoginKeys.phone,
@@ -247,7 +250,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
             keyboardType: TextInputType.phone,
             inputFormatters: [
               FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(9),
+              LengthLimitingTextInputFormatter(AppLimits.tzPhoneDigits),
             ],
             onChanged: (value) {
               final digits = value.replaceAll(RegExp(r'\D'), '');
@@ -261,7 +264,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
             },
             onSubmitted: (_) => _sendCode(),
             decoration: InputDecoration(
-              hintText: '6XXXXXXXX or 7XXXXXXXX',
+              hintText: AppStrings.phoneExample,
               errorText: _phoneError,
               // A fixed dial code rather than a country picker: this build
               // serves one market, and a picker with one entry is a control
@@ -272,7 +275,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
                   right: Insets.sm,
                 ),
                 child: Text(
-                  '+255',
+                  AppStrings.dialCode,
                   style: context.text.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: context.colors.onSurfaceVariant,
@@ -287,7 +290,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
         FilledButton(
           key: OtpLoginKeys.sendCode,
           onPressed: _sendCode,
-          child: const Text('Send code'),
+          child: const Text(AppStrings.sendCode),
         ),
       ],
     );
@@ -329,12 +332,12 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
                         ),
                       ),
                       const SizedBox(width: Insets.md),
-                      Text('Verifying', style: context.text.bodySmall),
+                      Text(AppStrings.verifying, style: context.text.bodySmall),
                     ],
                   )
                 : _secondsLeft > 0
                 ? Text(
-                    'Resend code in ${_secondsLeft}s',
+                    AppStrings.resendIn(_secondsLeft),
                     style: context.text.bodySmall?.copyWith(
                       color: context.colors.onSurfaceVariant,
                     ),
@@ -342,14 +345,14 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
                 : TextButton(
                     key: OtpLoginKeys.resend,
                     onPressed: _startCooldown,
-                    child: const Text('Resend code'),
+                    child: const Text(AppStrings.resendCode),
                   ),
           ),
         ),
         const SizedBox(height: Insets.sm),
         AuthLink(
           key: OtpLoginKeys.changeNumber,
-          label: 'Change number',
+          label: AppStrings.changeNumber,
           onPressed: _verifying ? null : _changeNumber,
         ),
       ],
@@ -370,7 +373,7 @@ class _CodeHint extends StatelessWidget {
     final rejected = error != null;
 
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 180),
+      duration: AppDurations.authStep,
       child: rejected
           ? Text(
               error!,
@@ -391,7 +394,7 @@ class _CodeHint extends StatelessWidget {
                 ),
                 const SizedBox(width: Insets.sm - 2),
                 Text(
-                  'We texted you a 6-digit code',
+                  AppStrings.codeHint,
                   style: context.text.bodySmall?.copyWith(
                     color: context.colors.onSurfaceVariant,
                   ),

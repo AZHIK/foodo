@@ -9,6 +9,8 @@ library;
 
 import 'dart:convert';
 
+import '../constants/app_durations.dart';
+
 /// Decoded JWT payload claims for a business-user access token (RS256).
 class JwtClaims {
   final String sub; // user UUID
@@ -35,7 +37,7 @@ class JwtClaims {
   /// True if the token is already expired (or expires within 1 second).
   bool get isExpired {
     final now = DateTime.now().toUtc();
-    return now.isAfter(expiresAt.subtract(const Duration(seconds: 1)));
+    return now.isAfter(expiresAt.subtract(AppDurations.jwtDecodeSkew));
   }
 }
 

@@ -7,9 +7,11 @@ library;
 import 'package:decimal/decimal.dart';
 import 'package:dio/dio.dart';
 
+import '../constants/api_paths.dart';
+import '../constants/app_limits.dart';
 import 'reorders_catalog_api.dart';
 
-const _pageSize = 100;
+const _pageSize = AppLimits.catalogFetchPageSize;
 
 /// HTTP client for fetching reorders from Inventory Service via Dio.
 class HttpReordersCatalogApi extends ReordersCatalogApi {
@@ -27,7 +29,7 @@ class HttpReordersCatalogApi extends ReordersCatalogApi {
       var offset = 0;
       while (true) {
         final response = await _dio.get(
-          '/businesses/$_businessId/reorders',
+          InventoryApiPaths.reorders(_businessId),
           queryParameters: {
             'store_id': storeId,
             'limit': _pageSize,

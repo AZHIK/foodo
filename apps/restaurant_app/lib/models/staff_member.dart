@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
 import '../widgets/data_page/status_badge.dart';
 
 /// Where a staff account stands.
 enum StaffStatus {
-  active('Active'),
-  inactive('Inactive'),
-  pendingInvite('Pending invite');
+  active(AppStrings.activeStatus),
+  inactive(AppStrings.inactiveStatus),
+  pendingInvite(AppStrings.pendingInviteStatus);
 
   const StaffStatus(this.label);
   final String label;

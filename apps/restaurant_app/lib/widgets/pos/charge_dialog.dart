@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/order.dart';
+import '../../constants/app_strings.dart';
 import '../../models/permission.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_session_provider.dart';
@@ -77,13 +78,18 @@ Future<void> chargeOpenOrder(BuildContext context, WidgetRef ref) async {
   messenger.showSnackBar(
     SnackBar(
       content: Text(
-        '${order.id} charged — ${Fmt.money(order.total)} by '
-        '${order.paymentType.label}'
-        '${change != null && change > 0 ? ' · ${Fmt.money(change)} change' : ''}'
-        '${autoPrint ? ' · receipt $receiptNumber printing' : ''}',
+        AppStrings.orderCharged(
+          order.id,
+          Fmt.money(order.total),
+          order.paymentType.label,
+          change != null && change > 0
+              ? AppStrings.chargeChangePart(Fmt.money(change))
+              : '',
+          autoPrint ? AppStrings.chargeReceiptPart(receiptNumber) : '',
+        ),
       ),
       action: SnackBarAction(
-        label: 'View',
+        label: AppStrings.cartView,
         onPressed: () => context.go(AppRoute.orderDetail(order.id)),
       ),
     ),
@@ -119,7 +125,7 @@ class ChargeDialog extends ConsumerWidget {
     );
 
     return AlertDialog(
-      title: const Text('Take payment'),
+      title: const Text(AppStrings.takePayment),
       contentPadding: const EdgeInsets.fromLTRB(
         Insets.xl,
         Insets.lg,
@@ -154,12 +160,12 @@ class ChargeDialog extends ConsumerWidget {
               // would only ever 403.
               if (ref.watch(hasPermissionProvider(AppPermissions.customersView))) ...[
                 const SizedBox(height: Insets.lg),
-                const SectionLabel('Customer'),
+                const SectionLabel(AppStrings.chargeCustomer),
                 const SizedBox(height: Insets.sm),
                 const CustomerPickerField(),
               ],
               const SizedBox(height: Insets.lg),
-              const SectionLabel('Payment method'),
+              const SectionLabel(AppStrings.chargePaymentMethod),
               const SizedBox(height: Insets.sm),
               SelectableOptionGrid(
                 // Three across on desktop and tablet; two on a phone, where a
@@ -179,7 +185,7 @@ class ChargeDialog extends ConsumerWidget {
               ),
               if (payment.isCash) ...[
                 const SizedBox(height: Insets.lg),
-                const SectionLabel('Cash received'),
+                const SectionLabel(AppStrings.cashReceived),
                 const SizedBox(height: Insets.sm),
                 // Autofocus only where there is a hardware keyboard: on a
                 // phone it would throw the system keyboard over the chips.
@@ -195,7 +201,7 @@ class ChargeDialog extends ConsumerWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
+          child: const Text(AppStrings.cancel),
         ),
         FilledButton.icon(
           // Dead until the cash covers the total — a ticket cannot be settled
@@ -203,7 +209,7 @@ class ChargeDialog extends ConsumerWidget {
           onPressed: ready ? () => Navigator.of(context).pop(true) : null,
           icon: const Icon(Icons.check_circle_outline_rounded, size: 19),
           label: Text(
-            'Charge ${Fmt.money(totals.total)}',
+            AppStrings.chargeTotal(Fmt.money(totals.total)),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -237,8 +243,7 @@ class _TerminalNotice extends StatelessWidget {
           const SizedBox(width: Insets.md),
           Expanded(
             child: Text(
-              'Complete the ${method.label.toLowerCase()} payment on the '
-              'terminal, then charge to record it.',
+              AppStrings.terminalNotice(method.label),
               style: context.text.bodySmall?.copyWith(
                 color: colors.onSurfaceVariant,
               ),

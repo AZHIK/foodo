@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_strings.dart';
 import '../../theme/breakpoints.dart';
 
 /// Confirms a refund and collects the reason in one step.
@@ -52,8 +53,8 @@ class _RefundConfirmDialogState extends State<_RefundConfirmDialog> {
             controller: _reason,
             autofocus: true,
             decoration: const InputDecoration(
-              labelText: 'Reason',
-              hintText: 'Why is this being refunded?',
+              labelText: AppStrings.reasonLabel,
+              hintText: AppStrings.refundWhyHint,
             ),
             onChanged: (_) => setState(() {}),
           ),
@@ -62,13 +63,13 @@ class _RefundConfirmDialogState extends State<_RefundConfirmDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text(AppStrings.cancel),
         ),
         FilledButton(
           onPressed: _reason.text.trim().isEmpty
               ? null
               : () => Navigator.of(context).pop(_reason.text.trim()),
-          child: const Text('Refund'),
+          child: const Text(AppStrings.refundAction),
         ),
       ],
     );

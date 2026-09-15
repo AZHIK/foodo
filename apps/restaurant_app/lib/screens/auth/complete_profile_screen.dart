@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/session_provider.dart';
 import '../../utils/email_validation.dart';
 import '../../widgets/auth/auth_scaffold.dart';
@@ -66,7 +67,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       if (!mounted) return;
       setState(() {
         _submitting = false;
-        _error = 'Could not save your details: $e';
+        _error = AppStrings.saveDetailsFailed(e);
       });
     }
   }
@@ -74,36 +75,37 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
-      title: 'Tell us who you are',
-      subtitle: 'This appears on receipts, invites and the staff list',
+      title: AppStrings.tellUsWhoYouAre,
+      subtitle: AppStrings.profileSubtitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
           LabeledFormField(
-            label: 'Full name',
+            label: AppStrings.fullName,
             isRequired: true,
             child: TextField(
               key: CompleteProfileKeys.fullName,
               controller: _fullName,
               autofocus: true,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(hintText: 'Amina Hassan'),
+              decoration: const InputDecoration(hintText: AppStrings.nameExample),
               onChanged: (_) => setState(() {}),
               onSubmitted: (_) => _submit(),
             ),
           ),
           const SizedBox(height: 16),
           LabeledFormField(
-            label: 'Email',
-            helper: 'Optional — used for receipts and account recovery',
+            label: AppStrings.emailLabel,
+            helper: AppStrings.emailHelper,
             child: TextField(
               key: CompleteProfileKeys.email,
               controller: _email,
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
-                hintText: 'amina@venue.com',
-                errorText: _emailLooksValid ? null : 'Enter a valid email address',
+                hintText: AppStrings.emailExample,
+                errorText:
+                    _emailLooksValid ? null : AppStrings.invalidEmail,
               ),
               onChanged: (_) => setState(() {}),
               onSubmitted: (_) => _submit(),
@@ -128,7 +130,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                     width: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Continue'),
+                : const Text(AppStrings.continueAction),
           ),
         ],
       ),

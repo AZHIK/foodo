@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/staff_member.dart';
+import '../../constants/app_strings.dart';
+import '../../constants/app_durations.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/roles_provider.dart';
 import '../../providers/session_provider.dart';
@@ -84,7 +86,7 @@ class _AccountSettingsScreenState
   /// tick flashing on each letter is noise, not reassurance.
   void _saveTextSoon(String field) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 600), () {
+    _debounce = Timer(AppDurations.accountSaveDebounce, () {
       if (!mounted) return;
       _commitProfile();
       _confirm(field);
@@ -133,8 +135,8 @@ class _AccountSettingsScreenState
       // stretched across a 1920px monitor.
       maxContentWidth: 680,
       header: DetailPageHeader(
-        title: 'Account',
-        subtitle: 'Your own details and how you sign in',
+        title: AppStrings.accountTitle,
+        subtitle: AppStrings.accountSubtitle,
         onBack: () => context.canPop()
             ? context.pop()
             : context.goNamed(AppRoute.settingsName),
@@ -198,7 +200,7 @@ class _ProfilePanelState extends ConsumerState<_ProfilePanel> {
         : ref.watch(roleByIdProvider(member.roleId));
 
     return DetailPanel(
-      title: 'Profile',
+      title: AppStrings.profilePanel2,
       trailing: widget.tick('avatar'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -226,7 +228,7 @@ class _ProfilePanelState extends ConsumerState<_ProfilePanel> {
                       : ImageUploadField(
                           image: _avatar,
                           size: 96,
-                          label: 'Photo',
+                          label: AppStrings.photoUploadLabel,
                           hint: '',
                           onPicked: (name, bytes) {
                             setState(() => _avatar = bytes);
@@ -245,7 +247,7 @@ class _ProfilePanelState extends ConsumerState<_ProfilePanel> {
           ),
           const SizedBox(height: Insets.xl),
           LabeledFormField(
-            label: 'Full name',
+            label: AppStrings.fullNameField,
             child: TextField(
               key: AccountSettingsKeys.fullName,
               controller: widget.name,
@@ -257,7 +259,7 @@ class _ProfilePanelState extends ConsumerState<_ProfilePanel> {
           widget.tick('name'),
           const SizedBox(height: Insets.md),
           LabeledFormField(
-            label: 'Email',
+            label: AppStrings.emailField3,
             child: TextField(
               key: AccountSettingsKeys.email,
               controller: widget.email,
@@ -267,7 +269,7 @@ class _ProfilePanelState extends ConsumerState<_ProfilePanel> {
           ),
           const SizedBox(height: Insets.lg),
           LabeledFormField(
-            label: 'Phone',
+            label: AppStrings.phoneField3,
             child: TextField(
               key: AccountSettingsKeys.phone,
               controller: widget.phone,
@@ -315,14 +317,14 @@ class _AvatarPicker extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Profile photo',
+                        AppStrings.profilePhotoSheet,
                         style: sheetContext.text.titleMedium,
                       ),
                       const SizedBox(height: Insets.lg),
                       ImageUploadField(
                         image: null,
                         size: 160,
-                        label: 'Choose a photo',
+                        label: AppStrings.choosePhoto,
                         onPicked: (name, bytes) {
                           Navigator.of(sheetContext).pop();
                           onPicked(name, bytes);
@@ -366,7 +368,7 @@ class _SecurityPanel extends ConsumerWidget {
     final session = ref.watch(sessionProvider);
 
     return DetailPanel(
-      title: 'Security',
+      title: AppStrings.securityPanel,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -379,15 +381,15 @@ class _SecurityPanel extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Unlock PIN',
+                      AppStrings.unlockPin,
                       style: context.text.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     Text(
                       session.hasPin
-                          ? 'Six digits, used to unlock this terminal'
-                          : 'No PIN set yet',
+                          ? AppStrings.pinSetHint
+                          : AppStrings.noPinYet,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: context.text.bodySmall?.copyWith(
@@ -403,17 +405,19 @@ class _SecurityPanel extends ConsumerWidget {
                 // The same Set PIN screen first-time setup uses, told through
                 // the route that it is a change rather than a first run.
                 onPressed: () => context.go(AppRoute.setPin(change: true)),
-                child: Text(session.hasPin ? 'Change PIN' : 'Set PIN'),
+                child: Text(
+                  session.hasPin ? AppStrings.changePin : AppStrings.setPinAction,
+                ),
               ),
             ],
           ),
           const SizedBox(height: Insets.lg),
           SettingSwitchTile(
             switchKey: AccountSettingsKeys.twoFactor,
-            title: 'Two-factor via OTP',
+            title: AppStrings.twoFactorOtp,
             subtitle: session.twoFactorEnabled
-                ? 'A code is texted to you on top of your PIN'
-                : 'Your PIN alone unlocks this terminal',
+                ? AppStrings.twoFactorOn
+                : AppStrings.twoFactorOff,
             value: session.twoFactorEnabled,
             trailing: tick('twoFactor'),
             onChanged: (value) {
@@ -460,7 +464,7 @@ class _DangerZone extends ConsumerWidget {
               const SizedBox(width: Insets.sm),
               Expanded(
                 child: Text(
-                  'DANGER ZONE',
+                  AppStrings.dangerZone,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: context.text.labelSmall?.copyWith(
@@ -474,10 +478,7 @@ class _DangerZone extends ConsumerWidget {
           ),
           const SizedBox(height: Insets.md),
           Text(
-            'Deactivating closes your own access to this business. It is not '
-            'the same as an owner deactivating someone else from the Staff '
-            'screen — only you can do this to your own account, and you will '
-            'need an owner to let you back in.',
+            AppStrings.deactivateExplainer,
             style: context.text.bodySmall?.copyWith(
               color: context.colors.onSurfaceVariant,
             ),
@@ -493,7 +494,7 @@ class _DangerZone extends ConsumerWidget {
                 side: BorderSide(color: danger.withValues(alpha: 0.5)),
               ),
               icon: const Icon(Icons.person_off_outlined, size: 18),
-              label: const Text('Deactivate my account'),
+              label: const Text(AppStrings.deactivateAccount),
             ),
           ),
         ],
@@ -502,28 +503,24 @@ class _DangerZone extends ConsumerWidget {
   }
 
   Future<void> _confirm(BuildContext context, WidgetRef ref) async {
-    final name = member?.name ?? 'your account';
+    final name = member?.name ?? AppStrings.yourAccountFallback;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Deactivate your account?'),
-        content: Text(
-          '$name will lose access to this business immediately and be signed '
-          'out of every terminal. Sales already recorded stay on the ledger. '
-          'Only an owner can reactivate the account.',
-        ),
+        title: const Text(AppStrings.deactivateTitle),
+        content: Text(AppStrings.deactivateBody(name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep my account'),
+            child: const Text(AppStrings.keepMyAccount),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: dialogContext.semantic.danger,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Deactivate'),
+            child: const Text(AppStrings.deactivateConfirm),
           ),
         ],
       ),

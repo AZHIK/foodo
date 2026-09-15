@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/table_query.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/preferences_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
@@ -390,8 +391,12 @@ class _Pagination extends StatelessWidget {
     final colors = context.colors;
 
     final showing = slice.totalCount == 0
-        ? 'No results'
-        : 'Showing ${slice.firstRow}–${slice.lastRow} of ${slice.totalCount}';
+        ? AppStrings.noResults
+        : AppStrings.showingRange(
+            slice.firstRow,
+            slice.lastRow,
+            slice.totalCount,
+          );
 
     return Padding(
       padding: const EdgeInsets.only(top: Insets.md),
@@ -463,7 +468,7 @@ class _PageControls extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          tooltip: 'Previous page',
+          tooltip: AppStrings.previousPage,
           visualDensity: VisualDensity.compact,
           onPressed: slice.hasPrevious
               ? () => onPageChanged(slice.page - 1)
@@ -474,7 +479,7 @@ class _PageControls extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: Insets.sm),
             child: Text(
-              '${slice.page + 1} / ${slice.pageCount}',
+              AppStrings.pagerPosition(slice.page + 1, slice.pageCount),
               style: context.text.labelLarge,
             ),
           )
@@ -486,7 +491,7 @@ class _PageControls extends StatelessWidget {
               onTap: () => onPageChanged(page),
             ),
         IconButton(
-          tooltip: 'Next page',
+          tooltip: AppStrings.nextPage,
           visualDensity: VisualDensity.compact,
           onPressed: slice.hasNext ? () => onPageChanged(slice.page + 1) : null,
           icon: const Icon(Icons.chevron_right_rounded),
@@ -565,10 +570,10 @@ class _DefaultEmptyState extends StatelessWidget {
             color: colors.onSurfaceVariant.withValues(alpha: 0.6),
           ),
           const SizedBox(height: Insets.md),
-          Text('No results', style: context.text.titleSmall),
+          Text(AppStrings.noResults, style: context.text.titleSmall),
           const SizedBox(height: Insets.xs),
           Text(
-            'Try a different search or clear your filters.',
+            AppStrings.tryDifferentSearch,
             textAlign: TextAlign.center,
             style: context.text.bodySmall?.copyWith(
               color: colors.onSurfaceVariant,

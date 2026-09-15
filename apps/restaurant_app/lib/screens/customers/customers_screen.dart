@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/customer.dart';
+import '../../constants/app_strings.dart';
 import '../../models/permission.dart';
 import '../../providers/customers_provider.dart';
 import '../../providers/permissions_provider.dart';
@@ -31,8 +32,8 @@ class CustomersScreen extends ConsumerWidget {
     final canDelete = ref.watch(hasPermissionProvider(AppPermissions.customersDelete));
 
     return DataPageScaffold(
-      title: 'Customers',
-      subtitle: 'All customer profiles and order history',
+      title: AppStrings.customersTitle,
+      subtitle: AppStrings.customersSubtitle,
       actions: [],
       // Hidden rather than shown-disabled: someone who can't add customers
       // shouldn't see a control that only ever 403s.
@@ -41,31 +42,31 @@ class CustomersScreen extends ConsumerWidget {
           : FilledButton.icon(
               onPressed: () => showCustomerFormDialog(context),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('Add customer'),
+              label: const Text(AppStrings.addCustomer),
             ),
       metrics: [
         SummaryMetricCard(
-          label: 'Total customers',
+          label: AppStrings.totalCustomers,
           value: '${summary.totalCustomers}',
-          trend: 'Registered profiles',
+          trend: AppStrings.registeredProfiles,
           icon: Icons.people_alt_outlined,
         ),
         SummaryMetricCard(
-          label: 'Lifetime spend',
+          label: AppStrings.lifetimeSpend,
           value: Fmt.moneyCompact(summary.totalLifetimeSpend),
-          trend: 'Total revenue from customers',
+          trend: AppStrings.totalRevenueFromCustomers,
           icon: Icons.trending_up_rounded,
           accent: context.semantic.success,
         ),
         SummaryMetricCard(
-          label: 'Average spend',
+          label: AppStrings.averageSpend,
           value: Fmt.money(summary.averageOrderValue),
-          trend: 'Per customer',
+          trend: AppStrings.perCustomer,
           icon: Icons.balance_rounded,
         ),
       ],
       toolbar: DataTableToolbar(
-        searchHint: 'Search by name or phone',
+        searchHint: AppStrings.searchCustomers,
         searchValue: ref.watch(customerSearchProvider),
         onSearchChanged: (value) =>
             ref.read(customerSearchProvider.notifier).state = value,
@@ -73,10 +74,16 @@ class CustomersScreen extends ConsumerWidget {
         onClearFilters: () {},
         filterBuilder: (_) => const SizedBox.shrink(),
         sortOptions: const [
-          SortOption(label: 'Name', field: CustomerSort.name),
-          SortOption(label: 'Phone', field: CustomerSort.phone),
-          SortOption(label: 'Last order', field: CustomerSort.lastOrder),
-          SortOption(label: 'Total spent', field: CustomerSort.totalSpent),
+          SortOption(label: AppStrings.nameColumn, field: CustomerSort.name),
+          SortOption(label: AppStrings.phoneColumn, field: CustomerSort.phone),
+          SortOption(
+            label: AppStrings.lastOrderSort,
+            field: CustomerSort.lastOrder,
+          ),
+          SortOption(
+            label: AppStrings.totalSpentSort,
+            field: CustomerSort.totalSpent,
+          ),
         ],
         sortField: query.sortField,
         sortAscending: query.ascending,
@@ -102,21 +109,21 @@ class CustomersScreen extends ConsumerWidget {
     required bool canDelete,
   }) => [
     DataRowAction(
-      label: 'View detail',
+      label: AppStrings.viewDetail,
       icon: Icons.open_in_new_rounded,
       onSelected: (context, customer) =>
           context.go(AppRoute.customerDetail(customer.id)),
     ),
     if (canUpdate)
       DataRowAction(
-        label: 'Edit',
+        label: AppStrings.editAction,
         icon: Icons.edit_outlined,
         onSelected: (context, customer) =>
             showCustomerFormDialog(context, existingCustomer: customer),
       ),
     if (canDelete)
       DataRowAction(
-        label: 'Delete',
+        label: AppStrings.deleteAction,
         icon: Icons.delete_outline_rounded,
         isDestructive: true,
         onSelected: (context, customer) =>
@@ -132,18 +139,16 @@ class CustomersScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete ${customer.name}?'),
-        content: const Text(
-          'This customer record will be removed. This cannot be undone.',
-        ),
+        title: Text(AppStrings.deleteCustomerTitle(customer.name)),
+        content: const Text(AppStrings.deleteCustomerBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: const Text(AppStrings.deleteAction),
           ),
         ],
       ),
@@ -154,7 +159,11 @@ class CustomersScreen extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(customersProvider.notifier).delete(customer.id);
-      messenger.showSnackBar(SnackBar(content: Text('${customer.name} deleted')));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(AppStrings.customerDeleted(customer.name)),
+        ),
+      );
     } on CustomerOfflineMutationException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -164,29 +173,29 @@ class CustomersScreen extends ConsumerWidget {
 /// Column config for the customers table.
 final _columns = <DataColumnSpec<Customer>>[
   DataColumnSpec(
-    label: 'Name',
+    label: AppStrings.nameColumn,
     field: CustomerSort.name,
     role: ColumnRole.primary,
     flex: 4,
     value: (customer) => customer.name,
   ),
   DataColumnSpec(
-    label: 'Phone',
+    label: AppStrings.phoneColumn,
     field: CustomerSort.phone,
     flex: 3,
     value: (customer) => customer.phone,
   ),
   DataColumnSpec(
-    label: 'Last order',
+    label: AppStrings.lastOrderColumn,
     field: CustomerSort.lastOrder,
     flex: 3,
     minTableWidth: 640,
     value: (customer) => customer.lastOrderAt == null
-        ? '—'
+        ? AppStrings.emDash
         : Fmt.relativeDateTime(customer.lastOrderAt!),
   ),
   DataColumnSpec(
-    label: 'Orders',
+    label: AppStrings.ordersColumn,
     field: 'orders',
     flex: 2,
     numeric: true,
@@ -194,7 +203,7 @@ final _columns = <DataColumnSpec<Customer>>[
     value: (customer) => '${customer.totalOrders}',
   ),
   DataColumnSpec(
-    label: 'Total spent',
+    label: AppStrings.totalSpentColumn,
     field: CustomerSort.totalSpent,
     flex: 2,
     numeric: true,

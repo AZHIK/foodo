@@ -7,6 +7,7 @@ library;
 import 'package:decimal/decimal.dart';
 import 'package:dio/dio.dart';
 
+import '../constants/api_paths.dart';
 import '../sync/reorders_catalog_api.dart' show ReorderDto;
 
 /// Thrown when the backend rejects a reorder write — a sellable-item
@@ -73,7 +74,7 @@ class ReorderApiService {
   }) async {
     try {
       final response = await _dio.post(
-        '/businesses/$businessId/reorders',
+        InventoryApiPaths.reorders(businessId),
         data: {
           'store_id': storeId,
           'item_id': itemId,
@@ -97,7 +98,9 @@ class ReorderApiService {
     required String reorderId,
   }) async {
     try {
-      final response = await _dio.post('/businesses/$businessId/reorders/$reorderId/receive');
+      final response = await _dio.post(
+        InventoryApiPaths.reorderReceive(businessId, reorderId),
+      );
       return _reorderFromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       _rethrowAsReorderError(e);
@@ -110,7 +113,9 @@ class ReorderApiService {
     required String reorderId,
   }) async {
     try {
-      final response = await _dio.post('/businesses/$businessId/reorders/$reorderId/cancel');
+      final response = await _dio.post(
+        InventoryApiPaths.reorderCancel(businessId, reorderId),
+      );
       return _reorderFromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       _rethrowAsReorderError(e);

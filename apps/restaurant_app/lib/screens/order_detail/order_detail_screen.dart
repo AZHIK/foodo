@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/order.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/orders_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
@@ -181,24 +182,28 @@ class _MetaPanel extends StatelessWidget {
     final entries = <({IconData icon, String label, String value})>[
       (
         icon: order.orderType.icon,
-        label: 'Order type',
+        label: AppStrings.orderTypeLabel,
         value: order.orderType.label,
       ),
       (
         icon: Icons.table_restaurant_outlined,
-        label: 'Seated at',
-        value: order.tableLabel ?? '—',
+        label: AppStrings.seatedAt,
+        value: order.tableLabel ?? AppStrings.emDash,
       ),
-      (icon: Icons.person_outline_rounded, label: 'Server', value: order.serverName),
+      (
+        icon: Icons.person_outline_rounded,
+        label: AppStrings.serverLabel,
+        value: order.serverName,
+      ),
       (
         icon: Icons.schedule_rounded,
-        label: 'Placed',
+        label: AppStrings.placedLabel,
         value: Fmt.dayMonthTime(order.placedAt),
       ),
     ];
 
     return _Panel(
-      title: 'Details',
+      title: AppStrings.detailsPanel,
       child: LayoutBuilder(
         builder: (context, constraints) {
           const spacing = Insets.lg;
@@ -285,7 +290,7 @@ class _LinesPanel extends StatelessWidget {
     final colors = context.colors;
 
     return _Panel(
-      title: '${order.itemCount} items',
+      title: AppStrings.itemCountTitle(order.itemCount),
       child: Column(
         children: [
           for (var i = 0; i < order.lines.length; i++) ...[
@@ -310,8 +315,10 @@ class _LinesPanel extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${order.lines[i].quantity} × '
-                        '${Fmt.money(order.lines[i].unitPrice)}',
+                        AppStrings.quantityPrice(
+                          '${order.lines[i].quantity}',
+                          Fmt.money(order.lines[i].unitPrice),
+                        ),
                         style: context.text.bodySmall?.copyWith(
                           color: colors.onSurfaceVariant,
                         ),
@@ -355,18 +362,21 @@ class _PaymentPanel extends StatelessWidget {
     final colors = context.colors;
 
     return _Panel(
-      title: 'Payment',
+      title: AppStrings.paymentPanel,
       child: Column(
         children: [
-          _Line(label: 'Subtotal', value: Fmt.money(order.subtotal)),
+          _Line(
+            label: AppStrings.subtotalRow,
+            value: Fmt.money(order.subtotal),
+          ),
           if (order.discountRate > 0)
             _Line(
-              label: 'Discount (${Fmt.percent(order.discountRate)})',
-              value: '−${Fmt.money(order.discount)}',
+              label: AppStrings.discountRow(Fmt.percent(order.discountRate)),
+              value: AppStrings.discountAmount(Fmt.money(order.discount)),
               valueColor: context.semantic.success,
             ),
           _Line(
-            label: 'Tax (${Fmt.percent(order.taxRate)})',
+            label: AppStrings.taxRow(Fmt.percent(order.taxRate)),
             value: Fmt.money(order.tax),
           ),
           const Padding(
@@ -377,7 +387,7 @@ class _PaymentPanel extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Total',
+                  AppStrings.totalRow,
                   style: context.text.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -404,8 +414,8 @@ class _PaymentPanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   order.status == OrderStatus.refunded
-                      ? 'Refunded to ${order.paymentType.label}'
-                      : 'Paid by ${order.paymentType.label}',
+                      ? AppStrings.refundedTo(order.paymentType.label)
+                      : AppStrings.paidBy(order.paymentType.label),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: context.text.bodySmall?.copyWith(
@@ -477,23 +487,29 @@ class _Actions extends ConsumerWidget {
       children: [
         OutlinedButton.icon(
           onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Receipt for ${order.id} sent to printer')),
+            SnackBar(content: Text(AppStrings.receiptSent(order.id))),
           ),
           icon: const Icon(Icons.print_outlined, size: 18),
-          label: const Text('Print receipt'),
+          label: const Text(AppStrings.printReceipt),
         ),
         if (isDelivery)
           OutlinedButton.icon(
             onPressed: () => showAssignCourierDialog(context, order),
             icon: const Icon(Icons.two_wheeler_rounded, size: 18),
-            label: Text(order.courierId != null ? 'Change courier' : 'Assign courier'),
+            label: Text(
+              order.courierId != null
+                  ? AppStrings.changeCourier
+                  : AppStrings.assignCourierAction,
+            ),
           ),
         OutlinedButton.icon(
           onPressed: refunded
               ? null
               : () => _confirmRefund(context, ref),
           icon: const Icon(Icons.undo_rounded, size: 18),
-          label: Text(refunded ? 'Already refunded' : 'Refund order'),
+          label: Text(
+            refunded ? AppStrings.alreadyRefunded : AppStrings.refundOrderAction,
+          ),
           style: OutlinedButton.styleFrom(
             foregroundColor: refunded ? null : context.semantic.danger,
           ),
@@ -502,7 +518,7 @@ class _Actions extends ConsumerWidget {
           onSelected: (value) {
             ref.read(ordersProvider.notifier).setFulfillmentStatus(order.id, value);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Status changed to ${value.label}')),
+              SnackBar(content: Text(AppStrings.statusChanged(value.label))),
             );
           },
           itemBuilder: (context) => FulfillmentStatus.values
@@ -526,17 +542,18 @@ class _Actions extends ConsumerWidget {
   Future<void> _confirmRefund(BuildContext context, WidgetRef ref) async {
     final reason = await showRefundConfirmDialog(
       context,
-      title: 'Refund ${order.id}?',
-      message:
-          '${Fmt.money(order.total)} will be returned to '
-          '${order.paymentType.label} and removed from today\'s takings.',
+      title: AppStrings.refundDialogTitle(order.id),
+      message: AppStrings.refundDialogBody(
+        Fmt.money(order.total),
+        order.paymentType.label,
+      ),
     );
 
     if (reason == null || !context.mounted) return;
     await ref.read(ordersProvider.notifier).refund(order.id, reason: reason);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${order.id} refunded')),
+      SnackBar(content: Text(AppStrings.orderRefunded2(order.id))),
     );
   }
 }
@@ -560,12 +577,15 @@ class _NotFound extends StatelessWidget {
               color: context.colors.onSurfaceVariant,
             ),
             const SizedBox(height: Insets.md),
-            Text('Order $orderId not found', style: context.text.titleMedium),
+            Text(
+              AppStrings.orderNotFound(orderId),
+              style: context.text.titleMedium,
+            ),
             const SizedBox(height: Insets.lg),
             FilledButton.icon(
               onPressed: () => context.goNamed(AppRoute.salesName),
               icon: const Icon(Icons.receipt_long_rounded, size: 18),
-              label: const Text('Back to sales'),
+              label: const Text(AppStrings.backToSales),
             ),
           ],
         ),

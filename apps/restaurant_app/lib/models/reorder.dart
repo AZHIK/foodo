@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 
+import '../constants/app_strings.dart';
+
 enum ReorderStatus {
-  pending('Pending', 'Awaiting delivery'),
-  received('Received', 'Stock added'),
-  cancelled('Cancelled', 'Order cancelled');
+  pending(AppStrings.reorderPending, AppStrings.reorderPendingBlurb),
+  received(AppStrings.reorderReceived, AppStrings.reorderReceivedBlurb),
+  cancelled(AppStrings.reorderCancelled, AppStrings.reorderCancelledBlurb);
 
   const ReorderStatus(this.label, this.subtitle);
   final String label;

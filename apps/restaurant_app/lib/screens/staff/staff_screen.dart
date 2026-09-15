@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/business_role.dart';
+import '../../constants/app_strings.dart';
 import '../../models/permission.dart';
 import '../../models/staff_member.dart';
 import '../../providers/permissions_provider.dart';
@@ -48,24 +49,26 @@ class StaffScreen extends ConsumerWidget {
     final columns = staffColumns(rolesById);
 
     return DataPageScaffold(
-      title: 'Staff',
-      subtitle:
-          '${summary.total} people across ${roles.length} roles · '
-          '${summary.active} active',
+      title: AppStrings.staffTitle,
+      subtitle: AppStrings.staffSubtitle(
+        summary.total,
+        roles.length,
+        summary.active,
+      ),
       actions: [
         ...dataPageExportActions<StaffMember>(
           context: context,
           columns: columns,
           rows: ref.watch(filteredStaffProvider),
-          title: 'Staff',
+          title: AppStrings.staffTitle,
           subtitle: _exportSubtitle(filters, query.search, rolesById),
         ),
         context.isMobile
             ? SizedBox(
                 height: 40,
                 width: 40,
-                child: Tooltip(
-                  message: 'Roles',
+                    child: Tooltip(
+                      message: AppStrings.rolesAction,
                   child: Material(
                     color: context.colors.surfaceContainerLowest,
                     clipBehavior: Clip.antiAlias,
@@ -85,7 +88,7 @@ class StaffScreen extends ConsumerWidget {
             : OutlinedButton.icon(
                 onPressed: () => context.pushNamed(AppRoute.rolesName),
                 icon: const Icon(Icons.shield_outlined, size: 18),
-                label: const Text('Roles'),
+                label: const Text(AppStrings.rolesAction),
               ),
       ],
       // Hidden rather than shown-disabled: an owner who can't invite anyone
@@ -97,7 +100,7 @@ class StaffScreen extends ConsumerWidget {
               height: 40,
               width: 40,
               child: Tooltip(
-                message: 'Invite staff',
+                      message: AppStrings.inviteStaff,
                 child: Material(
                   color: context.colors.primary,
                   clipBehavior: Clip.antiAlias,
@@ -117,21 +120,21 @@ class StaffScreen extends ConsumerWidget {
           : FilledButton.icon(
               onPressed: () => showInviteStaffDialog(context),
               icon: const Icon(Icons.person_add_alt_rounded, size: 18),
-              label: const Text('Invite staff'),
+              label: const Text(AppStrings.inviteStaff),
             ),
       metrics: [
         SummaryMetricCard(
-          label: 'Total staff',
+          label: AppStrings.totalStaff,
           value: '${summary.total}',
-          trend: '${roles.length} roles in use',
+          trend: AppStrings.rolesInUse(roles.length),
           icon: Icons.groups_outlined,
         ),
         SummaryMetricCard(
-          label: 'Active',
+          label: AppStrings.activeMetric,
           value: '${summary.active}',
           trend: summary.inactive == 0
-              ? 'Everyone active'
-              : '${summary.inactive} deactivated',
+              ? AppStrings.everyoneActive
+              : AppStrings.deactivatedCount(summary.inactive),
           trendDirection: summary.inactive == 0
               ? TrendDirection.flat
               : TrendDirection.down,
@@ -139,27 +142,30 @@ class StaffScreen extends ConsumerWidget {
           accent: context.semantic.success,
         ),
         SummaryMetricCard(
-          label: 'Pending invites',
+          label: AppStrings.pendingInvites,
           value: '${summary.pending}',
           trend: summary.pending == 0
-              ? 'Nothing outstanding'
-              : 'Awaiting first sign-in',
+              ? AppStrings.nothingOutstanding
+              : AppStrings.awaitingSignIn,
           icon: Icons.mark_email_unread_outlined,
           accent: context.semantic.warning,
         ),
       ],
       toolbar: DataTableToolbar(
-        searchHint: 'Search name, email or role',
+        searchHint: AppStrings.searchStaff,
         searchValue: query.search,
         onSearchChanged: notifier.setSearch,
         activeFilterCount: filters.activeCount,
         onClearFilters: ref.read(staffFiltersProvider.notifier).clear,
         filterBuilder: (_) => const StaffFilterPanel(),
         sortOptions: const [
-          SortOption(label: 'Name', field: StaffSort.name),
-          SortOption(label: 'Role', field: StaffSort.role),
-          SortOption(label: 'Status', field: StaffSort.status),
-          SortOption(label: 'Last active', field: StaffSort.lastActive),
+          SortOption(label: AppStrings.nameSort, field: StaffSort.name),
+          SortOption(label: AppStrings.roleSort, field: StaffSort.role),
+          SortOption(label: AppStrings.statusSort, field: StaffSort.status),
+          SortOption(
+            label: AppStrings.lastActiveSort,
+            field: StaffSort.lastActive,
+          ),
         ],
         sortField: query.sortField,
         sortAscending: query.ascending,
@@ -186,7 +192,7 @@ class StaffScreen extends ConsumerWidget {
     required bool canRevoke,
   }) => [
     DataRowAction(
-      label: 'View detail',
+      label: AppStrings.viewDetail,
       icon: Icons.open_in_new_rounded,
       onSelected: (context, member) => context.pushNamed(
         AppRoute.staffDetailName,
@@ -195,7 +201,7 @@ class StaffScreen extends ConsumerWidget {
     ),
     if (canRevoke)
       DataRowAction(
-        label: 'Remove from team',
+        label: AppStrings.removeFromTeam,
         icon: Icons.person_off_outlined,
         isDestructive: true,
         // No backend endpoint reactivates a removed member — they'd need a
@@ -214,21 +220,19 @@ class StaffScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Remove ${member.name}?'),
+        title: Text(AppStrings.removeMemberTitle(member.name)),
         content: Text(
-          member.roles.length > 1
-              ? 'This revokes all ${member.roles.length} of their roles at this business.'
-              : 'This revokes their role at this business.',
+          AppStrings.revokeRolesBody(member.roles.length),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: dialogContext.semantic.danger),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Remove'),
+            child: const Text(AppStrings.removeAction),
           ),
         ],
       ),
@@ -250,8 +254,8 @@ class StaffScreen extends ConsumerWidget {
       SnackBar(
         content: Text(
           failures == 0
-              ? '${member.name} removed from the team'
-              : "Couldn't remove all of ${member.name}'s roles — try again",
+              ? AppStrings.memberRemoved(member.name)
+              : AppStrings.removeRolesFailed(member.name),
         ),
       ),
     );
@@ -268,10 +272,13 @@ class StaffScreen extends ConsumerWidget {
         filters.roleIds.map((id) => rolesById[id]?.name ?? id).join(', '),
       if (filters.statuses.isNotEmpty)
         filters.statuses.map((s) => s.label).join(', '),
-      if (search.trim().isNotEmpty) 'matching "${search.trim()}"',
+      if (search.trim().isNotEmpty)
+        AppStrings.exportMatching(search.trim()),
     ];
 
-    return parts.isEmpty ? 'All staff' : 'Filtered by ${parts.join(' · ')}';
+    return parts.isEmpty
+        ? AppStrings.allStaffExport
+        : AppStrings.exportFiltered(parts.join(' · '));
   }
 }
 
@@ -284,7 +291,7 @@ List<DataColumnSpec<StaffMember>> staffColumns(
   Map<String, BusinessRole> rolesById,
 ) => [
   DataColumnSpec(
-    label: 'Name',
+    label: AppStrings.nameCol,
     field: StaffSort.name,
     role: ColumnRole.primary,
     flex: 5,
@@ -293,7 +300,7 @@ List<DataColumnSpec<StaffMember>> staffColumns(
         _NameCell(member: member, role: rolesById[member.roleId]),
   ),
   DataColumnSpec(
-    label: 'Role',
+    label: AppStrings.roleCol,
     field: StaffSort.role,
     flex: 3,
     // A staff member can hold more than one role — join every name for
@@ -314,23 +321,23 @@ List<DataColumnSpec<StaffMember>> staffColumns(
     ),
   ),
   DataColumnSpec(
-    label: 'Email',
+    label: AppStrings.emailCol,
     field: StaffSort.email,
     flex: 4,
     minTableWidth: 940,
     value: (member) => member.email,
   ),
   DataColumnSpec(
-    label: 'Last active',
+    label: AppStrings.lastActiveCol,
     field: StaffSort.lastActive,
     flex: 3,
     minTableWidth: 720,
     value: (member) => member.lastActiveAt == null
-        ? 'Never'
+        ? AppStrings.neverActive
         : Fmt.relativeDateTime(member.lastActiveAt!),
   ),
   DataColumnSpec(
-    label: 'Status',
+    label: AppStrings.statusCol,
     field: StaffSort.status,
     role: ColumnRole.status,
     width: 150,

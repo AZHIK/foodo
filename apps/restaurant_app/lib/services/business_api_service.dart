@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../auth/auth_dtos.dart' show BusinessReadDto, BusinessUpdateInput;
+import '../constants/api_paths.dart';
 
 /// API client for business operations.
 ///
@@ -14,7 +15,6 @@ class BusinessApiService {
   const BusinessApiService({required Dio dio}) : _dio = dio;
 
   final Dio _dio;
-  static const _apiPrefix = '/businesses';
 
   /// Get details for a specific business.
   ///
@@ -23,7 +23,7 @@ class BusinessApiService {
     required String businessId,
   }) async {
     try {
-      final response = await _dio.get('$_apiPrefix/$businessId');
+      final response = await _dio.get(IdentityApiPaths.business(businessId));
       return BusinessReadDto.fromJson(response.data as Map<String, dynamic>);
     } catch (e) {
       rethrow;
@@ -40,7 +40,7 @@ class BusinessApiService {
   }) async {
     try {
       final response = await _dio.patch(
-        '$_apiPrefix/$businessId',
+        IdentityApiPaths.business(businessId),
         data: input.toJson(),
       );
       return BusinessReadDto.fromJson(response.data as Map<String, dynamic>);

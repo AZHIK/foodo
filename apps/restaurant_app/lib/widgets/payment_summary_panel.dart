@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
 import '../models/order_totals.dart';
 import '../models/payment.dart';
 import '../theme/app_theme.dart';
@@ -119,19 +120,19 @@ class PaymentBreakdown extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         TotalsRow(
-          label: 'Subtotal',
+          label: AppStrings.subtotalLabel,
           value: Fmt.money(totals.subtotal),
           muted: true,
         ),
         if (totals.hasDiscount)
           TotalsRow(
-            label: 'Discount (${Fmt.percent(totals.discountRate)})',
-            value: '−${Fmt.money(totals.discount)}',
+            label: AppStrings.discountLabel(Fmt.percent(totals.discountRate)),
+            value: AppStrings.discountValue(Fmt.money(totals.discount)),
             muted: true,
             valueColor: context.semantic.success,
           ),
         TotalsRow(
-          label: 'Tax (${Fmt.percent(totals.taxRate)})',
+          label: AppStrings.taxLabel(Fmt.percent(totals.taxRate)),
           value: Fmt.money(totals.tax),
           muted: true,
         ),
@@ -139,7 +140,7 @@ class PaymentBreakdown extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            const Expanded(child: SectionLabel('Total')),
+            const Expanded(child: SectionLabel(AppStrings.totalLabel)),
             const SizedBox(width: Insets.sm),
             Flexible(
               child: Text(
@@ -159,20 +160,20 @@ class PaymentBreakdown extends StatelessWidget {
         if (payment != null) ...[
           const _Rule(),
           TotalsRow(
-            label: 'Method',
+            label: AppStrings.methodLabel,
             value: payment.method.label,
             icon: payment.method.icon,
             muted: true,
           ),
           if (payment.isCash && payment.amountTendered != null)
             TotalsRow(
-              label: 'Tendered',
+              label: AppStrings.tenderedLabel,
               value: Fmt.money(payment.amountTendered!),
               muted: true,
             ),
           if (change != null)
             TotalsRow(
-              label: 'Change due',
+              label: AppStrings.changeDue,
               value: Fmt.money(change),
               muted: !highlightChange,
               emphasis: highlightChange,

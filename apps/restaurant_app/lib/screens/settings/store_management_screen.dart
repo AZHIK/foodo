@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/store_location.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/store_locations_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
@@ -35,42 +36,44 @@ class StoreManagementScreen extends ConsumerWidget {
     final notifier = ref.read(locationsQueryProvider.notifier);
 
     return DataPageScaffold(
-      title: 'Store locations',
-      subtitle: 'Sites this business trades from and moves stock between',
+      title: AppStrings.storeLocationsTitle,
+      subtitle: AppStrings.storeLocationsSubtitle,
       actions: [
         OutlinedButton.icon(
           onPressed: () => context.canPop()
               ? context.pop()
               : context.goNamed(AppRoute.settingsName),
           icon: const Icon(Icons.arrow_back_rounded, size: 18),
-          label: const Text('Back to settings'),
+          label: const Text(AppStrings.backToSettings),
         ),
       ],
       primaryAction: FilledButton.icon(
         onPressed: () => showLocationFormDialog(context),
         icon: const Icon(Icons.add_rounded, size: 18),
-        label: const Text('Add location'),
+        label: const Text(AppStrings.addLocationAction),
       ),
       metrics: [
         SummaryMetricCard(
-          label: 'Total locations',
+          label: AppStrings.totalLocations,
           value: '${summary.total}',
-          trend: summary.total == 1 ? 'Single site' : 'Across the business',
+          trend: summary.total == 1
+              ? AppStrings.singleSite
+              : AppStrings.acrossBusiness,
           icon: Icons.storefront_outlined,
         ),
         SummaryMetricCard(
-          label: 'Active locations',
+          label: AppStrings.activeLocations,
           value: '${summary.active}',
           trend: summary.active == summary.total
-              ? 'All trading'
-              : '${summary.total - summary.active} inactive',
+              ? AppStrings.allTrading
+              : AppStrings.inactiveLocations(summary.total - summary.active),
           icon: Icons.check_circle_outline_rounded,
           accent: context.semantic.success,
         ),
         SummaryMetricCard(
-          label: 'Total staff',
+          label: AppStrings.totalStaffMetric,
           value: '${summary.staff}',
-          trend: 'Based across all sites',
+          trend: AppStrings.basedAllSites,
           icon: Icons.groups_outlined,
           accent: context.colors.tertiary,
         ),
@@ -95,13 +98,13 @@ class StoreManagementScreen extends ConsumerWidget {
 
   List<DataRowAction<StoreLocation>> _actions(WidgetRef ref) => [
     DataRowAction(
-      label: 'Edit location',
+      label: AppStrings.editLocationAction,
       icon: Icons.edit_outlined,
       onSelected: (context, location) =>
           showLocationFormDialog(context, existing: location),
     ),
     DataRowAction(
-      label: 'Activate / deactivate',
+      label: AppStrings.toggleActiveAction,
       icon: Icons.toggle_on_outlined,
       // The current store and the last active site both stay switched on: a
       // business with nowhere to trade is not a reachable state.
@@ -121,15 +124,15 @@ class StoreManagementScreen extends ConsumerWidget {
           SnackBar(
             content: Text(
               done
-                  ? '${location.name} ${wasActive ? 'deactivated' : 'reactivated'}'
-                  : 'At least one location has to stay active',
+                  ? AppStrings.locationToggled(location.name, wasActive)
+                  : AppStrings.oneActiveRequired,
             ),
           ),
         );
       },
     ),
     DataRowAction(
-      label: 'Delete',
+      label: AppStrings.deleteLocationAction,
       icon: Icons.delete_outline_rounded,
       isDestructive: true,
       isEnabled: (location) =>
@@ -146,24 +149,20 @@ class StoreManagementScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete "${location.name}"?'),
+        title: Text(AppStrings.deleteLocationTitle(location.name)),
         content: Text(
           location.staffCount == 0
-              ? 'Stock movements recorded against this site keep their '
-                    'history, but it will no longer be offered as a transfer '
-                    'destination.'
-              : '${location.staffCount} people are based here. They will keep '
-                    'their records, but the site will no longer be offered as '
-                    'a transfer destination.',
+              ? AppStrings.deleteLocationEmpty
+              : AppStrings.deleteLocationStaffed(location.staffCount),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: const Text(AppStrings.deleteAction),
           ),
         ],
       ),
@@ -176,8 +175,8 @@ class StoreManagementScreen extends ConsumerWidget {
       SnackBar(
         content: Text(
           done
-              ? '"${location.name}" deleted'
-              : 'The last active location cannot be deleted',
+              ? AppStrings.locationDeleted(location.name)
+              : AppStrings.lastActiveNoDelete,
         ),
       ),
     );
@@ -204,9 +203,8 @@ class _LocationsCaption extends ConsumerWidget {
         Expanded(
           child: Text(
             current == null
-                ? 'The last active location cannot be deactivated or deleted.'
-                : 'This terminal is installed at ${current.name}. The last '
-                      'active location cannot be deactivated or deleted.',
+                ? AppStrings.lastActiveLocked
+                : AppStrings.terminalHereLocked(current.name),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: context.text.bodySmall?.copyWith(
@@ -223,7 +221,7 @@ List<DataColumnSpec<StoreLocation>> locationColumns(
   Map<String, String> managers,
 ) => [
   DataColumnSpec(
-    label: 'Location',
+    label: AppStrings.locationColumn,
     field: LocationSort.name,
     role: ColumnRole.primary,
     flex: 4,
@@ -231,15 +229,15 @@ List<DataColumnSpec<StoreLocation>> locationColumns(
     cellBuilder: (context, location) => _NameCell(location: location),
   ),
   DataColumnSpec(
-    label: 'Address',
+    label: AppStrings.addressColumn,
     field: 'locationAddress',
     sortable: false,
     flex: 5,
     minTableWidth: 760,
-    value: (location) => location.address ?? '—',
+    value: (location) => location.address ?? AppStrings.emDash,
   ),
   DataColumnSpec(
-    label: 'Manager',
+    label: AppStrings.managerColumn,
     field: LocationSort.manager,
     flex: 3,
     minTableWidth: 560,
@@ -247,20 +245,24 @@ List<DataColumnSpec<StoreLocation>> locationColumns(
         managers[location.id] ?? StoreLocation.unassignedManager,
   ),
   DataColumnSpec(
-    label: 'Staff',
+    label: AppStrings.locationStaffColumn,
     field: LocationSort.staff,
     flex: 2,
     numeric: true,
     value: (location) => '${location.staffCount}',
   ),
   DataColumnSpec(
-    label: 'Status',
+    label: AppStrings.statusColumn,
     field: LocationSort.status,
     role: ColumnRole.status,
     width: 116,
-    value: (location) => location.isActive ? 'Active' : 'Inactive',
+    value: (location) => location.isActive
+        ? AppStrings.activeValue
+        : AppStrings.inactiveValue,
     cellBuilder: (context, location) => StatusBadge(
-      label: location.isActive ? 'Active' : 'Inactive',
+      label: location.isActive
+          ? AppStrings.activeValue
+          : AppStrings.inactiveValue,
       tone: location.isActive ? StatusTone.positive : StatusTone.neutral,
       dense: true,
     ),
@@ -288,9 +290,9 @@ class _NameCell extends StatelessWidget {
         ),
         Text(
           location.isCurrent
-              ? 'This store'
+              ? AppStrings.thisStoreMarker
               : (location.phone ?? '').isEmpty
-              ? '—'
+              ? AppStrings.emDash
               : location.phone!,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

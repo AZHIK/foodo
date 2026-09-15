@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../router/app_router.dart';
+import '../../constants/app_strings.dart';
 import '../../theme/breakpoints.dart';
 
 /// Which of the Inventory section's two views is showing. Mirrors
@@ -33,12 +34,12 @@ class InventoryTabBar extends StatelessWidget {
         segments: const [
           ButtonSegment(
             value: InventoryTab.groceries,
-            label: Text('Groceries'),
+            label: Text(AppStrings.groceriesTab),
             icon: Icon(Icons.shopping_basket_outlined),
           ),
           ButtonSegment(
             value: InventoryTab.menuItems,
-            label: Text('Menu items'),
+            label: Text(AppStrings.menuItemsTab),
             icon: Icon(Icons.restaurant_menu_rounded),
           ),
         ],

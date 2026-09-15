@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/courier.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/couriers_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
@@ -17,32 +18,32 @@ class CouriersScreen extends ConsumerWidget {
     final inactive = couriers.where((c) => c.status == CourierStatus.inactive).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Couriers'), elevation: 0),
+      appBar: AppBar(title: const Text(AppStrings.couriersTitle), elevation: 0),
       body: ListView(
         padding: const EdgeInsets.all(Insets.lg),
         children: [
           Row(
             children: [
-              Expanded(child: SummaryMetricCard(label: 'Available', value: '${active.length}', trend: 'Ready for delivery', icon: Icons.two_wheeler_rounded, accent: context.semantic.success)),
+              Expanded(child: SummaryMetricCard(label: AppStrings.availableMetric, value: '${active.length}', trend: AppStrings.readyForDelivery, icon: Icons.two_wheeler_rounded, accent: context.semantic.success)),
               const SizedBox(width: Insets.md),
-              Expanded(child: SummaryMetricCard(label: 'Unavailable', value: '${inactive.length}', trend: 'Offline', icon: Icons.block_outlined, accent: context.semantic.warning)),
+              Expanded(child: SummaryMetricCard(label: AppStrings.unavailableMetric, value: '${inactive.length}', trend: AppStrings.offlineTrend, icon: Icons.block_outlined, accent: context.semantic.warning)),
               const SizedBox(width: Insets.md),
-              Expanded(child: SummaryMetricCard(label: 'Total', value: '${couriers.length}', trend: 'Couriers on team', icon: Icons.groups_outlined)),
+              Expanded(child: SummaryMetricCard(label: AppStrings.totalMetric, value: '${couriers.length}', trend: AppStrings.couriersOnTeam, icon: Icons.groups_outlined)),
             ],
           ),
           const SizedBox(height: Insets.xl),
           if (active.isNotEmpty) ...[
-            Text('Active (${active.length})', style: context.text.titleMedium),
+            Text(AppStrings.activeCount(active.length), style: context.text.titleMedium),
             const SizedBox(height: Insets.md),
             ...active.map((c) => _CourierTile(courier: c)),
             const SizedBox(height: Insets.xl),
           ],
           if (inactive.isNotEmpty) ...[
-            Text('Inactive (${inactive.length})', style: context.text.titleMedium),
+            Text(AppStrings.inactiveCount(inactive.length), style: context.text.titleMedium),
             const SizedBox(height: Insets.md),
             ...inactive.map((c) => _CourierTile(courier: c)),
           ],
-          if (couriers.isEmpty) Center(child: Padding(padding: const EdgeInsets.symmetric(vertical: Insets.xl), child: Column(children: [Icon(Icons.two_wheeler_rounded, size: 48, color: context.colors.onSurfaceVariant), const SizedBox(height: Insets.md), Text('No couriers added', style: context.text.bodyMedium?.copyWith(color: context.colors.onSurfaceVariant))]))),
+          if (couriers.isEmpty) Center(child: Padding(padding: const EdgeInsets.symmetric(vertical: Insets.xl), child: Column(children: [Icon(Icons.two_wheeler_rounded, size: 48, color: context.colors.onSurfaceVariant), const SizedBox(height: Insets.md), Text(AppStrings.noCouriers, style: context.text.bodyMedium?.copyWith(color: context.colors.onSurfaceVariant))]))),
         ],
       ),
     );

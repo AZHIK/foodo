@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/order.dart';
+import '../constants/app_strings.dart';
 import 'orders_provider.dart';
 import 'settings_provider.dart';
 
@@ -40,7 +41,7 @@ final selectedCustomerIdProvider = StateProvider<String?>((ref) => null);
 final tableLabelProvider = Provider<String?>((ref) {
   if (!ref.watch(orderTypeProvider).usesTable) return null;
   final table = ref.watch(tableNumberProvider);
-  return table == null ? null : 'Table $table';
+  return table == null ? null : AppStrings.tableNumber(table);
 });
 
 /// The id the next placed order will receive, shown in the panel header before

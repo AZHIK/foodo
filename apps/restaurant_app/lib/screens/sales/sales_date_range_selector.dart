@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../constants/app_strings.dart';
 import '../../providers/orders_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
@@ -31,7 +32,7 @@ class SalesDateRangeSelector extends ConsumerWidget {
         firstDate: DateTime(now.year - 2),
         lastDate: now,
         initialDateRange: filters.customRange,
-        helpText: 'Select a sales period',
+        helpText: AppStrings.selectSalesPeriod,
       );
       if (picked != null) notifier.setCustomRange(picked);
     }
@@ -39,7 +40,7 @@ class SalesDateRangeSelector extends ConsumerWidget {
     // Icon-only button on mobile
     if (isMobile && filled) {
       return PopupMenuButton<SalesDateRange>(
-        tooltip: 'Change period',
+        tooltip: AppStrings.changePeriod,
         position: PopupMenuPosition.under,
         onSelected: (range) => range == SalesDateRange.custom
             ? pickCustom()
@@ -50,7 +51,9 @@ class SalesDateRangeSelector extends ConsumerWidget {
               value: range,
               checked: range == filters.range,
               child: Text(
-                range == SalesDateRange.custom ? 'Custom…' : range.label,
+                range == SalesDateRange.custom
+                    ? AppStrings.customPeriod
+                    : range.label,
               ),
             ),
         ],
@@ -128,7 +131,10 @@ class SalesDateRangeSelector extends ConsumerWidget {
   static String labelFor(SalesFilters filters) {
     if (filters.range != SalesDateRange.custom) return filters.range.label;
     final range = filters.customRange;
-    if (range == null) return 'Custom';
-    return '${Fmt.dayMonth(range.start)} – ${Fmt.dayMonth(range.end)}';
+    if (range == null) return AppStrings.customLabel;
+    return AppStrings.customRangeLabel(
+      Fmt.dayMonth(range.start),
+      Fmt.dayMonth(range.end),
+    );
   }
 }

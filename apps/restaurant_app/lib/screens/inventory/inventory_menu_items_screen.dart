@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/inventory_item.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/dashboard_metrics_provider.dart';
 import '../../providers/inventory_provider.dart';
@@ -51,13 +52,13 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
         const InventoryTabBar(active: InventoryTab.menuItems),
         Expanded(
           child: DataPageScaffold(
-            title: 'Menu items',
-            subtitle: '$totalItems items available for sale at the till',
+            title: AppStrings.menuItemsTitle,
+            subtitle: AppStrings.menuItemsSubtitle(totalItems),
             actions: dataPageExportActions<InventoryItem>(
               context: context,
               columns: menuItemColumns,
               rows: ref.watch(filteredMenuCatalogProvider),
-              title: 'Menu items',
+              title: AppStrings.menuItemsTitle,
               subtitle: _exportSubtitle(filters, query.search),
             ),
             primaryAction: context.isMobile
@@ -65,7 +66,7 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
                     height: 40,
                     width: 40,
                     child: Tooltip(
-                      message: 'Add menu item',
+                      message: AppStrings.addMenuItem,
                       child: Material(
                         color: context.colors.primary,
                         clipBehavior: Clip.antiAlias,
@@ -85,7 +86,7 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
                 : FilledButton.icon(
                     onPressed: () => showItemFormDialog(context),
                     icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Add item'),
+                    label: const Text(AppStrings.addItem),
                   ),
             // Three cards, matching the Groceries screen's stat row. The
             // last two are demo/placeholder data: no real Sales Service
@@ -100,39 +101,48 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
             // which point this card slots in unchanged.
             metrics: [
               SummaryMetricCard(
-                label: 'Menu items',
+                label: AppStrings.menuItemsTitle,
                 value: '$totalItems',
-                trend: 'Available at the till',
+                trend: AppStrings.availableAtTill,
                 icon: Icons.restaurant_menu_rounded,
               ),
               SummaryMetricCard(
-                label: 'Top seller',
-                value: demoSales.topSellerName ?? '—',
+                label: AppStrings.topSeller,
+                value: demoSales.topSellerName ?? AppStrings.emDash,
                 trend: demoSales.topSellerName == null
-                    ? 'No demo sales yet'
-                    : '${demoSales.topSellerUnits} sold · last 7 days, demo data',
+                    ? AppStrings.noDemoSales
+                    : AppStrings.demoTopSeller(demoSales.topSellerUnits),
                 icon: Icons.trending_up_rounded,
                 accent: context.colors.tertiary,
               ),
               SummaryMetricCard(
-                label: 'Menu revenue',
+                label: AppStrings.menuRevenue,
                 value: Fmt.moneyCompact(demoSales.totalRevenue),
-                trend: 'Last 7 days, demo data',
+                trend: AppStrings.last7DaysDemo,
                 icon: Icons.payments_outlined,
                 accent: context.semantic.success,
               ),
             ],
             toolbar: DataTableToolbar(
-              searchHint: 'Search items or category',
+              searchHint: AppStrings.searchItemsCategory,
               searchValue: query.search,
               onSearchChanged: notifier.setSearch,
               activeFilterCount: filters.activeCount,
               onClearFilters: ref.read(menuItemFiltersProvider.notifier).clear,
               filterBuilder: (_) => const MenuItemFilterPanel(),
               sortOptions: const [
-                SortOption(label: 'Name', field: MenuItemSort.name),
-                SortOption(label: 'Category', field: MenuItemSort.category),
-                SortOption(label: 'Price', field: MenuItemSort.price),
+                SortOption(
+                  label: AppStrings.nameColumn,
+                  field: MenuItemSort.name,
+                ),
+                SortOption(
+                  label: AppStrings.categoryColumn,
+                  field: MenuItemSort.category,
+                ),
+                SortOption(
+                  label: AppStrings.priceColumn,
+                  field: MenuItemSort.price,
+                ),
               ],
               sortField: query.sortField,
               sortAscending: query.ascending,
@@ -159,7 +169,7 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
 
   List<DataRowAction<InventoryItem>> _actions(WidgetRef ref) => [
     DataRowAction(
-      label: 'View detail',
+      label: AppStrings.viewDetail,
       icon: Icons.open_in_new_rounded,
       onSelected: (context, item) => context.pushNamed(
         AppRoute.itemDetailName,
@@ -167,19 +177,19 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
       ),
     ),
     DataRowAction(
-      label: 'Edit item',
+      label: AppStrings.editItem,
       icon: Icons.edit_outlined,
       onSelected: (context, item) =>
           showItemFormDialog(context, existingItem: item),
     ),
     DataRowAction(
-      label: 'Adjust stock',
+      label: AppStrings.adjustStock,
       icon: Icons.tune_rounded,
       isEnabled: (item) => item.trackStock,
       onSelected: (context, item) => showStockAdjustDialog(context, item),
     ),
     DataRowAction(
-      label: 'Create reorder',
+      label: AppStrings.createReorder,
       icon: Icons.shopping_cart_outlined,
       // A sellable-only item can never be purchase-received (see
       // `services/inventory-service/app/services/stock_movement_service.py`'s
@@ -189,19 +199,19 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
       onSelected: (context, item) => showReorderDialog(context, item),
     ),
     DataRowAction(
-      label: 'Log waste',
+      label: AppStrings.logWaste,
       icon: Icons.delete_sweep_outlined,
       isEnabled: (item) => item.trackStock && item.stock > 0,
       onSelected: (context, item) => showWasteLogDialog(context, item),
     ),
     DataRowAction(
-      label: 'Transfer stock',
+      label: AppStrings.transferStock,
       icon: Icons.swap_horiz_rounded,
       isEnabled: (item) => item.trackStock && item.stock > 0,
       onSelected: (context, item) => showStockTransferDialog(context, item),
     ),
     DataRowAction(
-      label: 'Delete',
+      label: AppStrings.deleteAction,
       icon: Icons.delete_outline_rounded,
       isDestructive: true,
       onSelected: (context, item) => _confirmDelete(context, ref, item),
@@ -216,19 +226,16 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete ${item.name}?'),
-        content: const Text(
-          'The item will be removed from the menu and inventory. This cannot '
-          'be undone.',
-        ),
+        title: Text(AppStrings.deleteItemTitle(item.name)),
+        content: const Text(AppStrings.deleteMenuItemBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: const Text(AppStrings.deleteAction),
           ),
         ],
       ),
@@ -239,19 +246,26 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
     try {
       await ref.read(inventoryItemsProvider.notifier).delete(item.id);
       ref.read(stockMovementsProvider.notifier).clearForItem(item.id);
-      messenger.showSnackBar(SnackBar(content: Text('${item.name} deleted')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.itemDeleted(item.name))),
+      );
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Could not delete: $e')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.deleteFailed(e))),
+      );
     }
   }
 
   static String _exportSubtitle(MenuItemFilters filters, String search) {
     final parts = <String>[
       if (filters.categoryIds.isNotEmpty)
-        '${filters.categoryIds.length} categories',
-      if (search.trim().isNotEmpty) 'matching "${search.trim()}"',
+        AppStrings.exportCategories(filters.categoryIds.length),
+      if (search.trim().isNotEmpty)
+        AppStrings.exportMatching(search.trim()),
     ];
-    return parts.isEmpty ? 'All menu items' : 'Filtered by ${parts.join(' · ')}';
+    return parts.isEmpty
+        ? AppStrings.exportAllMenuItems
+        : AppStrings.exportFiltered(parts.join(' · '));
   }
 }
 
@@ -297,7 +311,7 @@ final _menuDemoSalesProvider = Provider<_MenuDemoSales>((ref) {
 /// them here without restructuring anything else.
 final menuItemColumns = <DataColumnSpec<InventoryItem>>[
   DataColumnSpec(
-    label: 'Item',
+    label: AppStrings.itemColumn,
     field: MenuItemSort.name,
     role: ColumnRole.primary,
     flex: 5,
@@ -305,29 +319,31 @@ final menuItemColumns = <DataColumnSpec<InventoryItem>>[
     cellBuilder: (context, item) => _ItemCell(item: item),
   ),
   DataColumnSpec(
-    label: 'Category',
+    label: AppStrings.categoryColumn,
     field: MenuItemSort.category,
     flex: 3,
     minTableWidth: 700,
     value: (item) => categoryLabelForId(item.categoryId),
   ),
   DataColumnSpec(
-    label: 'Price',
+    label: AppStrings.priceColumn,
     field: MenuItemSort.price,
     flex: 2,
     numeric: true,
-    value: (item) =>
-        item.sellingPrice == null ? 'Not for sale' : Fmt.money(item.sellingPrice!),
+    value: (item) => item.sellingPrice == null
+        ? AppStrings.notForSale
+        : Fmt.money(item.sellingPrice!),
   ),
   DataColumnSpec(
-    label: 'Active',
+    label: AppStrings.activeColumn,
     field: 'isActive',
     sortable: false,
     role: ColumnRole.status,
     width: 110,
-    value: (item) => item.isArchived ? 'Archived' : 'Active',
+    value: (item) =>
+        item.isArchived ? AppStrings.archivedBadge : AppStrings.activeBadge,
     cellBuilder: (context, item) => StatusBadge(
-      label: item.isArchived ? 'Archived' : 'Active',
+      label: item.isArchived ? AppStrings.archivedBadge : AppStrings.activeBadge,
       tone: item.isArchived ? StatusTone.neutral : StatusTone.positive,
       icon: item.isArchived ? Icons.archive_outlined : Icons.check_circle_rounded,
       dense: true,

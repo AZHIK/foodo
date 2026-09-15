@@ -16,13 +16,14 @@
 library;
 
 import 'package:drift/drift.dart';
+import '../constants/app_limits.dart';
 import '../database/app_database.dart';
 import 'customer_sync_api.dart';
 import 'customer_sync_dtos.dart';
 
 /// Core sync engine for customers.
 class CustomerSyncService {
-  static const int _maxBatchSize = 50;
+  static const int _maxBatchSize = AppLimits.syncBatchSize;
 
   final AppDatabase _db;
   final CustomerSyncApi _api;

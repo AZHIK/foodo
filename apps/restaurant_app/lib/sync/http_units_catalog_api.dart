@@ -8,6 +8,7 @@ library;
 
 import 'package:dio/dio.dart';
 
+import '../constants/api_paths.dart';
 import 'units_catalog_api.dart';
 
 /// HTTP client for fetching the unit taxonomy from Inventory Service via
@@ -20,7 +21,7 @@ class HttpUnitsCatalogApi extends UnitsCatalogApi {
   @override
   Future<List<UnitDto>> fetchUnits() async {
     try {
-      final response = await _dio.get('/units');
+      final response = await _dio.get(InventoryApiPaths.units);
       final rows = (response.data as List<dynamic>).cast<Map<String, dynamic>>();
       return rows.map(_unitFromJson).toList();
     } on DioException catch (e) {

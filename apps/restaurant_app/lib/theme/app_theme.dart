@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../constants/app_durations.dart';
 import 'breakpoints.dart';
+import 'role_badge_colors.dart';
 
 /// Semantic colours that Material's [ColorScheme] has no slot for — order
 /// statuses, "in cart" highlights and the like. Exposed as a [ThemeExtension]
@@ -137,6 +139,7 @@ abstract final class AppTheme {
     );
 
     final semantic = isLight ? AppSemanticColors.light : AppSemanticColors.dark;
+    final roleBadges = isLight ? RoleBadgeColors.light : RoleBadgeColors.dark;
     final base = ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
@@ -147,7 +150,7 @@ abstract final class AppTheme {
       scaffoldBackgroundColor: isLight
           ? const Color(0xFFEFF3F2)
           : const Color(0xFF0C100F),
-      extensions: [semantic],
+      extensions: [semantic, roleBadges],
       textTheme: _textTheme(base.textTheme),
       // InkSparkle loads `shaders/ink_sparkle.frag` at runtime, which is not
       // bundled on every target — on Linux desktop the first ripple throws
@@ -330,7 +333,7 @@ abstract final class AppTheme {
         ),
       ),
 
-      tooltipTheme: const TooltipThemeData(waitDuration: Duration(seconds: 1)),
+      tooltipTheme: const TooltipThemeData(waitDuration: AppDurations.tooltipWait),
     );
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/order.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/couriers_provider.dart';
 import '../../providers/orders_provider.dart';
 import '../../theme/app_theme.dart';
@@ -33,18 +34,18 @@ class _AssignCourierDialog extends ConsumerWidget {
         : null;
 
     return ResponsiveFormDialog(
-      title: 'Assign courier for ${order.id}',
+      title: AppStrings.assignCourierTitle(order.id),
       actions: [
         OutlinedButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text(AppStrings.cancel),
         ),
       ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (currentCourier != null) ...[
-            const SectionLabel('Currently assigned'),
+            const SectionLabel(AppStrings.currentlyAssigned),
             const SizedBox(height: Insets.md),
             Container(
               padding: const EdgeInsets.all(Insets.md),
@@ -82,10 +83,10 @@ class _AssignCourierDialog extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: Insets.xl),
-            const SectionLabel('Reassign to'),
+            const SectionLabel(AppStrings.reassignTo),
             const SizedBox(height: Insets.md),
           ] else ...[
-            const SectionLabel('Select courier'),
+            const SectionLabel(AppStrings.selectCourier),
             const SizedBox(height: Insets.md),
           ],
           if (activeCouriers.isEmpty)
@@ -101,7 +102,7 @@ class _AssignCourierDialog extends ConsumerWidget {
                     ),
                     const SizedBox(height: Insets.md),
                     Text(
-                      'No couriers available',
+                      AppStrings.noCouriersAvailable,
                       style: context.text.bodyMedium?.copyWith(
                         color: context.colors.onSurfaceVariant,
                       ),
@@ -136,7 +137,10 @@ class _AssignCourierDialog extends ConsumerWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            '${courier.name} assigned to ${order.id}',
+                            AppStrings.courierAssigned(
+                              courier.name,
+                              order.id,
+                            ),
                           ),
                         ),
                       );

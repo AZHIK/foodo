@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../constants/app_strings.dart';
 import '../../theme/breakpoints.dart';
 
 enum FinanceTab { expenses, incomes }
@@ -20,12 +21,12 @@ class FinanceTabBar extends StatelessWidget {
         segments: const [
           ButtonSegment(
             value: FinanceTab.expenses,
-            label: Text('Other expenses'),
+            label: Text(AppStrings.financeExpensesTab),
             icon: Icon(Icons.arrow_upward_rounded),
           ),
           ButtonSegment(
             value: FinanceTab.incomes,
-            label: Text('Other incomes'),
+            label: Text(AppStrings.financeIncomesTab),
             icon: Icon(Icons.arrow_downward_rounded),
           ),
         ],

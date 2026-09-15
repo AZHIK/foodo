@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_durations.dart';
+import '../../constants/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 
@@ -47,7 +49,7 @@ class StepBar extends StatelessWidget {
           if (i > 0) const SizedBox(width: Insets.sm),
           Expanded(
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 260),
+              duration: AppDurations.stepBar,
               curve: Curves.easeOut,
               height: 4,
               decoration: BoxDecoration(
@@ -61,7 +63,7 @@ class StepBar extends StatelessWidget {
         ],
         const SizedBox(width: Insets.md),
         Text(
-          '${step + 1} of $count',
+          AppStrings.stepOf(step + 1, count),
           style: context.text.labelSmall?.copyWith(
             color: colors.onSurfaceVariant,
           ),

@@ -9,9 +9,11 @@ library;
 import 'package:decimal/decimal.dart';
 import 'package:dio/dio.dart';
 
+import '../constants/api_paths.dart';
+import '../constants/app_limits.dart';
 import 'finance_catalog_api.dart';
 
-const _pageSize = 100;
+const _pageSize = AppLimits.catalogFetchPageSize;
 
 /// HTTP client for fetching the finance ledgers from POS Service via Dio.
 class HttpFinanceCatalogApi extends FinanceCatalogApi {
@@ -30,7 +32,7 @@ class HttpFinanceCatalogApi extends FinanceCatalogApi {
       var offset = 0;
       while (true) {
         final response = await _dio.get(
-          '/businesses/$_businessId/other-expenses',
+          PosApiPaths.expenses(_businessId),
           queryParameters: {
             'store_id': storeId,
             'limit': _pageSize,
@@ -62,7 +64,7 @@ class HttpFinanceCatalogApi extends FinanceCatalogApi {
       var offset = 0;
       while (true) {
         final response = await _dio.get(
-          '/businesses/$_businessId/other-incomes',
+          PosApiPaths.incomes(_businessId),
           queryParameters: {
             'store_id': storeId,
             'limit': _pageSize,

@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../models/business_profile.dart';
 import '../../models/business_role.dart';
+import '../../constants/app_durations.dart';
+import '../../constants/app_limits.dart';
+import '../../constants/app_strings.dart';
 import '../../models/order.dart';
 import '../../models/store_location.dart';
 import '../../models/store_settings.dart';
@@ -55,23 +58,23 @@ abstract final class OnboardingKeys {
 /// divides itself into, so adding a step here is the only edit needed.
 const _steps = <AuthStep>[
   AuthStep(
-    label: 'Your business',
-    blurb: 'Name, type and logo',
+    label: AppStrings.obYourBusiness,
+    blurb: AppStrings.obYourBusinessBlurb,
     icon: Icons.storefront_rounded,
   ),
   AuthStep(
-    label: 'Where you trade',
-    blurb: 'Address and contact',
+    label: AppStrings.obWhereYouTrade,
+    blurb: AppStrings.obWhereYouTradeBlurb,
     icon: Icons.place_outlined,
   ),
   AuthStep(
-    label: 'How you charge',
-    blurb: 'Currency, tax and orders',
+    label: AppStrings.obHowYouCharge,
+    blurb: AppStrings.obHowYouChargeBlurb,
     icon: Icons.percent_rounded,
   ),
   AuthStep(
-    label: 'Your team',
-    blurb: 'Invite the people who work here',
+    label: AppStrings.obYourTeam,
+    blurb: AppStrings.obYourTeamBlurb,
     icon: Icons.group_outlined,
   ),
 ];
@@ -341,8 +344,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     } catch (e) {
       if (!mounted) return false;
       final message = e is AuthException && e.statusCode == 409
-          ? 'You already have a business registered to this account.'
-          : 'Something went wrong finishing setup — please try again.';
+          ? AppStrings.obDuplicateBusiness
+          : AppStrings.obSetupFailed;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       return false;
     }
@@ -373,7 +376,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            "Set up, but couldn't invite ${failed.join(', ')} — try again from Staff.",
+            AppStrings.obPartialInvite(failed.join(', ')),
           ),
         ),
       );
@@ -429,16 +432,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       // being obvious from a progress bar alone.
       aside: AuthAside.steps(steps: _steps, current: _step),
       title: switch (_step) {
-        0 => 'Tell us about your business',
-        1 => 'Where do you trade?',
-        2 => 'A few preferences',
-        _ => 'Who else works here?',
+        0 => AppStrings.obTellUsTitle,
+        1 => AppStrings.obWhereTitle,
+        2 => AppStrings.obPrefsTitle,
+        _ => AppStrings.obTeamTitle,
       },
       subtitle: switch (_step) {
-        0 => 'This appears on receipts and across the app',
-        1 => 'You can add more locations later',
-        2 => 'All of these can be changed in Settings',
-        _ => 'They will get an invite to set up their own PIN',
+        0 => AppStrings.obTellUsSubtitle,
+        1 => AppStrings.obWhereSubtitle,
+        2 => AppStrings.obPrefsSubtitle,
+        _ => AppStrings.obTeamSubtitle,
       },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -447,7 +450,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           StepBar(step: _step, count: _stepCount),
           const SizedBox(height: Insets.xl),
           AnimatedSize(
-            duration: const Duration(milliseconds: 220),
+            duration: AppDurations.screen,
             curve: Curves.easeOutCubic,
             alignment: Alignment.topCenter,
             child: switch (_step) {
@@ -465,7 +468,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   child: OutlinedButton(
                     key: OnboardingKeys.back,
                     onPressed: _back,
-                    child: const Text('Back'),
+                    child: const Text(AppStrings.back),
                   ),
                 ),
                 const SizedBox(width: Insets.md),
@@ -488,13 +491,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   /// is nobody to invite, and how many invites it is about to send when there
   /// is. A button that hides a side effect is a button people learn to distrust.
   String get _continueLabel {
-    if (_step < _stepCount - 1) return 'Continue';
+    if (_step < _stepCount - 1) return AppStrings.continueAction;
 
     final count = _team.where((member) => member.isComplete).length;
     return switch (count) {
-      0 => 'Finish setup',
-      1 => 'Send 1 invite & finish',
-      _ => 'Send $count invites & finish',
+      0 => AppStrings.finishSetup,
+      1 => AppStrings.sendOneInvite,
+      _ => AppStrings.sendInvites(count),
     };
   }
 
@@ -512,7 +515,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           child: ImageUploadField(
             image: _logoBytes,
             size: 120,
-            label: 'Add logo',
+            label: AppStrings.addLogo,
             hint: '',
             onPicked: (name, bytes) => setState(() {
               _logoName = name;
@@ -526,20 +529,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
         const SizedBox(height: Insets.xl),
         LabeledFormField(
-          label: 'Business name',
+          label: AppStrings.businessName,
           isRequired: true,
           child: TextField(
             key: OnboardingKeys.businessName,
             controller: _businessName,
             autofocus: true,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(hintText: 'The Copper Fig'),
+            decoration:
+                const InputDecoration(hintText: AppStrings.businessNameExample),
             onChanged: (_) => setState(() {}),
           ),
         ),
         const SizedBox(height: Insets.lg),
         LabeledFormField(
-          label: 'Business type',
+          label: AppStrings.businessType,
           child: DropdownButtonFormField<BusinessType>(
             key: OnboardingKeys.businessType,
             initialValue: _businessType,
@@ -570,24 +574,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
         const SizedBox(height: Insets.lg),
         LabeledFormField(
-          label: 'Cuisine type',
-          helper: 'Optional — shown to customers browsing the menu',
+          label: AppStrings.cuisineType,
+          helper: AppStrings.cuisineHelper,
           child: TextField(
             key: OnboardingKeys.cuisineType,
             controller: _cuisineType,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(hintText: 'Italian, Swahili, Grill…'),
+            decoration:
+                const InputDecoration(hintText: AppStrings.cuisineExample),
           ),
         ),
         const SizedBox(height: Insets.lg),
         LabeledFormField(
-          label: 'License / registration document',
-          helper: 'Optional — paste a link to where it\'s hosted',
+          label: AppStrings.licenseDoc,
+          helper: AppStrings.licenseDocHelper,
           child: TextField(
             key: OnboardingKeys.licenseDocumentUrl,
             controller: _licenseDocumentUrl,
             keyboardType: TextInputType.url,
-            decoration: const InputDecoration(hintText: 'https://…'),
+            decoration: const InputDecoration(hintText: AppStrings.urlExample),
           ),
         ),
       ],
@@ -601,21 +606,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         LabeledFormField(
-          label: 'Location name',
+          label: AppStrings.locationName,
           isRequired: true,
-          helper: 'What staff call this site',
+          helper: AppStrings.locationNameHelper,
           child: TextField(
             key: OnboardingKeys.locationName,
             controller: _locationName,
             autofocus: true,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(hintText: 'Riverside'),
+            decoration: const InputDecoration(hintText: AppStrings.locationExample),
             onChanged: (_) => setState(() {}),
           ),
         ),
         const SizedBox(height: Insets.lg),
         LabeledFormField(
-          label: 'Address',
+          label: AppStrings.addressLabel,
           isRequired: true,
           child: TextField(
             key: OnboardingKeys.address,
@@ -625,7 +630,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             textCapitalization: TextCapitalization.words,
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
-              hintText: '84 Riverside Walk, San Francisco',
+              hintText: AppStrings.addressExample,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(Radii.md),
               ),
@@ -638,23 +643,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
         const SizedBox(height: Insets.lg),
         LabeledFormField(
-          label: 'Phone',
+          label: AppStrings.phoneLabel,
           child: TextField(
             key: OnboardingKeys.phone,
             controller: _phone,
             keyboardType: TextInputType.phone,
             inputFormatters: [
               FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(9),
+              LengthLimitingTextInputFormatter(AppLimits.tzPhoneDigits),
             ],
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
-              hintText: '6XXXXXXXX or 7XXXXXXXX',
+              hintText: AppStrings.phoneExample,
               errorText: _phoneIsValidOrEmpty ? null : tanzanianPhoneHint,
               prefixIcon: Padding(
                 padding: const EdgeInsets.only(left: Insets.lg, right: Insets.sm),
                 child: Text(
-                  '+255',
+                  AppStrings.dialCode,
                   style: context.text.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: context.colors.onSurfaceVariant,
@@ -676,8 +681,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         LabeledFormField(
-          label: 'Currency',
-          helper: 'Formats every amount in the app',
+          label: AppStrings.currencyLabel,
+          helper: AppStrings.currencyHelper,
           child: DropdownButtonFormField<Currency>(
             key: OnboardingKeys.currency,
             initialValue: _currency,
@@ -687,7 +692,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 DropdownMenuItem(
                   value: currency,
                   child: Text(
-                    '${currency.description} (${currency.label})',
+                    AppStrings.currencyOption(
+                      currency.description,
+                      currency.label,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -700,50 +708,64 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
         const SizedBox(height: Insets.lg),
         LabeledFormField(
-          label: 'Tax rate',
+          label: AppStrings.taxRate,
           isRequired: true,
-          helper: 'Applied to every ticket. '
-              'Prices will read as ${Fmt.moneyIn(_currency, _currency.decimalDigits == 0 ? 48000 : 48)}',
+          helper: AppStrings.taxPreview(
+            Fmt.moneyIn(
+              _currency,
+              _currency.decimalDigits == 0 ? 48000 : 48,
+            ),
+          ),
           child: TextField(
             key: OnboardingKeys.taxRate,
             controller: _taxRate,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d{0,3}\.?\d{0,2}')),
+              FilteringTextInputFormatter.allow(
+                RegExp(
+                  r'^\d{0,'
+                  '${AppLimits.taxWholeDigits}'
+                  r'}\.?\d{0,'
+                  '${AppLimits.taxFractionDigits}'
+                  r'}',
+                ),
+              ),
             ],
             decoration: InputDecoration(
-              hintText: '8.25',
-              suffixText: '%',
+              hintText: AppStrings.taxExample,
+              suffixText: AppStrings.percentSuffix,
               errorText: _taxRate.text.trim().isEmpty || _parsedRate != null
                   ? null
-                  : 'Enter a rate between 0 and 100',
+                  : AppStrings.taxRangeError,
             ),
             onChanged: (_) => setState(() {}),
           ),
         ),
         const SizedBox(height: Insets.lg),
         LabeledFormField(
-          label: 'Tax ID',
-          helper: 'Optional — VAT/GST registration number, printed on receipts',
+          label: AppStrings.taxId,
+          helper: AppStrings.taxIdHelper,
           child: TextField(
             key: OnboardingKeys.taxId,
             controller: _taxId,
-            decoration: const InputDecoration(hintText: 'TIN-123456789'),
+            decoration:
+                const InputDecoration(hintText: AppStrings.taxIdExample),
           ),
         ),
         const SizedBox(height: Insets.lg),
         LabeledFormField(
-          label: 'Business registration / license number',
-          helper: 'Optional',
+          label: AppStrings.regNumber,
+          helper: AppStrings.optional,
           child: TextField(
             key: OnboardingKeys.registrationNumber,
             controller: _registrationNumber,
-            decoration: const InputDecoration(hintText: 'BRN-000000'),
+            decoration:
+                const InputDecoration(hintText: AppStrings.regNumberExample),
           ),
         ),
         const SizedBox(height: Insets.lg),
         LabeledFormField(
-          label: 'Default order type',
+          label: AppStrings.defaultOrderType,
           child: DropdownButtonFormField<OrderType>(
             key: OnboardingKeys.orderType,
             initialValue: _orderType,
@@ -810,7 +832,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             key: OnboardingKeys.addTeammate,
             onPressed: _addTeammate,
             icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('Add another'),
+            label: const Text(AppStrings.addAnother),
           ),
         ),
         const SizedBox(height: Insets.sm),
@@ -861,7 +883,7 @@ class _TeammateRow extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Teammate ${index + 1}',
+                  AppStrings.teammate(index),
                   style: context.text.labelSmall?.copyWith(
                     color: context.colors.onSurfaceVariant,
                     letterSpacing: 0.9,
@@ -873,7 +895,7 @@ class _TeammateRow extends StatelessWidget {
                 IconButton(
                   key: OnboardingKeys.removeTeammate(index),
                   onPressed: remove,
-                  tooltip: 'Remove',
+                  tooltip: AppStrings.removeTeammate,
                   visualDensity: VisualDensity.compact,
                   icon: Icon(
                     Icons.close_rounded,
@@ -888,28 +910,29 @@ class _TeammateRow extends StatelessWidget {
           // and stack where it is not — the same pairing the Staff forms use.
           FieldPair(
             left: LabeledFormField(
-              label: 'Name',
+              label: AppStrings.teammateName,
               child: TextField(
                 key: OnboardingKeys.teammateName(index),
                 controller: member.name,
                 textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(hintText: 'Marco Rossi'),
+                decoration:
+                    const InputDecoration(hintText: AppStrings.teammateNameExample),
                 onChanged: (_) => onChanged(),
               ),
             ),
             right: LabeledFormField(
-              label: 'Email',
+              label: AppStrings.emailLabel,
               child: TextField(
                 key: OnboardingKeys.teammateEmail(index),
                 controller: member.email,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                  hintText: 'marco@venue.com',
+                  hintText: AppStrings.teammateEmailExample,
                   errorText:
                       member.email.text.trim().isEmpty ||
                           isValidEmailFormat(member.email.text)
                       ? null
-                      : 'Enter a valid email address',
+                      : AppStrings.invalidEmail,
                 ),
                 onChanged: (_) => onChanged(),
               ),
@@ -917,26 +940,26 @@ class _TeammateRow extends StatelessWidget {
           ),
           const SizedBox(height: Insets.lg),
           LabeledFormField(
-            label: 'Phone',
+            label: AppStrings.phoneLabel,
             isRequired: true,
-            helper: 'Their invite is sent to this number',
+            helper: AppStrings.inviteSentToNumber,
             child: TextField(
               key: OnboardingKeys.teammatePhone(index),
               controller: member.phone,
               keyboardType: TextInputType.phone,
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(9),
+                LengthLimitingTextInputFormatter(AppLimits.tzPhoneDigits),
               ],
               decoration: InputDecoration(
-                hintText: '6XXXXXXXX or 7XXXXXXXX',
+                hintText: AppStrings.phoneExample,
                 errorText: member.phone.text.isEmpty || isValidTanzanianPhone(member.phone.text)
                     ? null
                     : tanzanianPhoneHint,
                 prefixIcon: Padding(
                   padding: const EdgeInsets.only(left: Insets.lg, right: Insets.sm),
                   child: Text(
-                    '+255',
+                    AppStrings.dialCode,
                     style: context.text.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: context.colors.onSurfaceVariant,
@@ -950,8 +973,8 @@ class _TeammateRow extends StatelessWidget {
           ),
           const SizedBox(height: Insets.lg),
           LabeledFormField(
-            label: 'Role',
-            helper: 'Sets what they can reach on the till',
+            label: AppStrings.roleLabel,
+            helper: AppStrings.roleHelper,
             child: DropdownButtonFormField<String>(
               initialValue: member.roleId,
               isExpanded: true,
@@ -992,7 +1015,7 @@ class _SkipHint extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedOpacity(
       opacity: visible ? 1 : 0,
-      duration: const Duration(milliseconds: 180),
+      duration: AppDurations.authStep,
       child: Row(
         children: [
           Icon(
@@ -1003,7 +1026,7 @@ class _SkipHint extends StatelessWidget {
           const SizedBox(width: Insets.sm - 2),
           Flexible(
             child: Text(
-              'No rush — you can invite people from Staff later.',
+              AppStrings.noRushInvites,
               style: context.text.bodySmall?.copyWith(
                 color: context.colors.onSurfaceVariant,
               ),

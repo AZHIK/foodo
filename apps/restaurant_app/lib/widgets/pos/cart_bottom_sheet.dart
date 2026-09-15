@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/cart_provider.dart';
+import '../../constants/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
@@ -86,8 +87,8 @@ class CartSummaryBar extends ConsumerWidget {
                   children: [
                     Text(
                       count == 0
-                          ? 'No items'
-                          : '$count ${count == 1 ? 'item' : 'items'}',
+                          ? AppStrings.cartNoItems
+                          : AppStrings.cartItemCount(count),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: context.text.labelSmall?.copyWith(
@@ -115,7 +116,7 @@ class CartSummaryBar extends ConsumerWidget {
                     ? null
                     : () => CartBottomSheet.show(context),
                 icon: const Icon(Icons.shopping_bag_outlined, size: 20),
-                label: const Text('View'),
+                label: const Text(AppStrings.cartView),
               ),
             ],
           ),

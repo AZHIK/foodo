@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../auth/auth_dtos.dart';
+import '../../constants/app_strings.dart';
 import '../../models/business_profile.dart';
 import '../../providers/business_api_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -114,7 +115,7 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
 
     if (profile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No business profile loaded')),
+        const SnackBar(content: Text(AppStrings.noProfileLoaded)),
       );
       return;
     }
@@ -141,13 +142,13 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
       if (mounted) {
         setState(() => _dirty = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Business profile saved')),
+          const SnackBar(content: Text(AppStrings.businessProfileSaved)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving profile: $e')),
+          SnackBar(content: Text(AppStrings.profileSaveFailed(e))),
         );
       }
     } finally {
@@ -172,8 +173,8 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
       child: DetailPageScaffold(
         maxContentWidth: 1080,
         header: DetailPageHeader(
-          title: 'Business profile',
-          subtitle: 'Identity and contact details synced with backend',
+          title: AppStrings.businessProfileTitle,
+          subtitle: AppStrings.businessProfileSubtitle,
           onBack: () => context.canPop()
               ? context.pop()
               : context.goNamed(AppRoute.settingsName),
@@ -188,7 +189,9 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.check_rounded, size: 18),
-              label: Text(_saving ? 'Saving...' : 'Save changes'),
+              label: Text(
+                _saving ? AppStrings.savingEllipsis : AppStrings.saveChanges,
+              ),
             ),
           ],
         ),
@@ -251,7 +254,7 @@ class _BrandingPanel extends StatelessWidget {
     final logoSize = compact ? 100.0 : 140.0;
 
     return DetailPanel(
-      title: 'Branding',
+      title: AppStrings.brandingPanel,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -261,15 +264,15 @@ class _BrandingPanel extends StatelessWidget {
             child: ImageUploadField(
               image: profile.logoBytes,
               size: logoSize,
-              label: 'Add logo',
-              hint: 'Preview only — not yet saved',
+              label: AppStrings.addLogoAction,
+              hint: AppStrings.logoPreviewHint,
               onPicked: onLogoPicked,
               onRemoved: onLogoRemoved,
             ),
           ),
           const SizedBox(height: Insets.xs),
           Text(
-            'Square PNG or JPG reads best on a receipt',
+            AppStrings.logoReceiptHint,
             textAlign: compact ? TextAlign.center : TextAlign.start,
             style: context.text.bodySmall?.copyWith(
               color: context.colors.onSurfaceVariant,
@@ -308,7 +311,7 @@ class _BrandColorPicker extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'Accent colour',
+          AppStrings.accentColour,
           style: context.text.labelLarge?.copyWith(
             color: context.colors.onSurface,
           ),
@@ -406,17 +409,6 @@ class _CustomSwatch extends StatelessWidget {
   final Color color;
   final ValueChanged<Color> onPicked;
 
-  static const _extras = <Color>[
-    Color(0xFF0F766E),
-    Color(0xFF166534),
-    Color(0xFF9A3412),
-    Color(0xFF7E22CE),
-    Color(0xFF0E7490),
-    Color(0xFF9F1239),
-    Color(0xFF1F2937),
-    Color(0xFF854D0E),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Tooltip(
@@ -425,21 +417,21 @@ class _CustomSwatch extends StatelessWidget {
         onSelected: onPicked,
         tooltip: '',
         itemBuilder: (menuContext) => [
-          for (final extra in _extras)
+          for (final extra in BrandPalette.extras)
             PopupMenuItem(
-              value: extra,
+              value: extra.color,
               child: Row(
                 children: [
                   Container(
                     height: 18,
                     width: 18,
                     decoration: BoxDecoration(
-                      color: extra,
+                      color: extra.color,
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: Insets.md),
-                  Text(BrandPalette.hex(extra)),
+                  Text(extra.name),
                 ],
               ),
             ),
@@ -533,29 +525,31 @@ class _DetailsPanel extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         DetailPanel(
-          title: 'Business details',
+          title: AppStrings.businessDetails,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
               LabeledFormField(
-                label: 'Business name',
+                label: AppStrings.businessNameField,
                 isRequired: true,
-                helper: 'Displayed in the app and on receipts',
+                helper: AppStrings.businessNameHelper,
                 child: TextFormField(
                   key: BusinessProfileKeys.name,
                   controller: name,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(hintText: 'My Restaurant'),
+                  decoration: const InputDecoration(
+                    hintText: AppStrings.businessNameHint2,
+                  ),
                   validator: (value) => (value ?? '').trim().isEmpty
-                      ? 'Business name is required'
+                      ? AppStrings.businessNameRequired
                       : null,
                 ),
               ),
               const SizedBox(height: Insets.lg),
               FieldPair(
                 left: LabeledFormField(
-                  label: 'Business type',
+                  label: AppStrings.businessTypeField,
                   child: DropdownButtonFormField<BusinessType>(
                     key: BusinessProfileKeys.type,
                     initialValue: type,
@@ -585,8 +579,8 @@ class _DetailsPanel extends StatelessWidget {
                   ),
                 ),
                 right: LabeledFormField(
-                  label: 'Cuisine type',
-                  helper: 'Optional',
+                  label: AppStrings.cuisineField,
+                  helper: AppStrings.optionalField,
                   child: TextFormField(
                     key: BusinessProfileKeys.cuisineType,
                     controller: cuisineType,
@@ -600,42 +594,47 @@ class _DetailsPanel extends StatelessWidget {
         ),
         const SizedBox(height: Insets.xl),
         DetailPanel(
-          title: 'Registration & compliance',
+          title: AppStrings.registrationPanel,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
               FieldPair(
                 left: LabeledFormField(
-                  label: 'Tax ID',
-                  helper: 'VAT/GST number',
+                  label: AppStrings.taxIdField,
+                  helper: AppStrings.taxIdHelper2,
                   child: TextFormField(
                     key: BusinessProfileKeys.taxId,
                     controller: taxId,
                     textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(hintText: 'Optional'),
+                    decoration: const InputDecoration(
+                      hintText: AppStrings.optionalField,
+                    ),
                   ),
                 ),
                 right: LabeledFormField(
-                  label: 'Registration number',
-                  helper: 'Business license / registration ID',
+                  label: AppStrings.registrationField,
+                  helper: AppStrings.registrationHelper,
                   child: TextFormField(
                     key: BusinessProfileKeys.registrationNumber,
                     controller: registrationNumber,
                     textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(hintText: 'Optional'),
+                    decoration: const InputDecoration(
+                      hintText: AppStrings.optionalField,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: Insets.lg),
               LabeledFormField(
-                label: 'License / registration document',
-                helper: 'Optional — paste a link to where it\'s hosted',
+                label: AppStrings.licenseDocField,
+                helper: AppStrings.licenseDocHelper2,
                 child: TextFormField(
                   key: BusinessProfileKeys.licenseDocumentUrl,
                   controller: licenseDocumentUrl,
                   keyboardType: TextInputType.url,
-                  decoration: const InputDecoration(hintText: 'https://…'),
+                  decoration:
+                      const InputDecoration(hintText: AppStrings.urlExample),
                 ),
               ),
             ],
@@ -643,54 +642,62 @@ class _DetailsPanel extends StatelessWidget {
         ),
         const SizedBox(height: Insets.xl),
         DetailPanel(
-          title: 'Contact information',
+          title: AppStrings.contactPanel2,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
               FieldPair(
                 left: LabeledFormField(
-                  label: 'Email',
-                  helper: 'Business contact email',
+                  label: AppStrings.emailField2,
+                  helper: AppStrings.emailHelper2,
                   child: TextFormField(
                     key: BusinessProfileKeys.email,
                     controller: email,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(hintText: 'contact@business.com'),
+                    decoration: const InputDecoration(
+                      hintText: AppStrings.emailHint2,
+                    ),
                   ),
                 ),
                 right: LabeledFormField(
-                  label: 'Phone',
-                  helper: 'Contact number',
+                  label: AppStrings.phoneField2,
+                  helper: AppStrings.phoneHelper2,
                   child: TextFormField(
                     key: BusinessProfileKeys.phone,
                     controller: phone,
                     keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(hintText: '+255 ...'),
+                    decoration: const InputDecoration(
+                      hintText: AppStrings.phoneHint2,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: Insets.lg),
               LabeledFormField(
-                label: 'Address',
-                helper: 'Physical business address',
+                label: AppStrings.addressField2,
+                helper: AppStrings.addressHelper2,
                 child: TextFormField(
                   key: BusinessProfileKeys.address,
                   controller: address,
                   maxLines: 2,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(hintText: 'Street address'),
+                  decoration: const InputDecoration(
+                    hintText: AppStrings.addressHint2,
+                  ),
                 ),
               ),
               const SizedBox(height: Insets.lg),
               LabeledFormField(
-                label: 'City',
-                helper: 'City or locality',
+                label: AppStrings.cityField,
+                helper: AppStrings.cityHelper,
                 child: TextFormField(
                   key: BusinessProfileKeys.city,
                   controller: city,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(hintText: 'e.g., Dar es Salaam'),
+                  decoration: const InputDecoration(
+                    hintText: AppStrings.cityExample,
+                  ),
                 ),
               ),
             ],

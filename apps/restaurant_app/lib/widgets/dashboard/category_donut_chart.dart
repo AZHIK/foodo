@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../../constants/app_durations.dart';
+import '../../constants/app_strings.dart';
 import '../../models/dashboard_chart_data.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
@@ -50,7 +52,7 @@ class _CategoryDonutChartState extends State<CategoryDonutChart> {
         height: widget.height ?? DashboardStyle.chartHeightDesktop,
         child: Center(
           child: Text(
-            'No sales to break down yet',
+            AppStrings.noSalesBreakdown,
             style: context.text.bodySmall?.copyWith(
               color: context.colors.onSurfaceVariant,
             ),
@@ -142,7 +144,7 @@ class _CategoryDonutChartState extends State<CategoryDonutChart> {
                     // Falls back to the total when nothing is touched, so the
                     // hole always says something useful.
                     label: touched == null
-                        ? 'Total'
+                        ? AppStrings.totalFallback
                         : slices[touched].label,
                     value: touched == null
                         ? Fmt.moneyCompact(total)
@@ -175,7 +177,7 @@ class _CategoryDonutChartState extends State<CategoryDonutChart> {
     // A percentage printed inside a thin ring is unreadable, and one printed
     // on a 3% sliver overflows it — both get dropped and the legend covers it.
     final label = showLabel && share >= 0.08
-        ? '${(share * 100).round()}%'
+        ? AppStrings.sharePercent(share)
         : '';
 
     return PieChartSectionData(
@@ -311,7 +313,7 @@ class _LegendRow extends StatelessWidget {
     final colors = context.colors;
 
     return AnimatedOpacity(
-      duration: const Duration(milliseconds: 150),
+      duration: AppDurations.snappy,
       opacity: dimmed ? 0.4 : 1,
       child: Row(
         children: [
@@ -337,7 +339,7 @@ class _LegendRow extends StatelessWidget {
           ),
           const SizedBox(width: Insets.xs),
           Text(
-            '${(share * 100).round()}%',
+            AppStrings.sharePercent(share),
             maxLines: 1,
             style: context.text.bodySmall?.copyWith(
               color: colors.onSurfaceVariant,

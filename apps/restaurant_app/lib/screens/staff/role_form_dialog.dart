@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/identity_service_api.dart' show AuthException;
 import '../../models/business_role.dart';
+import '../../constants/app_strings.dart';
 import '../../models/permission.dart';
 import '../../providers/roles_provider.dart';
 import '../../theme/app_theme.dart';
@@ -156,7 +157,7 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
       final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop();
       messenger.showSnackBar(
-        SnackBar(content: Text(_isEdit ? '"$name" updated' : '"$name" created')),
+        SnackBar(content: Text(AppStrings.roleSaved(name, _isEdit))),
       );
     } on AuthException catch (e) {
       if (!mounted) return;
@@ -168,7 +169,7 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _saveError = 'Something went wrong saving this role.';
+        _saveError = AppStrings.roleSaveFailed;
       });
     }
   }
@@ -179,12 +180,12 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
       key: _formKey,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       child: ResponsiveFormDialog(
-        title: _isEdit ? 'Edit role' : 'Create role',
+        title: _isEdit ? AppStrings.editRole : AppStrings.createRole,
         width: RoleFormDialog.dialogWidth,
         actions: [
           OutlinedButton(
             onPressed: _saving ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: _canSave ? _save : null,
@@ -194,7 +195,9 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
                     width: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(_isEdit ? 'Save role' : 'Create role'),
+                : Text(
+                    _isEdit ? AppStrings.saveRole : AppStrings.createRole,
+                  ),
           ),
         ],
         child: Column(
@@ -215,7 +218,7 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
               ),
               const SizedBox(height: Insets.lg),
             ],
-            const SectionLabel('Basic info'),
+            const SectionLabel(AppStrings.basicInfoSection),
             const SizedBox(height: Insets.md),
 
             if (_isProtected) ...[
@@ -224,7 +227,7 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
             ],
 
             LabeledFormField(
-              label: 'Role name',
+              label: AppStrings.roleNameLabel,
               isRequired: true,
               enabled: !_isProtected,
               child: TextFormField(
@@ -234,26 +237,26 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
                 textCapitalization: TextCapitalization.words,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
-                  hintText: 'e.g. Shift supervisor',
+                  hintText: AppStrings.roleNameExample,
                 ),
                 onChanged: (_) => setState(() {}),
                 validator: (value) => (value ?? '').trim().isEmpty
-                    ? 'Give the role a name'
+                    ? AppStrings.nameRequired
                     : null,
               ),
             ),
             const SizedBox(height: Insets.lg),
 
             LabeledFormField(
-              label: 'Description',
+              label: AppStrings.descriptionLabel2,
               enabled: !_isProtected,
-              helper: 'One line on what this role is for',
+              helper: AppStrings.roleDescriptionHelper,
               child: TextFormField(
                 controller: _description,
                 enabled: !_isProtected,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(
-                  hintText: 'Runs the floor when a manager is off',
+                  hintText: AppStrings.roleDescriptionExample,
                 ),
               ),
             ),
@@ -279,8 +282,7 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
             if (_selected.isEmpty) ...[
               const SizedBox(height: Insets.md),
               Text(
-                'Pick at least one permission — a role that grants nothing '
-                'cannot be assigned usefully.',
+                AppStrings.pickPermissionWarning,
                 style: context.text.bodySmall?.copyWith(
                   color: context.semantic.warning,
                 ),
@@ -313,8 +315,7 @@ class _SystemRoleNotice extends StatelessWidget {
           const SizedBox(width: Insets.md - 2),
           Expanded(
             child: Text(
-              'Built-in roles keep their name and description. You can still '
-              'change what this role is allowed to do.',
+              AppStrings.builtinNameLocked,
               style: context.text.bodySmall?.copyWith(
                 color: colors.onSurfaceVariant,
               ),
@@ -345,10 +346,13 @@ class _PermissionsHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SectionLabel('Permissions'),
+            const SectionLabel(AppStrings.permissionsSection),
             const SizedBox(height: 2),
             Text(
-              '$selectedCount of ${AppPermissions.count} selected',
+              AppStrings.permissionsSelected(
+                selectedCount,
+                AppPermissions.count,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: context.text.bodySmall?.copyWith(
@@ -361,8 +365,14 @@ class _PermissionsHeader extends StatelessWidget {
         final buttons = Wrap(
           spacing: Insets.xs,
           children: [
-            TextButton(onPressed: onSelectAll, child: const Text('Select all')),
-            TextButton(onPressed: onClearAll, child: const Text('Clear all')),
+            TextButton(
+              onPressed: onSelectAll,
+              child: const Text(AppStrings.selectAll),
+            ),
+            TextButton(
+              onPressed: onClearAll,
+              child: const Text(AppStrings.clearAllFilters),
+            ),
           ],
         );
 
@@ -527,7 +537,7 @@ class _PermissionGroupCard extends StatelessWidget {
                           style: context.text.titleSmall,
                         ),
                         Text(
-                          '$on of ${ids.length}',
+                          AppStrings.groupSelected(on, ids.length),
                           maxLines: 1,
                           style: context.text.bodySmall?.copyWith(
                             color: colors.onSurfaceVariant,
@@ -547,7 +557,7 @@ class _PermissionGroupCard extends StatelessWidget {
                       minimumSize: const Size(0, 36),
                       visualDensity: VisualDensity.compact,
                     ),
-                    child: Text(all ? 'Clear' : 'All'),
+                    child: Text(all ? AppStrings.clear : AppStrings.allGroup),
                   ),
                   Icon(
                     expanded

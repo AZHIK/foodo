@@ -5,6 +5,7 @@
 library;
 
 import 'package:dio/dio.dart';
+import '../constants/api_paths.dart';
 import 'auth_dtos.dart';
 
 /// Calls Identity Service endpoints via Dio.
@@ -18,7 +19,7 @@ class IdentityServiceApi {
   Future<void> requestOtp(String phone) async {
     try {
       await _dio.post(
-        '/auth/otp/request',
+        IdentityApiPaths.otpRequest,
         data: OtpRequestInput(phone: phone).toJson(),
       );
     } on DioException catch (e) {
@@ -33,7 +34,7 @@ class IdentityServiceApi {
   }) async {
     try {
       final response = await _dio.post(
-        '/auth/otp/verify',
+        IdentityApiPaths.otpVerify,
         data: OtpVerifyInput(phone: phone, code: code).toJson(),
       );
       return TokenResponse.fromJson(response.data as Map<String, dynamic>);
@@ -46,7 +47,7 @@ class IdentityServiceApi {
   Future<OnboardingStatusOutput> getOnboardingStatus(String bearerToken) async {
     try {
       final response = await _dio.get(
-        '/users/me/onboarding-status',
+        IdentityApiPaths.onboardingStatus,
         options: Options(
           headers: {'Authorization': 'Bearer $bearerToken'},
         ),
@@ -67,7 +68,7 @@ class IdentityServiceApi {
   }) async {
     try {
       final response = await _dio.patch(
-        '/users/me',
+        IdentityApiPaths.updateMe,
         data: input.toJson(),
         options: Options(
           headers: {'Authorization': 'Bearer $bearerToken'},
@@ -87,7 +88,7 @@ class IdentityServiceApi {
   Future<TokenResponse> refreshAccessToken(String refreshToken) async {
     try {
       final response = await _dio.post(
-        '/auth/refresh',
+        IdentityApiPaths.refresh,
         data: TokenRefreshInput(refreshToken: refreshToken).toJson(),
       );
       return TokenResponse.fromJson(response.data as Map<String, dynamic>);
@@ -103,7 +104,7 @@ class IdentityServiceApi {
   }) async {
     try {
       final response = await _dio.post(
-        '/auth/context/switch',
+        IdentityApiPaths.switchContext,
         data: ContextSwitchInput(businessId: businessId).toJson(),
         options: Options(
           headers: {'Authorization': 'Bearer $bearerToken'},
@@ -125,7 +126,7 @@ class IdentityServiceApi {
   }) async {
     try {
       final response = await _dio.post(
-        '/businesses',
+        IdentityApiPaths.businesses,
         data: input.toJson(),
         options: Options(
           headers: {'Authorization': 'Bearer $bearerToken'},
@@ -147,7 +148,7 @@ class IdentityServiceApi {
   }) async {
     try {
       final response = await _dio.get(
-        '/businesses/$businessId/stores',
+        IdentityApiPaths.businessStores(businessId),
         options: Options(
           headers: {'Authorization': 'Bearer $bearerToken'},
         ),

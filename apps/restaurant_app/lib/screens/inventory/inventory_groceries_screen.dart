@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/inventory_item.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/stock_movement_provider.dart';
@@ -68,17 +69,18 @@ class InventoryGroceriesScreen extends ConsumerWidget {
         const InventoryTabBar(active: InventoryTab.groceries),
         Expanded(
           child: DataPageScaffold(
-            title: 'Groceries',
-            subtitle:
-                '${summary.totalItems} raw materials tracked across '
-                '${ref.watch(categoriesListProvider).length} categories',
+            title: AppStrings.groceriesTitle,
+            subtitle: AppStrings.groceriesSubtitle(
+              summary.totalItems,
+              ref.watch(categoriesListProvider).length,
+            ),
             // Exports the filtered, sorted list — every matching row, not
             // just the page on screen.
             actions: dataPageExportActions<InventoryItem>(
               context: context,
               columns: groceryColumns,
               rows: ref.watch(filteredInventoryProvider),
-              title: 'Groceries',
+              title: AppStrings.groceriesTitle,
               subtitle: _exportSubtitle(filters, query.search),
             ),
             primaryAction: context.isMobile
@@ -86,7 +88,7 @@ class InventoryGroceriesScreen extends ConsumerWidget {
                     height: 40,
                     width: 40,
                     child: Tooltip(
-                      message: 'Add grocery item',
+                      message: AppStrings.addGroceryItem,
                       child: Material(
                         color: context.colors.primary,
                         clipBehavior: Clip.antiAlias,
@@ -106,21 +108,23 @@ class InventoryGroceriesScreen extends ConsumerWidget {
                 : FilledButton.icon(
                     onPressed: () => showItemFormDialog(context),
                     icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Add item'),
+                    label: const Text(AppStrings.addItem),
                   ),
             metrics: [
               SummaryMetricCard(
-                label: 'Grocery items',
+                label: AppStrings.groceryItemsMetric,
                 value: '${summary.totalItems}',
-                trend: '${summary.totalItems - summary.needsAttention} fully stocked',
+                trend: AppStrings.fullyStocked(
+                  summary.totalItems - summary.needsAttention,
+                ),
                 icon: Icons.shopping_basket_outlined,
               ),
               SummaryMetricCard(
-                label: 'Below threshold',
+                label: AppStrings.belowThreshold,
                 value: '${summary.lowStockCount}',
                 trend: summary.outOfStockCount == 0
-                    ? 'Nothing out of stock'
-                    : '${summary.outOfStockCount} out of stock',
+                    ? AppStrings.nothingOutOfStock
+                    : AppStrings.outOfStockTrend(summary.outOfStockCount),
                 trendDirection: summary.needsAttention == 0
                     ? TrendDirection.flat
                     : TrendDirection.down,
@@ -128,9 +132,11 @@ class InventoryGroceriesScreen extends ConsumerWidget {
                 accent: context.semantic.warning,
               ),
               SummaryMetricCard(
-                label: 'Out of stock',
+                label: AppStrings.outOfStockMetric,
                 value: '${summary.outOfStockCount}',
-                trend: summary.outOfStockCount == 0 ? 'All lines covered' : 'Needs a delivery',
+                trend: summary.outOfStockCount == 0
+                    ? AppStrings.allLinesCovered
+                    : AppStrings.needsDelivery,
                 trendDirection: summary.outOfStockCount == 0
                     ? TrendDirection.flat
                     : TrendDirection.down,
@@ -138,31 +144,37 @@ class InventoryGroceriesScreen extends ConsumerWidget {
                 accent: context.semantic.danger,
               ),
               SummaryMetricCard(
-                label: 'Stock value',
+                label: AppStrings.stockValueMetric,
                 value: Fmt.moneyCompact(summary.totalValue),
                 // Cost basis is the item's own unit cost — the last price it
                 // was recorded at, not a fabricated figure.
-                trend: 'At last-known cost',
+                trend: AppStrings.atLastKnownCost,
                 icon: Icons.savings_outlined,
                 accent: context.semantic.success,
               ),
             ],
             toolbar: DataTableToolbar(
-              searchHint: 'Search items, SKU or supplier',
+              searchHint: AppStrings.searchItemsSkuSupplier,
               searchValue: query.search,
               onSearchChanged: notifier.setSearch,
               activeFilterCount: filters.activeCount,
               onClearFilters: ref.read(inventoryFiltersProvider.notifier).clear,
               filterBuilder: (_) => const InventoryFilterPanel(),
               sortOptions: const [
-                SortOption(label: 'Name', field: InventorySort.name),
-                SortOption(label: 'Category', field: InventorySort.category),
-                SortOption(label: 'Stock', field: InventorySort.stock),
+                SortOption(label: AppStrings.nameColumn, field: InventorySort.name),
                 SortOption(
-                  label: 'Reorder at',
+                  label: AppStrings.categoryColumn,
+                  field: InventorySort.category,
+                ),
+                SortOption(label: AppStrings.stockColumn, field: InventorySort.stock),
+                SortOption(
+                  label: AppStrings.reorderAtColumn,
                   field: InventorySort.reorderLevel,
                 ),
-                SortOption(label: 'Status', field: InventorySort.status),
+                SortOption(
+                  label: AppStrings.statusColumn,
+                  field: InventorySort.status,
+                ),
               ],
               sortField: query.sortField,
               sortAscending: query.ascending,
@@ -191,7 +203,7 @@ class InventoryGroceriesScreen extends ConsumerWidget {
 
   List<DataRowAction<InventoryItem>> _actions(WidgetRef ref) => [
     DataRowAction(
-      label: 'View detail',
+      label: AppStrings.viewDetail,
       icon: Icons.open_in_new_rounded,
       onSelected: (context, item) => context.pushNamed(
         AppRoute.itemDetailName,
@@ -199,38 +211,38 @@ class InventoryGroceriesScreen extends ConsumerWidget {
       ),
     ),
     DataRowAction(
-      label: 'Edit item',
+      label: AppStrings.editItem,
       icon: Icons.edit_outlined,
       onSelected: (context, item) =>
           showItemFormDialog(context, existingItem: item),
     ),
     DataRowAction(
-      label: 'Adjust stock',
+      label: AppStrings.adjustStock,
       icon: Icons.tune_rounded,
       // Untracked lines have no count to adjust.
       isEnabled: (item) => item.trackStock,
       onSelected: (context, item) => showStockAdjustDialog(context, item),
     ),
     DataRowAction(
-      label: 'Create reorder',
+      label: AppStrings.createReorder,
       icon: Icons.shopping_cart_outlined,
       isEnabled: (item) => item.trackStock,
       onSelected: (context, item) => showReorderDialog(context, item),
     ),
     DataRowAction(
-      label: 'Log waste',
+      label: AppStrings.logWaste,
       icon: Icons.delete_sweep_outlined,
       isEnabled: (item) => item.trackStock && item.stock > 0,
       onSelected: (context, item) => showWasteLogDialog(context, item),
     ),
     DataRowAction(
-      label: 'Transfer stock',
+      label: AppStrings.transferStock,
       icon: Icons.swap_horiz_rounded,
       isEnabled: (item) => item.trackStock && item.stock > 0,
       onSelected: (context, item) => showStockTransferDialog(context, item),
     ),
     DataRowAction(
-      label: 'Delete',
+      label: AppStrings.deleteAction,
       icon: Icons.delete_outline_rounded,
       isDestructive: true,
       onSelected: (context, item) => _confirmDelete(context, ref, item),
@@ -245,19 +257,16 @@ class InventoryGroceriesScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete ${item.name}?'),
-        content: const Text(
-          'The item and its stock count will be removed from inventory. '
-          'This cannot be undone.',
-        ),
+        title: Text(AppStrings.deleteItemTitle(item.name)),
+        content: const Text(AppStrings.deleteGroceryBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: const Text(AppStrings.deleteAction),
           ),
         ],
       ),
@@ -270,9 +279,13 @@ class InventoryGroceriesScreen extends ConsumerWidget {
       // The ledger goes with the item — orphaned movements would keep
       // counting against a line that no longer exists.
       ref.read(stockMovementsProvider.notifier).clearForItem(item.id);
-      messenger.showSnackBar(SnackBar(content: Text('${item.name} deleted')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.itemDeleted(item.name))),
+      );
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Could not delete: $e')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.deleteFailed(e))),
+      );
     }
   }
 
@@ -281,16 +294,25 @@ class InventoryGroceriesScreen extends ConsumerWidget {
   static String _exportSubtitle(InventoryFilters filters, String search) {
     final parts = <String>[
       if (filters.categoryIds.isNotEmpty)
-        '${filters.categoryIds.length} categories',
+        AppStrings.exportCategories(filters.categoryIds.length),
       if (filters.statuses.isNotEmpty)
         filters.statuses.map((s) => s.label).join(', '),
       if (filters.hasStockRange)
-        'stock ${filters.minStock != null ? Fmt.quantity(filters.minStock!) : 0}'
-            '–${filters.maxStock != null ? Fmt.quantity(filters.maxStock!) : 'any'}',
-      if (search.trim().isNotEmpty) 'matching "${search.trim()}"',
+        AppStrings.exportStockRange(
+          filters.minStock != null
+              ? Fmt.quantity(filters.minStock!)
+              : '0',
+          filters.maxStock != null
+              ? Fmt.quantity(filters.maxStock!)
+              : AppStrings.exportAny,
+        ),
+      if (search.trim().isNotEmpty)
+        AppStrings.exportMatching(search.trim()),
     ];
 
-    return parts.isEmpty ? 'All groceries' : 'Filtered by ${parts.join(' · ')}';
+    return parts.isEmpty
+        ? AppStrings.exportAllGroceries
+        : AppStrings.exportFiltered(parts.join(' · '));
   }
 }
 
@@ -304,7 +326,7 @@ class InventoryGroceriesScreen extends ConsumerWidget {
 /// to be fabricated, so it is left out rather than shown as a guess.
 final groceryColumns = <DataColumnSpec<InventoryItem>>[
   DataColumnSpec(
-    label: 'Item',
+    label: AppStrings.itemColumn,
     field: InventorySort.name,
     role: ColumnRole.primary,
     flex: 5,
@@ -312,14 +334,14 @@ final groceryColumns = <DataColumnSpec<InventoryItem>>[
     cellBuilder: (context, item) => _ItemCell(item: item),
   ),
   DataColumnSpec(
-    label: 'Category',
+    label: AppStrings.categoryColumn,
     field: InventorySort.category,
     flex: 2,
     minTableWidth: 760,
     value: (item) => categoryLabelForId(item.categoryId),
   ),
   DataColumnSpec(
-    label: 'Unit',
+    label: AppStrings.unitColumn,
     field: 'unit',
     sortable: false,
     flex: 1,
@@ -327,7 +349,7 @@ final groceryColumns = <DataColumnSpec<InventoryItem>>[
     value: (item) => item.unit,
   ),
   DataColumnSpec(
-    label: 'Stock',
+    label: AppStrings.stockColumn,
     field: InventorySort.stock,
     flex: 2,
     numeric: true,
@@ -335,16 +357,16 @@ final groceryColumns = <DataColumnSpec<InventoryItem>>[
     cellBuilder: (context, item) => _StockCell(item: item),
   ),
   DataColumnSpec(
-    label: 'Reorder at',
+    label: AppStrings.reorderAtColumn,
     field: InventorySort.reorderLevel,
     flex: 2,
     numeric: true,
     minTableWidth: 900,
     value: (item) =>
-        item.trackStock ? Fmt.quantity(item.reorderLevel) : 'Not tracked',
+        item.trackStock ? Fmt.quantity(item.reorderLevel) : AppStrings.notTracked,
   ),
   DataColumnSpec(
-    label: 'Status',
+    label: AppStrings.statusColumn,
     field: InventorySort.status,
     role: ColumnRole.status,
     width: 132,
@@ -357,15 +379,15 @@ final groceryColumns = <DataColumnSpec<InventoryItem>>[
     ),
   ),
   DataColumnSpec(
-    label: 'Active',
+    label: AppStrings.activeColumn,
     field: 'isActive',
     sortable: false,
     role: ColumnRole.tableOnly,
     width: 96,
     minTableWidth: 1080,
-    value: (item) => item.isArchived ? 'Archived' : 'Active',
+    value: (item) => item.isArchived ? AppStrings.archivedBadge : AppStrings.activeBadge,
     cellBuilder: (context, item) => StatusBadge(
-      label: item.isArchived ? 'Archived' : 'Active',
+      label: item.isArchived ? AppStrings.archivedBadge : AppStrings.activeBadge,
       tone: item.isArchived ? StatusTone.neutral : StatusTone.positive,
       icon: item.isArchived ? Icons.archive_outlined : Icons.check_circle_rounded,
       dense: true,

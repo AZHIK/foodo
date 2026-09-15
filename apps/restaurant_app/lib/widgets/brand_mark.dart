@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/settings_provider.dart';
+import '../constants/app_strings.dart';
 import '../theme/app_theme.dart';
 import '../theme/breakpoints.dart';
 
@@ -57,7 +58,7 @@ class BrandMark extends ConsumerWidget {
 /// The brand mark with the business name beside it, as the nav rail and drawer
 /// show it.
 class BrandLockup extends ConsumerWidget {
-  const BrandLockup({super.key, this.subtitle = 'Front of house'});
+  const BrandLockup({super.key, this.subtitle = AppStrings.frontOfHouse});
 
   final String subtitle;
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/mock_finance.dart';
+import '../../constants/app_strings.dart';
 import '../../models/order.dart';
 import '../../providers/other_expenses_provider.dart';
 import '../../theme/breakpoints.dart';
@@ -20,8 +21,8 @@ class OtherExpenseFilterPanel extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FilterSection(
-              title: 'Category',
+        FilterSection(
+          title: AppStrings.categoryFilter,
               child: FilterChipGroup<String>(
                 options: MockFinance.expenseCategories.map((c) => c.id).toList(),
                 selected: filters.categoryIds,
@@ -30,8 +31,8 @@ class OtherExpenseFilterPanel extends ConsumerWidget {
               ),
             ),
             SizedBox(height: Insets.lg),
-            FilterSection(
-              title: 'Payment method',
+        FilterSection(
+          title: AppStrings.paymentMethodFilter,
               child: FilterChipGroup<PaymentType>(
                 options: PaymentType.values,
                 selected: filters.payments,
@@ -40,8 +41,8 @@ class OtherExpenseFilterPanel extends ConsumerWidget {
               ),
             ),
             SizedBox(height: Insets.lg),
-            FilterSection(
-              title: 'Date range',
+        FilterSection(
+          title: AppStrings.dateRangeFilter,
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton.tonal(
@@ -49,13 +50,22 @@ class OtherExpenseFilterPanel extends ConsumerWidget {
                     final picked = await showDateRangePicker(context: context, firstDate: DateTime(2020), lastDate: DateTime.now(), initialDateRange: filters.dateRange);
                     if (picked != null) notifier.setDateRange(picked);
                   },
-                  child: Text(filters.dateRange == null ? 'Pick a date range' : '${filters.dateRange!.start.month}/${filters.dateRange!.start.day} – ${filters.dateRange!.end.month}/${filters.dateRange!.end.day}'),
+                  child: Text(
+                    filters.dateRange == null
+                        ? AppStrings.pickDateRange
+                        : AppStrings.financeFilterDate(
+                            '${filters.dateRange!.start.month}',
+                            '${filters.dateRange!.start.day}',
+                            '${filters.dateRange!.end.month}',
+                            '${filters.dateRange!.end.day}',
+                          ),
+                  ),
                 ),
               ),
             ),
             if (filters.activeCount > 0) ...[
               SizedBox(height: Insets.lg),
-              SizedBox(width: double.infinity, child: OutlinedButton(onPressed: notifier.clear, child: const Text('Clear all filters'))),
+              SizedBox(width: double.infinity, child: OutlinedButton(onPressed: notifier.clear, child: const Text(AppStrings.clearAllFilters))),
             ],
           ],
         ),

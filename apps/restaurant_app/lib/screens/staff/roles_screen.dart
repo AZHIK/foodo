@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../auth/identity_service_api.dart' show AuthException;
 import '../../models/business_role.dart';
+import '../../constants/app_strings.dart';
 import '../../models/permission.dart';
 import '../../providers/permissions_provider.dart';
 import '../../providers/roles_provider.dart';
@@ -37,17 +38,18 @@ class RolesScreen extends ConsumerWidget {
     final canCreate = ref.watch(hasPermissionProvider(AppPermissions.rolesCreate));
 
     return DataPageScaffold(
-      title: 'Roles & permissions',
-      subtitle:
-          '${summary.totalRoles} roles · '
-          '${summary.staffAssigned} staff assigned',
+      title: AppStrings.rolesPermissionsTitle,
+      subtitle: AppStrings.rolesSubtitle(
+        summary.totalRoles,
+        summary.staffAssigned,
+      ),
       actions: [
         OutlinedButton.icon(
           onPressed: () => context.canPop()
               ? context.pop()
               : context.goNamed(AppRoute.staffName),
           icon: const Icon(Icons.arrow_back_rounded, size: 18),
-          label: const Text('Back to staff'),
+          label: const Text(AppStrings.backToStaffButton),
         ),
       ],
       primaryAction: !canCreate
@@ -55,28 +57,30 @@ class RolesScreen extends ConsumerWidget {
           : FilledButton.icon(
               onPressed: () => showRoleFormDialog(context),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('Create role'),
+              label: const Text(AppStrings.createRoleButton),
             ),
       metrics: [
         SummaryMetricCard(
-          label: 'Total roles',
+          label: AppStrings.totalRoles,
           value: '${summary.totalRoles}',
-          trend: '${summary.totalRoles - summary.customRoles} built in',
+          trend: AppStrings.builtInCount(
+            summary.totalRoles - summary.customRoles,
+          ),
           icon: Icons.shield_outlined,
         ),
         SummaryMetricCard(
-          label: 'Custom roles',
+          label: AppStrings.customRoles,
           value: '${summary.customRoles}',
           trend: summary.customRoles == 0
-              ? 'None created yet'
-              : 'Created for this business',
+              ? AppStrings.noneCreatedYet
+              : AppStrings.createdForBusiness,
           icon: Icons.tune_rounded,
           accent: context.colors.tertiary,
         ),
         SummaryMetricCard(
-          label: 'Staff assigned',
+          label: AppStrings.staffAssigned,
           value: '${summary.staffAssigned}',
-          trend: 'Across all roles',
+          trend: AppStrings.acrossAllRoles,
           icon: Icons.groups_outlined,
           accent: context.semantic.success,
         ),
@@ -100,20 +104,20 @@ class RolesScreen extends ConsumerWidget {
   List<DataRowAction<BusinessRole>> _actions(WidgetRef ref) => [
     if (ref.watch(hasPermissionProvider(AppPermissions.rolesUpdate)))
       DataRowAction(
-        label: 'Edit role',
+        label: AppStrings.editRoleAction,
         icon: Icons.edit_outlined,
         onSelected: (context, role) =>
             showRoleFormDialog(context, existingRole: role),
       ),
     if (ref.watch(hasPermissionProvider(AppPermissions.rolesCreate)))
       DataRowAction(
-        label: 'Duplicate',
+        label: AppStrings.duplicateAction,
         icon: Icons.copy_all_outlined,
         onSelected: (context, role) => _duplicate(context, ref, role),
       ),
     if (ref.watch(hasPermissionProvider(AppPermissions.rolesDelete)))
       DataRowAction(
-        label: 'Delete',
+        label: AppStrings.deleteRoleAction,
         icon: Icons.delete_outline_rounded,
         isDestructive: true,
         // The backend refuses a protected role (403) or one with active
@@ -130,7 +134,7 @@ class RolesScreen extends ConsumerWidget {
       final copy = await ref.read(rolesProvider.notifier).duplicate(role.id);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Created "${copy.name}"')),
+        SnackBar(content: Text(AppStrings.roleDuplicated(copy.name))),
       );
     } on AuthException catch (e) {
       if (!context.mounted) return;
@@ -146,16 +150,16 @@ class RolesScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete "${role.name}"?'),
-        content: const Text('This role is not assigned to anyone and will be removed permanently.'),
+        title: Text(AppStrings.deleteRoleTitle(role.name)),
+        content: const Text(AppStrings.deleteRoleBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: const Text(AppStrings.deleteAction),
           ),
         ],
       ),
@@ -168,7 +172,9 @@ class RolesScreen extends ConsumerWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('"${role.name}" deleted')));
+      ).showSnackBar(
+        SnackBar(content: Text(AppStrings.roleDeleted(role.name))),
+      );
     } on AuthException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
@@ -192,7 +198,7 @@ class _RolesCaption extends StatelessWidget {
         const SizedBox(width: Insets.sm),
         Expanded(
           child: Text(
-            'Built-in roles can be edited but not renamed or deleted.',
+            AppStrings.builtinCaption,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: context.text.bodySmall?.copyWith(
@@ -207,7 +213,7 @@ class _RolesCaption extends StatelessWidget {
 
 List<DataColumnSpec<BusinessRole>> roleColumns(Map<String, int> counts) => [
   DataColumnSpec(
-    label: 'Role',
+    label: AppStrings.roleColumn,
     field: RoleSort.name,
     role: ColumnRole.primary,
     flex: 5,
@@ -215,14 +221,14 @@ List<DataColumnSpec<BusinessRole>> roleColumns(Map<String, int> counts) => [
     cellBuilder: (context, role) => _RoleCell(role: role),
   ),
   DataColumnSpec(
-    label: 'Staff',
+    label: AppStrings.staffColumn,
     field: RoleSort.staffCount,
     flex: 2,
     numeric: true,
     value: (role) => '${counts[role.id] ?? 0}',
   ),
   DataColumnSpec(
-    label: 'Permissions',
+    label: AppStrings.permissionsColumn,
     field: RoleSort.permissions,
     flex: 3,
     minTableWidth: 620,
@@ -230,21 +236,24 @@ List<DataColumnSpec<BusinessRole>> roleColumns(Map<String, int> counts) => [
     cellBuilder: (context, role) => _PermissionsCell(role: role),
   ),
   DataColumnSpec(
-    label: 'Type',
+    label: AppStrings.typeColumn,
     field: 'roleType',
     role: ColumnRole.status,
     sortable: false,
     width: 120,
-    value: (role) => role.isProtected ? 'Built in' : 'Custom',
+    value: (role) =>
+        role.isProtected ? AppStrings.builtInBadge : AppStrings.customBadge,
     // Says the same thing the column's value says — a badge showing the role's
     // name here would put a different word on screen from the one an export
     // carries for the same cell.
     cellBuilder: (context, role) => Tooltip(
       message: role.isProtected
-          ? 'Built-in roles cannot be renamed or deleted'
-          : 'Created for this business',
+          ? AppStrings.builtinLockedTooltip
+          : AppStrings.createdForBusiness,
       child: StatusBadge(
-        label: role.isProtected ? 'Built in' : 'Custom',
+        label: role.isProtected
+            ? AppStrings.builtInBadge
+            : AppStrings.customBadge,
         tone: role.isProtected ? StatusTone.neutral : StatusTone.info,
         icon: role.isProtected
             ? Icons.lock_outline_rounded

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/menu_providers.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/settings_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
@@ -69,13 +70,13 @@ class _PosTopBarState extends ConsumerState<PosTopBar> {
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
                   hintText: isMobile
-                      ? 'Search menu'
-                      : 'Search menu items, categories…',
+                      ? AppStrings.searchMenu
+                      : AppStrings.searchMenuItems,
                   prefixIcon: const Icon(Icons.search_rounded, size: 20),
                   suffixIcon: query.isEmpty
                       ? null
                       : IconButton(
-                          tooltip: 'Clear',
+                          tooltip: AppStrings.clearSearch,
                           icon: const Icon(Icons.close_rounded, size: 18),
                           onPressed: () =>
                               ref.read(searchQueryProvider.notifier).state = '',
@@ -92,11 +93,11 @@ class _PosTopBarState extends ConsumerState<PosTopBar> {
           const SizedBox(width: Insets.xs),
           _IconAction(
             icon: Icons.qr_code_scanner_rounded,
-            tooltip: 'Scan barcode',
+            tooltip: AppStrings.scanBarcode,
             // A real terminal hands this to a scanner service; the affordance
             // has to exist for the layout to be honest.
             onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Scanner not connected')),
+              const SnackBar(content: Text(AppStrings.scannerNotConnected)),
             ),
           ),
           if (!isMobile) ...[
@@ -181,7 +182,7 @@ class _CashierChip extends ConsumerWidget {
               style: context.text.titleSmall,
             ),
             Text(
-              'Cashier',
+              AppStrings.cashierRole,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: context.text.labelSmall?.copyWith(

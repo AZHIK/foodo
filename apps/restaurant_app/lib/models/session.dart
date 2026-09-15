@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+import '../constants/app_durations.dart';
+import '../constants/app_limits.dart';
+
 /// Where the person at this terminal stands with the app.
 ///
 /// One object rather than a scatter of booleans in different providers,
@@ -66,12 +69,12 @@ class SessionState {
   final bool bootstrapped;
 
   /// How many wrong PINs are allowed before the terminal locks itself.
-  static const maxAttempts = 3;
+  static const maxAttempts = AppLimits.pinMaxAttempts;
 
   /// How long a lockout lasts. Long enough to stop someone guessing, short
   /// enough that a cashier who fat-fingered three times is not stranded
   /// mid-service.
-  static const lockoutDuration = Duration(seconds: 30);
+  static const lockoutDuration = AppDurations.pinLockout;
 
   bool get hasPin => pin != null && pin!.isNotEmpty;
 

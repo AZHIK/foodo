@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/order.dart';
+import '../../constants/app_limits.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_session_provider.dart';
 import '../../theme/app_theme.dart';
@@ -149,7 +151,9 @@ class OrderTicketHeader extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SectionLabel(
-                      mode.isPayment ? 'Taking payment' : 'Current order',
+                      mode.isPayment
+                          ? AppStrings.takingPayment
+                          : AppStrings.currentOrder,
                     ),
                     const SizedBox(height: 1),
                     Text(
@@ -168,7 +172,7 @@ class OrderTicketHeader extends ConsumerWidget {
                   height: 32,
                   width: 32,
                   child: IconButton(
-                    tooltip: 'Clear order',
+                    tooltip: AppStrings.clearOrder,
                     visualDensity: VisualDensity.compact,
                     padding: EdgeInsets.zero,
                     onPressed: () => ref.read(cartProvider.notifier).clear(),
@@ -180,7 +184,7 @@ class OrderTicketHeader extends ConsumerWidget {
                 height: 32,
                 width: 32,
                 child: IconButton(
-                  tooltip: 'Close',
+                  tooltip: AppStrings.close,
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   onPressed: () => Navigator.of(context).pop(),
@@ -235,7 +239,7 @@ class _TicketMeta extends StatelessWidget {
           const SizedBox(width: Insets.sm - 2),
           Flexible(
             child: Text(
-              table == null ? orderType.label : '${orderType.label} · $table',
+              AppStrings.orderTypeTable(orderType.label, table),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: context.text.labelMedium,
@@ -282,7 +286,7 @@ class _OrderTypeSelector extends ConsumerWidget {
 class _TablePicker extends ConsumerWidget {
   const _TablePicker();
 
-  static const _tableCount = 24;
+  static const _tableCount = AppLimits.posTableCount;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -292,14 +296,17 @@ class _TablePicker extends ConsumerWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: PopupMenuButton<int?>(
-        tooltip: 'Assign table',
+        tooltip: AppStrings.assignTable,
         onSelected: (value) =>
             ref.read(tableNumberProvider.notifier).state = value,
         itemBuilder: (context) => [
-          const PopupMenuItem(value: null, child: Text('Counter (no table)')),
+          const PopupMenuItem(
+            value: null,
+            child: Text(AppStrings.counterNoTable),
+          ),
           const PopupMenuDivider(),
           for (var i = 1; i <= _tableCount; i++)
-            PopupMenuItem(value: i, child: Text('Table $i')),
+            PopupMenuItem(value: i, child: Text(AppStrings.tableNumber(i))),
         ],
         child: Container(
           padding: const EdgeInsets.symmetric(
@@ -321,7 +328,9 @@ class _TablePicker extends ConsumerWidget {
               const SizedBox(width: Insets.sm - 2),
               Flexible(
                 child: Text(
-                  table == null ? 'Counter' : 'Table $table',
+                  table == null
+                      ? AppStrings.counter
+                      : AppStrings.tableLabel(table),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: context.text.labelMedium,
@@ -400,13 +409,13 @@ class _EmptyOrder extends StatelessWidget {
             ),
             const SizedBox(height: Insets.sm),
             Text(
-              'No items yet',
+              AppStrings.noItemsYet,
               textAlign: TextAlign.center,
               style: context.text.titleSmall?.copyWith(fontSize: 13),
             ),
             const SizedBox(height: 4),
             Text(
-              'Tap a menu item to start this order.',
+              AppStrings.tapMenuToStart,
               textAlign: TextAlign.center,
               style: context.text.bodySmall?.copyWith(
                 color: colors.onSurfaceVariant,
@@ -485,7 +494,9 @@ class OrderTotalsFooter extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(horizontal: Insets.md),
                       ),
                       child: Text(
-                        compact ? 'Charge' : 'Charge ${Fmt.money(totals.total)}',
+                        compact
+                            ? AppStrings.charge
+                            : AppStrings.chargeTotal(Fmt.money(totals.total)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 13),
@@ -519,7 +530,7 @@ class _ConfirmPaymentButton extends ConsumerWidget {
       onPressed: ready ? onConfirm : null,
       icon: const Icon(Icons.check_circle_outline_rounded, size: 19),
       label: Text(
-        compact ? 'Confirm' : 'Confirm payment',
+        compact ? AppStrings.confirm : AppStrings.confirmPayment,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -550,14 +561,16 @@ class _DiscountButton extends ConsumerWidget {
         ),
         child: PopupMenuButton<double>(
           enabled: enabled,
-          tooltip: 'Apply discount',
+          tooltip: AppStrings.applyDiscount,
           onSelected: (rate) =>
               ref.read(cartProvider.notifier).applyDiscount(rate),
           itemBuilder: (context) => [
             for (final rate in _rates)
               PopupMenuItem(
                 value: rate,
-                child: Text(rate == 0 ? 'No discount' : Fmt.percent(rate)),
+                child: Text(
+                  rate == 0 ? AppStrings.noDiscount : Fmt.percent(rate),
+                ),
               ),
           ],
           child: Icon(

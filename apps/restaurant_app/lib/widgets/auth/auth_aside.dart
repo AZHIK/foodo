@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../constants/app_durations.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/settings_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
@@ -38,9 +40,9 @@ class AuthAside extends ConsumerWidget {
   /// What the product does, in the till's own terms. Only shown on the brand
   /// variant — during onboarding the step list has more to say than a pitch.
   static const _features = <({IconData icon, String label})>[
-    (icon: Icons.bolt_rounded, label: 'Take an order in three taps'),
-    (icon: Icons.call_split_rounded, label: 'Split a bill without the maths'),
-    (icon: Icons.nightlight_round, label: 'Cash up in under a minute'),
+    (icon: Icons.bolt_rounded, label: AppStrings.asideOrderFast),
+    (icon: Icons.call_split_rounded, label: AppStrings.asideSplitBill),
+    (icon: Icons.nightlight_round, label: AppStrings.asideCashUp),
   ];
 
   @override
@@ -118,7 +120,10 @@ class AuthAside extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    '© ${DateTime.now().year} ${ref.watch(storeNameProvider)}',
+                    AppStrings.copyrightNotice(
+                      DateTime.now().year,
+                      ref.watch(storeNameProvider),
+                    ),
                     style: context.text.labelSmall?.copyWith(
                       color: onBrand.withValues(alpha: 0.55),
                     ),
@@ -138,7 +143,7 @@ class AuthAside extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          headline ?? 'The till your\nfloor staff\nactually like.',
+          headline ?? AppStrings.asideHeadline,
           style: context.text.displaySmall?.copyWith(
             color: onBrand,
             height: 1.12,
@@ -146,9 +151,7 @@ class AuthAside extends ConsumerWidget {
         ),
         const SizedBox(height: Insets.lg),
         Text(
-          supporting ??
-              'Orders, payments and takings in one place — on the counter, '
-                  'on a tablet, or behind the bar.',
+          supporting ?? AppStrings.asideSupporting,
           style: context.text.bodyMedium?.copyWith(
             color: onBrand.withValues(alpha: 0.78),
           ),
@@ -304,7 +307,7 @@ class _AsideStepTile extends StatelessWidget {
           Column(
             children: [
               AnimatedContainer(
-                duration: const Duration(milliseconds: 240),
+                duration: AppDurations.aside,
                 curve: Curves.easeOut,
                 height: 28,
                 width: 28,
@@ -322,7 +325,7 @@ class _AsideStepTile extends StatelessWidget {
                 child: done
                     ? Icon(Icons.check_rounded, size: 16, color: onBrand)
                     : Text(
-                        '${index + 1}',
+                        AppStrings.stepNumber(index),
                         style: context.text.labelMedium?.copyWith(
                           color: active
                               ? context.colors.primary

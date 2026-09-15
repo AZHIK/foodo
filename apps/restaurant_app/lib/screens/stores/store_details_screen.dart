@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 
 import '../../models/store_location.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/store_api_provider_real.dart';
 import '../../providers/store_locations_provider.dart';
 import '../../router/app_router.dart';
@@ -54,7 +55,7 @@ class StoreDetailsScreen extends ConsumerWidget {
                     AppRoute.settingsName,
                   ),
             icon: const Icon(Icons.arrow_back_rounded, size: 18),
-            label: const Text('Back'),
+            label: const Text(AppStrings.back),
           ),
         ],
         bottom: TabBar(
@@ -208,7 +209,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Store settings saved')),
+          const SnackBar(content: Text(AppStrings.storeDetailsSaved)),
         );
       }
     } on DioException catch (e) {
@@ -253,7 +254,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Store Details', style: context.text.titleMedium),
+                      Text(AppStrings.storeDetailsTitle, style: context.text.titleMedium),
                       FilledButton.icon(
                         onPressed: _saving ? null : _save,
                         icon: _saving
@@ -269,7 +270,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                   ),
                   const SizedBox(height: Insets.lg),
                   // Location section
-                  Text('Location', style: context.text.labelLarge),
+                  Text(AppStrings.storeLocationSection, style: context.text.labelLarge),
                   const SizedBox(height: Insets.md),
                   Row(
                     children: [
@@ -278,7 +279,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                           controller: _latitude,
                           keyboardType: TextInputType.numberWithOptions(decimal: true, signed: true),
                           decoration: InputDecoration(
-                            label: const Text('Latitude'),
+                            label: const Text(AppStrings.latitudeLabel),
                             hintText: 'e.g., -6.7924',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                           ),
@@ -290,7 +291,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                           controller: _longitude,
                           keyboardType: TextInputType.numberWithOptions(decimal: true, signed: true),
                           decoration: InputDecoration(
-                            label: const Text('Longitude'),
+                            label: const Text(AppStrings.longitudeLabel),
                             hintText: 'e.g., 39.2083',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                           ),
@@ -300,13 +301,13 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                   ),
                   const SizedBox(height: Insets.lg),
                   // Contact section
-                  Text('Contact', style: context.text.labelLarge),
+                  Text(AppStrings.storeContactSection, style: context.text.labelLarge),
                   const SizedBox(height: Insets.md),
                   TextField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
-                      label: const Text('Email'),
+                      label: const Text(AppStrings.storeEmailLabel),
                       hintText: 'contact@store.com',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                     ),
@@ -316,14 +317,14 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                     controller: _phone,
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
-                      label: const Text('Phone'),
+                      label: const Text(AppStrings.storePhoneLabel),
                       hintText: '+255 7XX XXX XXX',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                     ),
                   ),
                   const SizedBox(height: Insets.lg),
                   // Sales channels section
-                  Text('Sales Channels', style: context.text.labelLarge),
+                  Text(AppStrings.storeSalesChannelsSection, style: context.text.labelLarge),
                   const SizedBox(height: Insets.md),
                   SettingSwitchTile(
                     title: 'Offer retail',
@@ -339,18 +340,18 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                   ),
                   const SizedBox(height: Insets.lg),
                   // Pricing section
-                  Text('Pricing', style: context.text.labelLarge),
+                  Text(AppStrings.storePricingSection, style: context.text.labelLarge),
                   const SizedBox(height: Insets.md),
                   DropdownButtonFormField<String>(
                     value: _currency,
                     items: const [
-                      DropdownMenuItem(value: 'TZS', child: Text('TZS - Tanzanian Shilling')),
-                      DropdownMenuItem(value: 'USD', child: Text('USD - US Dollar')),
-                      DropdownMenuItem(value: 'EUR', child: Text('EUR - Euro')),
+                      DropdownMenuItem(value: 'TZS', child: Text(AppStrings.tzShilling)),
+                      DropdownMenuItem(value: 'USD', child: Text(AppStrings.usDollar)),
+                      DropdownMenuItem(value: 'EUR', child: Text(AppStrings.euroLabel)),
                     ],
                     onChanged: (v) => setState(() => _currency = v ?? 'TZS'),
                     decoration: InputDecoration(
-                      label: const Text('Currency'),
+                      label: const Text(AppStrings.storeCurrencyLabel),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                     ),
                   ),
@@ -363,7 +364,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                   ),
                   const SizedBox(height: Insets.lg),
                   // Credit/tab section
-                  Text('Credit & Tabs', style: context.text.labelLarge),
+                  Text(AppStrings.storeCreditTabsSection, style: context.text.labelLarge),
                   const SizedBox(height: Insets.md),
                   Row(
                     children: [
@@ -372,7 +373,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                           controller: _amount,
                           keyboardType: TextInputType.numberWithOptions(decimal: true),
                           decoration: InputDecoration(
-                            label: const Text('Credit limit'),
+                            label: const Text(AppStrings.creditLimitLabel),
                             hintText: '10000',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                           ),
@@ -384,7 +385,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                           controller: _maxPaymentTime,
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
-                            label: const Text('Max payment time (min)'),
+                            label: const Text(AppStrings.maxPaymentTimeLabel),
                             hintText: '1440',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                           ),
@@ -394,7 +395,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                   ),
                   const SizedBox(height: Insets.lg),
                   // Operational section
-                  Text('Operational', style: context.text.labelLarge),
+                  Text(AppStrings.storeOperationalSection, style: context.text.labelLarge),
                   const SizedBox(height: Insets.md),
                   SettingSwitchTile(
                     title: 'Currently trading',
@@ -404,13 +405,13 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                   ),
                   const SizedBox(height: Insets.lg),
                   // Logo section
-                  Text('Logo', style: context.text.labelLarge),
+                  Text(AppStrings.storeLogoSection, style: context.text.labelLarge),
                   const SizedBox(height: Insets.md),
                   TextField(
                     controller: _logoUrl,
                     keyboardType: TextInputType.url,
                     decoration: InputDecoration(
-                      label: const Text('Logo URL'),
+                        label: const Text(AppStrings.logoUrlLabel),
                       hintText: 'https://...',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                     ),
@@ -426,17 +427,17 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Hours & Receipts', style: context.text.titleMedium),
+                  Text(AppStrings.storeHoursReceiptsSection, style: context.text.titleMedium),
                   const SizedBox(height: Insets.md),
                   ListTile(
-                    title: const Text('Hours of Operation'),
-                    subtitle: const Text('Coming soon'),
+                    title: const Text(AppStrings.hoursOfOperation),
+                    subtitle: const Text(AppStrings.comingSoon),
                     trailing: const Icon(Icons.lock_rounded, size: 18),
                   ),
                   const Divider(),
                   ListTile(
-                    title: const Text('Receipt Settings'),
-                    subtitle: const Text('Coming soon'),
+                    title: const Text(AppStrings.receiptSettings),
+                    subtitle: const Text(AppStrings.comingSoon),
                     trailing: const Icon(Icons.lock_rounded, size: 18),
                   ),
                 ],
@@ -482,11 +483,11 @@ class _StaffTab extends ConsumerWidget {
                       FilledButton.icon(
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Add staff coming soon')),
+                            const SnackBar(content: Text(AppStrings.addStaffComingSoon)),
                           );
                         },
                         icon: const Icon(Icons.add_rounded, size: 18),
-                        label: const Text('Add'),
+                        label: const Text(AppStrings.add),
                       ),
                     ],
                   ),

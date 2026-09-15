@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../constants/app_strings.dart';
 import '../../models/staff_member.dart';
 import '../../providers/roles_provider.dart';
 import '../../providers/staff_provider.dart';
@@ -25,7 +26,7 @@ class StaffFilterPanel extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SectionLabel('Role'),
+        const SectionLabel(AppStrings.roleFilter),
         const SizedBox(height: Insets.sm),
         Wrap(
           spacing: Insets.sm,
@@ -40,7 +41,7 @@ class StaffFilterPanel extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: Insets.xl),
-        const SectionLabel('Status'),
+        const SectionLabel(AppStrings.statusFilter),
         const SizedBox(height: Insets.sm),
         Wrap(
           spacing: Insets.sm,

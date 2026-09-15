@@ -14,6 +14,8 @@ import 'dart:typed_data';
 import 'package:decimal/decimal.dart';
 import 'package:dio/dio.dart';
 
+import '../constants/api_paths.dart';
+
 /// Thrown when POS Service rejects a finance entry mutation (not found,
 /// already deleted, validation).
 class FinanceApiException implements Exception {
@@ -45,7 +47,7 @@ class FinanceApiService {
   }) async {
     try {
       await _dio.patch(
-        '/businesses/$businessId/other-expenses/$expenseId',
+        PosApiPaths.expense(businessId, expenseId),
         data: {
           if (category != null) 'category': category,
           if (amount != null) 'amount': amount.toString(),
@@ -67,7 +69,7 @@ class FinanceApiService {
     required String expenseId,
   }) async {
     try {
-      await _dio.delete('/businesses/$businessId/other-expenses/$expenseId');
+      await _dio.delete(PosApiPaths.expense(businessId, expenseId));
     } on DioException catch (e) {
       throw _toException(e);
     }
@@ -86,7 +88,7 @@ class FinanceApiService {
   }) async {
     try {
       await _dio.patch(
-        '/businesses/$businessId/other-incomes/$incomeId',
+        PosApiPaths.income(businessId, incomeId),
         data: {
           if (category != null) 'category': category,
           if (amount != null) 'amount': amount.toString(),
@@ -108,7 +110,7 @@ class FinanceApiService {
     required String incomeId,
   }) async {
     try {
-      await _dio.delete('/businesses/$businessId/other-incomes/$incomeId');
+      await _dio.delete(PosApiPaths.income(businessId, incomeId));
     } on DioException catch (e) {
       throw _toException(e);
     }
@@ -122,7 +124,7 @@ class FinanceApiService {
   }) async {
     try {
       final response = await _dio.get<List<int>>(
-        '/businesses/$businessId/finance/attachments/$attachmentId',
+        PosApiPaths.attachment(businessId, attachmentId),
         options: Options(responseType: ResponseType.bytes),
       );
       return Uint8List.fromList(response.data ?? const []);

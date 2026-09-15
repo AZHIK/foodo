@@ -6,9 +6,11 @@ library;
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../auth/api_log_interceptor.dart';
 import '../auth/token_refresh_interceptor.dart';
 import '../auth/token_storage.dart';
 import '../config/api_config.dart';
+import '../constants/app_durations.dart';
 import '../services/pos_api_service.dart';
 import '../services/pos_reports_api_service.dart';
 import '../sync/http_pos_catalog_api.dart';
@@ -26,9 +28,9 @@ import 'permissions_provider.dart';
 final posServiceDioProvider = Provider<Dio>((ref) {
   final dio = Dio(BaseOptions(
     baseUrl: ApiConfig.posServiceBaseUrl,
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 30),
-    sendTimeout: const Duration(seconds: 30),
+    connectTimeout: AppDurations.connectTimeout,
+    receiveTimeout: AppDurations.receiveTimeout,
+    sendTimeout: AppDurations.sendTimeout,
   ));
 
   dio.interceptors.add(TokenRefreshInterceptor(
@@ -38,7 +40,7 @@ final posServiceDioProvider = Provider<Dio>((ref) {
     onPermissionsSynced: () => ref.read(permissionsCacheTickProvider.notifier).state++,
   ));
 
-  dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
+  dio.interceptors.add(const ApiLogInterceptor());
 
   return dio;
 });

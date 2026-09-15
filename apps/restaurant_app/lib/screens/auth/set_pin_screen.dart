@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../constants/app_durations.dart';
+import '../../constants/app_limits.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/session_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
@@ -41,7 +44,7 @@ class SetPinScreen extends ConsumerStatefulWidget {
 }
 
 class _SetPinScreenState extends ConsumerState<SetPinScreen> {
-  static const _pinLength = 6;
+  static const _pinLength = AppLimits.pinLength;
 
   String _first = '';
   String _confirm = '';
@@ -82,7 +85,7 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
     if (!_confirming) {
       // A beat before the second pass, so the last dot is seen filling rather
       // than the screen appearing to change on its own.
-      Future<void>.delayed(const Duration(milliseconds: 180), () {
+      Future<void>.delayed(AppDurations.setPinStepDelay, () {
         if (mounted) setState(() => _confirming = true);
       });
       return;
@@ -90,7 +93,7 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
 
     if (_confirm != _first) {
       setState(() {
-        _error = 'Those PINs did not match. Start again.';
+        _error = AppStrings.pinsDidNotMatch;
         _shakeToken++;
         _first = '';
         _confirm = '';
@@ -108,13 +111,13 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
       if (!mounted) return;
       setState(() {
         _saved = false;
-        _error = 'Failed to save PIN: $e';
+        _error = AppStrings.pinSaveFailed(e);
         _shakeToken++;
       });
       return;
     }
 
-    Future<void>.delayed(const Duration(milliseconds: 420), () {
+    Future<void>.delayed(AppDurations.shake, () {
       if (!mounted) return;
       // Changing a PIN returns you to where you asked from; setting the first
       // one hands back to the guard, which knows whether onboarding is next.
@@ -130,16 +133,16 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
   Widget build(BuildContext context) {
     return AuthScaffold(
       title: widget.isChangingPin
-          ? 'Choose a new PIN'
+          ? AppStrings.chooseNewPin
           : _confirming
-          ? 'Confirm your PIN'
-          : 'Create your PIN',
+          ? AppStrings.confirmYourPin
+          : AppStrings.createYourPin,
       subtitle: _confirming
-          ? 'Enter the same six digits again'
-          : 'You\'ll use this to unlock the POS quickly',
+          ? AppStrings.enterSamePin
+          : AppStrings.pinUnlockHint,
       footer: widget.isChangingPin
           ? AuthLink(
-              label: 'Cancel',
+              label: AppStrings.cancel,
               onPressed: () => context.go(AppRoute.account()),
             )
           : null,
@@ -172,7 +175,7 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
                         ),
                         const SizedBox(width: Insets.sm),
                         Text(
-                          'PIN saved',
+                          AppStrings.pinSaved,
                           style: context.text.bodySmall?.copyWith(
                             color: context.semantic.success,
                             fontWeight: FontWeight.w600,

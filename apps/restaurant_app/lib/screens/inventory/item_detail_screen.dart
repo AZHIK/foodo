@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/inventory_item.dart';
+import '../../constants/app_limits.dart';
+import '../../constants/app_strings.dart';
 import '../../models/permission.dart';
 import '../../models/stock_movement.dart';
 import '../../models/table_query.dart';
@@ -93,7 +95,9 @@ class _Header extends ConsumerWidget {
       leading: _Thumbnail(item: item),
       badges: [
         StatusBadge(
-          label: item.isArchived ? 'Archived' : 'Active',
+          label: item.isArchived
+              ? AppStrings.archivedBadge
+              : AppStrings.activeBadge,
           tone: item.isArchived ? StatusTone.neutral : StatusTone.positive,
           icon: item.isArchived
               ? Icons.archive_outlined
@@ -113,7 +117,7 @@ class _Header extends ConsumerWidget {
         OutlinedButton.icon(
           onPressed: () => showItemFormDialog(context, existingItem: item),
           icon: const Icon(Icons.edit_outlined, size: 18),
-          label: const Text('Edit'),
+          label: const Text(AppStrings.editAction),
         ),
         _OverflowMenu(item: item),
       ],
@@ -159,7 +163,7 @@ class _OverflowMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return PopupMenuButton<String>(
-      tooltip: 'More actions',
+      tooltip: AppStrings.moreActions,
       position: PopupMenuPosition.under,
       icon: const Icon(Icons.more_horiz_rounded),
       onSelected: (value) => switch (value) {
@@ -180,7 +184,11 @@ class _OverflowMenu extends ConsumerWidget {
                 color: context.colors.onSurfaceVariant,
               ),
               const SizedBox(width: Insets.md),
-              Text(item.isArchived ? 'Restore item' : 'Archive item'),
+              Text(
+                item.isArchived
+                    ? AppStrings.restoreItem
+                    : AppStrings.archiveItem,
+              ),
             ],
           ),
         ),
@@ -195,7 +203,7 @@ class _OverflowMenu extends ConsumerWidget {
               ),
               const SizedBox(width: Insets.md),
               Text(
-                'Delete item',
+                AppStrings.deleteItem,
                 style: TextStyle(color: context.semantic.danger),
               ),
             ],
@@ -215,12 +223,14 @@ class _OverflowMenu extends ConsumerWidget {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            archived ? '${item.name} archived' : '${item.name} restored',
+            archived
+                ? AppStrings.itemArchived(item.name)
+                : AppStrings.itemRestored(item.name),
           ),
         ),
       );
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+      messenger.showSnackBar(SnackBar(content: Text(AppStrings.saveFailed(e))));
     }
   }
 
@@ -228,19 +238,16 @@ class _OverflowMenu extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete ${item.name}?'),
-        content: const Text(
-          'The item, its stock count and its entire movement history will be '
-          'removed. This cannot be undone.',
-        ),
+        title: Text(AppStrings.deleteItemTitle(item.name)),
+        content: const Text(AppStrings.deleteItemBodyFull),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: const Text(AppStrings.deleteAction),
           ),
         ],
       ),
@@ -256,9 +263,13 @@ class _OverflowMenu extends ConsumerWidget {
     try {
       await ref.read(inventoryItemsProvider.notifier).delete(item.id);
       ref.read(stockMovementsProvider.notifier).clearForItem(item.id);
-      messenger.showSnackBar(SnackBar(content: Text('${item.name} deleted')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.itemDeleted(item.name))),
+      );
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Could not delete: $e')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.deleteFailed(e))),
+      );
     }
   }
 }
@@ -294,7 +305,7 @@ class _KeyStats extends StatelessWidget {
     final semantic = context.semantic;
     return [
       SummaryMetricCard(
-        label: 'Current stock',
+        label: AppStrings.currentStock,
         value: Fmt.quantity(item.stock),
         trend: item.unit,
         icon: Icons.inventory_2_outlined,
@@ -303,22 +314,22 @@ class _KeyStats extends StatelessWidget {
             : semantic.warning,
       ),
       SummaryMetricCard(
-        label: 'Unit cost',
+        label: AppStrings.unitCostLabel,
         value: Fmt.money(item.unitCost),
-        trend: 'per ${item.unit}',
+        trend: AppStrings.perUnit(item.unit),
         icon: Icons.sell_outlined,
       ),
       SummaryMetricCard(
-        label: 'Inventory value',
+        label: AppStrings.inventoryValue,
         value: Fmt.moneyCompact(item.totalValue),
-        trend: 'At cost',
+        trend: AppStrings.atCost,
         icon: Icons.savings_outlined,
         accent: semantic.success,
       ),
       SummaryMetricCard(
-        label: 'Low stock at',
+        label: AppStrings.lowStockAt,
         value: Fmt.quantity(item.reorderLevel),
-        trend: 'Warn at or below',
+        trend: AppStrings.warnAtOrBelow,
         icon: Icons.warning_amber_rounded,
         accent: semantic.warning,
       ),
@@ -334,30 +345,36 @@ class _KeyStats extends StatelessWidget {
 
     return [
       SummaryMetricCard(
-        label: 'Selling price',
-        value: item.sellingPrice == null ? '—' : Fmt.money(item.sellingPrice!),
-        trend: item.sellingPrice == null ? 'Not set' : 'At the till',
+        label: AppStrings.sellingPrice,
+        value: item.sellingPrice == null
+            ? AppStrings.emDash
+            : Fmt.money(item.sellingPrice!),
+        trend: item.sellingPrice == null
+            ? AppStrings.notSet
+            : AppStrings.atTheTill,
         icon: Icons.point_of_sale_rounded,
       ),
       SummaryMetricCard(
-        label: 'Unit cost',
+        label: AppStrings.unitCostLabel,
         value: Fmt.money(item.unitCost),
-        trend: 'Cost basis',
+        trend: AppStrings.costBasis,
         icon: Icons.sell_outlined,
       ),
       SummaryMetricCard(
-        label: 'Margin',
-        value: margin == null ? '—' : Fmt.money(margin),
-        trend: margin == null ? 'Set a price to see margin' : 'Per item sold',
+        label: AppStrings.marginLabel,
+        value: margin == null ? AppStrings.emDash : Fmt.money(margin),
+        trend: margin == null
+            ? AppStrings.setPriceForMargin
+            : AppStrings.perItemSold,
         icon: Icons.trending_up_rounded,
         accent: margin == null
             ? null
             : (margin >= 0 ? semantic.success : semantic.danger),
       ),
       SummaryMetricCard(
-        label: 'POS availability',
-        value: onMenu ? 'Available' : 'Not listed',
-        trend: onMenu ? 'Showing at the till' : 'Archived or no price set',
+        label: AppStrings.posAvailability,
+        value: onMenu ? AppStrings.availableValue : AppStrings.notListed,
+        trend: onMenu ? AppStrings.showingAtTill : AppStrings.archivedNoPrice,
         icon: onMenu
             ? Icons.check_circle_rounded
             : Icons.remove_circle_outline_rounded,
@@ -417,7 +434,7 @@ class _QuickActions extends ConsumerWidget {
         FilledButton.icon(
           onPressed: () => showStockAdjustDialog(context, item),
           icon: const Icon(Icons.tune_rounded, size: 18),
-          label: const Text('Adjust stock'),
+          label: const Text(AppStrings.adjustStock),
         ),
         // A sellable-only item can never be purchase-received (see
         // `stock_movement_service.py`'s `_COMPATIBILITY_RULES`) — reordering
@@ -426,14 +443,14 @@ class _QuickActions extends ConsumerWidget {
           OutlinedButton.icon(
             onPressed: () => showReorderDialog(context, item),
             icon: const Icon(Icons.shopping_cart_outlined, size: 18),
-            label: const Text('Create reorder'),
+            label: const Text(AppStrings.createReorder),
           ),
         OutlinedButton.icon(
           onPressed: item.stock == 0
               ? null
               : () => showWasteLogDialog(context, item),
           icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-          label: const Text('Log waste'),
+          label: const Text(AppStrings.logWaste),
           style: OutlinedButton.styleFrom(
             foregroundColor: item.stock == 0 ? null : context.semantic.warning,
           ),
@@ -443,7 +460,7 @@ class _QuickActions extends ConsumerWidget {
               ? null
               : () => showStockTransferDialog(context, item),
           icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-          label: const Text('Transfer stock'),
+          label: const Text(AppStrings.transferStock),
         ),
       ],
     ];
@@ -510,7 +527,7 @@ class _QuickActions extends ConsumerWidget {
       return OutlinedButton.icon(
         onPressed: () => showRecipeFormDialog(context, recipe: recipe),
         icon: const Icon(Icons.receipt_long_outlined, size: 18),
-        label: const Text('Edit recipe'),
+        label: const Text(AppStrings.editRecipe),
       );
     }
     if (recipe == null &&
@@ -519,7 +536,7 @@ class _QuickActions extends ConsumerWidget {
         onPressed: () =>
             showRecipeFormDialog(context, sellable: item),
         icon: const Icon(Icons.add_rounded, size: 18),
-        label: const Text('Add recipe'),
+        label: const Text(AppStrings.addRecipe),
       );
     }
     return null;
@@ -548,7 +565,7 @@ class _RecordProductionButton extends ConsumerWidget {
     return FilledButton.icon(
       onPressed: () => showRecordProductionDialog(context, recipe),
       icon: const Icon(Icons.soup_kitchen_outlined, size: 18),
-      label: const Text('Record production'),
+      label: const Text(AppStrings.recordProduction),
     );
   }
 }
@@ -574,17 +591,16 @@ class _StockHistoryPanelState extends State<_StockHistoryPanel> {
   /// which page of one item's history you are on is not app state.
   int _page = 0;
 
-  static const _pageSize = 8;
-
   @override
   Widget build(BuildContext context) {
-    final query = TableQuery(page: _page, pageSize: _pageSize);
+    final query =
+        TableQuery(page: _page, pageSize: AppLimits.tablePageSizeDense);
     final slice = PageSlice.of(widget.history, query);
 
     return DetailPanel(
-      title: 'Stock history',
+      title: AppStrings.stockHistory,
       trailing: Text(
-        '${widget.history.length} movements',
+        AppStrings.movementsCount(widget.history.length),
         style: context.text.bodySmall?.copyWith(
           color: context.colors.onSurfaceVariant,
         ),
@@ -604,7 +620,7 @@ class _StockHistoryPanelState extends State<_StockHistoryPanel> {
 
   static List<DataColumnSpec<StockMovement>> _columns(InventoryItem item) => [
     DataColumnSpec(
-      label: 'When',
+      label: AppStrings.whenColumn,
       field: 'when',
       role: ColumnRole.primary,
       sortable: false,
@@ -613,7 +629,7 @@ class _StockHistoryPanelState extends State<_StockHistoryPanel> {
       cellBuilder: (context, m) => _WhenCell(movement: m),
     ),
     DataColumnSpec(
-      label: 'Type',
+      label: AppStrings.typeColumn,
       field: 'type',
       role: ColumnRole.status,
       sortable: false,
@@ -627,7 +643,7 @@ class _StockHistoryPanelState extends State<_StockHistoryPanel> {
       ),
     ),
     DataColumnSpec(
-      label: 'Change',
+      label: AppStrings.changeColumn,
       field: 'delta',
       sortable: false,
       numeric: true,
@@ -636,7 +652,7 @@ class _StockHistoryPanelState extends State<_StockHistoryPanel> {
       cellBuilder: (context, m) => _DeltaCell(movement: m),
     ),
     DataColumnSpec(
-      label: 'Balance',
+      label: AppStrings.balanceColumn,
       field: 'balance',
       sortable: false,
       numeric: true,
@@ -645,7 +661,7 @@ class _StockHistoryPanelState extends State<_StockHistoryPanel> {
       value: (m) => '${Fmt.quantity(m.balance)} ${item.unit}',
     ),
     DataColumnSpec(
-      label: 'By',
+      label: AppStrings.byColumn,
       field: 'actor',
       sortable: false,
       flex: 3,
@@ -725,7 +741,7 @@ class _NoHistory extends StatelessWidget {
           ),
           const SizedBox(height: Insets.sm),
           Text(
-            'No movements recorded yet',
+            AppStrings.noMovementsRecorded,
             style: context.text.bodyMedium?.copyWith(
               color: context.colors.onSurfaceVariant,
             ),
@@ -752,7 +768,7 @@ class _AboutPanel extends ConsumerWidget {
     final onPosMenu = item.isSellable && !item.isArchived;
 
     return DetailPanel(
-      title: 'About this item',
+      title: AppStrings.aboutThisItem,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -760,7 +776,7 @@ class _AboutPanel extends ConsumerWidget {
           Text(
             hasDescription
                 ? item.description
-                : 'No description added yet. Use Edit to add one.',
+                : AppStrings.noDescription,
             style: context.text.bodyMedium?.copyWith(
               color: hasDescription ? null : colors.onSurfaceVariant,
               fontStyle: hasDescription ? null : FontStyle.italic,
@@ -776,11 +792,11 @@ class _AboutPanel extends ConsumerWidget {
             minColumnWidth: 220,
             children: [
               LabeledValue(
-                label: 'Item type',
+                label: AppStrings.itemTypeLabel,
                 value: switch (item.itemType) {
-                  'raw_material' => 'Grocery',
-                  'sellable' => 'Menu item',
-                  _ => 'Bought and sold',
+                  'raw_material' => AppStrings.itemTypeGrocery,
+                  'sellable' => AppStrings.itemTypeMenuItem,
+                  _ => AppStrings.itemTypeBoth,
                 },
                 icon: switch (item.itemType) {
                   'raw_material' => Icons.shopping_basket_outlined,
@@ -789,7 +805,7 @@ class _AboutPanel extends ConsumerWidget {
                 },
               ),
               LabeledValue(
-                label: 'Category',
+                label: AppStrings.categoryLabel,
                 value: categoryLabelFrom(
                   ref.watch(categoriesListProvider),
                   item.categoryId,
@@ -798,39 +814,43 @@ class _AboutPanel extends ConsumerWidget {
                     Icons.category_outlined,
               ),
               LabeledValue(
-                label: 'SKU',
+                label: AppStrings.skuLabel,
                 value: item.sku,
                 icon: Icons.qr_code_2_rounded,
               ),
               LabeledValue(
-                label: 'Supplier',
+                label: AppStrings.supplierLabel,
                 value: item.supplier,
                 icon: Icons.local_shipping_outlined,
               ),
               LabeledValue(
-                label: 'Counted in',
+                label: AppStrings.countedIn,
                 value: item.unit,
                 icon: Icons.straighten_rounded,
               ),
               LabeledValue(
-                label: 'Stock tracking',
-                value: item.trackStock ? 'On' : 'Off',
+                label: AppStrings.stockTracking,
+                value: item.trackStock
+                    ? AppStrings.onValue
+                    : AppStrings.offValue,
                 icon: item.trackStock
                     ? Icons.toggle_on_outlined
                     : Icons.toggle_off_outlined,
               ),
               LabeledValue(
-                label: 'Last counted',
+                label: AppStrings.lastCounted,
                 value: item.lastCountedAt == null
-                    ? 'Never'
+                    ? AppStrings.neverCounted
                     : Fmt.relativeDateTime(item.lastCountedAt!),
                 icon: Icons.event_available_outlined,
               ),
               LabeledValue(
-                label: 'POS menu',
+                label: AppStrings.posMenu,
                 value: onPosMenu
-                    ? 'Available for sale (${Fmt.money(item.sellingPrice ?? 0)})'
-                    : 'Not for sale — set a selling price to add it',
+                    ? AppStrings.availableForSale(
+                        Fmt.money(item.sellingPrice ?? 0),
+                      )
+                    : AppStrings.notForSaleTill,
                 icon: onPosMenu
                     ? Icons.point_of_sale_rounded
                     : Icons.point_of_sale_outlined,
@@ -865,12 +885,15 @@ class _NotFound extends StatelessWidget {
                   color: context.colors.onSurfaceVariant,
                 ),
                 const SizedBox(height: Insets.md),
-                Text('Item $itemId not found', style: context.text.titleMedium),
+                Text(
+                  AppStrings.itemNotFound(itemId),
+                  style: context.text.titleMedium,
+                ),
                 const SizedBox(height: Insets.lg),
                 FilledButton.icon(
                   onPressed: () => context.goNamed(AppRoute.groceriesName),
                   icon: const Icon(Icons.inventory_2_outlined, size: 18),
-                  label: const Text('Back to inventory'),
+                  label: const Text(AppStrings.backToInventory),
                 ),
               ],
             ),

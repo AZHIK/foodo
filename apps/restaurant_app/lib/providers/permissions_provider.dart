@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/jwt_decoder.dart';
+import '../constants/app_durations.dart';
 import '../models/user_permissions.dart';
 import 'auth_provider.dart';
 import 'database_providers.dart';
@@ -106,7 +107,7 @@ final hasPermissionProvider = Provider.family<bool, String>((ref, permissionCode
 /// Maximum age of cached permissions before they are considered stale.
 /// When permissions are older than this, they are marked stale but still
 /// returned (some data is better than none for offline read-only operations).
-const Duration _permissionsCacheTtl = Duration(hours: 24);
+const Duration _permissionsCacheTtl = AppDurations.permissionsCacheTtl;
 
 /// Current user's permissions, always read from the local `CachedPermissions`
 /// table — never the live token directly, so the UI has exactly one source

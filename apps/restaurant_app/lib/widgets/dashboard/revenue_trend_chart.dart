@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/dashboard_chart_data.dart';
+import '../../constants/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/dashboard_colors.dart';
 import '../../utils/formatters.dart';
@@ -46,7 +47,7 @@ class RevenueTrendChart extends StatelessWidget {
         height: height ?? DashboardStyle.chartHeightDesktop,
         child: Center(
           child: Text(
-            'No sales in this period',
+            AppStrings.noSalesThisPeriod,
             style: context.text.bodySmall?.copyWith(
               color: context.colors.onSurfaceVariant,
             ),

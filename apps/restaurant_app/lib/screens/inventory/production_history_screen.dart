@@ -2,6 +2,9 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../constants/app_durations.dart';
+import '../../constants/app_strings.dart';
+
 import '../../providers/production_provider.dart';
 import '../../services/inventory_api_service.dart';
 import '../../models/permission.dart';
@@ -27,11 +30,12 @@ class ProductionHistoryScreen extends ConsumerWidget {
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
+      lastDate: DateTime.now().add(AppDurations.singleDay),
       initialDateRange: current.from == null && current.to == null
           ? null
           : DateTimeRange(
-              start: current.from ?? DateTime.now().subtract(const Duration(days: 30)),
+              start: current.from ??
+                  DateTime.now().subtract(AppDurations.analyticsWindow),
               end: current.to ?? DateTime.now(),
             ),
     );
@@ -76,11 +80,11 @@ class ProductionHistoryScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Production'),
+        title: const Text(AppStrings.productionTitle),
         elevation: 0,
         actions: [
           IconButton(
-            tooltip: 'Filter by date',
+            tooltip: AppStrings.filterByDate,
             onPressed: () => _pickRange(context, ref),
             icon: Badge(
               isLabelVisible: filter.from != null || filter.to != null,
@@ -95,7 +99,7 @@ class ProductionHistoryScreen extends ConsumerWidget {
                   key: const Key('productionHistory.record'),
                   onPressed: () => _startRun(context, ref),
                   icon: const Icon(Icons.add_rounded),
-                  label: const Text('Record'),
+                  label: const Text(AppStrings.recordAction),
                 )
               : null,
       body: RefreshIndicator(
@@ -107,9 +111,9 @@ class ProductionHistoryScreen extends ConsumerWidget {
               children: [
                 Expanded(
                   child: SummaryMetricCard(
-                    label: 'Runs',
+                    label: AppStrings.runsMetric,
                     value: '${events.length}',
-                    trend: 'Recorded productions',
+                    trend: AppStrings.recordedProductions,
                     icon: Icons.soup_kitchen_outlined,
                     accent: context.colors.primary,
                   ),
@@ -117,9 +121,9 @@ class ProductionHistoryScreen extends ConsumerWidget {
                 const SizedBox(width: Insets.md),
                 Expanded(
                   child: SummaryMetricCard(
-                    label: 'Adjusted',
+                    label: AppStrings.adjustedMetric,
                     value: '$adjusted',
-                    trend: 'Portions differed',
+                    trend: AppStrings.portionsDiffered,
                     icon: Icons.tune_rounded,
                     accent: context.semantic.warning,
                   ),
@@ -132,9 +136,14 @@ class ProductionHistoryScreen extends ConsumerWidget {
                 padding: const EdgeInsets.only(bottom: Insets.md),
                 child: InputChip(
                   label: Text(
-                    '${filter.from == null ? '…' : Fmt.dayMonth(filter.from!)}'
-                    ' – '
-                    '${filter.to == null ? '…' : Fmt.dayMonth(filter.to!)}',
+                    AppStrings.dateChip(
+                      filter.from == null
+                          ? AppStrings.ellipsis
+                          : Fmt.dayMonth(filter.from!),
+                      filter.to == null
+                          ? AppStrings.ellipsis
+                          : Fmt.dayMonth(filter.to!),
+                    ),
                   ),
                   deleteIcon: const Icon(Icons.clear_rounded, size: 16),
                   onDeleted: () => _clearRange(ref),
@@ -146,7 +155,10 @@ class ProductionHistoryScreen extends ConsumerWidget {
                 child: Center(child: CircularProgressIndicator()),
               ),
             if (events.isNotEmpty) ...[
-              Text('Runs (${events.length})', style: context.text.titleMedium),
+              Text(
+                AppStrings.runsWithCount(events.length),
+                style: context.text.titleMedium,
+              ),
               const SizedBox(height: Insets.md),
               ...events.map((e) => _ProductionTile(event: e)),
             ],
@@ -163,14 +175,14 @@ class ProductionHistoryScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: Insets.md),
                       Text(
-                        'No production runs yet',
+                        AppStrings.noRunsYet,
                         style: context.text.bodyMedium?.copyWith(
                           color: context.colors.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: Insets.xs),
                       Text(
-                        'Record one from a menu item to see it here',
+                        AppStrings.recordFromMenuItem,
                         style: context.text.bodySmall?.copyWith(
                           color: context.colors.onSurfaceVariant,
                         ),
@@ -197,19 +209,19 @@ class _RecipePickerDialog extends ConsumerWidget {
     final recipes = ref.watch(recipesCatalogListProvider);
 
     return ResponsiveFormDialog(
-      title: 'What are you making?',
+      title: AppStrings.whatMaking,
       width: kStockDialogWidth,
       actions: [
         OutlinedButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text(AppStrings.cancel),
         ),
       ],
       child: recipes.isEmpty
           ? Padding(
               padding: const EdgeInsets.symmetric(vertical: Insets.lg),
               child: Text(
-                'No recipes yet — define one for a menu item first, then come back to record the run.',
+                AppStrings.noRecipesYet,
                 style: context.text.bodyMedium?.copyWith(
                   color: context.colors.onSurfaceVariant,
                 ),
@@ -229,8 +241,10 @@ class _RecipePickerDialog extends ConsumerWidget {
                       ),
                       title: Text(recipe.name),
                       subtitle: Text(
-                        '${recipe.components.length} ingredients'
-                        ' · makes ${recipe.sellableItemName}',
+                        AppStrings.recipeSubtitle(
+                          recipe.components.length,
+                          recipe.sellableItemName,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -287,7 +301,7 @@ class _ProductionTile extends StatelessWidget {
                         borderRadius: BorderRadius.circular(Radii.pill),
                       ),
                       child: Text(
-                        'Adjusted',
+                        AppStrings.adjustedBadge,
                         style: context.text.labelSmall?.copyWith(
                           color: context.semantic.warning,
                           fontWeight: FontWeight.w700,
@@ -298,17 +312,24 @@ class _ProductionTile extends StatelessWidget {
               ),
               const SizedBox(height: Insets.xs),
               Text(
-                '${Fmt.quantity(_asDouble(event.leadingQuantityUsed))} '
-                '${leading?.rawMaterialUnit ?? ''} ${leading?.rawMaterialName ?? ''}'
-                '→ ${Fmt.quantity(recorded)} × ${event.sellableItemName}',
+                AppStrings.tileDetail(
+                  Fmt.quantity(_asDouble(event.leadingQuantityUsed)),
+                  leading?.rawMaterialUnit ?? '',
+                  leading?.rawMaterialName ?? '',
+                  Fmt.quantity(recorded),
+                  event.sellableItemName,
+                ),
                 style: context.text.bodySmall?.copyWith(
                   color: context.colors.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: Insets.xs),
               Text(
-                '${Fmt.dayMonthTime(event.occurredAt.toLocal())}'
-                '${adjusted ? ' · suggested ${Fmt.quantity(suggested)}' : ''}',
+                AppStrings.tileDate(
+                  Fmt.dayMonthTime(event.occurredAt.toLocal()),
+                  adjusted,
+                  Fmt.quantity(suggested),
+                ),
                 style: context.text.bodySmall?.copyWith(
                   color: context.colors.onSurfaceVariant,
                 ),
@@ -344,7 +365,7 @@ Future<void> showProductionEventDetail(
       actions: [
         FilledButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          child: const Text(AppStrings.close),
         ),
       ],
       child: _ProductionDetailBody(event: event),
@@ -367,23 +388,28 @@ class _ProductionDetailBody extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         StockPreviewLine(
-          label: 'Output',
-          value: '${Fmt.quantity(recorded)} × ${event.sellableItemName}',
+          label: AppStrings.outputLabel,
+          value: AppStrings.outputValue(
+            Fmt.quantity(recorded),
+            event.sellableItemName,
+          ),
           tone: context.semantic.success,
           icon: Icons.soup_kitchen_outlined,
         ),
         if (recorded != suggested) ...[
           const SizedBox(height: Insets.md),
           StockPreviewLine(
-            label: 'Suggested was ${Fmt.quantity(suggested)}',
-            value:
-                '${Fmt.quantity((recorded - suggested).abs())} ${recorded > suggested ? 'over' : 'under'}',
+            label: AppStrings.suggestedWas(Fmt.quantity(suggested)),
+            value: AppStrings.portionDiff(
+              Fmt.quantity((recorded - suggested).abs()),
+              recorded > suggested,
+            ),
             tone: context.semantic.warning,
             icon: Icons.tune_rounded,
           ),
         ],
         const SizedBox(height: Insets.lg),
-        Text('Consumed', style: context.text.labelLarge),
+        Text(AppStrings.consumedSection, style: context.text.labelLarge),
         const SizedBox(height: Insets.sm),
         for (final component in event.components)
           Padding(
@@ -410,7 +436,9 @@ class _ProductionDetailBody extends StatelessWidget {
           ),
         const SizedBox(height: Insets.md),
         Text(
-          'Recorded ${Fmt.dayMonthTime(event.occurredAt.toLocal())}',
+          AppStrings.recordedAt(
+            Fmt.dayMonthTime(event.occurredAt.toLocal()),
+          ),
           style: context.text.bodySmall?.copyWith(
             color: context.colors.onSurfaceVariant,
           ),

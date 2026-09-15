@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../providers/preferences_provider.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/roles_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/staff_provider.dart';
@@ -67,8 +68,8 @@ class _AppPreferencesScreenState extends ConsumerState<AppPreferencesScreen> {
       // monitor puts its label and its switch a foot apart.
       maxContentWidth: 680,
       header: DetailPageHeader(
-        title: 'App preferences',
-        subtitle: 'How this app looks and behaves on this device',
+        title: AppStrings.appPreferencesTitle,
+        subtitle: AppStrings.appPreferencesSubtitle,
         onBack: () => context.canPop()
             ? context.pop()
             : context.goNamed(AppRoute.settingsName),
@@ -96,19 +97,19 @@ class _AppearancePanel extends ConsumerWidget {
   static const _options = <(ThemeMode, String, IconData, Key)>[
     (
       ThemeMode.light,
-      'Light',
+      AppStrings.themeLight,
       Icons.light_mode_rounded,
       AppPreferencesKeys.themeLight,
     ),
     (
       ThemeMode.dark,
-      'Dark',
+      AppStrings.themeDark,
       Icons.dark_mode_rounded,
       AppPreferencesKeys.themeDark,
     ),
     (
       ThemeMode.system,
-      'System',
+      AppStrings.themeSystem,
       Icons.brightness_auto_rounded,
       AppPreferencesKeys.themeSystem,
     ),
@@ -119,7 +120,7 @@ class _AppearancePanel extends ConsumerWidget {
     final mode = ref.watch(themeModeProvider);
 
     return DetailPanel(
-      title: 'Appearance',
+      title: AppStrings.appearancePanel,
       trailing: tick('theme'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -144,9 +145,10 @@ class _AppearancePanel extends ConsumerWidget {
           const SizedBox(height: Insets.sm),
           Text(
             mode == ThemeMode.system
-                ? 'Following this device\'s light/dark setting'
-                : 'Always ${mode == ThemeMode.light ? 'light' : 'dark'}, '
-                      'whatever the device is set to',
+                ? AppStrings.followingDeviceTheme
+                : mode == ThemeMode.light
+                ? AppStrings.alwaysLight
+                : AppStrings.alwaysDark,
             style: context.text.bodySmall?.copyWith(
               color: context.colors.onSurfaceVariant,
             ),
@@ -173,15 +175,15 @@ class _NotificationsPanel extends ConsumerWidget {
     final notifier = ref.read(notificationPrefsProvider.notifier);
 
     return DetailPanel(
-      title: 'Notifications',
+      title: AppStrings.notificationsPanel,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
           SettingSwitchTile(
             switchKey: AppPreferencesKeys.lowStock,
-            title: 'Low stock alerts',
-            subtitle: 'Warn when a line drops below its reorder level',
+            title: AppStrings.lowStockAlerts,
+            subtitle: AppStrings.lowStockAlertsHelper,
             value: prefs.lowStock,
             trailing: tick('lowStock'),
             onChanged: (value) {
@@ -192,8 +194,8 @@ class _NotificationsPanel extends ConsumerWidget {
           const SizedBox(height: Insets.md),
           SettingSwitchTile(
             switchKey: AppPreferencesKeys.orderSounds,
-            title: 'New order sounds',
-            subtitle: 'Chime when a ticket lands at this terminal',
+            title: AppStrings.newOrderSounds,
+            subtitle: AppStrings.newOrderSoundsHelper,
             value: prefs.orderSounds,
             trailing: tick('orderSounds'),
             onChanged: (value) {
@@ -204,8 +206,8 @@ class _NotificationsPanel extends ConsumerWidget {
           const SizedBox(height: Insets.md),
           SettingSwitchTile(
             switchKey: AppPreferencesKeys.dailySummary,
-            title: 'Daily summary email',
-            subtitle: 'Yesterday\'s takings, sent each morning',
+            title: AppStrings.dailySummaryEmail,
+            subtitle: AppStrings.dailySummaryHelper,
             value: prefs.dailySummary,
             trailing: tick('dailySummary'),
             onChanged: (value) {
@@ -235,14 +237,14 @@ class _DisplayPanel extends ConsumerWidget {
     final language = ref.watch(appLanguageProvider);
 
     return DetailPanel(
-      title: 'Display',
+      title: AppStrings.displayPanel,
       trailing: tick('display'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Table density',
+            AppStrings.tableDensityLabel,
             style: context.text.labelLarge?.copyWith(
               color: context.colors.onSurface,
             ),
@@ -275,8 +277,8 @@ class _DisplayPanel extends ConsumerWidget {
           ),
           const SizedBox(height: Insets.xl),
           LabeledFormField(
-            label: 'Language',
-            helper: 'More languages are on the way',
+            label: AppStrings.languageField,
+            helper: AppStrings.moreLanguages,
             child: DropdownButtonFormField<AppLanguage>(
               key: AppPreferencesKeys.language,
               initialValue: language,
@@ -314,7 +316,7 @@ class _AccountPanel extends ConsumerWidget {
         : ref.watch(roleByIdProvider(member.roleId));
 
     return DetailPanel(
-      title: 'Account',
+      title: AppStrings.accountPanel2,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -325,7 +327,7 @@ class _AccountPanel extends ConsumerWidget {
                 radius: 21,
                 backgroundColor: colors.primaryContainer,
                 child: Text(
-                  _initials(member?.name ?? '?'),
+                  _initials(member?.name ?? AppStrings.unknownInitial),
                   style: context.text.titleSmall?.copyWith(
                     color: colors.onPrimaryContainer,
                     fontWeight: FontWeight.w700,
@@ -339,7 +341,7 @@ class _AccountPanel extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      member?.name ?? 'Not signed in',
+                      member?.name ?? AppStrings.notSignedIn,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: context.text.titleSmall,
@@ -376,7 +378,7 @@ class _AccountPanel extends ConsumerWidget {
               ),
             ),
             icon: const Icon(Icons.logout_rounded, size: 18),
-            label: const Text('Log out'),
+            label: const Text(AppStrings.logOut),
           ),
         ],
       ),
@@ -387,24 +389,23 @@ class _AccountPanel extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Log out?'),
+        title: const Text(AppStrings.logOutTitle),
         content: Text(
           name == null
-              ? 'You will need to sign in again to use this terminal.'
-              : '$name will be signed out of this terminal. Any open ticket '
-                    'stays on the till.',
+              ? AppStrings.logOutGeneric
+              : AppStrings.logOutNamed(name),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Stay signed in'),
+            child: const Text(AppStrings.staySignedIn),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: dialogContext.semantic.danger,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Log out'),
+            child: const Text(AppStrings.logOut),
           ),
         ],
       ),
@@ -417,7 +418,7 @@ class _AccountPanel extends ConsumerWidget {
     // becomes a call to the session notifier and a redirect to the PIN screen.
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Sign-out takes effect once accounts are connected'),
+        content: Text(AppStrings.signOutPending),
       ),
     );
   }

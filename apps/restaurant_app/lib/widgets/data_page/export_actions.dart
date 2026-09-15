@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../constants/app_durations.dart';
+import '../../constants/app_strings.dart';
 import '../../utils/export_helper.dart';
 import 'data_column_spec.dart';
 
@@ -23,7 +25,7 @@ List<Widget> exportActions({
         height: 40,
         width: 40,
         child: IconButton(
-          tooltip: 'Export PDF',
+          tooltip: AppStrings.exportPdf,
           padding: EdgeInsets.zero,
           iconSize: 20,
           onPressed: busy ? null : onExportPdf,
@@ -40,7 +42,7 @@ List<Widget> exportActions({
         height: 40,
         width: 40,
         child: IconButton(
-          tooltip: 'Export Excel',
+          tooltip: AppStrings.exportExcel,
           padding: EdgeInsets.zero,
           iconSize: 20,
           onPressed: busy ? null : onExportExcel,
@@ -60,12 +62,12 @@ List<Widget> exportActions({
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : const Icon(Icons.picture_as_pdf_outlined, size: 18),
-      label: const Text('Export PDF'),
+      label: const Text(AppStrings.exportPdf),
     ),
     OutlinedButton.icon(
       onPressed: busy ? null : onExportExcel,
       icon: const Icon(Icons.table_view_outlined, size: 18),
-      label: const Text('Export Excel'),
+      label: const Text(AppStrings.exportExcel),
     ),
   ];
 }
@@ -124,11 +126,13 @@ Future<void> runExport<T>({
           ? null
           : Theme.of(context).colorScheme.errorContainer,
       // Long enough to read a path off, and to reach the copy action.
-      duration: Duration(seconds: result.ok ? 10 : 6),
+      duration: result.ok
+          ? AppDurations.exportSnackbarOk
+          : AppDurations.exportSnackbarError,
       action: path == null
           ? null
           : SnackBarAction(
-              label: 'Copy path',
+              label: AppStrings.copyPath,
               onPressed: () => Clipboard.setData(ClipboardData(text: path)),
             ),
     ),

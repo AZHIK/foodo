@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/inventory_item.dart';
+import '../../constants/app_strings.dart';
 import '../../models/store_location.dart';
 import '../../providers/store_locations_provider.dart';
 import '../../theme/app_theme.dart';
@@ -76,9 +77,12 @@ class _StockTransferDialogState extends ConsumerState<StockTransferDialog> {
   String? get _error {
     final amount = _amount;
     if (amount == null) return null;
-    if (amount == 0) return 'Enter an amount greater than zero';
+    if (amount == 0) return AppStrings.amountPositive;
     if (amount > widget.item.stock) {
-      return 'Only ${Fmt.quantity(widget.item.stock)} ${widget.item.unit} in stock';
+      return AppStrings.onlyInStock(
+        Fmt.quantity(widget.item.stock),
+        widget.item.unit,
+      );
     }
     return null;
   }
@@ -94,7 +98,6 @@ class _StockTransferDialogState extends ConsumerState<StockTransferDialog> {
     final note = _notes.text.trim();
     final amount = _amount ?? 0;
     final messenger = ScaffoldMessenger.of(context);
-    final amountLabel = '${Fmt.quantity(amount)} ${widget.item.unit}';
 
     setState(() => _submitting = true);
     try {
@@ -105,19 +108,30 @@ class _StockTransferDialogState extends ConsumerState<StockTransferDialog> {
         item: widget.item,
         quantity: amount,
         destinationStoreId: destination.id,
-        note: note.isEmpty ? 'To ${destination.name}' : 'To ${destination.name} · $note',
+        note: note.isEmpty
+            ? AppStrings.transferNoteTo(destination.name)
+            : AppStrings.transferNoteToWith(destination.name, note),
       );
       if (!mounted) return;
       Navigator.of(context).pop();
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$amountLabel of ${widget.item.name} transferred to ${destination.name}'),
+          content: Text(
+            AppStrings.transferDone(
+              Fmt.quantity(amount),
+              widget.item.unit,
+              widget.item.name,
+              destination.name,
+            ),
+          ),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      messenger.showSnackBar(SnackBar(content: Text('Could not transfer stock: $e')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.transferFailed(e))),
+      );
     }
   }
 
@@ -131,20 +145,20 @@ class _StockTransferDialogState extends ConsumerState<StockTransferDialog> {
     final destination = _resolve(targets);
 
     return ResponsiveFormDialog(
-      title: 'Transfer stock',
+      title: AppStrings.transferStock,
       width: kStockDialogWidth,
       actions: [
         OutlinedButton(
           key: StockDialogKeys.cancel,
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text(AppStrings.cancel),
         ),
         FilledButton(
           key: StockDialogKeys.submit,
           onPressed: _canSubmit(destination)
               ? () => _submit(destination!)
               : null,
-          child: const Text('Transfer stock'),
+          child: const Text(AppStrings.transferStock),
         ),
       ],
       child: Column(
@@ -154,14 +168,14 @@ class _StockTransferDialogState extends ConsumerState<StockTransferDialog> {
           const SizedBox(height: Insets.xl),
 
           LabeledFormField(
-            label: 'Transfer to',
+            label: AppStrings.transferTo,
             isRequired: true,
-            helper: 'Moving out of ${currentStore?.name ?? 'this store'}',
+            helper: AppStrings.movingOutOf(currentStore?.name),
             child: DropdownButtonFormField<StoreLocation>(
               key: StockDialogKeys.destination,
               initialValue: destination,
               isExpanded: true,
-              hint: const Text('Select a location'),
+              hint: const Text(AppStrings.selectLocation),
               items: [
                 for (final location in targets)
                   DropdownMenuItem(
@@ -181,14 +195,14 @@ class _StockTransferDialogState extends ConsumerState<StockTransferDialog> {
           StockQuantityField(
             controller: _quantity,
             item: item,
-            label: 'Quantity to transfer',
+            label: AppStrings.quantityToTransfer,
             errorText: _error,
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: Insets.md),
 
           StockPreviewLine(
-            label: 'Remaining at this store',
+            label: AppStrings.remainingAtStore,
             value: '${Fmt.quantity(_newLevel)} ${item.unit}',
             tone: context.semantic.warning,
             icon: Icons.swap_horiz_rounded,
@@ -197,7 +211,7 @@ class _StockTransferDialogState extends ConsumerState<StockTransferDialog> {
 
           StockNotesField(
             controller: _notes,
-            hint: 'e.g. covering their Friday service',
+            hint: AppStrings.transferNotesHint,
           ),
         ],
       ),

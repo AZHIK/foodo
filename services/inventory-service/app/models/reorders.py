@@ -109,6 +109,7 @@ class Reorder(SQLModel, table=True):
         sa_column=Column(
             SAEnum(ReorderStatus, values_callable=_enum_db_values, name="reorderstatus"),
             nullable=False,
+            index=True,
         ),
     )
     notes: str | None = Field(default=None, max_length=1000)

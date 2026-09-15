@@ -27,6 +27,7 @@ library;
 import 'package:decimal/decimal.dart';
 
 import '../database/app_database.dart';
+import '../constants/app_limits.dart';
 import '../models/inventory_item.dart';
 
 /// Fallback shown when [catalogRow.unitId] doesn't resolve against the
@@ -39,7 +40,9 @@ const _unresolvedUnitAbbreviation = 'ea';
 /// left blank (the UI treats `sku` as always-present).
 String _displaySku(String itemId) {
   final compact = itemId.replaceAll('-', '');
-  return compact.length >= 8 ? compact.substring(0, 8).toUpperCase() : compact.toUpperCase();
+  return compact.length >= AppLimits.shortIdLength
+      ? compact.substring(0, AppLimits.shortIdLength).toUpperCase()
+      : compact.toUpperCase();
 }
 
 double _toDouble(Decimal? value) => value == null ? 0 : double.parse(value.toString());

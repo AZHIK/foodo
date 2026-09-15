@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../constants/app_strings.dart';
 import '../../models/order.dart';
 import '../../providers/orders_provider.dart';
 import '../../theme/breakpoints.dart';
@@ -23,7 +24,7 @@ class SalesFilterPanel extends ConsumerWidget {
         // The same control as the page header, driving the same state — so
         // changing the period here updates the header chip, and vice versa.
         const FilterSection(
-          title: 'Date range',
+          title: AppStrings.dateRangeFilter,
           child: Align(
             alignment: Alignment.centerLeft,
             child: SalesDateRangeSelector(filled: false),
@@ -31,7 +32,7 @@ class SalesFilterPanel extends ConsumerWidget {
         ),
         const SizedBox(height: Insets.xl),
         FilterSection(
-          title: 'Payment method',
+          title: AppStrings.paymentMethodFilter,
           child: FilterChipGroup<PaymentType>(
             options: PaymentType.values,
             selected: filters.payments,
@@ -41,7 +42,7 @@ class SalesFilterPanel extends ConsumerWidget {
         ),
         const SizedBox(height: Insets.xl),
         FilterSection(
-          title: 'Status',
+          title: AppStrings.statusFilter,
           child: FilterChipGroup<OrderStatus>(
             options: OrderStatus.values,
             selected: filters.statuses,

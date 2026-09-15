@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../constants/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
@@ -126,13 +127,21 @@ class _NumberRangeFieldState extends State<NumberRangeField> {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: _field(_min, 'Min', '0')),
+        Expanded(
+          child: _field(_min, AppStrings.rangeMin, AppStrings.quantityHint),
+        ),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: Insets.md),
-          child: Text('–'),
+          child: Text(AppStrings.rangeSeparator),
         ),
         Expanded(
-          child: _field(_max, 'Max', widget.ceiling != null ? Fmt.quantity(widget.ceiling!) : ''),
+          child: _field(
+            _max,
+            AppStrings.rangeMax,
+            widget.ceiling != null
+                ? Fmt.quantity(widget.ceiling!)
+                : '',
+          ),
         ),
       ],
     );

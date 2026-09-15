@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../constants/app_durations.dart';
+import '../constants/app_strings.dart';
 import '../providers/cart_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
@@ -94,13 +96,13 @@ class _CashTenderPanelState extends ConsumerState<CashTenderPanel> {
           ],
           style: context.text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
           decoration: InputDecoration(
-            labelText: 'Amount tendered',
+            labelText: AppStrings.amountTendered,
             prefixText: '${Fmt.currencySymbol} ',
             hintText: Fmt.editableAmount(totals.total),
             suffixIcon: tendered == null
                 ? null
                 : IconButton(
-                    tooltip: 'Clear',
+                    tooltip: AppStrings.clear,
                     icon: const Icon(Icons.backspace_outlined, size: 18),
                     onPressed: () => cart.setAmountTendered(null),
                   ),
@@ -142,10 +144,10 @@ class _QuickAmounts extends ConsumerWidget {
       children: [
         for (final amount in amounts)
           _QuickChip(
-            label: '+${Fmt.money(amount)}',
+            label: AppStrings.quickChip(Fmt.money(amount)),
             onTap: () => cart.addTender(amount),
           ),
-        _QuickChip(label: 'Exact', emphasis: true, onTap: cart.tenderExact),
+        _QuickChip(label: AppStrings.exactChip, emphasis: true, onTap: cart.tenderExact),
       ],
     );
   }
@@ -235,13 +237,13 @@ class _ChangeCallout extends StatelessWidget {
       (final owing?, _) => (
         semantic.warningContainer,
         semantic.warning,
-        'Still owing',
+        AppStrings.stillOwing,
         Fmt.money(owing),
       ),
       (_, final due?) => (
         semantic.successContainer,
         semantic.success,
-        'Change due',
+        AppStrings.changeDue,
         Fmt.money(due),
       ),
       // Nothing keyed in yet: hold the space so the dialog does not jump when
@@ -249,13 +251,13 @@ class _ChangeCallout extends StatelessWidget {
       _ => (
         colors.surfaceContainerHighest,
         colors.onSurfaceVariant,
-        'Change due',
-        '—',
+        AppStrings.changeDue,
+        AppStrings.emDash,
       ),
     };
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
+      duration: AppDurations.snappy,
       padding: const EdgeInsets.symmetric(
         horizontal: Insets.lg,
         vertical: Insets.md,

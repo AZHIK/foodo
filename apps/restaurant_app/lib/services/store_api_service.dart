@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../auth/auth_dtos.dart';
+import '../constants/api_paths.dart';
 
 /// API client for store management operations.
 ///
@@ -16,7 +17,6 @@ class StoreApiService {
   const StoreApiService({required Dio dio}) : _dio = dio;
 
   final Dio _dio;
-  static const _apiPrefix = '/businesses';
 
   /// List all stores for a business.
   ///
@@ -26,7 +26,7 @@ class StoreApiService {
     required String businessId,
   }) async {
     try {
-      final response = await _dio.get('$_apiPrefix/$businessId/stores');
+      final response = await _dio.get(IdentityApiPaths.businessStores(businessId));
       final data = response.data as List<dynamic>;
       return data
           .map((store) => StoreReadDto.fromJson(store as Map<String, dynamic>))
@@ -42,7 +42,9 @@ class StoreApiService {
     required String storeId,
   }) async {
     try {
-      final response = await _dio.get('$_apiPrefix/$businessId/stores/$storeId');
+      final response = await _dio.get(
+        IdentityApiPaths.store(businessId, storeId),
+      );
       return StoreReadDto.fromJson(response.data as Map<String, dynamic>);
     } catch (e) {
       rethrow;
@@ -87,7 +89,7 @@ class StoreApiService {
       };
 
       final response = await _dio.post(
-        '$_apiPrefix/$businessId/stores',
+        IdentityApiPaths.businessStores(businessId),
         data: payload,
       );
       return StoreReadDto.fromJson(response.data as Map<String, dynamic>);
@@ -124,7 +126,7 @@ class StoreApiService {
       };
 
       final response = await _dio.patch(
-        '$_apiPrefix/$businessId/stores/$storeId',
+        IdentityApiPaths.store(businessId, storeId),
         data: payload,
       );
       return StoreReadDto.fromJson(response.data as Map<String, dynamic>);
@@ -143,7 +145,7 @@ class StoreApiService {
     required String storeId,
   }) async {
     try {
-      await _dio.delete('$_apiPrefix/$businessId/stores/$storeId');
+      await _dio.delete(IdentityApiPaths.store(businessId, storeId));
       return true;
     } catch (e) {
       rethrow;
@@ -159,7 +161,7 @@ class StoreApiService {
   }) async {
     try {
       final response = await _dio.get(
-        '$_apiPrefix/$businessId/stores/$storeId/settings',
+        IdentityApiPaths.storeSettings(businessId, storeId),
       );
       return StoreSettingReadDto.fromJson(response.data as Map<String, dynamic>);
     } catch (e) {
@@ -208,7 +210,7 @@ class StoreApiService {
       };
 
       final response = await _dio.patch(
-        '$_apiPrefix/$businessId/stores/$storeId/settings',
+        IdentityApiPaths.storeSettings(businessId, storeId),
         data: payload,
       );
       return StoreSettingReadDto.fromJson(response.data as Map<String, dynamic>);
@@ -242,7 +244,7 @@ class StoreApiService {
       };
 
       await _dio.post(
-        '$_apiPrefix/$businessId/stores/$storeId/staff',
+        IdentityApiPaths.storeStaff(businessId, storeId),
         data: payload,
       );
     } catch (e) {
@@ -261,7 +263,7 @@ class StoreApiService {
   }) async {
     try {
       final response = await _dio.get(
-        '$_apiPrefix/$businessId/stores/$storeId/staff',
+        IdentityApiPaths.storeStaff(businessId, storeId),
       );
       return List<Map<String, dynamic>>.from(response.data as List<dynamic>);
     } catch (e) {
@@ -280,7 +282,7 @@ class StoreApiService {
   }) async {
     try {
       await _dio.delete(
-        '$_apiPrefix/$businessId/stores/$storeId/staff/$userId/roles/$roleId',
+        IdentityApiPaths.storeStaffRole(businessId, storeId, userId, roleId),
       );
     } catch (e) {
       rethrow;

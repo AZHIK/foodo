@@ -6,6 +6,7 @@ library;
 
 import 'package:dio/dio.dart';
 
+import '../constants/api_paths.dart';
 import '../sync/suppliers_catalog_api.dart' show SupplierDto;
 
 /// Thrown when the backend rejects a supplier write.
@@ -57,7 +58,7 @@ class SupplierApiService {
   }) async {
     try {
       final response = await _dio.post(
-        '/businesses/$businessId/suppliers',
+        InventoryApiPaths.suppliers(businessId),
         data: {
           'name': name,
           if (phone != null) 'phone': phone,
@@ -85,7 +86,7 @@ class SupplierApiService {
   }) async {
     try {
       final response = await _dio.patch(
-        '/businesses/$businessId/suppliers/$supplierId',
+        InventoryApiPaths.supplier(businessId, supplierId),
         data: {
           if (name != null) 'name': name,
           if (phone != null) 'phone': phone,
@@ -106,7 +107,7 @@ class SupplierApiService {
     required String supplierId,
   }) async {
     try {
-      await _dio.delete('/businesses/$businessId/suppliers/$supplierId');
+      await _dio.delete(InventoryApiPaths.supplier(businessId, supplierId));
     } on DioException catch (e) {
       _rethrowAsSupplierError(e);
     }

@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../data/mock_finance.dart';
+import '../constants/app_limits.dart';
 import '../database/app_database.dart';
 import '../models/finance_attachment.dart';
 import '../models/order.dart';
@@ -333,7 +334,7 @@ final otherIncomesListProvider = Provider<List<OtherIncome>>(
 
 final otherIncomesQueryProvider = NotifierProvider<TableQueryNotifier, TableQuery>(
   () => TableQueryNotifier(
-    const TableQuery(sortField: OtherIncomeSort.date, ascending: false, pageSize: 8),
+    const TableQuery(sortField: OtherIncomeSort.date, ascending: false, pageSize: AppLimits.tablePageSizeDense),
   ),
 );
 

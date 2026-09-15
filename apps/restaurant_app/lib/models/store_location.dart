@@ -1,15 +1,16 @@
 import 'package:flutter/foundation.dart';
 
 import '../auth/auth_dtos.dart';
+import '../constants/app_strings.dart';
 
 /// Location type from backend.
 enum LocationType {
-  headOffice('head_office', 'Head Office'),
-  restaurantBranch('restaurant_branch', 'Restaurant Branch'),
-  kitchen('kitchen', 'Kitchen'),
-  warehouse('warehouse', 'Warehouse'),
-  farm('farm', 'Farm'),
-  depot('depot', 'Depot');
+  headOffice('head_office', AppStrings.headOfficeType),
+  restaurantBranch('restaurant_branch', AppStrings.restaurantBranchType),
+  kitchen('kitchen', AppStrings.kitchenType),
+  warehouse('warehouse', AppStrings.warehouseType),
+  farm('farm', AppStrings.farmType),
+  depot('depot', AppStrings.depotType);
 
   const LocationType(this.backendValue, this.label);
 
@@ -152,7 +153,7 @@ class StoreLocation {
   final int staffCount;
 
   /// What the location list shows when no manager has been named.
-  static const unassignedManager = 'Unassigned';
+  static const unassignedManager = AppStrings.unassignedManager;
 
   /// Computed from status: true if status is active.
   bool get isActive => status.isActive;

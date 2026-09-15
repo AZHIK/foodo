@@ -4,12 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/inventory_item.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/production_provider.dart';
 import '../../services/inventory_api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
-import '../../utils/formatters.dart';
 import '../../widgets/dialogs/item_form_dialog.dart';
 import '../../widgets/labeled_form_field.dart';
 import '../../widgets/responsive_form_dialog.dart';
@@ -144,11 +144,11 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
     for (final row in filled) {
       final qty = parseQuantity(row.qtyController.text);
       if (qty == null || qty <= 0) {
-        return 'Every ingredient needs an amount greater than zero';
+        return AppStrings.everyIngredientPositive;
       }
     }
     if (_duplicateId() != null) {
-      return 'Each ingredient only once — change the amount instead';
+      return AppStrings.ingredientOnce;
     }
     return null;
   }
@@ -199,17 +199,13 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
       Navigator.of(context).pop();
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
-            recipeId == null
-                ? '${saved.name} recipe added'
-                : '${saved.name} recipe saved',
-          ),
+          content: Text(AppStrings.recipeSaved(saved.name, recipeId != null)),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+      messenger.showSnackBar(SnackBar(content: Text(AppStrings.saveFailed(e))));
     }
   }
 
@@ -219,20 +215,21 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete this recipe?'),
+        title: const Text(AppStrings.deleteRecipeTitle),
         content: Text(
-          'The ${recipe.name} recipe and its ${recipe.components.length} '
-          'ingredient lines will be removed. Recorded production runs keep '
-          'their history. This cannot be undone.',
+          AppStrings.deleteRecipeBody(
+            recipe.name,
+            recipe.components.length,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep'),
+            child: const Text(AppStrings.keepAction),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: const Text(AppStrings.deleteAction),
           ),
         ],
       ),
@@ -246,14 +243,16 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
       if (!mounted) return;
       Navigator.of(context).pop();
       messenger.showSnackBar(
-        SnackBar(content: Text('${recipe.name} recipe deleted')),
+        SnackBar(content: Text(AppStrings.recipeDeletedLine(recipe.name))),
       );
     } catch (e) {
       // A 409 here names the blocker ("production events were recorded
       // against it") — shown verbatim like every other backend message.
       if (!mounted) return;
       setState(() => _deleting = false);
-      messenger.showSnackBar(SnackBar(content: Text('Could not delete: $e')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.deleteFailed(e))),
+      );
     }
   }
 
@@ -262,14 +261,14 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
     final isEdit = widget.isEdit;
 
     return ResponsiveFormDialog(
-      title: isEdit ? 'Edit recipe' : 'Add recipe',
+      title: isEdit ? AppStrings.editRecipeTitle : AppStrings.addRecipeTitle,
       // Same width as the item form — recipe editing reads as family.
       width: ItemFormDialog.dialogWidth,
       actions: [
         OutlinedButton(
           key: RecipeFormKeys.cancel,
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text(AppStrings.cancel),
         ),
         if (isEdit)
           TextButton(
@@ -278,12 +277,14 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
             style: TextButton.styleFrom(
               foregroundColor: context.semantic.warning,
             ),
-            child: const Text('Delete'),
+            child: const Text(AppStrings.deleteAction),
           ),
         FilledButton(
           key: RecipeFormKeys.submit,
           onPressed: _canSubmit ? _submit : null,
-          child: Text(isEdit ? 'Save changes' : 'Add recipe'),
+          child: Text(
+            isEdit ? AppStrings.saveChanges : AppStrings.addRecipeAction,
+          ),
         ),
       ],
       child: Column(
@@ -292,8 +293,8 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
         children: [
           if (!isEdit) ...[
             LabeledFormField(
-              label: 'Menu item',
-              helper: 'What this recipe produces',
+              label: AppStrings.menuItemProduces,
+              helper: AppStrings.recipeProducesHelper,
               isRequired: true,
               child: Builder(
                 builder: (context) {
@@ -307,7 +308,7 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
                     key: RecipeFormKeys.sellable,
                     initialValue: initial,
                     isExpanded: true,
-                    hint: const Text('Select'),
+                    hint: const Text(AppStrings.selectHint),
                     items: [
                       for (final item in sellables)
                         DropdownMenuItem(
@@ -328,21 +329,22 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
             const SizedBox(height: Insets.lg),
           ],
           LabeledFormField(
-            label: 'Recipe name',
+            label: AppStrings.recipeName,
             helper: isEdit
-                ? 'Shown on production runs'
-                : 'Defaults to the menu item\u2019s name',
+                ? AppStrings.recipeNameHelper
+                : AppStrings.recipeNameDefault,
             child: TextFormField(
               key: RecipeFormKeys.name,
               controller: _name,
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(hintText: 'e.g. Pilau'),
+              decoration:
+                  const InputDecoration(hintText: AppStrings.recipeNameExample),
             ),
           ),
           const SizedBox(height: Insets.xl),
           _SectionHeader(
-            title: 'Ingredients',
+            title: AppStrings.ingredientsSection,
             onAdd: () => setState(() => _rows.add(_IngredientRow())),
           ),
           const SizedBox(height: Insets.md),
@@ -392,7 +394,7 @@ class _SectionHeader extends StatelessWidget {
           key: RecipeFormKeys.addIngredient,
           onPressed: onAdd,
           icon: const Icon(Icons.add_rounded, size: 16),
-          label: const Text('Add'),
+          label: const Text(AppStrings.addIngredient),
         ),
       ],
     );
@@ -433,13 +435,13 @@ class _IngredientEditor extends StatelessWidget {
             key: RecipeFormKeys.ingredientItem(index),
             initialValue: selected?.catalogItemId,
             isExpanded: true,
-            hint: const Text('Ingredient'),
+            hint: const Text(AppStrings.ingredientHint),
             items: [
               for (final item in ingredients)
                 DropdownMenuItem(
                   value: item.catalogItemId,
                   child: Text(
-                    '${item.name} (${item.unit})',
+                    AppStrings.ingredientOption(item.name, item.unit),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -462,7 +464,7 @@ class _IngredientEditor extends StatelessWidget {
               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
             ],
             decoration: InputDecoration(
-              hintText: '0',
+              hintText: AppStrings.quantityHint,
               suffixText: selected?.unit,
             ),
             onChanged: (_) => onChanged(),
@@ -471,7 +473,7 @@ class _IngredientEditor extends StatelessWidget {
         if (removable)
           IconButton(
             key: RecipeFormKeys.removeIngredient(index),
-            tooltip: 'Remove ingredient',
+            tooltip: AppStrings.removeIngredient,
             onPressed: onRemove,
             icon: const Icon(Icons.remove_circle_outline_rounded),
           ),

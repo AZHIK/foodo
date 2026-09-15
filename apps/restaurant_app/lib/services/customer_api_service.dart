@@ -7,6 +7,8 @@ library;
 
 import 'package:dio/dio.dart';
 
+import '../constants/api_paths.dart';
+
 /// Thrown when POS Service rejects a customer mutation (not found, already
 /// deleted, validation).
 class CustomerApiException implements Exception {
@@ -35,7 +37,7 @@ class CustomerApiService {
   }) async {
     try {
       await _dio.patch(
-        '/businesses/$businessId/customers/$customerId',
+        PosApiPaths.customer(businessId, customerId),
         data: {
           if (name != null) 'name': name,
           if (phone != null) 'phone': phone,
@@ -53,7 +55,7 @@ class CustomerApiService {
     required String customerId,
   }) async {
     try {
-      await _dio.delete('/businesses/$businessId/customers/$customerId');
+      await _dio.delete(PosApiPaths.customer(businessId, customerId));
     } on DioException catch (e) {
       throw _toException(e);
     }

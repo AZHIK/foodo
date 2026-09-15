@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/permission.dart';
+import '../constants/app_strings.dart';
 import '../providers/cart_provider.dart';
 import '../providers/permissions_provider.dart';
 import '../providers/settings_provider.dart';
@@ -40,18 +41,18 @@ const double _railCollapsedWidth = 76;
 /// [goRouterProvider].
 const _destinations = <NavDestinationSpec>[
   NavDestinationSpec(
-    label: 'Dashboard',
+    label: AppStrings.navDashboard,
     icon: Icons.dashboard_outlined,
     selectedIcon: Icons.dashboard_rounded,
   ),
   NavDestinationSpec(
-    label: 'POS',
+    label: AppStrings.navPos,
     icon: Icons.point_of_sale_outlined,
     selectedIcon: Icons.point_of_sale_rounded,
     requiredPermission: AppPermissions.posAccess,
   ),
   NavDestinationSpec(
-    label: 'Sales',
+    label: AppStrings.navSales,
     icon: Icons.receipt_long_outlined,
     selectedIcon: Icons.receipt_long_rounded,
     // `pos.view`, not the invented `sales.view` — this is what POS Service
@@ -59,67 +60,67 @@ const _destinations = <NavDestinationSpec>[
     requiredPermission: AppPermissions.posView,
   ),
   NavDestinationSpec(
-    label: 'Customers',
+    label: AppStrings.navCustomers,
     icon: Icons.people_alt_outlined,
     selectedIcon: Icons.people_alt_rounded,
     requiredPermission: AppPermissions.customersView,
   ),
   NavDestinationSpec(
-    label: 'Reorders',
+    label: AppStrings.navReorders,
     icon: Icons.shopping_cart_outlined,
     selectedIcon: Icons.shopping_cart_rounded,
     requiredPermission: AppPermissions.reordersView,
   ),
   NavDestinationSpec(
-    label: 'Production',
+    label: AppStrings.navProduction,
     icon: Icons.soup_kitchen_outlined,
     selectedIcon: Icons.soup_kitchen_rounded,
     requiredPermission: AppPermissions.productionView,
   ),
   NavDestinationSpec(
-    label: 'Suppliers',
+    label: AppStrings.navSuppliers,
     icon: Icons.storefront_outlined,
     selectedIcon: Icons.storefront_rounded,
     requiredPermission: AppPermissions.suppliersView,
   ),
   NavDestinationSpec(
-    label: 'Couriers',
+    label: AppStrings.navCouriers,
     icon: Icons.two_wheeler_outlined,
     selectedIcon: Icons.two_wheeler_rounded,
     requiredPermission: AppPermissions.couriersView,
   ),
   NavDestinationSpec(
-    label: 'Finance',
+    label: AppStrings.navFinance,
     icon: Icons.account_balance_wallet_outlined,
     selectedIcon: Icons.account_balance_wallet_rounded,
     requiredPermission: AppPermissions.financeView,
   ),
   NavDestinationSpec(
-    label: 'Reports',
+    label: AppStrings.navReports,
     icon: Icons.insights_outlined,
     selectedIcon: Icons.insights_rounded,
     requiredPermission: AppPermissions.reportsView,
   ),
   NavDestinationSpec(
-    label: 'Insights',
+    label: AppStrings.navInsights,
     icon: Icons.auto_awesome_outlined,
     selectedIcon: Icons.auto_awesome_rounded,
     requiredPermission: AppPermissions.insightsView,
   ),
   NavDestinationSpec(
-    label: 'Inventory',
+    label: AppStrings.navInventory,
     icon: Icons.inventory_2_outlined,
     selectedIcon: Icons.inventory_2_rounded,
     requiredPermission: AppPermissions.inventoryView,
   ),
   NavDestinationSpec(
-    label: 'Staff',
+    label: AppStrings.navStaff,
     icon: Icons.groups_outlined,
     selectedIcon: Icons.groups_rounded,
     requiredPermission: AppPermissions.staffView,
   ),
   NavDestinationSpec(
-    label: 'Settings',
+    label: AppStrings.navSettings,
     icon: Icons.settings_outlined,
     selectedIcon: Icons.settings_rounded,
     requiredPermission: AppPermissions.settingsStore,
@@ -292,8 +293,8 @@ class _BottomNav extends ConsumerWidget {
           const NavigationDestination(
             icon: Icon(Icons.more_horiz_rounded),
             selectedIcon: Icon(Icons.more_horiz_rounded),
-            label: 'More',
-            tooltip: 'More destinations',
+            label: AppStrings.navMore,
+            tooltip: AppStrings.navMoreDestinations,
           ),
         ],
       ),
@@ -318,7 +319,7 @@ class _BottomNav extends ConsumerWidget {
                 Insets.sm,
               ),
               child: Text(
-                'Go to',
+                AppStrings.navGoTo,
                 style: Theme.of(sheetContext).textTheme.titleMedium,
               ),
             ),
@@ -439,9 +440,9 @@ class _SideRail extends ConsumerWidget {
         padding: const EdgeInsets.only(bottom: Insets.lg, top: Insets.sm),
         child: IconButton(
           tooltip: switch (themeMode) {
-            ThemeMode.system => 'Theme: follow system',
-            ThemeMode.light => 'Theme: light',
-            ThemeMode.dark => 'Theme: dark',
+            ThemeMode.system => AppStrings.themeFollowSystem,
+            ThemeMode.light => AppStrings.themeLight,
+            ThemeMode.dark => AppStrings.themeDark,
           },
           onPressed: () => ref.read(themeModeProvider.notifier).cycle(),
           icon: Icon(switch (themeMode) {
@@ -492,9 +493,9 @@ class _ThemeToggleTile extends ConsumerWidget {
         ThemeMode.dark => Icons.dark_mode_rounded,
       }),
       title: Text(switch (themeMode) {
-        ThemeMode.system => 'Follow system',
-        ThemeMode.light => 'Light theme',
-        ThemeMode.dark => 'Dark theme',
+        ThemeMode.system => AppStrings.followSystem,
+        ThemeMode.light => AppStrings.lightTheme,
+        ThemeMode.dark => AppStrings.darkTheme,
       }),
       onTap: () => ref.read(themeModeProvider.notifier).cycle(),
     );

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../constants/app_durations.dart';
+import '../constants/app_strings.dart';
 import '../theme/app_theme.dart';
 import '../theme/breakpoints.dart';
 
@@ -24,8 +26,8 @@ class SavedTick extends StatefulWidget {
 }
 
 class _SavedTickState extends State<SavedTick> {
-  static const _hold = Duration(milliseconds: 1400);
-  static const _fade = Duration(milliseconds: 220);
+  static const _hold = AppDurations.savedTickHold;
+  static const _fade = AppDurations.screen;
 
   bool _shown = false;
 
@@ -79,7 +81,7 @@ class _SavedTickState extends State<SavedTick> {
           const SizedBox(width: Insets.xs),
           Flexible(
             child: Text(
-              'Saved',
+              AppStrings.savedTick,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: context.text.labelSmall?.copyWith(

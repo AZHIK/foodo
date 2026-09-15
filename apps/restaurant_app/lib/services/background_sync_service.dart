@@ -10,6 +10,7 @@
 library;
 
 import 'package:workmanager/workmanager.dart';
+import '../constants/app_durations.dart';
 import '../database/database_connection.dart';
 import '../database/encryption_key_service.dart';
 import '../database/app_database.dart';
@@ -23,7 +24,7 @@ void registerBackgroundSync() {
   Workmanager().registerPeriodicTask(
     'pos-sync',
     'posSyncTask',
-    frequency: const Duration(minutes: 15),
+    frequency: AppDurations.backgroundSyncInterval,
   );
 }
 

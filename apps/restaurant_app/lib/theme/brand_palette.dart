@@ -18,6 +18,20 @@ abstract final class BrandPalette {
     BrandSwatch('Espresso', Color(0xFF5B3A21)),
   ];
 
+  /// Second-tier hues for the "custom" picker — a real colour wheel is a
+  /// dependency this build does not carry, so "custom" offers more choices
+  /// rather than pretending to be an eyedropper.
+  static const extras = <BrandSwatch>[
+    BrandSwatch('Teal', Color(0xFF0F766E)),
+    BrandSwatch('Green', Color(0xFF166534)),
+    BrandSwatch('Rust', Color(0xFF9A3412)),
+    BrandSwatch('Purple', Color(0xFF7E22CE)),
+    BrandSwatch('Cyan', Color(0xFF0E7490)),
+    BrandSwatch('Crimson', Color(0xFF9F1239)),
+    BrandSwatch('Charcoal', Color(0xFF1F2937)),
+    BrandSwatch('Ochre', Color(0xFF854D0E)),
+  ];
+
   /// The swatch matching [color], or null when the business has been given a
   /// custom colour the presets do not cover.
   static BrandSwatch? match(Color color) {

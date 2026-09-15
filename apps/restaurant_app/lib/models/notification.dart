@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
+
 enum NotificationType {
-  newOrder('New Order', Icons.receipt_long_rounded),
-  lowStock('Low Stock', Icons.warning_amber_rounded),
-  aiInsight('AI Insight', Icons.auto_awesome_rounded),
-  deliveryUpdate('Delivery Update', Icons.two_wheeler_rounded);
+  newOrder(AppStrings.newOrderType, Icons.receipt_long_rounded),
+  lowStock(AppStrings.lowStockType, Icons.warning_amber_rounded),
+  aiInsight(AppStrings.aiInsightType, Icons.auto_awesome_rounded),
+  deliveryUpdate(AppStrings.deliveryUpdateType, Icons.two_wheeler_rounded);
 
   const NotificationType(this.label, this.icon);
   final String label;

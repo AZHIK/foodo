@@ -10,13 +10,14 @@
 library;
 
 import 'package:drift/drift.dart';
+import '../constants/app_limits.dart';
 import '../database/app_database.dart';
 import 'pos_sync_api.dart';
 import 'sync_dtos.dart';
 
 /// Core sync engine for POS sales.
 class SyncService {
-  static const int _maxBatchSize = 50;
+  static const int _maxBatchSize = AppLimits.syncBatchSize;
 
   final AppDatabase _db;
   final PosSyncApi _api;

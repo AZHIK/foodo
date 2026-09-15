@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../constants/app_durations.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import 'shake.dart';
@@ -141,7 +142,7 @@ class _DigitBoxState extends State<_DigitBox> {
         : context.semantic.hairline;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 140),
+      duration: AppDurations.quick,
       curve: Curves.easeOut,
       decoration: BoxDecoration(
         // A filled box reads as done before you look at the digit in it, which

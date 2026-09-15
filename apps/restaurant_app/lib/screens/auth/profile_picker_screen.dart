@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/business_role.dart';
+import '../../constants/app_strings.dart';
 import '../../models/staff_member.dart';
 import '../../providers/session_provider.dart';
 import '../../router/app_router.dart';
@@ -56,15 +57,15 @@ class ProfilePickerScreen extends ConsumerWidget {
                           const Center(child: BrandMark(size: 52)),
                           const SizedBox(height: Insets.xl),
                           Text(
-                            'Who\'s working?',
+                            AppStrings.whoIsWorking,
                             textAlign: TextAlign.center,
                             style: context.text.headlineSmall,
                           ),
                           const SizedBox(height: Insets.xs),
                           Text(
                             profiles.isEmpty
-                                ? 'No one has signed in on this terminal yet'
-                                : 'Choose your profile to unlock the till',
+                                ? AppStrings.noSignInsYet
+                                : AppStrings.chooseProfile,
                             textAlign: TextAlign.center,
                             style: context.text.bodySmall?.copyWith(
                               color: context.colors.onSurfaceVariant,
@@ -76,7 +77,7 @@ class ProfilePickerScreen extends ConsumerWidget {
                           Center(
                             child: AuthLink(
                               key: ProfilePickerKeys.signInDifferently,
-                              label: 'Not your device? Sign in differently',
+                              label: AppStrings.signInDifferently,
                               icon: Icons.help_outline_rounded,
                               onPressed: () =>
                                   context.goNamed(AppRoute.loginName),
@@ -190,7 +191,7 @@ class _ProfileTile extends ConsumerWidget {
               const SizedBox(height: Insets.sm),
               Text(
                 member.lastActiveAt == null
-                    ? 'Not signed in yet'
+                    ? AppStrings.notSignedInYet
                     : Fmt.relativeDateTime(member.lastActiveAt!),
                 textAlign: TextAlign.center,
                 maxLines: 1,
@@ -258,7 +259,7 @@ class _AddAccountTile extends StatelessWidget {
               ),
               const SizedBox(height: Insets.md),
               Text(
-                'Add account',
+                AppStrings.addAccount,
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -266,7 +267,7 @@ class _AddAccountTile extends StatelessWidget {
               ),
               const SizedBox(height: Insets.sm),
               Text(
-                'Sign in with a phone number',
+                AppStrings.addAccountSubtitle,
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

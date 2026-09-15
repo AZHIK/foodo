@@ -8,6 +8,8 @@
 library;
 
 import 'package:dio/dio.dart';
+import '../constants/api_paths.dart';
+import '../constants/app_durations.dart';
 import '../database/local_profile_repository.dart';
 import 'identity_service_api.dart';
 import 'permissions_cache_sync.dart';
@@ -35,11 +37,7 @@ class TokenRefreshInterceptor extends Interceptor {
   /// token expiry (wrong OTP code, wrong password) — refreshing and
   /// retrying these would just resend the same bad credentials and get
   /// the same 401 back, wasting a round-trip on every failed attempt.
-  static const _publicAuthPaths = [
-    '/auth/otp/verify',
-    '/auth/login/password',
-    '/auth/platform/login',
-  ];
+  static const _publicAuthPaths = IdentityApiPaths.publicAuthPaths;
 
   // Lock to prevent multiple simultaneous refresh attempts.
   bool _isRefreshing = false;
@@ -57,9 +55,9 @@ class TokenRefreshInterceptor extends Interceptor {
     // This prevents reentrancy if the refresh call itself fails.
     final bareDio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 30),
-      sendTimeout: const Duration(seconds: 30),
+      connectTimeout: AppDurations.connectTimeout,
+      receiveTimeout: AppDurations.receiveTimeout,
+      sendTimeout: AppDurations.sendTimeout,
     ));
     _api = IdentityServiceApi(dio: bareDio);
   }
@@ -138,7 +136,7 @@ class TokenRefreshInterceptor extends Interceptor {
     try {
       final output = await _api.refreshAccessToken(refreshToken);
       final expiresAt = DateTime.now().add(
-        Duration(seconds: 900), // Assume 15-min TTL (env config default)
+        AppDurations.sessionLifetime, // Assume 15-min TTL (env config default)
       );
 
       // Get the current token set to extract the userId for per-user storage.

@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
+
 /// A picked product photo, held in memory.
 ///
 /// Bytes rather than a path because the app runs on web as well as desktop and
@@ -24,9 +26,9 @@ class ItemImage {
 /// Derived from stock rather than stored, so it can never disagree with the
 /// number next to it in the table.
 enum StockStatus {
-  inStock('In stock'),
-  lowStock('Low stock'),
-  outOfStock('Out of stock');
+  inStock(AppStrings.inStockStatus),
+  lowStock(AppStrings.lowStockStatus),
+  outOfStock(AppStrings.outOfStockStatus);
 
   const StockStatus(this.label);
   final String label;

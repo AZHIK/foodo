@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/activity_entry.dart';
+import '../../constants/app_limits.dart';
+import '../../constants/app_strings.dart';
 import '../../models/inventory_item.dart';
 import '../../providers/dashboard_metrics_provider.dart';
 import '../../providers/inventory_provider.dart';
@@ -136,9 +138,9 @@ class _GreetingHeader extends ConsumerWidget {
 
     final hour = DateTime.now().hour;
     final greeting = switch (hour) {
-      < 12 => 'Good morning',
-      < 18 => 'Good afternoon',
-      _ => 'Good evening',
+      < 12 => AppStrings.goodMorning,
+      < 18 => AppStrings.goodAfternoon,
+      _ => AppStrings.goodEvening,
     };
     final firstName = user?.name.split(' ').first;
 
@@ -154,7 +156,9 @@ class _GreetingHeader extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    firstName == null ? greeting : '$greeting, $firstName',
+                    firstName == null
+                        ? greeting
+                        : AppStrings.greetingFor(greeting, firstName),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: context.text.headlineSmall?.copyWith(
@@ -186,7 +190,9 @@ class _GreetingHeader extends ConsumerWidget {
                                 ),
                               ),
                               TextSpan(
-                                text: ' · ${Fmt.longDate(DateTime.now())}',
+                                text: AppStrings.dateSuffix(
+                                  Fmt.longDate(DateTime.now()),
+                                ),
                               ),
                             ],
                           ),
@@ -208,7 +214,7 @@ class _GreetingHeader extends ConsumerWidget {
                     height: 40,
                     width: 40,
                     child: Tooltip(
-                      message: 'Open till',
+                      message: AppStrings.openTill,
                       child: Material(
                         color: colors.primary,
                         clipBehavior: Clip.antiAlias,
@@ -228,7 +234,7 @@ class _GreetingHeader extends ConsumerWidget {
                 : FilledButton.icon(
                     onPressed: () => context.goNamed(AppRoute.posName),
                     icon: const Icon(Icons.point_of_sale_rounded, size: 18),
-                    label: const Text('Open till'),
+                    label: const Text(AppStrings.openTill),
                   ),
           ],
         ),
@@ -257,45 +263,51 @@ class _KpiRow extends StatelessWidget {
     // Show only 3 key metrics on mobile, all 5 on desktop
     final allCards = <Widget>[
       ColorfulMetricCard(
-        label: "Today's sales",
+        label: AppStrings.todaySales,
         value: Fmt.moneyCompact(metrics.sales.current),
         icon: Icons.payments_outlined,
         family: palette.revenue,
         change: metrics.sales.change,
-        caption: 'vs ${Fmt.moneyCompact(metrics.sales.previous)} yesterday',
+        caption: AppStrings.vsYesterday(
+          Fmt.moneyCompact(metrics.sales.previous),
+        ),
       ),
       ColorfulMetricCard(
-        label: 'Orders today',
+        label: AppStrings.ordersToday,
         value: '${metrics.orders.current.round()}',
         icon: Icons.receipt_long_outlined,
         family: palette.orders,
         change: metrics.orders.change,
-        caption: '${metrics.orders.previous.round()} yesterday',
+        caption: AppStrings.yesterdayCount(
+          '${metrics.orders.previous.round()}',
+        ),
       ),
       ColorfulMetricCard(
-        label: 'Avg order value',
+        label: AppStrings.avgOrderValue,
         value: Fmt.money(metrics.averageOrderValue.current),
         icon: Icons.local_offer_outlined,
         family: palette.value,
         change: metrics.averageOrderValue.change,
-        caption: 'per ticket',
+        caption: AppStrings.perTicket,
       ),
       ColorfulMetricCard(
-        label: 'Staff on shift',
+        label: AppStrings.staffOnShift,
         value: '${metrics.staffOnShift}',
         icon: Icons.groups_outlined,
         family: palette.staff,
         // No period-on-period comparison exists for a headcount, so the card
         // carries a ratio instead of a fabricated percentage.
-        caption: 'of ${metrics.staffTotal} active',
+        caption: AppStrings.ofActive('${metrics.staffTotal}'),
       ),
       ColorfulMetricCard(
-        label: 'Net profit today',
+        label: AppStrings.netProfitToday,
         value: Fmt.moneyCompact(metrics.netProfit.current),
         icon: Icons.account_balance_wallet_outlined,
         family: palette.revenue,
         change: metrics.netProfit.change,
-        caption: 'vs ${Fmt.moneyCompact(metrics.netProfit.previous)} yesterday',
+        caption: AppStrings.vsYesterday(
+          Fmt.moneyCompact(metrics.netProfit.previous),
+        ),
       ),
     ];
 
@@ -343,8 +355,8 @@ class _ChartsRow extends StatelessWidget {
             : DashboardStyle.chartHeightDesktop;
 
         final revenue = _DashboardCard(
-          title: 'Revenue',
-          subtitle: 'Last 7 days',
+          title: AppStrings.revenueCard,
+          subtitle: AppStrings.last7DaysLabel,
           child: RevenueTrendChart(
             points: metrics.revenueSeries,
             height: chartHeight,
@@ -352,8 +364,8 @@ class _ChartsRow extends StatelessWidget {
         );
 
         final donut = _DashboardCard(
-          title: 'Sales by category',
-          subtitle: 'Last 7 days',
+          title: AppStrings.salesByCategory,
+          subtitle: AppStrings.last7DaysLabel,
           child: CategoryDonutChart(
             slices: metrics.categoryBreakdown,
             height: chartHeight,
@@ -400,13 +412,13 @@ class _SecondaryRow extends StatelessWidget {
             constraints.maxWidth >= DashboardScreen._secondarySideBySideMin;
 
         final top = _DashboardCard(
-          title: 'Top selling items',
-          subtitle: 'Last 7 days',
+          title: AppStrings.topSellingItems,
+          subtitle: AppStrings.last7DaysLabel,
           child: _TopItemsList(items: metrics.topItems),
         );
 
         final feed = _DashboardCard(
-          title: 'Recent activity',
+          title: AppStrings.recentActivityCard,
           child: ActivityTimeline(entries: activity),
         );
 
@@ -441,7 +453,7 @@ class _TopItemsList extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: Insets.lg),
         child: Text(
-          'No sales in the last 7 days.',
+          AppStrings.noSales7Days,
           style: context.text.bodySmall?.copyWith(
             color: context.colors.onSurfaceVariant,
           ),
@@ -449,7 +461,7 @@ class _TopItemsList extends StatelessWidget {
       );
     }
 
-    final shown = items.take(DashboardScreen._listLimit).toList();
+    final shown = items.take(AppLimits.dashboardListLimit).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -461,7 +473,7 @@ class _TopItemsList extends StatelessWidget {
             title: shown[i].name,
             leadingEmoji: shown[i].emoji,
             subtitle: Fmt.money(shown[i].revenue),
-            trailing: '${shown[i].units} sold',
+            trailing: AppStrings.unitsSold(shown[i].units),
             colorIndex: shown[i].colorIndex,
           ),
       ],

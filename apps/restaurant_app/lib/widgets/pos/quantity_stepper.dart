@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 
@@ -41,12 +42,12 @@ class QuantityStepper extends StatelessWidget {
             onTap: onDecrement,
             side: side,
             // Reaching zero deletes the line, so say so before it happens.
-            tooltip: quantity <= 1 ? 'Remove' : 'Decrease',
+            tooltip: quantity <= 1 ? AppStrings.remove : AppStrings.decrease,
           ),
           ConstrainedBox(
             constraints: BoxConstraints(minWidth: compact ? 20 : 26),
             child: Text(
-              '$quantity',
+              AppStrings.stepperQuantity(quantity),
               textAlign: TextAlign.center,
               style: (compact ? context.text.labelLarge : context.text.titleSmall)
                   ?.copyWith(fontWeight: FontWeight.w700),
@@ -56,7 +57,7 @@ class QuantityStepper extends StatelessWidget {
             icon: Icons.add_rounded,
             onTap: onIncrement,
             side: side,
-            tooltip: 'Increase',
+            tooltip: AppStrings.increase,
           ),
         ],
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/cart.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/cart_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
@@ -34,7 +35,7 @@ class CartLineItemTile extends ConsumerWidget {
 
     final stepper = readOnly
         ? Text(
-            '× ${line.quantity}',
+            AppStrings.cartLineQuantity(line.quantity),
             maxLines: 1,
             style: TextStyle(
               color: colors.onSurfaceVariant,
@@ -81,7 +82,7 @@ class CartLineItemTile extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${Fmt.money(line.item.price)} each',
+                AppStrings.cartLineEach(Fmt.money(line.item.price)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(

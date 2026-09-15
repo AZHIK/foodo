@@ -5,6 +5,8 @@ library;
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../constants/app_durations.dart';
+
 /// Holds access token, refresh token, and related metadata.
 class TokenSet {
   final String accessToken;
@@ -22,7 +24,7 @@ class TokenSet {
   bool get isExpired => DateTime.now().isAfter(expiresAt);
 
   bool get isExpiringSoon =>
-      DateTime.now().isAfter(expiresAt.subtract(const Duration(minutes: 5)));
+      DateTime.now().isAfter(expiresAt.subtract(AppDurations.tokenRefreshSkew));
 }
 
 /// Manages persistent storage of auth tokens via secure storage.

@@ -8,6 +8,7 @@ library;
 
 import 'package:dio/dio.dart';
 
+import '../constants/api_paths.dart';
 import 'categories_catalog_api.dart';
 
 /// HTTP client for fetching the category taxonomy from Inventory Service
@@ -20,7 +21,7 @@ class HttpCategoriesCatalogApi extends CategoriesCatalogApi {
   @override
   Future<List<CategoryDto>> fetchCategories() async {
     try {
-      final response = await _dio.get('/categories');
+      final response = await _dio.get(InventoryApiPaths.categories);
       final rows = (response.data as List<dynamic>).cast<Map<String, dynamic>>();
       return rows.map(_categoryFromJson).toList();
     } on DioException catch (e) {

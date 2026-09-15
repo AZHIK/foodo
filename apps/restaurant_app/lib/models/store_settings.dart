@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
 import 'order.dart';
 
 /// The currencies a venue can be configured in.
@@ -78,25 +79,11 @@ class DayHours {
 
 /// Weekday labels for the operating-hours list, Monday first — a trading week
 /// starts on Monday everywhere this app is likely to be installed.
-const kWeekdayNames = <String>[
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday',
-];
+/// Centralized in [AppStrings] (weekdayNames/weekdayShortNames) so a future
+/// localization pass translates them once.
+const kWeekdayNames = AppStrings.weekdayNames;
 
-const kWeekdayShortNames = <String>[
-  'Mon',
-  'Tue',
-  'Wed',
-  'Thu',
-  'Fri',
-  'Sat',
-  'Sun',
-];
+const kWeekdayShortNames = AppStrings.weekdayShortNames;
 
 /// How this terminal *behaves* — as distinct from [BusinessProfile], which is
 /// who the business *is*.
@@ -174,9 +161,9 @@ class StoreSettings {
       for (var i = 0; i < hours.length; i++)
         if (!hours[i].isOpen) kWeekdayShortNames[i],
     ];
-    if (closed.isEmpty) return 'Open every day';
-    if (closed.length == 7) return 'Closed all week';
-    return 'Closed ${closed.join(', ')}';
+    if (closed.isEmpty) return AppStrings.openEveryDay;
+    if (closed.length == 7) return AppStrings.closedAllWeek;
+    return AppStrings.closedDays(closed.join(', '));
   }
 
   StoreSettings copyWith({

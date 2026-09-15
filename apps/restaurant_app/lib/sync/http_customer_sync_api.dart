@@ -7,6 +7,7 @@ library;
 
 import 'package:dio/dio.dart';
 
+import '../constants/api_paths.dart';
 import 'customer_sync_api.dart';
 import 'customer_sync_dtos.dart';
 import 'http_sync_api.dart' show HttpException;
@@ -23,7 +24,7 @@ class HttpCustomerSyncApi extends CustomerSyncApi {
   Future<CustomerSyncBatchResult> syncCustomers(List<CustomerDto> batch) async {
     try {
       final response = await _dio.post(
-        '/businesses/$_businessId/customers/sync',
+        PosApiPaths.customersSync(_businessId),
         data: {'customers': batch.map((c) => c.toJson()).toList()},
       );
       final results = (response.data['results'] as List<dynamic>)

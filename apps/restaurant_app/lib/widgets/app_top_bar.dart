@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/notifications_provider.dart';
+import '../constants/app_strings.dart';
 import '../providers/settings_provider.dart';
 import '../router/app_router.dart';
 import '../theme/app_theme.dart';
@@ -35,7 +36,7 @@ class AppTopBar extends ConsumerWidget {
               // Actions on the right
               _IconButton(
                 icon: Icons.chat_outlined,
-                tooltip: 'Chat with Assistant',
+                tooltip: AppStrings.chatWithAssistant,
                 onPressed: () => ChatDialog.show(context),
               ),
               const SizedBox(width: Insets.md),
@@ -45,16 +46,16 @@ class AppTopBar extends ConsumerWidget {
               const SizedBox(width: Insets.md),
               _IconButton(
                 icon: Icons.help_outline_rounded,
-                tooltip: 'Help',
+                tooltip: AppStrings.help,
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Help center coming soon')),
+                    const SnackBar(content: Text(AppStrings.helpComingSoon)),
                   );
                 },
               ),
               const SizedBox(width: Insets.md),
               PopupMenuButton<String>(
-                tooltip: 'Account & options',
+                tooltip: AppStrings.accountAndOptions,
                 onSelected: (value) {
                   if (value == 'theme') {
                     ref.read(themeModeProvider.notifier).cycle();
@@ -89,9 +90,9 @@ class AppTopBar extends ConsumerWidget {
                         const SizedBox(width: Insets.sm),
                         Text(
                           switch (themeMode) {
-                            ThemeMode.system => 'Follow system',
-                            ThemeMode.light => 'Light theme',
-                            ThemeMode.dark => 'Dark theme',
+                            ThemeMode.system => AppStrings.followSystem,
+                            ThemeMode.light => AppStrings.lightTheme,
+                            ThemeMode.dark => AppStrings.darkTheme,
                           },
                         ),
                       ],
@@ -106,7 +107,7 @@ class AppTopBar extends ConsumerWidget {
                       children: [
                         const Icon(Icons.start_rounded, size: 18),
                         const SizedBox(width: Insets.sm),
-                        const Text('Splash Screen'),
+                        const Text(AppStrings.authTestSplash),
                       ],
                     ),
                   ),
@@ -117,7 +118,7 @@ class AppTopBar extends ConsumerWidget {
                       children: [
                         const Icon(Icons.login_rounded, size: 18),
                         const SizedBox(width: Insets.sm),
-                        const Text('OTP Login'),
+                        const Text(AppStrings.authTestOtp),
                       ],
                     ),
                   ),
@@ -128,7 +129,7 @@ class AppTopBar extends ConsumerWidget {
                       children: [
                         const Icon(Icons.info_rounded, size: 18),
                         const SizedBox(width: Insets.sm),
-                        const Text('Onboarding'),
+                        const Text(AppStrings.authTestOnboarding),
                       ],
                     ),
                   ),
@@ -139,7 +140,7 @@ class AppTopBar extends ConsumerWidget {
                       children: [
                         const Icon(Icons.lock_rounded, size: 18),
                         const SizedBox(width: Insets.sm),
-                        const Text('Set PIN'),
+                        const Text(AppStrings.authTestSetPin),
                       ],
                     ),
                   ),
@@ -150,7 +151,7 @@ class AppTopBar extends ConsumerWidget {
                       children: [
                         const Icon(Icons.lock_open_rounded, size: 18),
                         const SizedBox(width: Insets.sm),
-                        const Text('PIN Unlock'),
+                        const Text(AppStrings.authTestPinUnlock),
                       ],
                     ),
                   ),
@@ -161,7 +162,7 @@ class AppTopBar extends ConsumerWidget {
                       children: [
                         const Icon(Icons.person_rounded, size: 18),
                         const SizedBox(width: Insets.sm),
-                        const Text('Profile Picker'),
+                        const Text(AppStrings.authTestProfiles),
                       ],
                     ),
                   ),
@@ -178,7 +179,7 @@ class AppTopBar extends ConsumerWidget {
                         ),
                         const SizedBox(width: Insets.sm),
                         Text(
-                          'Logout',
+                          AppStrings.logout,
                           style: TextStyle(color: colors.error),
                         ),
                       ],
@@ -226,7 +227,7 @@ class _NotificationButton extends ConsumerWidget {
 
     return _IconButton(
       icon: Icons.notifications_outlined,
-      tooltip: 'Notifications',
+      tooltip: AppStrings.notifications,
       badgeCount: unreadCount,
       onPressed: onPressed,
     );

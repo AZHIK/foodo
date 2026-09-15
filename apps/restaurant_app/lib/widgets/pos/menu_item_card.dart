@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/menu_item.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/cart_provider.dart';
+import '../../constants/app_durations.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
@@ -162,7 +164,7 @@ class _Artwork extends StatelessWidget {
                         vertical: Insets.xs,
                       ),
                       child: Text(
-                        "86'd",
+                        AppStrings.soldOutBadge,
                         style: TextStyle(
                           color: context.semantic.danger,
                           fontWeight: FontWeight.w700,
@@ -200,7 +202,7 @@ class _QuantityBadge extends StatelessWidget {
     return TweenAnimationBuilder<double>(
       key: ValueKey(quantity),
       tween: Tween(begin: 0.7, end: 1),
-      duration: const Duration(milliseconds: 140),
+      duration: AppDurations.quick,
       curve: Curves.easeOutBack,
       builder: (context, scale, child) =>
           Transform.scale(scale: scale, child: child),
@@ -213,7 +215,7 @@ class _QuantityBadge extends StatelessWidget {
         ),
         alignment: Alignment.center,
         child: Text(
-          '$quantity',
+          AppStrings.quantityBadge(quantity),
           style: TextStyle(
             color: colors.onPrimary,
             fontWeight: FontWeight.w700,
@@ -254,7 +256,7 @@ class _PressableState extends State<_Pressable> {
       onPointerCancel: (_) => _set(false),
       child: AnimatedScale(
         scale: _pressed ? 0.97 : 1,
-        duration: const Duration(milliseconds: 90),
+        duration: AppDurations.micro,
         curve: Curves.easeOut,
         child: widget.child,
       ),

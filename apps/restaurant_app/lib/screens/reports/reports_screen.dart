@@ -2,7 +2,10 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../constants/app_durations.dart';
+import '../../constants/app_strings.dart';
 import '../../models/permission.dart';
+import '../../constants/app_limits.dart';
 import '../../providers/permissions_provider.dart';
 import '../../providers/reports_provider.dart';
 import '../../services/inventory_api_service.dart';
@@ -28,13 +31,13 @@ class ReportsScreen extends ConsumerWidget {
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
+      lastDate: DateTime.now().add(AppDurations.singleDay),
       initialDateRange: current.from == null && current.to == null
           ? null
           : DateTimeRange(
               start:
                   current.from ??
-                  DateTime.now().subtract(const Duration(days: 30)),
+                  DateTime.now().subtract(AppDurations.analyticsWindow),
               end: current.to ?? DateTime.now(),
             ),
     );
@@ -56,11 +59,11 @@ class ReportsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reports'),
+        title: const Text(AppStrings.reportsTitle),
         elevation: 0,
         actions: [
           IconButton(
-            tooltip: 'Filter by date',
+            tooltip: AppStrings.filterByDate,
             onPressed: () => _pickRange(context, ref),
             icon: Badge(
               isLabelVisible: filter.from != null || filter.to != null,
@@ -79,9 +82,14 @@ class ReportsScreen extends ConsumerWidget {
                 padding: const EdgeInsets.only(bottom: Insets.md),
                 child: InputChip(
                   label: Text(
-                    '${filter.from == null ? '…' : Fmt.dayMonth(filter.from!)}'
-                    ' – '
-                    '${filter.to == null ? '…' : Fmt.dayMonth(filter.to!)}',
+                    AppStrings.dateChip(
+                      filter.from == null
+                          ? AppStrings.ellipsis
+                          : Fmt.dayMonth(filter.from!),
+                      filter.to == null
+                          ? AppStrings.ellipsis
+                          : Fmt.dayMonth(filter.to!),
+                    ),
                   ),
                   deleteIcon: const Icon(Icons.clear_rounded, size: 16),
                   onDeleted: () => _clearRange(ref),
@@ -172,24 +180,24 @@ String _money(Decimal value) => Fmt.money(_d(value));
 
 final _takingsColumns = <DataColumnSpec<DailyTakingsDayDto>>[
   DataColumnSpec(
-    label: 'Date',
+    label: AppStrings.dateColumn,
     field: 'date',
     value: (r) => r.date.toIso8601String().substring(0, 10),
   ),
   DataColumnSpec(
-    label: 'Revenue',
+    label: AppStrings.revenueColumn,
     field: 'revenue',
     numeric: true,
     value: (r) => _money(r.revenue),
   ),
   DataColumnSpec(
-    label: 'Orders',
+    label: AppStrings.ordersColumn,
     field: 'count',
     numeric: true,
     value: (r) => '${r.salesCount}',
   ),
   DataColumnSpec(
-    label: 'Avg ticket',
+    label: AppStrings.avgTicketColumn,
     field: 'avg',
     numeric: true,
     value: (r) => _money(r.avgTicket),
@@ -216,9 +224,9 @@ class _TakingsSection extends ConsumerWidget {
           children: [
             Expanded(
               child: SummaryMetricCard(
-                label: 'Revenue',
+                label: AppStrings.revenueMetric,
                 value: Fmt.money(revenue),
-                trend: '$orders orders',
+                trend: AppStrings.ordersTrend(orders),
                 icon: Icons.payments_outlined,
                 accent: context.semantic.success,
               ),
@@ -226,9 +234,9 @@ class _TakingsSection extends ConsumerWidget {
             const SizedBox(width: Insets.md),
             Expanded(
               child: SummaryMetricCard(
-                label: 'Avg ticket',
+                label: AppStrings.avgTicketMetric,
                 value: Fmt.money(orders == 0 ? 0 : revenue / orders),
-                trend: 'Per order',
+                trend: AppStrings.perOrderTrend,
                 icon: Icons.receipt_long_outlined,
                 accent: context.colors.primary,
               ),
@@ -237,19 +245,21 @@ class _TakingsSection extends ConsumerWidget {
         ),
         const SizedBox(height: Insets.md),
         _Section(
-          title: 'Daily takings',
+          title: AppStrings.dailyTakingsSection,
           columns: _takingsColumns,
           rows: days,
-          exportTitle: 'Daily takings',
+          exportTitle: AppStrings.dailyTakingsSection,
           body: days.isEmpty
-              ? const _EmptySection(hint: 'No sales in this window')
+              ? const _EmptySection(hint: AppStrings.noSalesInWindow)
               : Column(
                   children: [
                     for (final day in days)
                       _KeyValueRow(
                         label: Fmt.dayMonth(day.date),
-                        value:
-                            '${_money(day.revenue)} · ${day.salesCount} orders',
+                        value: AppStrings.takingsRow(
+                          _money(day.revenue),
+                          day.salesCount,
+                        ),
                       ),
                   ],
                 ),
@@ -265,18 +275,18 @@ class _TakingsSection extends ConsumerWidget {
 
 final _itemMixColumns = <DataColumnSpec<ResolvedItemMixLine>>[
   DataColumnSpec(
-    label: 'Item',
+    label: AppStrings.itemColumn,
     field: 'name',
     value: (r) => r.name,
   ),
   DataColumnSpec(
-    label: 'Qty',
+    label: AppStrings.qtyColumn,
     field: 'qty',
     numeric: true,
     value: (r) => '${_d(r.line.quantity)}',
   ),
   DataColumnSpec(
-    label: 'Revenue',
+    label: AppStrings.revenueColumn,
     field: 'revenue',
     numeric: true,
     value: (r) => _money(r.line.revenue),
@@ -291,19 +301,21 @@ class _ItemMixSection extends ConsumerWidget {
     final lines = ref.watch(resolvedItemMixProvider);
 
     return _Section(
-      title: 'Item mix',
+      title: AppStrings.itemMixSection,
       columns: _itemMixColumns,
       rows: lines,
-      exportTitle: 'Item mix',
+      exportTitle: AppStrings.itemMixSection,
       body: lines.isEmpty
-          ? const _EmptySection(hint: 'Nothing sold in this window')
+          ? const _EmptySection(hint: AppStrings.nothingSold)
           : Column(
               children: [
                 for (final line in lines)
                   _KeyValueRow(
                     label: line.name,
-                    value:
-                        '${Fmt.quantity(_d(line.line.quantity))} · ${_money(line.line.revenue)}',
+                    value: AppStrings.itemMixRow(
+                      Fmt.quantity(_d(line.line.quantity)),
+                      _money(line.line.revenue),
+                    ),
                   ),
               ],
             ),
@@ -317,24 +329,24 @@ class _ItemMixSection extends ConsumerWidget {
 
 final _staffColumns = <DataColumnSpec<StaffPerformanceLineDto>>[
   DataColumnSpec(
-    label: 'Staff',
+    label: AppStrings.staffColumn,
     field: 'actor',
-    value: (r) => r.actorId == null ? 'Unknown' : _shortId(r.actorId!),
+    value: (r) => r.actorId == null ? AppStrings.unknown : _shortId(r.actorId!),
   ),
   DataColumnSpec(
-    label: 'Sales',
+    label: AppStrings.salesColumn,
     field: 'count',
     numeric: true,
     value: (r) => '${r.salesCount}',
   ),
   DataColumnSpec(
-    label: 'Revenue',
+    label: AppStrings.revenueColumn,
     field: 'revenue',
     numeric: true,
     value: (r) => _money(r.revenue),
   ),
   DataColumnSpec(
-    label: 'Void/refund',
+    label: AppStrings.voidRefundColumn,
     field: 'reversals',
     numeric: true,
     value: (r) => '${r.voidedCount + r.refundedCount}',
@@ -349,12 +361,12 @@ class _StaffSection extends ConsumerWidget {
     final lines = ref.watch(staffPerformanceProvider).valueOrNull ?? const [];
 
     return _Section(
-      title: 'Staff performance',
+      title: AppStrings.staffPerformanceSection,
       columns: _staffColumns,
       rows: lines,
-      exportTitle: 'Staff performance',
+      exportTitle: AppStrings.staffPerformanceSection,
       body: lines.isEmpty
-          ? const _EmptySection(hint: 'No staff sales in this window')
+          ? const _EmptySection(hint: AppStrings.noStaffSales)
           : Column(
               children: [
                 for (final line in lines)
@@ -363,10 +375,12 @@ class _StaffSection extends ConsumerWidget {
                     // backend only knows actor ids, so the row shows a
                     // stable short id rather than a wrong name.
                     label: line.actorId == null
-                        ? 'Unknown'
+                        ? AppStrings.unknown
                         : _shortId(line.actorId!),
-                    value:
-                        '${line.salesCount} sales · ${_money(line.revenue)}',
+                    value: AppStrings.staffRow(
+                      line.salesCount,
+                      _money(line.revenue),
+                    ),
                   ),
               ],
             ),
@@ -374,7 +388,9 @@ class _StaffSection extends ConsumerWidget {
   }
 }
 
-String _shortId(String id) => id.length <= 8 ? id : id.substring(0, 8);
+String _shortId(String id) => id.length <= AppLimits.shortIdLength
+    ? id
+    : id.substring(0, AppLimits.shortIdLength);
 
 // ---------------------------------------------------------------------------
 // Finance
@@ -382,12 +398,12 @@ String _shortId(String id) => id.length <= 8 ? id : id.substring(0, 8);
 
 final _financeExpenseColumns = <DataColumnSpec<FinanceCategoryTotalDto>>[
   DataColumnSpec(
-    label: 'Category',
+    label: AppStrings.categoryColumn,
     field: 'category',
     value: (r) => r.category,
   ),
   DataColumnSpec(
-    label: 'Total',
+    label: AppStrings.totalColumn,
     field: 'total',
     numeric: true,
     value: (r) => _money(r.total),
@@ -408,11 +424,11 @@ class _FinanceSection extends ConsumerWidget {
           children: [
             Expanded(
               child: SummaryMetricCard(
-                label: 'Net',
+                label: AppStrings.netMetric,
                 value: Fmt.money(
                   summary == null ? 0 : _d(summary.net),
                 ),
-                trend: 'Sales + income − expenses',
+                trend: AppStrings.netTrend,
                 icon: Icons.account_balance_wallet_outlined,
                 accent: context.semantic.success,
               ),
@@ -420,11 +436,11 @@ class _FinanceSection extends ConsumerWidget {
             const SizedBox(width: Insets.md),
             Expanded(
               child: SummaryMetricCard(
-                label: 'Expenses',
+                label: AppStrings.expensesMetric,
                 value: Fmt.money(
                   summary == null ? 0 : _d(summary.expenseTotal),
                 ),
-                trend: 'Ad-hoc spend',
+                trend: AppStrings.adhocSpend,
                 icon: Icons.trending_down_rounded,
                 accent: context.semantic.warning,
               ),
@@ -433,12 +449,12 @@ class _FinanceSection extends ConsumerWidget {
         ),
         const SizedBox(height: Insets.md),
         _Section(
-          title: 'Spend by category',
+          title: AppStrings.spendByCategory,
           columns: _financeExpenseColumns,
           rows: summary?.expensesByCategory ?? const [],
-          exportTitle: 'Spend by category',
+          exportTitle: AppStrings.spendByCategory,
           body: (summary == null || summary.expensesByCategory.isEmpty)
-              ? const _EmptySection(hint: 'No expenses in this window')
+              ? const _EmptySection(hint: AppStrings.noExpenses)
               : Column(
                   children: [
                     for (final line in summary.expensesByCategory)
@@ -460,18 +476,18 @@ class _FinanceSection extends ConsumerWidget {
 
 final _wasteColumns = <DataColumnSpec<WasteLineDto>>[
   DataColumnSpec(
-    label: 'Item',
+    label: AppStrings.itemColumn,
     field: 'name',
     value: (r) => r.itemName,
   ),
   DataColumnSpec(
-    label: 'Wasted',
+    label: AppStrings.wastedColumn,
     field: 'qty',
     numeric: true,
     value: (r) => '${_d(r.quantityWasted)} ${r.itemUnit}',
   ),
   DataColumnSpec(
-    label: 'Cost',
+    label: AppStrings.costColumn,
     field: 'cost',
     numeric: true,
     value: (r) => _money(r.costWasted),
@@ -487,17 +503,17 @@ class _WasteSection extends ConsumerWidget {
     final lines = summary?.lines ?? const [];
 
     return _Section(
-      title: 'Waste',
+      title: AppStrings.wasteSection,
       columns: _wasteColumns,
       rows: lines,
-      exportTitle: 'Waste',
+      exportTitle: AppStrings.wasteSection,
       body: lines.isEmpty
-          ? const _EmptySection(hint: 'No waste recorded in this window')
+          ? const _EmptySection(hint: AppStrings.noWaste)
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Cost wasted: ${_money(summary!.totalCostWasted)}',
+                  AppStrings.costWasted(_money(summary!.totalCostWasted)),
                   style: context.text.titleSmall?.copyWith(
                     color: context.semantic.warning,
                   ),
@@ -506,9 +522,11 @@ class _WasteSection extends ConsumerWidget {
                 for (final line in lines)
                   _KeyValueRow(
                     label: line.itemName,
-                    value:
-                        '${Fmt.quantity(_d(line.quantityWasted))} ${line.itemUnit}'
-                        ' · ${_money(line.costWasted)}',
+                    value: AppStrings.wasteRow(
+                      Fmt.quantity(_d(line.quantityWasted)),
+                      line.itemUnit,
+                      _money(line.costWasted),
+                    ),
                   ),
               ],
             ),
@@ -522,12 +540,12 @@ class _WasteSection extends ConsumerWidget {
 
 final _productionColumns = <DataColumnSpec<IngredientConsumptionDto>>[
   DataColumnSpec(
-    label: 'Ingredient',
+    label: AppStrings.ingredientColumn,
     field: 'name',
     value: (r) => r.rawMaterialName,
   ),
   DataColumnSpec(
-    label: 'Consumed',
+    label: AppStrings.consumedColumn,
     field: 'qty',
     numeric: true,
     value: (r) => '${_d(r.quantityConsumed)} ${r.rawMaterialUnit}',
@@ -549,9 +567,9 @@ class _ProductionSection extends ConsumerWidget {
           children: [
             Expanded(
               child: SummaryMetricCard(
-                label: 'Runs',
+                label: AppStrings.runsMetric,
                 value: '${summary?.runs ?? 0}',
-                trend: 'Production runs',
+                trend: AppStrings.productionRunsTrend,
                 icon: Icons.soup_kitchen_outlined,
                 accent: context.colors.primary,
               ),
@@ -559,9 +577,9 @@ class _ProductionSection extends ConsumerWidget {
             const SizedBox(width: Insets.md),
             Expanded(
               child: SummaryMetricCard(
-                label: 'Over-portioned',
-                value: '${over > 0 ? '+' : ''}${Fmt.quantity(over)}',
-                trend: 'Actual vs suggested',
+                label: AppStrings.overPortioned,
+                value: AppStrings.overPortionedValue(over, Fmt.quantity(over)),
+                trend: AppStrings.actualVsSuggested,
                 icon: Icons.tune_rounded,
                 accent: over > 0
                     ? context.semantic.warning
@@ -572,19 +590,21 @@ class _ProductionSection extends ConsumerWidget {
         ),
         const SizedBox(height: Insets.md),
         _Section(
-          title: 'Ingredients consumed',
+          title: AppStrings.ingredientsConsumed,
           columns: _productionColumns,
           rows: summary?.ingredientsConsumed ?? const [],
-          exportTitle: 'Ingredients consumed',
+          exportTitle: AppStrings.ingredientsConsumed,
           body: (summary == null || summary.ingredientsConsumed.isEmpty)
-              ? const _EmptySection(hint: 'No production in this window')
+              ? const _EmptySection(hint: AppStrings.noProduction)
               : Column(
                   children: [
                     for (final line in summary.ingredientsConsumed)
                       _KeyValueRow(
                         label: line.rawMaterialName,
-                        value:
-                            '${Fmt.quantity(_d(line.quantityConsumed))} ${line.rawMaterialUnit}',
+                        value: AppStrings.consumedRow(
+                          Fmt.quantity(_d(line.quantityConsumed)),
+                          line.rawMaterialUnit,
+                        ),
                       ),
                   ],
                 ),
@@ -600,18 +620,18 @@ class _ProductionSection extends ConsumerWidget {
 
 final _valuationColumns = <DataColumnSpec<StockValuationLineDto>>[
   DataColumnSpec(
-    label: 'Category',
+    label: AppStrings.categoryColumn,
     field: 'category',
-    value: (r) => r.category ?? 'Uncategorized',
+    value: (r) => r.category ?? AppStrings.uncategorized,
   ),
   DataColumnSpec(
-    label: 'Lines',
+    label: AppStrings.linesColumn,
     field: 'count',
     numeric: true,
     value: (r) => '${r.itemCount}',
   ),
   DataColumnSpec(
-    label: 'Value',
+    label: AppStrings.valueColumn,
     field: 'value',
     numeric: true,
     value: (r) => _money(r.totalValue),
@@ -629,29 +649,31 @@ class _ValuationSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SummaryMetricCard(
-          label: 'Inventory value',
+          label: AppStrings.inventoryValueMetric,
           value: Fmt.money(
             valuation == null ? 0 : _d(valuation.totalValue),
           ),
-          trend: 'On hand at cost, right now',
+          trend: AppStrings.onHandAtCost,
           icon: Icons.inventory_2_outlined,
           accent: context.colors.primary,
         ),
         const SizedBox(height: Insets.md),
         _Section(
-          title: 'Value by category',
+          title: AppStrings.valueByCategory,
           columns: _valuationColumns,
           rows: valuation?.lines ?? const [],
-          exportTitle: 'Inventory valuation',
+          exportTitle: AppStrings.inventoryValuation,
           body: (valuation == null || valuation.lines.isEmpty)
-              ? const _EmptySection(hint: 'Nothing on hand')
+              ? const _EmptySection(hint: AppStrings.nothingOnHand)
               : Column(
                   children: [
                     for (final line in valuation.lines)
                       _KeyValueRow(
-                        label: line.category ?? 'Uncategorized',
-                        value:
-                            '${line.itemCount} lines · ${_money(line.totalValue)}',
+                        label: line.category ?? AppStrings.uncategorized,
+                        value: AppStrings.valuationRow(
+                          line.itemCount,
+                          _money(line.totalValue),
+                        ),
                       ),
                   ],
                 ),

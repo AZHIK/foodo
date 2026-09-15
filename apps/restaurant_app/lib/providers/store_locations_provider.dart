@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/store_location.dart';
+import '../constants/app_limits.dart';
 import '../models/table_query.dart';
 import 'staff_provider.dart';
 import 'store_api_provider_real.dart';
@@ -150,7 +151,7 @@ final locationManagerNamesProvider = Provider<Map<String, String>>((ref) {
 /// rather than paginating four rows across two.
 final locationsQueryProvider = NotifierProvider<TableQueryNotifier, TableQuery>(
   () => TableQueryNotifier(
-    const TableQuery(sortField: LocationSort.name, pageSize: 25),
+    const TableQuery(sortField: LocationSort.name, pageSize: AppLimits.locationsPageSize),
   ),
 );
 

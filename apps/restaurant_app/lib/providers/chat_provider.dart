@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../constants/app_durations.dart';
 import '../models/chat_message.dart';
 
 final chatMessagesProvider =
@@ -22,7 +23,7 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
     state = [...state, message];
 
     if (role == MessageRole.user) {
-      Future.delayed(const Duration(milliseconds: 500), () {
+      Future.delayed(AppDurations.mockChatReplyDelay, () {
         addMessage(_getBotResponse(content), MessageRole.assistant);
       });
     }

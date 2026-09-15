@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/staff_rbac_dtos.dart';
+import '../constants/app_limits.dart';
 import '../data/mock_activity.dart';
 import '../models/activity_entry.dart';
 import '../models/staff_member.dart';
@@ -197,7 +198,7 @@ StaffMember _debugLogProfile(StaffMember member, String? roleLabel) {
 
 final staffQueryProvider = NotifierProvider<TableQueryNotifier, TableQuery>(
   () => TableQueryNotifier(
-    const TableQuery(sortField: StaffSort.name, pageSize: 8),
+    const TableQuery(sortField: StaffSort.name, pageSize: AppLimits.tablePageSizeDense),
   ),
 );
 

@@ -4,7 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:dio/dio.dart';
 
+import '../../constants/app_strings.dart';
+
 import '../../models/staff_member.dart';
+import '../../constants/app_limits.dart';
 import '../../models/store_location.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/staff_provider.dart';
@@ -164,9 +167,7 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              _isEdit
-                  ? '$locationName updated'
-                  : '$locationName added — it can now receive stock transfers',
+              AppStrings.locationSaved(locationName, _isEdit),
             ),
           ),
         );
@@ -176,7 +177,8 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              e.response?.data?['detail']?.toString() ?? 'Could not save location',
+              e.response?.data?['detail']?.toString() ??
+                  AppStrings.locationSaveFallback,
             ),
           ),
         );
@@ -184,7 +186,7 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving location: $e')),
+          SnackBar(content: Text(AppStrings.locationSaveFailed(e))),
         );
       }
     } finally {
@@ -198,18 +200,20 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
     final isCurrent = widget.existing?.isCurrent ?? false;
 
     return ResponsiveFormDialog(
-      title: _isEdit ? 'Edit location' : 'Add location',
+      title: _isEdit ? AppStrings.editLocation : AppStrings.addLocationTitle,
       width: 520,
       actions: [
         OutlinedButton(
           key: LocationFormKeys.cancel,
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text(AppStrings.cancel),
         ),
         FilledButton(
           key: LocationFormKeys.submit,
           onPressed: _submit,
-          child: Text(_isEdit ? 'Save location' : 'Add location'),
+          child: Text(
+            _isEdit ? AppStrings.saveLocation : AppStrings.addLocationTitle,
+          ),
         ),
       ],
       child: Form(
@@ -219,23 +223,29 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             LabeledFormField(
-              label: 'Location name',
+              label: AppStrings.locationNameField,
               isRequired: true,
               child: TextFormField(
                 key: LocationFormKeys.name,
                 controller: _name,
                 textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(hintText: 'Harbour Point'),
+                decoration: const InputDecoration(
+                  hintText: AppStrings.locationNameExample,
+                ),
                 validator: (value) {
                   final text = (value ?? '').trim();
-                  if (text.isEmpty) return 'Give the location a name';
-                  return _isNameTaken(text) ? 'That name is already used' : null;
+                  if (text.isEmpty) {
+                    return AppStrings.locationNameRequired;
+                  }
+                  return _isNameTaken(text)
+                      ? AppStrings.locationNameTaken
+                      : null;
                 },
               ),
             ),
             const SizedBox(height: Insets.lg),
             LabeledFormField(
-              label: 'Location type',
+              label: AppStrings.locationTypeField,
               child: DropdownButtonFormField<LocationType>(
                 key: LocationFormKeys.locationType,
                 initialValue: _locationType,
@@ -259,7 +269,7 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
             const SizedBox(height: Insets.lg),
 
             LabeledFormField(
-              label: 'Address',
+              label: AppStrings.addressField3,
               child: TextFormField(
                 key: LocationFormKeys.address,
                 controller: _address,
@@ -267,7 +277,7 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
                 minLines: 2,
                 textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
-                  hintText: '12 Pier Road, San Francisco',
+                  hintText: AppStrings.addressExample3,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(Radii.md),
                   ),
@@ -290,35 +300,39 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
             FieldPair(
               stackBelow: 340,
               left: LabeledFormField(
-                label: 'Phone',
+                label: AppStrings.phoneField4,
                 child: TextFormField(
                   key: LocationFormKeys.phone,
                   controller: _phone,
                   keyboardType: TextInputType.phone,
                   decoration: const InputDecoration(
-                    hintText: '+1 415 555 0142',
+                    hintText: AppStrings.phoneExample4,
                   ),
                 ),
               ),
               right: LabeledFormField(
-                label: 'Staff based here',
+                label: AppStrings.staffBasedHere,
                 child: TextFormField(
                   key: LocationFormKeys.staffCount,
                   controller: _staffCount,
                   keyboardType: TextInputType.number,
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(3),
+                    LengthLimitingTextInputFormatter(
+                      AppLimits.staffCountMaxDigits,
+                    ),
                   ],
-                  decoration: const InputDecoration(hintText: '0'),
+                  decoration: const InputDecoration(
+                    hintText: AppStrings.staffCountHint,
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: Insets.lg),
 
             LabeledFormField(
-              label: 'Manager',
-              helper: 'Anyone on the staff list can run a site',
+              label: AppStrings.managerField,
+              helper: AppStrings.managerHelper,
               child: DropdownButtonFormField<String?>(
                 key: LocationFormKeys.manager,
                 initialValue: _managerId,
@@ -344,21 +358,19 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
 
             SettingSwitchTile(
               switchKey: LocationFormKeys.active,
-              title: 'Active',
+              title: AppStrings.activeSwitch,
               subtitle: isCurrent
-                  ? 'This terminal is installed here, so it always trades'
+                  ? AppStrings.currentTerminalTrades
                   : _isActive
-                  ? 'Trading, and offered as a stock transfer destination'
-                  : 'Kept for history; offered nowhere',
+                  ? AppStrings.tradingTransferDest
+                  : AppStrings.keptForHistory,
               value: isCurrent ? true : _isActive,
               onChanged: (value) {
                 if (isCurrent) return;
                 if (!value && !_canDeactivate) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text(
-                        'At least one location has to stay active',
-                      ),
+                      content: Text(AppStrings.oneActiveRequired),
                     ),
                   );
                   return;
@@ -383,6 +395,7 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
     return false;
   }
 
-  String _managerLabel(StaffMember member) =>
-      member.isPending ? '${member.name} (invite pending)' : member.name;
+  String _managerLabel(StaffMember member) => member.isPending
+      ? AppStrings.managerPending(member.name)
+      : member.name;
 }

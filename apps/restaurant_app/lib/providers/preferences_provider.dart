@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../constants/app_strings.dart';
 import '../theme/breakpoints.dart';
 
 /// How tightly the data tables pack their rows.
@@ -9,8 +10,11 @@ import '../theme/breakpoints.dart';
 /// terminal wants comfortable rows for a thumb, and the back-office laptop
 /// wants to see twenty lines of stock at once.
 enum TableDensity {
-  comfortable('Comfortable', 'Roomier rows, easier to tap'),
-  compact('Compact', 'More rows on screen at once');
+  comfortable(
+    AppStrings.comfortableDensity,
+    AppStrings.comfortableBlurb,
+  ),
+  compact(AppStrings.compactDensity, AppStrings.compactBlurb);
 
   const TableDensity(this.label, this.description);
 
@@ -56,7 +60,7 @@ final tableDensityProvider =
 /// setting is what a second language needs, and adding one should be a line
 /// here rather than a new control on the screen.
 enum AppLanguage {
-  english('English', 'en');
+  english(AppStrings.englishLanguage, 'en');
 
   const AppLanguage(this.label, this.code);
 

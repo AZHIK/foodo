@@ -10,6 +10,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 
+import '../constants/api_paths.dart';
 import 'finance_sync_api.dart';
 import 'finance_sync_dtos.dart';
 import 'http_sync_api.dart' show HttpException;
@@ -28,7 +29,7 @@ class HttpFinanceSyncApi extends FinanceSyncApi {
   ) async {
     try {
       final response = await _dio.post(
-        '/businesses/$_businessId/other-expenses/sync',
+        PosApiPaths.expensesSync(_businessId),
         data: {'expenses': batch.map((e) => e.toJson()).toList()},
       );
       return _resultsFromResponse(response.data);
@@ -46,7 +47,7 @@ class HttpFinanceSyncApi extends FinanceSyncApi {
   ) async {
     try {
       final response = await _dio.post(
-        '/businesses/$_businessId/other-incomes/sync',
+        PosApiPaths.incomesSync(_businessId),
         data: {'incomes': batch.map((i) => i.toJson()).toList()},
       );
       return _resultsFromResponse(response.data);
@@ -73,7 +74,7 @@ class HttpFinanceSyncApi extends FinanceSyncApi {
         ),
       });
       final response = await _dio.post(
-        '/businesses/$_businessId/finance/attachments',
+        PosApiPaths.attachments(_businessId),
         data: formData,
       );
       return response.data['id'] as String;

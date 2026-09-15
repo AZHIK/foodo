@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
 import '../theme/app_theme.dart';
 import '../theme/breakpoints.dart';
 
@@ -224,7 +225,7 @@ class _Header extends StatelessWidget {
           ),
           const SizedBox(width: Insets.sm),
           IconButton(
-            tooltip: 'Close',
+            tooltip: AppStrings.close,
             onPressed: onClose ?? () => Navigator.of(context).pop(),
             icon: const Icon(Icons.close_rounded),
           ),

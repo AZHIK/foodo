@@ -10,6 +10,8 @@ library;
 
 import 'package:dio/dio.dart';
 
+import '../constants/api_paths.dart';
+
 /// Thrown when POS Service rejects a void/refund with a domain-specific
 /// error (already voided/refunded, sale not found, validation).
 class PosApiException implements Exception {
@@ -42,7 +44,7 @@ class PosApiService {
   }) async {
     try {
       await _dio.post(
-        '/businesses/$businessId/sales/$saleId/void-or-refund',
+        PosApiPaths.saleVoidRefund(businessId, saleId),
         data: {
           'client_action_id': clientActionId,
           'new_status': newStatus,

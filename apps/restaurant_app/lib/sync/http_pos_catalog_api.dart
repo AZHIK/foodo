@@ -9,13 +9,15 @@ library;
 
 import 'package:decimal/decimal.dart';
 import 'package:dio/dio.dart';
+import '../constants/api_paths.dart';
+import '../constants/app_limits.dart';
 import 'pos_catalog_api.dart';
 
 /// The list endpoint caps a single page at 100 rows (backend-enforced) and
 /// defaults to 20 — a full ledger pull must page through until a page comes
 /// back short of [_pageSize], or a store with more than one page of sales
 /// would silently sync only its most recent 20/100.
-const _pageSize = 100;
+const _pageSize = AppLimits.catalogFetchPageSize;
 
 /// HTTP client for fetching completed sales and their line items from POS
 /// Service via Dio.
@@ -33,7 +35,7 @@ class HttpPosCatalogApi extends PosCatalogApi {
       var offset = 0;
       while (true) {
         final response = await _dio.get(
-          '/businesses/$_businessId/sales',
+          PosApiPaths.sales(_businessId),
           queryParameters: {
             'store_id': storeId,
             'limit': _pageSize,
@@ -60,7 +62,7 @@ class HttpPosCatalogApi extends PosCatalogApi {
     required String saleId,
   }) async {
     try {
-      final response = await _dio.get('/businesses/$_businessId/sales/$saleId');
+      final response = await _dio.get(PosApiPaths.sale(_businessId, saleId));
       final lineItems = (response.data['line_items'] as List<dynamic>)
           .cast<Map<String, dynamic>>();
       return lineItems.map(_lineItemFromJson).toList();

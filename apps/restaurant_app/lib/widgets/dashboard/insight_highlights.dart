@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/ai_insight.dart';
+import '../../constants/app_limits.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/ai_insights_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
@@ -18,7 +20,7 @@ import '../data_page/status_badge.dart';
 /// of each: the full screen carries the evidence, this carries the headline
 /// and one number.
 class InsightHighlights extends ConsumerWidget {
-  const InsightHighlights({super.key, this.limit = 3});
+  const InsightHighlights({super.key, this.limit = AppLimits.insightHighlights});
 
   /// Three fits the width without the cards becoming slivers, and three is
   /// about as many things as anyone acts on before service starts.
@@ -46,7 +48,7 @@ class InsightHighlights extends ConsumerWidget {
             const SizedBox(width: Insets.sm),
             Expanded(
               child: Text(
-                'What to look at today',
+                AppStrings.lookAtToday,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: context.text.titleSmall,
@@ -54,7 +56,7 @@ class InsightHighlights extends ConsumerWidget {
             ),
             TextButton(
               onPressed: () => context.goNamed(AppRoute.insightsName),
-              child: const Text('See all'),
+              child: const Text(AppStrings.seeAll),
             ),
           ],
         ),

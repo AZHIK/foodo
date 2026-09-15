@@ -184,6 +184,7 @@ class Sale(SQLModel, table=True):
     )
     occurred_at: datetime = Field(
         nullable=False,
+        index=True,
         sa_type=DateTime(timezone=True),
     )
     synced_at: datetime = Field(

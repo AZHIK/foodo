@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/finance_attachment.dart';
 import '../models/order.dart';
 import '../models/other_income.dart';
+import '../constants/app_strings.dart';
 import 'other_incomes_provider.dart';
 
 @immutable
@@ -21,14 +22,16 @@ class OtherIncomeFormState {
   final String note;
   final FinanceAttachment? receipt;
   Uint8List? get receiptBytes => receipt?.bytes;
-  static String? validateDescription(String? v) => (v ?? '').trim().isEmpty ? 'Describe the income' : null;
-  static String? validateCategory(String? v) => (v ?? '').isEmpty ? 'Pick a category' : null;
+  static String? validateDescription(String? v) =>
+      (v ?? '').trim().isEmpty ? AppStrings.describeIncome : null;
+  static String? validateCategory(String? v) =>
+      (v ?? '').isEmpty ? AppStrings.pickCategory : null;
   static String? validateAmount(String? v) {
     final t = (v ?? '').trim();
-    if (t.isEmpty) return 'Enter an amount';
+    if (t.isEmpty) return AppStrings.enterAmount;
     final p = double.tryParse(t);
-    if (p == null) return 'Enter a number';
-    if (p <= 0) return 'Amount must be greater than zero';
+    if (p == null) return AppStrings.enterNumberError;
+    if (p <= 0) return AppStrings.amountPositiveError;
     return null;
   }
   bool get canSave => validateDescription(description) == null && validateCategory(categoryId) == null && validateAmount(amount) == null;

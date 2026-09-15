@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/inventory_item.dart';
+import '../../constants/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
@@ -13,11 +14,11 @@ import '../../widgets/responsive_form_dialog.dart';
 import 'stock_dialog_shared.dart';
 
 enum WasteReason {
-  expired('Expired'),
-  spoiled('Spoiled'),
-  prepError('Prep error'),
-  damaged('Dropped / damaged'),
-  other('Other');
+  expired(AppStrings.wasteReasonExpired),
+  spoiled(AppStrings.wasteReasonSpoiled),
+  prepError(AppStrings.wasteReasonPrep),
+  damaged(AppStrings.wasteReasonDropped),
+  other(AppStrings.wasteReasonOther);
 
   const WasteReason(this.label);
   final String label;
@@ -71,9 +72,12 @@ class _WasteLogDialogState extends ConsumerState<WasteLogDialog> {
   String? get _error {
     final amount = _amount;
     if (amount == null) return null;
-    if (amount == 0) return 'Enter an amount greater than zero';
+    if (amount == 0) return AppStrings.amountPositive;
     if (amount > widget.item.stock) {
-      return 'Only ${Fmt.quantity(widget.item.stock)} ${widget.item.unit} in stock';
+      return AppStrings.onlyInStock(
+        Fmt.quantity(widget.item.stock),
+        widget.item.unit,
+      );
     }
     return null;
   }
@@ -88,12 +92,9 @@ class _WasteLogDialogState extends ConsumerState<WasteLogDialog> {
       if (note.isNotEmpty) note,
       // Recorded as text because the mock ledger stores no binaries — enough
       // for the history to show evidence was attached.
-      if (_photoName != null) 'Photo: $_photoName',
+      if (_photoName != null) AppStrings.wastePhotoEvidence(_photoName!),
     ];
-
     final messenger = ScaffoldMessenger.of(context);
-    final amountLabel = '${Fmt.quantity(amount)} ${widget.item.unit}';
-
     setState(() => _submitting = true);
     try {
       await applyWaste(
@@ -105,12 +106,22 @@ class _WasteLogDialogState extends ConsumerState<WasteLogDialog> {
       if (!mounted) return;
       Navigator.of(context).pop();
       messenger.showSnackBar(
-        SnackBar(content: Text('$amountLabel of ${widget.item.name} logged as waste')),
+        SnackBar(
+          content: Text(
+            AppStrings.wasteLogged(
+              Fmt.quantity(amount),
+              widget.item.unit,
+              widget.item.name,
+            ),
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      messenger.showSnackBar(SnackBar(content: Text('Could not log waste: $e')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.wasteFailed(e))),
+      );
     }
   }
 
@@ -120,13 +131,13 @@ class _WasteLogDialogState extends ConsumerState<WasteLogDialog> {
     final semantic = context.semantic;
 
     return ResponsiveFormDialog(
-      title: 'Log waste',
+      title: AppStrings.logWaste,
       width: kStockDialogWidth,
       actions: [
         OutlinedButton(
           key: StockDialogKeys.cancel,
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text(AppStrings.cancel),
         ),
         FilledButton(
           key: StockDialogKeys.submit,
@@ -137,7 +148,7 @@ class _WasteLogDialogState extends ConsumerState<WasteLogDialog> {
             backgroundColor: semantic.warning,
             foregroundColor: semantic.onWarning,
           ),
-          child: const Text('Log waste'),
+          child: const Text(AppStrings.logWaste),
         ),
       ],
       child: Column(
@@ -149,14 +160,14 @@ class _WasteLogDialogState extends ConsumerState<WasteLogDialog> {
           StockQuantityField(
             controller: _quantity,
             item: item,
-            label: 'Quantity wasted',
+            label: AppStrings.quantityWasted,
             errorText: _error,
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: Insets.md),
 
           StockPreviewLine(
-            label: 'Remaining after waste',
+            label: AppStrings.remainingAfterWaste,
             value: '${Fmt.quantity(_newLevel)} ${item.unit}',
             tone: semantic.warning,
             icon: Icons.trending_down_rounded,
@@ -164,7 +175,7 @@ class _WasteLogDialogState extends ConsumerState<WasteLogDialog> {
           const SizedBox(height: Insets.lg),
 
           LabeledFormField(
-            label: 'Waste reason',
+            label: AppStrings.wasteReasonLabel,
             isRequired: true,
             child: DropdownButtonFormField<WasteReason>(
               key: StockDialogKeys.reason,
@@ -188,19 +199,19 @@ class _WasteLogDialogState extends ConsumerState<WasteLogDialog> {
 
           StockNotesField(
             controller: _notes,
-            hint: 'e.g. left out of the chiller overnight',
+            hint: AppStrings.wasteNotesHint,
           ),
           const SizedBox(height: Insets.lg),
 
           LabeledFormField(
-            label: 'Photo',
-            helper: 'Optional — useful for a supplier claim',
+            label: AppStrings.photoLabel,
+            helper: AppStrings.photoClaimHelper,
             child: Align(
               alignment: Alignment.centerLeft,
               child: ImageUploadField(
                 image: _photoBytes,
                 size: WasteLogDialog._photoSize,
-                label: 'Add photo',
+                label: AppStrings.addPhoto,
                 // No room for the file-size hint at this size; the field hides
                 // it below 150px anyway, and an empty string states the intent.
                 hint: '',

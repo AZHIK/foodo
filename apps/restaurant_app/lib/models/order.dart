@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
 import 'cart.dart';
 import 'order_totals.dart';
 import 'payment.dart';
 
 enum PaymentType {
-  cash('Cash', Icons.payments_outlined),
-  card('Card', Icons.credit_card_rounded),
-  qris('QRIS', Icons.qr_code_2_rounded),
-  mobile('Mobile Pay', Icons.contactless_rounded),
-  giftCard('Gift Card', Icons.card_giftcard_rounded);
+  cash(AppStrings.cashLabel, Icons.payments_outlined),
+  card(AppStrings.cardLabel, Icons.credit_card_rounded),
+  qris(AppStrings.qrisLabel, Icons.qr_code_2_rounded),
+  mobile(AppStrings.mobilePayLabel, Icons.contactless_rounded),
+  giftCard(AppStrings.giftCardLabel, Icons.card_giftcard_rounded);
 
   const PaymentType(this.label, this.icon);
   final String label;
@@ -26,13 +27,13 @@ enum PaymentType {
 }
 
 enum OrderStatus {
-  paid('Paid'),
-  refunded('Refunded'),
+  paid(AppStrings.paidStatus),
+  refunded(AppStrings.refundedStatus),
 
   /// Cancelled before payment settled — distinct from a refund, which returns
   /// money that was actually taken.
-  voided('Voided'),
-  pending('Pending');
+  voided(AppStrings.voidedStatus),
+  pending(AppStrings.pendingStatus);
 
   const OrderStatus(this.label);
   final String label;
@@ -43,11 +44,11 @@ enum OrderStatus {
 
 /// Fulfillment stage of an order (kitchen workflow), independent of payment status.
 enum FulfillmentStatus {
-  new_('New', Icons.inbox_rounded),
-  preparing('Preparing', Icons.schedule_rounded),
-  ready('Ready', Icons.check_circle_rounded),
-  outForDelivery('Out for Delivery', Icons.two_wheeler_rounded),
-  completed('Completed', Icons.done_all_rounded);
+  new_(AppStrings.newStatus, Icons.inbox_rounded),
+  preparing(AppStrings.preparingStatus, Icons.schedule_rounded),
+  ready(AppStrings.readyStatus, Icons.check_circle_rounded),
+  outForDelivery(AppStrings.outForDeliveryStatus, Icons.two_wheeler_rounded),
+  completed(AppStrings.completedStatus, Icons.done_all_rounded);
 
   const FulfillmentStatus(this.label, this.icon);
   final String label;
@@ -57,9 +58,9 @@ enum FulfillmentStatus {
 /// How the order leaves the counter. Drives the table-number field on the POS
 /// order panel and is recorded on the finished sale.
 enum OrderType {
-  dineIn('Dine-in', Icons.restaurant_rounded),
-  takeaway('Takeaway', Icons.takeout_dining_rounded),
-  delivery('Delivery', Icons.delivery_dining_rounded);
+  dineIn(AppStrings.dineInType, Icons.restaurant_rounded),
+  takeaway(AppStrings.takeawayType, Icons.takeout_dining_rounded),
+  delivery(AppStrings.deliveryType, Icons.delivery_dining_rounded);
 
   const OrderType(this.label, this.icon);
   final String label;

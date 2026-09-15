@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_durations.dart';
+import '../../constants/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import 'shake.dart';
@@ -51,7 +53,7 @@ class PinDots extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Insets.sm - 2),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
+                duration: AppDurations.quick,
                 height: 14,
                 width: 14,
                 decoration: BoxDecoration(
@@ -164,7 +166,7 @@ class PinKeypad extends StatelessWidget {
                   size: size,
                   enabled: enabled,
                   onTap: onBackspace,
-                  tooltip: 'Delete',
+                  tooltip: AppStrings.deleteKey,
                   filled: false,
                   child: Icon(
                     Icons.backspace_outlined,

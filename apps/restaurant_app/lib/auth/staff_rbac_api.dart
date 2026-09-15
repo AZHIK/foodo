@@ -9,6 +9,7 @@
 library;
 
 import 'package:dio/dio.dart';
+import '../constants/api_paths.dart';
 import 'identity_service_api.dart' show AuthException;
 import 'staff_rbac_dtos.dart';
 
@@ -24,7 +25,7 @@ class StaffRbacApi {
   }) async {
     try {
       final response = await _dio.post(
-        '/businesses/$businessId/roles',
+        IdentityApiPaths.roles(businessId),
         data: input.toJson(),
       );
       return BusinessRoleDto.fromJson(response.data as Map<String, dynamic>);
@@ -41,7 +42,7 @@ class StaffRbacApi {
   }) async {
     try {
       final response = await _dio.patch(
-        '/businesses/$businessId/roles/$roleId',
+        IdentityApiPaths.role(businessId, roleId),
         data: input.toJson(),
       );
       return BusinessRoleDto.fromJson(response.data as Map<String, dynamic>);
@@ -53,7 +54,7 @@ class StaffRbacApi {
   /// DELETE /businesses/{businessId}/roles/{roleId}
   Future<void> deleteRole({required String businessId, required String roleId}) async {
     try {
-      await _dio.delete('/businesses/$businessId/roles/$roleId');
+      await _dio.delete(IdentityApiPaths.role(businessId, roleId));
     } on DioException catch (e) {
       throw AuthException.fromDio('Role deletion failed', e);
     }
@@ -62,7 +63,7 @@ class StaffRbacApi {
   /// GET /businesses/{businessId}/roles
   Future<List<BusinessRoleDto>> listRoles({required String businessId}) async {
     try {
-      final response = await _dio.get('/businesses/$businessId/roles');
+      final response = await _dio.get(IdentityApiPaths.roles(businessId));
       return (response.data as List<dynamic>)
           .cast<Map<String, dynamic>>()
           .map(BusinessRoleDto.fromJson)
@@ -78,7 +79,9 @@ class StaffRbacApi {
     required String roleId,
   }) async {
     try {
-      final response = await _dio.get('/businesses/$businessId/roles/$roleId/permissions');
+      final response = await _dio.get(
+        IdentityApiPaths.rolePermissions(businessId, roleId),
+      );
       return (response.data as List<dynamic>)
           .cast<Map<String, dynamic>>()
           .map(RolePermissionDto.fromJson)
@@ -96,7 +99,7 @@ class StaffRbacApi {
   }) async {
     try {
       await _dio.post(
-        '/businesses/$businessId/roles/$roleId/permissions',
+        IdentityApiPaths.rolePermissions(businessId, roleId),
         data: {'permission_code': permissionCode},
       );
     } on DioException catch (e) {
@@ -111,7 +114,9 @@ class StaffRbacApi {
     required String permissionCode,
   }) async {
     try {
-      await _dio.delete('/businesses/$businessId/roles/$roleId/permissions/$permissionCode');
+      await _dio.delete(
+        IdentityApiPaths.rolePermission(businessId, roleId, permissionCode),
+      );
     } on DioException catch (e) {
       throw AuthException.fromDio('Permission removal failed', e);
     }
@@ -124,7 +129,10 @@ class StaffRbacApi {
     required AssignStaffInput input,
   }) async {
     try {
-      await _dio.post('/businesses/$businessId/staff', data: input.toJson());
+      await _dio.post(
+        IdentityApiPaths.staff(businessId),
+        data: input.toJson(),
+      );
     } on DioException catch (e) {
       throw AuthException.fromDio('Staff assignment failed', e);
     }
@@ -133,7 +141,7 @@ class StaffRbacApi {
   /// GET /businesses/{businessId}/staff
   Future<List<StaffMemberDto>> listStaff({required String businessId}) async {
     try {
-      final response = await _dio.get('/businesses/$businessId/staff');
+      final response = await _dio.get(IdentityApiPaths.staff(businessId));
       return (response.data as List<dynamic>)
           .cast<Map<String, dynamic>>()
           .map(StaffMemberDto.fromJson)
@@ -150,7 +158,9 @@ class StaffRbacApi {
     required String roleId,
   }) async {
     try {
-      await _dio.delete('/businesses/$businessId/staff/$userId/roles/$roleId');
+      await _dio.delete(
+        IdentityApiPaths.staffRole(businessId, userId, roleId),
+      );
     } on DioException catch (e) {
       throw AuthException.fromDio('Role revoke failed', e);
     }

@@ -9,9 +9,11 @@ library;
 import 'package:decimal/decimal.dart';
 import 'package:dio/dio.dart';
 
+import '../constants/api_paths.dart';
+import '../constants/app_limits.dart';
 import 'customer_catalog_api.dart';
 
-const _pageSize = 100;
+const _pageSize = AppLimits.catalogFetchPageSize;
 
 /// HTTP client for fetching the customer ledger from POS Service via Dio.
 class HttpCustomerCatalogApi extends CustomerCatalogApi {
@@ -28,7 +30,7 @@ class HttpCustomerCatalogApi extends CustomerCatalogApi {
       var offset = 0;
       while (true) {
         final response = await _dio.get(
-          '/businesses/$_businessId/customers',
+          PosApiPaths.customers(_businessId),
           queryParameters: {
             'limit': _pageSize,
             'offset': offset,

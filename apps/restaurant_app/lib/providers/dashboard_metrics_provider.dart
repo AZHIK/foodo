@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/mock_menu.dart';
+import '../constants/app_durations.dart';
+import '../constants/app_strings.dart';
+import '../constants/app_limits.dart';
 import '../models/activity_entry.dart';
 import '../models/dashboard_chart_data.dart';
 import '../models/inventory_item.dart';
@@ -100,11 +103,11 @@ class TopItem {
 }
 
 /// How many days the trend and the top-sellers list look back over.
-const int _trendDays = 7;
+const int _trendDays = AppLimits.trendDays;
 
 /// A staff member counts as on shift if they have been active this recently.
 /// Stands in for a real clock-in record.
-const Duration _onShiftWindow = Duration(hours: 12);
+const Duration _onShiftWindow = AppDurations.onShiftWindow;
 
 final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
   final orders = ref.watch(ordersListProvider);
@@ -115,7 +118,7 @@ final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
 
   final now = DateTime.now();
   final startOfToday = DateTime(now.year, now.month, now.day);
-  final startOfYesterday = startOfToday.subtract(const Duration(days: 1));
+  final startOfYesterday = startOfToday.subtract(AppDurations.singleDay);
 
   // ---- KPIs -------------------------------------------------------------
   var salesToday = 0.0;
@@ -302,18 +305,20 @@ final dashboardActivityProvider = Provider<List<ActivityEntry>>((ref) {
   final recentOrders = [...orders]
     ..sort((a, b) => b.placedAt.compareTo(a.placedAt));
 
-  for (final order in recentOrders.take(6)) {
+  for (final order in recentOrders.take(AppLimits.dashboardRecentOrders)) {
     final refunded = order.status == OrderStatus.refunded;
     entries.add(
       ActivityEntry(
         id: 'act-order-${order.id}',
         at: order.placedAt,
         title: refunded
-            ? 'Order ${order.id} refunded'
-            : 'Order ${order.id} paid',
-        detail:
-            '${order.itemCount} items · ${order.serverName} · '
-            '${order.paymentType.label}',
+            ? AppStrings.orderRefundedFeed(order.id)
+            : AppStrings.orderPaid(order.id),
+        detail: AppStrings.orderFeedDetail(
+          order.itemCount,
+          order.serverName,
+          order.paymentType.label,
+        ),
         icon: refunded
             ? Icons.undo_rounded
             : Icons.receipt_long_outlined,
@@ -322,7 +327,7 @@ final dashboardActivityProvider = Provider<List<ActivityEntry>>((ref) {
     );
   }
 
-  for (final item in metrics.lowStockItems.take(3)) {
+  for (final item in metrics.lowStockItems.take(AppLimits.lowStockNamesShown)) {
     entries.add(
       ActivityEntry(
         id: 'act-stock-${item.id}',
@@ -330,9 +335,13 @@ final dashboardActivityProvider = Provider<List<ActivityEntry>>((ref) {
         // last count keeps them in a sensible place in the feed.
         at: item.lastCountedAt ?? DateTime.now(),
         title: item.status == StockStatus.outOfStock
-            ? '${item.name} is out of stock'
-            : '${item.name} is running low',
-        detail: '${item.stock} of ${item.reorderLevel} ${item.unit} remaining',
+            ? AppStrings.stockOutFeed(item.name)
+            : AppStrings.stockLowFeed(item.name),
+        detail: AppStrings.stockRemaining(
+          item.stock,
+          item.reorderLevel,
+          item.unit,
+        ),
         icon: Icons.warning_amber_rounded,
         tone: item.status == StockStatus.outOfStock
             ? StatusTone.danger
@@ -348,7 +357,7 @@ final dashboardActivityProvider = Provider<List<ActivityEntry>>((ref) {
         member,
   ]..sort((a, b) => b.lastActiveAt!.compareTo(a.lastActiveAt!));
 
-  for (final member in clockedIn.take(3)) {
+  for (final member in clockedIn.take(AppLimits.activeStaffShown)) {
     entries.add(
       ActivityEntry(
         id: 'act-staff-${member.id}',

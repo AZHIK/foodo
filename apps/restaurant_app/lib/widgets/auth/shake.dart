@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../constants/app_durations.dart';
+
 /// Shakes its child once each time [token] changes.
 ///
 /// The app's single rejection gesture. The PIN dots and the OTP row each had
@@ -33,7 +35,7 @@ class Shake extends StatefulWidget {
 class _ShakeState extends State<Shake> with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 420),
+    duration: AppDurations.shake,
   );
 
   @override

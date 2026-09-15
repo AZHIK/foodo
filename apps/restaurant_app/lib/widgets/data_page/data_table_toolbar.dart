@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 
@@ -112,10 +113,10 @@ class _DataTableToolbarState extends State<DataTableToolbar> {
       decoration: InputDecoration(
         hintText: widget.searchHint,
         prefixIcon: const Icon(Icons.search_rounded, size: 20),
-        suffixIcon: widget.searchValue.isEmpty
-            ? null
-            : IconButton(
-                tooltip: 'Clear',
+              suffixIcon: widget.searchValue.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: AppStrings.clear,
                 icon: const Icon(Icons.close_rounded, size: 18),
                 onPressed: () => widget.onSearchChanged(''),
               ),
@@ -130,7 +131,7 @@ class _DataTableToolbarState extends State<DataTableToolbar> {
 
         final filterButton = _ToolbarButton(
           icon: Icons.filter_list_rounded,
-          label: 'Filter',
+          label: AppStrings.filterLabel,
           badgeCount: widget.activeFilterCount,
           iconOnly: tight,
           onPressed: _openFilters,
@@ -231,7 +232,7 @@ class _SortButton extends StatelessWidget {
     final current = options.where((o) => o.field == field).firstOrNull;
 
     return PopupMenuButton<({String field, bool ascending})>(
-      tooltip: 'Sort',
+      tooltip: AppStrings.sortTooltip,
       position: PopupMenuPosition.under,
       onSelected: (value) => onChanged(value.field, value.ascending),
       itemBuilder: (context) => [
@@ -239,12 +240,12 @@ class _SortButton extends StatelessWidget {
           CheckedPopupMenuItem(
             value: (field: option.field, ascending: true),
             checked: option.field == field && ascending,
-            child: Text('${option.label} — ascending'),
+            child: Text(AppStrings.sortAscending(option.label)),
           ),
           CheckedPopupMenuItem(
             value: (field: option.field, ascending: false),
             checked: option.field == field && !ascending,
-            child: Text('${option.label} — descending'),
+            child: Text(AppStrings.sortDescending(option.label)),
           ),
         ],
       ],
@@ -273,7 +274,7 @@ class _SortButton extends StatelessWidget {
               // sort rather than just offering to change it.
               Flexible(
                 child: Text(
-                  current?.label ?? 'Sort',
+                  current?.label ?? AppStrings.sortFallback,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: context.text.labelLarge,
@@ -358,7 +359,10 @@ class _FilterBody extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text('Filters', style: context.text.titleMedium),
+                child: Text(
+                  AppStrings.filtersTitle,
+                  style: context.text.titleMedium,
+                ),
               ),
               if (onClear != null)
                 TextButton(
@@ -366,7 +370,7 @@ class _FilterBody extends StatelessWidget {
                     onClear!();
                     Navigator.of(context).pop();
                   },
-                  child: const Text('Clear all'),
+                  child: const Text(AppStrings.clearAllFilters),
                 ),
             ],
           ),
@@ -383,7 +387,7 @@ class _FilterBody extends StatelessWidget {
           padding: const EdgeInsets.all(Insets.lg),
           child: FilledButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Done'),
+            child: const Text(AppStrings.done),
           ),
         ),
       ],

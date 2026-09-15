@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/permission.dart';
+import '../../constants/app_strings.dart';
 import '../../models/supplier.dart';
 import '../../models/table_query.dart';
 import '../../providers/permissions_provider.dart';
@@ -55,8 +56,8 @@ class SuppliersScreen extends ConsumerWidget {
     final canDelete = ref.watch(hasPermissionProvider(AppPermissions.suppliersDelete));
 
     return DataPageScaffold(
-      title: 'Suppliers',
-      subtitle: 'Vendors this business orders restock inventory from',
+      title: AppStrings.suppliersTitle,
+      subtitle: AppStrings.suppliersSubtitle,
       actions: const [],
       // Hidden rather than shown-disabled: someone who can't add suppliers
       // shouldn't see a control that only ever 403s.
@@ -65,24 +66,24 @@ class SuppliersScreen extends ConsumerWidget {
           : FilledButton.icon(
               onPressed: () => showSupplierFormDialog(context),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('Add supplier'),
+              label: const Text(AppStrings.addSupplier),
             ),
       metrics: [
         SummaryMetricCard(
-          label: 'Total suppliers',
+          label: AppStrings.totalSuppliers,
           value: '${ref.watch(suppliersListProvider).length}',
-          trend: 'Active vendor records',
+          trend: AppStrings.activeVendorRecords,
           icon: Icons.storefront_outlined,
         ),
       ],
       toolbar: DataTableToolbar(
-        searchHint: 'Search by name, phone, or email',
+        searchHint: AppStrings.searchSupplier,
         searchValue: ref.watch(supplierSearchProvider),
         onSearchChanged: (value) => ref.read(supplierSearchProvider.notifier).state = value,
         activeFilterCount: 0,
         onClearFilters: () {},
         filterBuilder: (_) => const SizedBox.shrink(),
-        sortOptions: const [SortOption(label: 'Name', field: 'name')],
+        sortOptions: const [SortOption(label: AppStrings.nameColumn, field: 'name')],
         sortField: query.sortField,
         sortAscending: query.ascending,
         onSortChanged: (field, ascending) => notifier.setSort(field, ascending: ascending),
@@ -105,14 +106,14 @@ class SuppliersScreen extends ConsumerWidget {
   }) => [
     if (canUpdate)
       DataRowAction(
-        label: 'Edit',
+        label: AppStrings.editAction,
         icon: Icons.edit_outlined,
         onSelected: (context, supplier) =>
             showSupplierFormDialog(context, existingSupplier: supplier),
       ),
     if (canDelete)
       DataRowAction(
-        label: 'Delete',
+        label: AppStrings.deleteAction,
         icon: Icons.delete_outline_rounded,
         isDestructive: true,
         onSelected: (context, supplier) => _confirmDelete(context, ref, supplier),
@@ -127,19 +128,16 @@ class SuppliersScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete ${supplier.name}?'),
-        content: const Text(
-          'This supplier record will be removed. Past reorders keep their '
-          'attribution. This cannot be undone.',
-        ),
+        title: Text(AppStrings.deleteSupplierTitle(supplier.name)),
+        content: const Text(AppStrings.deleteSupplierBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: const Text(AppStrings.deleteAction),
           ),
         ],
       ),
@@ -150,31 +148,35 @@ class SuppliersScreen extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(suppliersProvider.notifier).delete(supplier.id);
-      messenger.showSnackBar(SnackBar(content: Text('${supplier.name} deleted')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.supplierDeleted(supplier.name))),
+      );
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Could not delete: $e')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppStrings.deleteFailed(e))),
+      );
     }
   }
 }
 
 final _columns = <DataColumnSpec<Supplier>>[
   DataColumnSpec(
-    label: 'Name',
+    label: AppStrings.nameColumn,
     field: 'name',
     role: ColumnRole.primary,
     flex: 4,
     value: (supplier) => supplier.name,
   ),
   DataColumnSpec(
-    label: 'Phone',
+    label: AppStrings.phoneColumn,
     field: 'phone',
     flex: 3,
-    value: (supplier) => supplier.phone ?? '—',
+    value: (supplier) => supplier.phone ?? AppStrings.emDash,
   ),
   DataColumnSpec(
-    label: 'Email',
+    label: AppStrings.emailColumn,
     field: 'email',
     flex: 3,
-    value: (supplier) => supplier.email ?? '—',
+    value: (supplier) => supplier.email ?? AppStrings.emDash,
   ),
 ];

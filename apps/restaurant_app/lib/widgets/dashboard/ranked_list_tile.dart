@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../theme/dashboard_colors.dart';
@@ -86,7 +87,7 @@ class RankedListTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              '$rank',
+              AppStrings.rankBadge(rank),
               style: context.text.labelMedium?.copyWith(
                 color: family.onTint,
                 fontWeight: FontWeight.w800,

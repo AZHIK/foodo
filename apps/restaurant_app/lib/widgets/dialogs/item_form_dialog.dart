@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/inventory_item.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/item_form_provider.dart';
 import '../../providers/units_provider.dart';
@@ -190,7 +191,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+      messenger.showSnackBar(SnackBar(content: Text(AppStrings.saveFailed(e))));
     }
   }
 
@@ -211,18 +212,20 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
       // form opens.
       autovalidateMode: AutovalidateMode.onUserInteraction,
       child: ResponsiveFormDialog(
-        title: state.isEdit ? 'Edit item' : 'Add item',
+        title: state.isEdit ? AppStrings.editItemTitle : AppStrings.addItemTitle,
         width: ItemFormDialog.dialogWidth,
         actions: [
           OutlinedButton(
             key: ItemFormKeys.cancel,
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           FilledButton(
             key: ItemFormKeys.submit,
             onPressed: state.canSave && !_saving ? _save : null,
-            child: Text(state.isEdit ? 'Save changes' : 'Add item'),
+            child: Text(
+              state.isEdit ? AppStrings.saveChanges : AppStrings.addItemTitle,
+            ),
           ),
         ],
         child: chooserMode
@@ -247,11 +250,10 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('What are you adding?', style: context.text.titleMedium),
+        Text(AppStrings.whatAdding, style: context.text.titleMedium),
         const SizedBox(height: Insets.xs),
         Text(
-          'This decides which fields the form leads with — nothing here is '
-          'final.',
+          AppStrings.chooserSubtitle,
           style: context.text.bodySmall?.copyWith(
             color: context.colors.onSurfaceVariant,
           ),
@@ -262,16 +264,16 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
           children: [
             SelectableOptionCard(
               key: ItemFormKeys.chooseGrocery,
-              label: 'Grocery',
-              subtitle: 'A raw material you stock and use',
+              label: AppStrings.groceryOption,
+              subtitle: AppStrings.groceryOptionBlurb,
               icon: Icons.shopping_basket_outlined,
               selected: false,
               onTap: () => notifier.chooseType('raw_material'),
             ),
             SelectableOptionCard(
               key: ItemFormKeys.chooseMenuItem,
-              label: 'Menu item',
-              subtitle: 'Something you sell at the till',
+              label: AppStrings.menuItemOption,
+              subtitle: AppStrings.menuItemOptionBlurb,
               icon: Icons.restaurant_menu_rounded,
               selected: false,
               onTap: () => notifier.chooseType('sellable'),
@@ -284,9 +286,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
             key: ItemFormKeys.chooseBoth,
             onPressed: () => notifier.chooseType('both'),
             icon: const Icon(Icons.swap_horiz_rounded, size: 16),
-            label: const Text(
-              'This item is both bought and sold — e.g. a bottled drink',
-            ),
+            label: const Text(AppStrings.bothOptionBlurb),
           ),
         ),
       ],
@@ -297,9 +297,9 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
   /// offering a way back to the chooser without losing anything else typed.
   Widget _typeSummaryBar(BuildContext context, ItemFormState state) {
     final (label, icon) = switch (state.itemType) {
-      'raw_material' => ('Grocery', Icons.shopping_basket_outlined),
-      'sellable' => ('Menu item', Icons.restaurant_menu_rounded),
-      _ => ('Bought and sold', Icons.swap_horiz_rounded),
+      'raw_material' => (AppStrings.groceryOption, Icons.shopping_basket_outlined),
+      'sellable' => (AppStrings.menuItemOption, Icons.restaurant_menu_rounded),
+      _ => (AppStrings.bothType, Icons.swap_horiz_rounded),
     };
 
     return Container(
@@ -319,7 +319,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
           TextButton(
             key: ItemFormKeys.changeType,
             onPressed: () => ref.read(_provider.notifier).resetType(),
-            child: const Text('Change'),
+            child: const Text(AppStrings.changeType),
           ),
         ],
       ),
@@ -377,10 +377,10 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
           _typeSummaryBar(context, state),
           const SizedBox(height: Insets.lg),
         ],
-        const SectionLabel('Basic info'),
+        const SectionLabel(AppStrings.basicInfo),
         const SizedBox(height: Insets.md),
         LabeledFormField(
-          label: 'Item name',
+          label: AppStrings.itemNameLabel,
           isRequired: true,
           child: TextFormField(
             key: ItemFormKeys.name,
@@ -388,7 +388,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
             textCapitalization: TextCapitalization.words,
             textInputAction: TextInputAction.next,
             decoration: const InputDecoration(
-              hintText: 'e.g. Heirloom Tomatoes',
+              hintText: AppStrings.itemNameExample,
             ),
             onChanged: notifier.setName,
             validator: ItemFormState.validateName,
@@ -397,7 +397,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
         const SizedBox(height: Insets.lg),
         _FieldPair(
           left: LabeledFormField(
-            label: 'Category',
+            label: AppStrings.categoryLabel,
             isRequired: true,
             child: DropdownButtonFormField<String>(
               key: ItemFormKeys.category,
@@ -405,7 +405,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
               // Without this the menu sizes to its widest entry and pushes past
               // the field instead of ellipsising inside it.
               isExpanded: true,
-              hint: const Text('Select'),
+              hint: const Text(AppStrings.selectOption),
               items: [
                 for (final category in ref.watch(categoriesListProvider))
                   DropdownMenuItem(
@@ -422,29 +422,30 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
             ),
           ),
           right: LabeledFormField(
-            label: 'SKU',
-            helper: state.isEdit ? null : 'Generated if left blank',
+            label: AppStrings.skuLabel2,
+            helper: state.isEdit ? null : AppStrings.skuHelper,
             child: TextFormField(
               key: ItemFormKeys.sku,
               controller: _sku,
               textCapitalization: TextCapitalization.characters,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(hintText: 'PRD-1001'),
+              decoration:
+                  const InputDecoration(hintText: AppStrings.skuExample),
               onChanged: notifier.setSku,
             ),
           ),
         ),
         const SizedBox(height: Insets.lg),
         LabeledFormField(
-          label: 'Description',
-          helper: 'Shown on the item\'s detail page',
+          label: AppStrings.descriptionLabel,
+          helper: AppStrings.descriptionHelper,
           child: TextFormField(
             key: ItemFormKeys.description,
             controller: _description,
             maxLines: 2,
             textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
-              hintText: 'Grade, origin, prep notes…',
+              hintText: AppStrings.descriptionExample,
               // The theme's pill border is drawn for single-line inputs and
               // looks wrong wrapped around a two-line box.
               border: OutlineInputBorder(
@@ -467,22 +468,22 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
         ),
 
         const SizedBox(height: Insets.xl),
-        const SectionLabel('Pricing & stock'),
+        const SectionLabel(AppStrings.pricingStock),
         const SizedBox(height: Insets.md),
         // The toggle governs the fields under it, so it comes before them —
         // switching it off after typing a threshold reads as a mistake.
         _SwitchTile(
           key: ItemFormKeys.trackStock,
-          title: 'Track stock for this item',
-          subtitleOn: 'Counted against a low-stock threshold',
-          subtitleOff: 'No counts, no low-stock warnings',
+          title: AppStrings.trackStockLabel,
+          subtitleOn: AppStrings.trackStockOn,
+          subtitleOff: AppStrings.trackStockOff,
           value: state.trackStock,
           onChanged: notifier.setTrackStock,
         ),
         const SizedBox(height: Insets.lg),
         _FieldPair(
           left: LabeledFormField(
-            label: 'Unit cost',
+            label: AppStrings.unitCostLabel,
             isRequired: true,
             child: TextFormField(
               key: ItemFormKeys.unitCost,
@@ -495,7 +496,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
                 FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
               ],
               decoration: InputDecoration(
-                hintText: '0.00',
+                hintText: AppStrings.moneyHint,
                 prefixText: Fmt.currencySymbol,
               ),
               onChanged: notifier.setUnitCost,
@@ -503,9 +504,9 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
             ),
           ),
           right: LabeledFormField(
-            label: 'Low stock alert',
+            label: AppStrings.lowAlertLabel,
             enabled: state.trackStock,
-            helper: state.trackStock ? 'Warn at or below this' : null,
+            helper: state.trackStock ? AppStrings.lowAlertHelper : null,
             child: TextFormField(
               key: ItemFormKeys.lowStockAlert,
               controller: _lowStock,
@@ -515,7 +516,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
               keyboardType: TextInputType.number,
               textInputAction: TextInputAction.next,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(hintText: '0'),
+              decoration: const InputDecoration(hintText: AppStrings.quantityHint),
               onChanged: notifier.setLowStockAlert,
               validator: (value) => state.trackStock
                   ? ItemFormState.validateLowStockAlert(value)
@@ -526,15 +527,15 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
         if (state.trackStock) ...[
           const SizedBox(height: Insets.lg),
           LabeledFormField(
-            label: 'Reorder quantity',
-            helper: 'How much to order when restocking',
+            label: AppStrings.reorderQtyLabel,
+            helper: AppStrings.reorderQtyHelper,
             child: TextFormField(
               key: ItemFormKeys.reorderQuantity,
               controller: _reorderQuantity,
               keyboardType: TextInputType.number,
               textInputAction: TextInputAction.next,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(hintText: '0'),
+              decoration: const InputDecoration(hintText: AppStrings.quantityHint),
               onChanged: notifier.setReorderQuantity,
               validator: ItemFormState.validateReorderQuantity,
             ),
@@ -542,9 +543,9 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
           const SizedBox(height: Insets.lg),
           _SwitchTile(
             key: ItemFormKeys.allowNegativeStock,
-            title: 'Allow stock to go negative',
-            subtitleOn: 'A sale can go through before the count catches up',
-            subtitleOff: 'A sale is blocked once stock reaches zero',
+            title: AppStrings.allowNegativeLabel,
+            subtitleOn: AppStrings.allowNegativeOn,
+            subtitleOff: AppStrings.allowNegativeOff,
             value: state.allowNegativeStock,
             onChanged: notifier.setAllowNegativeStock,
           ),
@@ -554,11 +555,11 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
         // the low-stock alert field above: hiding it would reflow the row
         // around it, and a grocery-only item can still be reclassified later.
         LabeledFormField(
-          label: 'Selling price',
+          label: AppStrings.sellingPrice,
           enabled: state.itemType != 'raw_material',
           helper: state.itemType == 'raw_material'
-              ? 'Not shown for groceries — change type to set a price'
-              : 'Required to appear on the POS menu',
+              ? AppStrings.priceGroceryHint
+              : AppStrings.priceRequiredTill,
           child: TextFormField(
             key: ItemFormKeys.sellingPrice,
             controller: _sellingPrice,
@@ -569,7 +570,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
             ],
             decoration: InputDecoration(
-              hintText: '0.00',
+              hintText: AppStrings.moneyHint,
               prefixText: Fmt.currencySymbol,
             ),
             onChanged: notifier.setSellingPrice,
@@ -586,20 +587,20 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
             left: state.isEdit
                 ? _ReadOnlyStock(value: state.stock, unit: state.unit)
                 : LabeledFormField(
-                    label: 'Opening stock',
-                    helper: 'What is on the shelf today',
+                    label: AppStrings.openingStock,
+                    helper: AppStrings.openingStockHelper,
                     child: TextFormField(
                       key: ItemFormKeys.stock,
                       controller: _stock,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: const InputDecoration(hintText: '0'),
+              decoration: const InputDecoration(hintText: AppStrings.quantityHint),
                       onChanged: notifier.setStock,
                       validator: ItemFormState.validateStock,
                     ),
                   ),
             right: LabeledFormField(
-              label: 'Unit',
+              label: AppStrings.unitLabel,
               // Falls back to a single option carrying the current value
               // while the real taxonomy is still syncing (or offline with
               // an empty cache) — mirrors the old MockInventory.units
@@ -625,21 +626,21 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
         ],
 
         const SizedBox(height: Insets.xl),
-        const SectionLabel('Status'),
+        const SectionLabel(AppStrings.statusSection),
         const SizedBox(height: Insets.md),
         SelectableOptionGrid(
           perRow: 2,
           children: [
             SelectableOptionCard(
-              label: 'Active',
-              subtitle: 'Counted and reorderable',
+              label: AppStrings.activeOption,
+              subtitle: AppStrings.activeOptionBlurb,
               icon: Icons.check_circle_outline_rounded,
               selected: !state.isArchived,
               onTap: () => notifier.setArchived(false),
             ),
             SelectableOptionCard(
-              label: 'Archived',
-              subtitle: 'Kept for reporting only',
+              label: AppStrings.archivedOption,
+              subtitle: AppStrings.archivedOptionBlurb,
               icon: Icons.archive_outlined,
               selected: state.isArchived,
               onTap: () => notifier.setArchived(true),
@@ -677,7 +678,7 @@ class _PhotoSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SectionLabel('Photo'),
+        const SectionLabel(AppStrings.photoSection),
         const SizedBox(height: Insets.md),
         if (centered) Center(child: field) else field,
         if (state.image != null) ...[
@@ -751,8 +752,8 @@ class _ReadOnlyStock extends StatelessWidget {
     final colors = context.colors;
 
     return LabeledFormField(
-      label: 'Current stock',
-      helper: 'Changes go through Stock Adjust',
+      label: AppStrings.currentStockReadonly,
+      helper: AppStrings.adjustFlowHint,
       child: Container(
         // Matches the height of a real input so the row's two halves line up.
         constraints: const BoxConstraints(minHeight: 48),
@@ -773,7 +774,7 @@ class _ReadOnlyStock extends StatelessWidget {
             const SizedBox(width: Insets.sm),
             Expanded(
               child: Text(
-                '$value $unit',
+                AppStrings.stockValue(value, unit),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: context.text.bodyMedium?.copyWith(

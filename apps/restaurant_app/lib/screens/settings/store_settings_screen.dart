@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/order.dart';
+import '../../constants/app_limits.dart';
+import '../../constants/app_strings.dart';
 import '../../models/store_settings.dart';
 import '../../providers/settings_provider.dart';
 import '../../router/app_router.dart';
@@ -120,7 +122,9 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
     setState(() => _dirty = false);
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Store settings saved')));
+    ).showSnackBar(
+      const SnackBar(content: Text(AppStrings.storeSettingsSaved)),
+    );
   }
 
   @override
@@ -132,8 +136,8 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
       child: DetailPageScaffold(
         maxContentWidth: 820,
         header: DetailPageHeader(
-          title: 'Store settings',
-          subtitle: 'Tax, receipts and trading hours for this store',
+          title: AppStrings.storeSettingsTitle,
+          subtitle: AppStrings.storeSettingsSubtitle,
           onBack: () => context.canPop()
               ? context.pop()
               : context.goNamed(AppRoute.settingsName),
@@ -142,7 +146,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
               key: StoreSettingsKeys.save,
               onPressed: _dirty ? _save : null,
               icon: const Icon(Icons.check_rounded, size: 18),
-              label: const Text('Save changes'),
+              label: const Text(AppStrings.saveChangesAction),
             ),
           ],
         ),
@@ -201,23 +205,23 @@ class _TaxPanel extends StatelessWidget {
     final text = (value ?? '').trim();
     if (text.isEmpty) return null;
     final parsed = double.tryParse(text);
-    if (parsed == null) return 'Enter a number';
-    if (parsed < 0 || parsed > 100) return 'Must be between 0 and 100';
+    if (parsed == null) return AppStrings.enterNumberError;
+    if (parsed < 0 || parsed > 100) return AppStrings.percentRangeError;
     return null;
   }
 
   @override
   Widget build(BuildContext context) {
     return DetailPanel(
-      title: 'Tax & pricing',
+      title: AppStrings.taxPricingPanel,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
           FieldPair(
             left: LabeledFormField(
-              label: 'Tax rate',
-              helper: 'Applied to every new ticket',
+              label: AppStrings.taxRateField,
+              helper: AppStrings.newTicketHelper,
               child: TextFormField(
                 key: StoreSettingsKeys.taxRate,
                 controller: taxRate,
@@ -226,15 +230,15 @@ class _TaxPanel extends StatelessWidget {
                 ),
                 inputFormatters: _rateFormatters,
                 decoration: const InputDecoration(
-                  hintText: '8.25',
-                  suffixText: '%',
+                  hintText: AppStrings.taxExample,
+                  suffixText: AppStrings.percentSuffix,
                 ),
                 validator: _validateRate,
               ),
             ),
             right: LabeledFormField(
-              label: 'Service charge',
-              helper: 'Leave at 0 if not applied',
+              label: AppStrings.serviceChargeField,
+              helper: AppStrings.serviceChargeHelper,
               child: TextFormField(
                 key: StoreSettingsKeys.serviceCharge,
                 controller: serviceCharge,
@@ -243,8 +247,8 @@ class _TaxPanel extends StatelessWidget {
                 ),
                 inputFormatters: _rateFormatters,
                 decoration: const InputDecoration(
-                  hintText: '0',
-                  suffixText: '%',
+                  hintText: AppStrings.quantityHint,
+                  suffixText: AppStrings.percentSuffix,
                 ),
                 validator: _validateRate,
               ),
@@ -253,17 +257,17 @@ class _TaxPanel extends StatelessWidget {
           const SizedBox(height: Insets.lg),
           SettingSwitchTile(
             switchKey: StoreSettingsKeys.taxInclusive,
-            title: 'Prices include tax',
+            title: AppStrings.pricesIncludeTax,
             subtitle: draft.taxInclusive
-                ? 'Menu prices are tax-inclusive; receipts show the tax within'
-                : 'Tax is added to the subtotal at checkout',
+                ? AppStrings.taxInclusivePrices
+                : AppStrings.taxAddedAtCheckout,
             value: draft.taxInclusive,
             onChanged: onInclusiveChanged,
           ),
           const SizedBox(height: Insets.lg),
           LabeledFormField(
-            label: 'Currency',
-            helper: 'Formats every amount shown in the app',
+            label: AppStrings.currencyField,
+            helper: AppStrings.currencyShownHelper,
             child: DropdownButtonFormField<Currency>(
               key: StoreSettingsKeys.currency,
               initialValue: draft.currency,
@@ -272,8 +276,11 @@ class _TaxPanel extends StatelessWidget {
                 for (final currency in Currency.values)
                   DropdownMenuItem(
                     value: currency,
-                    child: Text(
-                      '${currency.description} (${currency.label})',
+                  child: Text(
+                    AppStrings.currencyOption(
+                      currency.description,
+                      currency.label,
+                    ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -316,8 +323,7 @@ class _SampleAmount extends StatelessWidget {
         const SizedBox(width: Insets.sm),
         Expanded(
           child: Text(
-            'Prices will read as '
-            '${Fmt.moneyIn(currency, sample)}',
+            AppStrings.currencyPreview(Fmt.moneyIn(currency, sample)),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: context.text.bodySmall?.copyWith(
@@ -350,15 +356,15 @@ class _OrderPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DetailPanel(
-      title: 'Order & receipt',
+      title: AppStrings.orderReceiptPanel,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
           FieldPair(
             left: LabeledFormField(
-              label: 'Default order type',
-              helper: 'Pre-selected on the POS panel',
+              label: AppStrings.defaultOrderTypeField,
+              helper: AppStrings.preselectedPosHelper,
               child: DropdownButtonFormField<OrderType>(
                 key: StoreSettingsKeys.orderType,
                 initialValue: draft.defaultOrderType,
@@ -388,15 +394,18 @@ class _OrderPanel extends StatelessWidget {
               ),
             ),
             right: LabeledFormField(
-              label: 'Receipt number prefix',
-              helper: 'e.g. INV-1042',
+              label: AppStrings.receiptPrefixField,
+              helper: AppStrings.receiptPrefixExample,
               child: TextFormField(
                 key: StoreSettingsKeys.receiptPrefix,
                 controller: receiptPrefix,
                 textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(hintText: 'INV-'),
-                validator: (value) => (value ?? '').trim().length > 8
-                    ? 'Keep it under 8 characters'
+                decoration: const InputDecoration(
+                  hintText: AppStrings.receiptPrefixHint,
+                ),
+                validator: (value) => (value ?? '').trim().length >
+                        AppLimits.receiptPrefixLength
+                    ? AppStrings.receiptPrefixLengthError
                     : null,
               ),
             ),
@@ -404,10 +413,10 @@ class _OrderPanel extends StatelessWidget {
           const SizedBox(height: Insets.lg),
           SettingSwitchTile(
             switchKey: StoreSettingsKeys.autoPrint,
-            title: 'Auto-print receipt',
+            title: AppStrings.autoPrintReceipt,
             subtitle: draft.autoPrintReceipt
-                ? 'A receipt prints as soon as payment settles'
-                : 'Receipts print only when asked for',
+                ? AppStrings.autoPrintOn
+                : AppStrings.autoPrintOff,
             value: draft.autoPrintReceipt,
             onChanged: onAutoPrintChanged,
           ),
@@ -432,7 +441,7 @@ class _HoursPanel extends StatelessWidget {
     final hours = settings.hours;
 
     return DetailPanel(
-      title: 'Operating hours',
+      title: AppStrings.operatingHours,
       // The exception is what is worth stating: "Closed Mon" tells the reader
       // something a count of open days does not.
       trailing: Text(
@@ -496,7 +505,7 @@ class _DayRow extends StatelessWidget {
     final picked = await showTimePicker(
       context: context,
       initialTime: isOpening ? day.open : day.close,
-      helpText: isOpening ? 'Opens at' : 'Closes at',
+      helpText: isOpening ? AppStrings.opensAt : AppStrings.closesAt,
     );
     if (picked == null) return;
 
@@ -522,8 +531,8 @@ class _DayRow extends StatelessWidget {
     final toggle = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          day.isOpen ? 'Open' : 'Closed',
+          Text(
+          day.isOpen ? AppStrings.openValue : AppStrings.closedValue,
           style: context.text.bodySmall?.copyWith(
             color: colors.onSurfaceVariant,
           ),
@@ -609,7 +618,7 @@ class _DayRow extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: Insets.xs),
                 child: Text(
-                  'Closes the next morning',
+                  AppStrings.closesNextMorning,
                   style: context.text.bodySmall?.copyWith(
                     color: colors.onSurfaceVariant,
                   ),

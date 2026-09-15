@@ -8,6 +8,7 @@
 library;
 
 import 'package:dio/dio.dart';
+import '../constants/api_paths.dart';
 import 'pos_sync_api.dart';
 import 'sync_dtos.dart';
 
@@ -23,7 +24,7 @@ class HttpSyncApi extends PosSyncApi {
   Future<SyncBatchResult> syncSales(List<PendingSaleDto> batch) async {
     try {
       final response = await _dio.post(
-        '/businesses/$_businessId/sales/sync',
+        PosApiPaths.salesSync(_businessId),
         data: {
           'sales': batch.map((s) => s.toJson()).toList(),
         },

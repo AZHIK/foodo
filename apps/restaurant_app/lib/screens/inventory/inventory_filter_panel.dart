@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/inventory_item.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../theme/breakpoints.dart';
@@ -32,7 +33,7 @@ class InventoryFilterPanel extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         FilterSection(
-          title: 'Category',
+          title: AppStrings.categoryLabel,
           child: FilterChipGroup<String>(
             options: [
               for (final c in categories)
@@ -46,7 +47,7 @@ class InventoryFilterPanel extends ConsumerWidget {
         ),
         const SizedBox(height: Insets.xl),
         FilterSection(
-          title: 'Stock status',
+          title: AppStrings.stockStatusLabel,
           child: FilterChipGroup<StockStatus>(
             options: StockStatus.values,
             selected: filters.statuses,
@@ -56,7 +57,7 @@ class InventoryFilterPanel extends ConsumerWidget {
         ),
         const SizedBox(height: Insets.xl),
         FilterSection(
-          title: 'Stock quantity',
+          title: AppStrings.stockQuantityLabel,
           child: NumberRangeField(
             min: filters.minStock,
             max: filters.maxStock,

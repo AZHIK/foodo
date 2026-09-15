@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 
@@ -71,7 +72,7 @@ class CategoryPill extends StatelessWidget {
                     borderRadius: BorderRadius.circular(Radii.pill),
                   ),
                   child: Text(
-                    '$count',
+                    AppStrings.quantityBadge(count),
                     style: context.text.labelSmall?.copyWith(
                       color: foreground,
                       fontWeight: FontWeight.w700,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../constants/app_durations.dart';
+import '../constants/app_strings.dart';
 import '../models/chat_message.dart';
 import '../providers/chat_provider.dart';
 import '../theme/app_theme.dart';
@@ -49,7 +51,7 @@ class _ChatDialogState extends ConsumerState<ChatDialog> {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
+          duration: AppDurations.dialog,
           curve: Curves.easeOut,
         );
       }
@@ -87,7 +89,7 @@ class _ChatDialogState extends ConsumerState<ChatDialog> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Restaurant Assistant',
+                    AppStrings.assistantTitle,
                     style: TextStyle(
                       color: colors.onPrimary,
                       fontWeight: FontWeight.w700,
@@ -119,7 +121,7 @@ class _ChatDialogState extends ConsumerState<ChatDialog> {
                             ),
                             const SizedBox(height: Insets.lg),
                             Text(
-                              'Start a conversation',
+                              AppStrings.startConversation,
                               style: TextStyle(
                                 color: colors.onSurface,
                                 fontWeight: FontWeight.w600,
@@ -128,7 +130,7 @@ class _ChatDialogState extends ConsumerState<ChatDialog> {
                             ),
                             const SizedBox(height: Insets.sm),
                             Text(
-                              'Ask me about orders, inventory, sales, and more',
+                              AppStrings.askAboutOrders,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: colors.onSurfaceVariant,
@@ -198,7 +200,7 @@ class _ChatDialogState extends ConsumerState<ChatDialog> {
                       controller: _controller,
                       onSubmitted: (_) => _sendMessage(),
                       decoration: InputDecoration(
-                        hintText: 'Type your message...',
+                        hintText: AppStrings.typeMessage,
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: Insets.md,

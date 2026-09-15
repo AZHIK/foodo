@@ -537,6 +537,7 @@ class StockMovement(SQLModel, table=True):
             PG_UUID,
             ForeignKey("item.id", ondelete="CASCADE"),
             nullable=False,
+            index=True,
         ),
     )
     business_id: UUID = Field(
@@ -571,6 +572,7 @@ class StockMovement(SQLModel, table=True):
     reason: str | None = Field(default=None, max_length=500)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
+        index=True,
         sa_type=DateTime(timezone=True),
         sa_column_kwargs={"server_default": func.now()},
         nullable=False,

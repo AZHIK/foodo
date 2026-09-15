@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/mock_finance.dart';
+import '../../constants/app_strings.dart';
 import '../../models/other_expense.dart';
 import '../../models/permission.dart';
 import '../../providers/other_expenses_provider.dart';
@@ -37,13 +38,13 @@ class OtherExpensesScreen extends ConsumerWidget {
         const FinanceTabBar(active: FinanceTab.expenses),
         Expanded(
           child: DataPageScaffold(
-            title: 'Other expenses',
-            subtitle: 'Ad-hoc costs outside inventory purchases and payroll',
+            title: AppStrings.otherExpensesTitle,
+            subtitle: AppStrings.otherExpensesSubtitle,
             actions: dataPageExportActions<OtherExpense>(
               context: context,
               columns: otherExpenseColumns,
               rows: ref.watch(filteredOtherExpensesProvider),
-              title: 'Other expenses',
+              title: AppStrings.otherExpensesTitle,
               subtitle: _exportSubtitle(filters, query.search),
             ),
             // Hidden rather than shown-disabled: someone who can't add
@@ -55,7 +56,7 @@ class OtherExpensesScreen extends ConsumerWidget {
                     height: 40,
                     width: 40,
                     child: Tooltip(
-                      message: 'Add expense',
+                      message: AppStrings.addExpense,
                       child: Material(
                         color: context.colors.primary,
                         clipBehavior: Clip.antiAlias,
@@ -75,24 +76,24 @@ class OtherExpensesScreen extends ConsumerWidget {
                 : FilledButton.icon(
                     onPressed: () => showOtherExpenseFormDialog(context),
                     icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Add expense'),
+                    label: const Text(AppStrings.addExpense),
                   ),
             metrics: [
               SummaryMetricCard(
-                label: 'Total expenses',
+                label: AppStrings.totalExpenses,
                 value: Fmt.moneyCompact(summary.total),
-                trend: 'In current view',
+                trend: AppStrings.inCurrentView,
                 icon: Icons.arrow_upward_rounded,
               ),
               SummaryMetricCard(
-                label: 'Entries',
+                label: AppStrings.entriesMetric,
                 value: '${summary.entryCount}',
-                trend: 'Tracked in view',
+                trend: AppStrings.trackedInView,
                 icon: Icons.receipt_long_rounded,
                 accent: context.colors.tertiary,
               ),
               SummaryMetricCard(
-                label: 'Largest category',
+                label: AppStrings.largestCategory,
                 value: summary.largestCategoryLabel,
                 trend: Fmt.moneyCompact(summary.largestCategoryAmount),
                 icon: Icons.category_rounded,
@@ -100,18 +101,30 @@ class OtherExpensesScreen extends ConsumerWidget {
               ),
             ],
             toolbar: DataTableToolbar(
-              searchHint: 'Search description, payee or category',
+              searchHint: AppStrings.searchExpenses,
               searchValue: query.search,
               onSearchChanged: notifier.setSearch,
               activeFilterCount: filters.activeCount,
               onClearFilters: ref.read(otherExpenseFiltersProvider.notifier).clear,
               filterBuilder: (_) => const OtherExpenseFilterPanel(),
               sortOptions: const [
-                SortOption(label: 'Date', field: OtherExpenseSort.date),
-                SortOption(label: 'Category', field: OtherExpenseSort.category),
-                SortOption(label: 'Description', field: OtherExpenseSort.description),
-                SortOption(label: 'Amount', field: OtherExpenseSort.amount),
-                SortOption(label: 'Payment', field: OtherExpenseSort.payment),
+                SortOption(label: AppStrings.dateSort, field: OtherExpenseSort.date),
+                SortOption(
+                  label: AppStrings.categorySort,
+                  field: OtherExpenseSort.category,
+                ),
+                SortOption(
+                  label: AppStrings.descriptionSort,
+                  field: OtherExpenseSort.description,
+                ),
+                SortOption(
+                  label: AppStrings.amountSort,
+                  field: OtherExpenseSort.amount,
+                ),
+                SortOption(
+                  label: AppStrings.paymentSort,
+                  field: OtherExpenseSort.payment,
+                ),
               ],
               sortField: query.sortField,
               sortAscending: query.ascending,
@@ -126,13 +139,13 @@ class OtherExpensesScreen extends ConsumerWidget {
               rowActions: [
                 if (canUpdate)
                   DataRowAction(
-                    label: 'Edit',
+                    label: AppStrings.editAction,
                     icon: Icons.edit_outlined,
                     onSelected: (c, e) => showOtherExpenseFormDialog(c, existingExpense: e),
                   ),
                 if (canDelete)
                   DataRowAction(
-                    label: 'Delete',
+                    label: AppStrings.deleteAction,
                     icon: Icons.delete_outline_rounded,
                     isDestructive: true,
                     onSelected: (c, e) => _confirmDelete(c, ref, e),
@@ -149,11 +162,17 @@ class OtherExpensesScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Delete ${expense.description}?'),
-        content: const Text('This expense will be removed and cannot be recovered.'),
+        title: Text(AppStrings.deleteExpenseTitle(expense.description)),
+        content: const Text(AppStrings.deleteExpenseBody),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(AppStrings.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(AppStrings.deleteAction),
+          ),
         ],
       ),
     );
@@ -161,7 +180,11 @@ class OtherExpensesScreen extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(otherExpensesProvider.notifier).delete(expense.id);
-      messenger.showSnackBar(SnackBar(content: Text('${expense.description} deleted')));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(AppStrings.expenseDeleted(expense.description)),
+        ),
+      );
     } on FinanceOfflineMutationException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -171,19 +194,25 @@ class OtherExpensesScreen extends ConsumerWidget {
     final parts = <String>[
       if (filters.categoryIds.isNotEmpty) filters.categoryIds.map((id) => MockFinance.expenseCategoryLabel(id)).join(', '),
       if (filters.payments.isNotEmpty) filters.payments.map((p) => p.label).join(', '),
-      if (filters.dateRange != null) 'between ${filters.dateRange!.start.month}/${filters.dateRange!.start.day} and ${filters.dateRange!.end.month}/${filters.dateRange!.end.day}',
-      if (search.trim().isNotEmpty) 'matching "$search"',
+      if (filters.dateRange != null)
+        AppStrings.financeExportBetween(
+          '${filters.dateRange!.start.month}',
+          '${filters.dateRange!.start.day}',
+          '${filters.dateRange!.end.month}',
+          '${filters.dateRange!.end.day}',
+        ),
+      if (search.trim().isNotEmpty) AppStrings.exportMatching(search),
     ];
-    return parts.isEmpty ? 'All entries' : parts.join(' · ');
+    return parts.isEmpty ? AppStrings.allEntries : parts.join(' · ');
   }
 }
 
 final otherExpenseColumns = <DataColumnSpec<OtherExpense>>[
-  DataColumnSpec(label: 'Date', field: OtherExpenseSort.date, flex: 2, value: (e) => Fmt.dayMonth(e.date)),
-  DataColumnSpec(label: 'Description', field: OtherExpenseSort.description, role: ColumnRole.primary, flex: 5, value: (e) => e.description, cellBuilder: (c, e) => _DescriptionCell(expense: e)),
-  DataColumnSpec(label: 'Category', field: OtherExpenseSort.category, flex: 3, minTableWidth: 700, value: (e) => MockFinance.expenseCategoryLabel(e.categoryId)),
-  DataColumnSpec(label: 'Payment', field: OtherExpenseSort.payment, flex: 2, minTableWidth: 860, value: (e) => e.paymentType.label),
-  DataColumnSpec(label: 'Amount', field: OtherExpenseSort.amount, flex: 2, numeric: true, value: (e) => Fmt.money(e.amount)),
+  DataColumnSpec(label: AppStrings.dateSort, field: OtherExpenseSort.date, flex: 2, value: (e) => Fmt.dayMonth(e.date)),
+  DataColumnSpec(label: AppStrings.descriptionSort, field: OtherExpenseSort.description, role: ColumnRole.primary, flex: 5, value: (e) => e.description, cellBuilder: (c, e) => _DescriptionCell(expense: e)),
+  DataColumnSpec(label: AppStrings.categorySort, field: OtherExpenseSort.category, flex: 3, minTableWidth: 700, value: (e) => MockFinance.expenseCategoryLabel(e.categoryId)),
+  DataColumnSpec(label: AppStrings.paymentSort, field: OtherExpenseSort.payment, flex: 2, minTableWidth: 860, value: (e) => e.paymentType.label),
+  DataColumnSpec(label: AppStrings.amountSort, field: OtherExpenseSort.amount, flex: 2, numeric: true, value: (e) => Fmt.money(e.amount)),
 ];
 
 class _DescriptionCell extends StatelessWidget {
@@ -202,7 +231,7 @@ class _DescriptionCell extends StatelessWidget {
             if (expense.receipt != null) ...[const SizedBox(width: 8), Icon(Icons.attach_file_rounded, size: 14, color: context.colors.onSurfaceVariant)],
           ],
         ),
-        Text(expense.payee.isNotEmpty ? expense.payee : '—', maxLines: 1, overflow: TextOverflow.ellipsis, style: context.text.bodySmall?.copyWith(color: context.colors.onSurfaceVariant)),
+        Text(expense.payee.isNotEmpty ? expense.payee : AppStrings.emDash, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.text.bodySmall?.copyWith(color: context.colors.onSurfaceVariant)),
       ],
     );
   }

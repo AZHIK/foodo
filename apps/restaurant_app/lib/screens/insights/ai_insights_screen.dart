@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/ai_insight.dart';
+import '../../constants/app_strings.dart';
+import '../../constants/app_durations.dart';
 import '../../providers/ai_insights_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
@@ -54,7 +56,7 @@ class _InsightsHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Insights',
+                  AppStrings.insightsTitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: context.text.titleLarge?.copyWith(
@@ -63,7 +65,7 @@ class _InsightsHeader extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Generated from your live stock, sales and waste data',
+                  AppStrings.insightsSubtitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: context.text.bodySmall?.copyWith(
@@ -246,11 +248,8 @@ class _AskPanelState extends State<_AskPanel> {
     // would be indistinguishable from a real one until someone relied on it.
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text(
-          'Ask is not connected to a model yet — the cards on the left are '
-          'generated locally from your data.',
-        ),
-        duration: Duration(seconds: 5),
+        content: Text(AppStrings.askNotConnected),
+        duration: AppDurations.aiSnackbar,
       ),
     );
     _controller.clear();
@@ -262,7 +261,7 @@ class _AskPanelState extends State<_AskPanel> {
     final colors = context.colors;
 
     return DetailPanel(
-      title: 'Ask about your business',
+      title: AppStrings.askAboutBusiness,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -274,7 +273,7 @@ class _AskPanelState extends State<_AskPanel> {
             onChanged: (_) => setState(() {}),
             onSubmitted: (_) => _ask(),
             decoration: InputDecoration(
-              hintText: 'e.g. which supplier costs me the most?',
+              hintText: AppStrings.askExample,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(Radii.md),
               ),
@@ -292,11 +291,11 @@ class _AskPanelState extends State<_AskPanel> {
           FilledButton.icon(
             onPressed: _controller.text.trim().isEmpty ? null : _ask,
             icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-            label: const Text('Ask'),
+            label: const Text(AppStrings.askAction),
           ),
           const SizedBox(height: Insets.lg),
           Text(
-            'TRY ASKING',
+            AppStrings.tryAsking,
             style: context.text.labelSmall?.copyWith(
               color: colors.onSurfaceVariant,
               letterSpacing: 0.9,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/menu_item.dart';
+import '../../constants/app_strings.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/menu_providers.dart';
 import '../../theme/app_theme.dart';
@@ -200,15 +201,15 @@ class _NoResults extends ConsumerWidget {
             ),
             const SizedBox(height: Insets.md),
             Text(
-              query.isEmpty ? 'Nothing on the menu here' : 'No matches',
+              query.isEmpty ? AppStrings.noMenuHere : AppStrings.noMatches,
               style: context.text.titleMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: Insets.xs),
             Text(
               query.isEmpty
-                  ? 'This category has no items yet.'
-                  : 'Nothing matches “$query” in this category.',
+                  ? AppStrings.noItemsInCategory
+                  : AppStrings.nothingMatches(query),
               textAlign: TextAlign.center,
               style: context.text.bodyMedium?.copyWith(
                 color: colors.onSurfaceVariant,
@@ -223,7 +224,7 @@ class _NoResults extends ConsumerWidget {
                       MenuCategory.all.id;
                 },
                 icon: const Icon(Icons.filter_alt_off_outlined, size: 18),
-                label: const Text('Clear filters'),
+                label: const Text(AppStrings.clearFilters),
               ),
             ],
           ],

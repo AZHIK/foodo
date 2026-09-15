@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
+import '../../constants/app_strings.dart';
 import '../../theme/breakpoints.dart';
 
 /// The shared skeleton for every detail screen: a pinned header, a main
@@ -352,7 +353,7 @@ class LabeledValue extends StatelessWidget {
         ),
         const SizedBox(height: 2),
         Text(
-          value.isEmpty ? '—' : value,
+          value.isEmpty ? AppStrings.emDash : value,
           maxLines: maxLines,
           overflow: TextOverflow.ellipsis,
           style: context.text.bodyMedium?.copyWith(

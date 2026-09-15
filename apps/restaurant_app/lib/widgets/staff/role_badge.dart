@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../models/business_role.dart';
+import '../../constants/app_strings.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/role_badge_colors.dart';
 import '../data_page/status_badge.dart';
 
 /// A role rendered as a coloured pill.
@@ -24,7 +26,7 @@ class RoleBadge extends StatelessWidget {
     // A member whose role was deleted still has to render as something.
     if (role == null) {
       return StatusBadge(
-        label: 'No role',
+        label: AppStrings.noRole,
         tone: StatusTone.neutral,
         icon: Icons.help_outline_rounded,
         dense: dense,
@@ -40,35 +42,12 @@ class RoleBadge extends StatelessWidget {
     );
   }
 
-  /// The palette custom roles draw from. Chosen to stay distinguishable from
-  /// each other *and* from the success/warning/danger tones, so a role badge is
-  /// never mistaken for a status one.
-  static const _palette = <Color>[
-    Color(0xFF6C4FD8), // violet
-    Color(0xFF0F7B9C), // cyan
-    Color(0xFFB25E00), // amber-brown
-    Color(0xFF9B2C6F), // magenta
-    Color(0xFF3F6212), // olive
-    Color(0xFF1D4ED8), // indigo
-  ];
-
-  /// Dark-mode equivalents. The light palette's saturated mid-tones fail
-  /// contrast against a near-black surface, so each has a lifted counterpart
-  /// rather than being programmatically brightened.
-  static const _paletteDark = <Color>[
-    Color(0xFFB9A6FF),
-    Color(0xFF6FD3EE),
-    Color(0xFFF3B268),
-    Color(0xFFF09BCE),
-    Color(0xFFAFD26B),
-    Color(0xFF9DB8FF),
-  ];
-
   /// System roles get fixed slots so Owner is always the same colour across
   /// every install; custom roles hash into the remainder of the palette.
+  /// The palette itself lives in the theme ([RoleBadgeColors]) — this only
+  /// decides the slot.
   static Color roleColor(BuildContext context, BusinessRole role) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final palette = dark ? _paletteDark : _palette;
+    final palette = context.roleBadges.palette;
 
     final index = switch (role.id) {
       'role-owner' => 0,

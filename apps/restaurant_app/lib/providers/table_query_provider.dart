@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../constants/app_limits.dart';
 import '../models/table_query.dart';
 
 /// Owns the search/sort/pagination state for a single data page.
@@ -39,7 +40,7 @@ class TableQueryNotifier extends Notifier<TableQuery> {
   void previousPage() => setPage(state.page - 1);
 
   void setPageSize(int size) =>
-      state = state.copyWith(pageSize: size <= 0 ? 10 : size, page: 0);
+      state = state.copyWith(pageSize: size <= 0 ? AppLimits.tablePageSize : size, page: 0);
 
   /// Called when a page's filters change, so the user is never left looking at
   /// a page index the new result set no longer has.
