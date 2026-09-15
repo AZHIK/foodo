@@ -44,6 +44,15 @@ class CustomersScreen extends ConsumerWidget {
               icon: const Icon(Icons.add_rounded, size: 18),
               label: const Text(AppStrings.addCustomer),
             ),
+      onRefresh: () => ref.read(customersProvider.notifier).refresh(),
+      // Same action as the header button, moved to the thumb zone on phones.
+      fab: !canCreate
+          ? null
+          : DataPageFab(
+              icon: Icons.add_rounded,
+              label: AppStrings.addCustomer,
+              onPressed: () => showCustomerFormDialog(context),
+            ),
       metrics: [
         SummaryMetricCard(
           label: AppStrings.totalCustomers,

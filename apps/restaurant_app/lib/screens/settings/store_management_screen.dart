@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../models/store_location.dart';
 import '../../constants/app_strings.dart';
+import '../../providers/store_api_provider_real.dart';
 import '../../providers/store_locations_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
@@ -51,6 +52,12 @@ class StoreManagementScreen extends ConsumerWidget {
         onPressed: () => showLocationFormDialog(context),
         icon: const Icon(Icons.add_rounded, size: 18),
         label: const Text(AppStrings.addLocationAction),
+      ),
+      onRefresh: () => refreshStores(ref),
+      fab: DataPageFab(
+        icon: Icons.add_rounded,
+        label: AppStrings.addLocationAction,
+        onPressed: () => showLocationFormDialog(context),
       ),
       metrics: [
         SummaryMetricCard(

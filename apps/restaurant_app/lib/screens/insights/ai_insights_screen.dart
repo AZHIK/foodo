@@ -31,6 +31,11 @@ class AiInsightsScreen extends ConsumerWidget {
       maxContentWidth: 1100,
       header: const _InsightsHeader(),
       sidePanel: [_AskPanel(prompts: prompts)],
+      onRefresh: () async {
+        ref
+          ..invalidate(aiInsightsProvider)
+          ..invalidate(suggestedPromptsProvider);
+      },
       children: [
         for (final insight in insights) _InsightCard(insight: insight),
       ],

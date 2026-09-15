@@ -59,6 +59,14 @@ class RolesScreen extends ConsumerWidget {
               icon: const Icon(Icons.add_rounded, size: 18),
               label: const Text(AppStrings.createRoleButton),
             ),
+      onRefresh: () => ref.read(rolesProvider.notifier).refresh(),
+      fab: !canCreate
+          ? null
+          : DataPageFab(
+              icon: Icons.add_rounded,
+              label: AppStrings.createRoleButton,
+              onPressed: () => showRoleFormDialog(context),
+            ),
       metrics: [
         SummaryMetricCard(
           label: AppStrings.totalRoles,

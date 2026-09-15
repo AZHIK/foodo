@@ -40,6 +40,7 @@ class CustomerDetailScreen extends ConsumerWidget {
     return DetailPageScaffold(
       header: _Header(customer: customer),
       sidePanel: [_ProfilePanel(customer: customer)],
+      onRefresh: () => ref.read(customersProvider.notifier).refresh(),
       children: [
         _OrderHistoryPanel(
           customer: customer,

@@ -20,6 +20,7 @@ class DetailPageScaffold extends StatelessWidget {
     this.sidePanel = const [],
     this.maxContentWidth = 1180,
     this.sideFirstOnMobile = true,
+    this.onRefresh,
   });
 
   /// Usually a [DetailPageHeader]. Pinned above the scrolling body so a long
@@ -40,6 +41,10 @@ class DetailPageScaffold extends StatelessWidget {
   /// Whether the panel comes before the main content once stacked. Contact
   /// details usually should; a wide reference table usually should not.
   final bool sideFirstOnMobile;
+
+  /// Pull-to-refresh handler. Wrapped in a [RefreshIndicator] when provided —
+  /// the gesture phone users expect on any screen that shows live data.
+  final Future<void> Function()? onRefresh;
 
   /// Fixed width of the side column. Matches the POS order panel, so the app
   /// has one panel width rather than several near-misses.
@@ -69,7 +74,8 @@ class DetailPageScaffold extends StatelessWidget {
                       sidePanel.isNotEmpty &&
                       constraints.maxWidth >= _twoColumnMin;
 
-                  return ListView(
+                  final list = ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.fromLTRB(pad, Insets.sm, pad, pad),
                     children: [
                       Center(
@@ -84,6 +90,10 @@ class DetailPageScaffold extends StatelessWidget {
                       ),
                     ],
                   );
+
+                  return onRefresh != null
+                      ? RefreshIndicator(onRefresh: onRefresh!, child: list)
+                      : list;
                 },
               ),
             ),

@@ -35,8 +35,11 @@ class ReordersScreen extends ConsumerWidget {
         title: const Text(AppStrings.reordersTitle),
         elevation: 0,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(Insets.lg),
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(reordersProvider.notifier).refresh(),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(Insets.lg),
         children: [
           Row(
             children: [
@@ -111,6 +114,7 @@ class ReordersScreen extends ConsumerWidget {
               ),
             ),
         ],
+        ),
       ),
     );
   }

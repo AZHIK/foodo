@@ -65,8 +65,9 @@ class StaffScreen extends ConsumerWidget {
         ),
         context.isMobile
             ? SizedBox(
-                height: 40,
-                width: 40,
+                // 48x48: minimum comfortable touch target on a phone.
+                height: 48,
+                width: 48,
                     child: Tooltip(
                       message: AppStrings.rolesAction,
                   child: Material(
@@ -78,7 +79,7 @@ class StaffScreen extends ConsumerWidget {
                     ),
                     child: IconButton(
                       padding: EdgeInsets.zero,
-                      iconSize: 20,
+                      iconSize: 22,
                       onPressed: () => context.pushNamed(AppRoute.rolesName),
                       icon: const Icon(Icons.shield_outlined),
                     ),
@@ -92,35 +93,22 @@ class StaffScreen extends ConsumerWidget {
               ),
       ],
       // Hidden rather than shown-disabled: an owner who can't invite anyone
-      // shouldn't see a control that only ever 403s.
+      // shouldn't see a control that only ever 403s. On phones the scaffold
+      // moves this to the FAB, so no mobile-only icon variant is needed here.
       primaryAction: !canInvite
           ? null
-          : context.isMobile
-          ? SizedBox(
-              height: 40,
-              width: 40,
-              child: Tooltip(
-                      message: AppStrings.inviteStaff,
-                child: Material(
-                  color: context.colors.primary,
-                  clipBehavior: Clip.antiAlias,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    iconSize: 20,
-                    onPressed: () => showInviteStaffDialog(context),
-                    icon: const Icon(Icons.person_add_alt_rounded),
-                    color: context.colors.onPrimary,
-                  ),
-                ),
-              ),
-            )
           : FilledButton.icon(
               onPressed: () => showInviteStaffDialog(context),
               icon: const Icon(Icons.person_add_alt_rounded, size: 18),
               label: const Text(AppStrings.inviteStaff),
+            ),
+      onRefresh: () => ref.read(staffMembersProvider.notifier).refresh(),
+      fab: !canInvite
+          ? null
+          : DataPageFab(
+              icon: Icons.person_add_alt_rounded,
+              label: AppStrings.inviteStaff,
+              onPressed: () => showInviteStaffDialog(context),
             ),
       metrics: [
         SummaryMetricCard(

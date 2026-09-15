@@ -54,8 +54,12 @@ class _OrderBody extends ConsumerWidget {
       children: [
         _DetailHeader(order: order),
         Expanded(
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(pad, Insets.sm, pad, pad),
+          child: RefreshIndicator(
+            onRefresh: () =>
+                ref.read(ordersProvider.notifier).checkForNewOrders(),
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(pad, Insets.sm, pad, pad),
             children: [
               Center(
                 child: ConstrainedBox(
@@ -74,7 +78,8 @@ class _OrderBody extends ConsumerWidget {
                   ),
                 ),
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ],

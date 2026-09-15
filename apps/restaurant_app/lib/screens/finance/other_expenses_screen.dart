@@ -7,7 +7,6 @@ import '../../models/permission.dart';
 import '../../providers/other_expenses_provider.dart';
 import '../../providers/permissions_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/data_page/data_column_spec.dart';
 import '../../widgets/data_page/data_page_scaffold.dart';
@@ -48,35 +47,23 @@ class OtherExpensesScreen extends ConsumerWidget {
               subtitle: _exportSubtitle(filters, query.search),
             ),
             // Hidden rather than shown-disabled: someone who can't add
-            // expenses shouldn't see a control that only ever 403s.
+            // expenses shouldn't see a control that only ever 403s. On
+            // phones the scaffold moves this to the FAB.
             primaryAction: !canCreate
                 ? null
-                : context.isMobile
-                ? SizedBox(
-                    height: 40,
-                    width: 40,
-                    child: Tooltip(
-                      message: AppStrings.addExpense,
-                      child: Material(
-                        color: context.colors.primary,
-                        clipBehavior: Clip.antiAlias,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          iconSize: 20,
-                          onPressed: () => showOtherExpenseFormDialog(context),
-                          icon: const Icon(Icons.add_rounded),
-                          color: context.colors.onPrimary,
-                        ),
-                      ),
-                    ),
-                  )
                 : FilledButton.icon(
                     onPressed: () => showOtherExpenseFormDialog(context),
                     icon: const Icon(Icons.add_rounded, size: 18),
                     label: const Text(AppStrings.addExpense),
+                  ),
+            onRefresh: () =>
+                ref.read(otherExpensesProvider.notifier).refresh(),
+            fab: !canCreate
+                ? null
+                : DataPageFab(
+                    icon: Icons.add_rounded,
+                    label: AppStrings.addExpense,
+                    onPressed: () => showOtherExpenseFormDialog(context),
                   ),
             metrics: [
               SummaryMetricCard(

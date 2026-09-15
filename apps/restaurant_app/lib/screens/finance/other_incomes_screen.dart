@@ -8,7 +8,6 @@ import '../../providers/other_expenses_provider.dart' show FinanceOfflineMutatio
 import '../../providers/other_incomes_provider.dart';
 import '../../providers/permissions_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/data_page/data_column_spec.dart';
 import '../../widgets/data_page/data_page_scaffold.dart';
@@ -49,34 +48,22 @@ class OtherIncomesScreen extends ConsumerWidget {
               subtitle: _exportSubtitle(filters, query.search),
             ),
             // Hidden rather than shown-disabled — see other_expenses_screen.dart.
+            // On phones the scaffold moves this to the FAB.
             primaryAction: !canCreate
                 ? null
-                : context.isMobile
-                ? SizedBox(
-                    height: 40,
-                    width: 40,
-                    child: Tooltip(
-                      message: AppStrings.addIncome,
-                      child: Material(
-                        color: context.colors.primary,
-                        clipBehavior: Clip.antiAlias,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          iconSize: 20,
-                          onPressed: () => showOtherIncomeFormDialog(context),
-                          icon: const Icon(Icons.add_rounded),
-                          color: context.colors.onPrimary,
-                        ),
-                      ),
-                    ),
-                  )
                 : FilledButton.icon(
                     onPressed: () => showOtherIncomeFormDialog(context),
                     icon: const Icon(Icons.add_rounded, size: 18),
                     label: const Text(AppStrings.addIncome),
+                  ),
+            onRefresh: () =>
+                ref.read(otherIncomesProvider.notifier).refresh(),
+            fab: !canCreate
+                ? null
+                : DataPageFab(
+                    icon: Icons.add_rounded,
+                    label: AppStrings.addIncome,
+                    onPressed: () => showOtherIncomeFormDialog(context),
                   ),
             metrics: [
               SummaryMetricCard(

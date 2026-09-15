@@ -64,6 +64,8 @@ class SalesScreen extends ConsumerWidget {
       // No "Add" here — a sale is created at the till, not in the ledger. The
       // period selector earns the slot instead.
       primaryAction: const SalesDateRangeSelector(),
+      onRefresh: () =>
+          ref.read(ordersProvider.notifier).checkForNewOrders(),
       metrics: [
         SummaryMetricCard(
           label: AppStrings.totalSales,

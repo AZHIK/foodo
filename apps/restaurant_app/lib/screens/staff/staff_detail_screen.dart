@@ -45,6 +45,7 @@ class StaffDetailScreen extends ConsumerWidget {
         _ContactPanel(member: member),
         _AccessPanel(member: member, role: role),
       ],
+      onRefresh: () => ref.read(staffMembersProvider.notifier).refresh(),
       children: [
         // Omitted entirely for a role without till access — three zeroes would
         // imply a stock controller is bad at selling rather than not doing it.

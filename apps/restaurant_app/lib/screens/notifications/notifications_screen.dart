@@ -65,13 +65,19 @@ class NotificationsScreen extends ConsumerWidget {
                 ),
               ),
             )
-          : ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: Insets.md),
-              itemCount: notifications.length,
-              itemBuilder: (context, index) => _NotificationTile(
-                notification: notifications[index],
-                onTap: () => _handleNotificationTap(context, ref, notifications[index]),
-                onMarkRead: () => notifier.markRead(notifications[index].id),
+          : RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(notificationsProvider);
+              },
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: Insets.md),
+                itemCount: notifications.length,
+                itemBuilder: (context, index) => _NotificationTile(
+                  notification: notifications[index],
+                  onTap: () => _handleNotificationTap(context, ref, notifications[index]),
+                  onMarkRead: () => notifier.markRead(notifications[index].id),
+                ),
               ),
             ),
     );

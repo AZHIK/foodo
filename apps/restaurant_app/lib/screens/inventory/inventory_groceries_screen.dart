@@ -83,33 +83,20 @@ class InventoryGroceriesScreen extends ConsumerWidget {
               title: AppStrings.groceriesTitle,
               subtitle: _exportSubtitle(filters, query.search),
             ),
-            primaryAction: context.isMobile
-                ? SizedBox(
-                    height: 40,
-                    width: 40,
-                    child: Tooltip(
-                      message: AppStrings.addGroceryItem,
-                      child: Material(
-                        color: context.colors.primary,
-                        clipBehavior: Clip.antiAlias,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          iconSize: 20,
-                          onPressed: () => showItemFormDialog(context),
-                          icon: const Icon(Icons.add_rounded),
-                          color: context.colors.onPrimary,
-                        ),
-                      ),
-                    ),
-                  )
-                : FilledButton.icon(
-                    onPressed: () => showItemFormDialog(context),
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text(AppStrings.addItem),
-                  ),
+            // On phones the scaffold moves this to the FAB, so no mobile-only
+            // icon variant is needed here.
+            primaryAction: FilledButton.icon(
+              onPressed: () => showItemFormDialog(context),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text(AppStrings.addItem),
+            ),
+            onRefresh: () =>
+                ref.read(inventoryItemsProvider.notifier).refresh(),
+            fab: DataPageFab(
+              icon: Icons.add_rounded,
+              label: AppStrings.addGroceryItem,
+              onPressed: () => showItemFormDialog(context),
+            ),
             metrics: [
               SummaryMetricCard(
                 label: AppStrings.groceryItemsMetric,

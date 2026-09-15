@@ -60,6 +60,7 @@ class ItemDetailScreen extends ConsumerWidget {
       sideFirstOnMobile: false,
       header: _Header(item: item),
       sidePanel: [_AboutPanel(item: item)],
+      onRefresh: () => ref.read(inventoryItemsProvider.notifier).refresh(),
       children: [
         _KeyStats(item: item),
         _QuickActions(item: item),

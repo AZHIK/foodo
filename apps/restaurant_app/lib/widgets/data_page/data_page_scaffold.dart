@@ -10,6 +10,11 @@ import '../nav_shell_scope.dart';
 /// Everything page-specific arrives as a slot. A new data page (Customers,
 /// Staff, …) is a screen that fills in these arguments — it writes no layout
 /// of its own.
+///
+/// Mobile behaviour lives here too, once, rather than in every screen: pull
+/// to refresh ([onRefresh]) and the create action as a thumb-reachable
+/// extended FAB ([fab]) that replaces the header's inline [primaryAction] on
+/// phones — one definition, every data page a phone-first list for free.
 class DataPageScaffold extends StatelessWidget {
   const DataPageScaffold({
     super.key,
@@ -20,6 +25,8 @@ class DataPageScaffold extends StatelessWidget {
     required this.table,
     this.actions = const [],
     this.primaryAction,
+    this.onRefresh,
+    this.fab,
   });
 
   final String title;
@@ -29,8 +36,17 @@ class DataPageScaffold extends StatelessWidget {
   final List<Widget> actions;
 
   /// The page's emphasised action — "Add item", a date-range selector — shown
-  /// after [actions].
+  /// after [actions]. Hidden on mobile when [fab] is set, since the FAB
+  /// carries the same action within thumb reach.
   final Widget? primaryAction;
+
+  /// Pull-to-refresh handler. Wrapped in a [RefreshIndicator] on every form
+  /// factor — the gesture is a phone habit, but a mouse drag works too.
+  final Future<void> Function()? onRefresh;
+
+  /// The page's create action as a mobile extended FAB. Shown only on phones;
+  /// desktop keeps [primaryAction] inline in the header.
+  final DataPageFab? fab;
 
   /// Exactly three cards: three across on tablet and desktop, stacked on
   /// mobile. More or fewer still lay out, but three is the designed case.
@@ -45,36 +61,72 @@ class DataPageScaffold extends StatelessWidget {
     final pad = Insets.page(form);
     final isMobile = form.isMobile;
     final spacing = isMobile ? Insets.md : Insets.xl;
+    // The FAB carries the primary action on phones, so the header drops its
+    // inline copy rather than showing both.
+    final useFab = isMobile && fab != null;
+
+    final list = ListView(
+      // Always scrollable so the pull gesture works even when the content
+      // fits without scrolling.
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(
+        pad,
+        isMobile ? Insets.sm : Insets.md,
+        pad,
+        // Clear of the floating action button when one is showing.
+        useFab ? 88 : (isMobile ? Insets.sm : pad),
+      ),
+      children: [
+        _PageHeader(
+          title: title,
+          subtitle: subtitle,
+          actions: actions,
+          primaryAction: useFab ? null : primaryAction,
+        ),
+        SizedBox(height: isMobile ? spacing : Insets.xl),
+        _MetricsRow(metrics: metrics),
+        SizedBox(height: spacing),
+        toolbar,
+        SizedBox(height: isMobile ? Insets.md : Insets.lg),
+        table,
+      ],
+    );
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      floatingActionButton: useFab
+          ? FloatingActionButton.extended(
+              onPressed: fab!.onPressed,
+              icon: Icon(fab!.icon),
+              label: Text(fab!.label),
+            )
+          : null,
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            pad,
-            isMobile ? Insets.sm : Insets.md,
-            pad,
-            isMobile ? Insets.sm : pad,
-          ),
-          children: [
-            _PageHeader(
-              title: title,
-              subtitle: subtitle,
-              actions: actions,
-              primaryAction: primaryAction,
-            ),
-            SizedBox(height: isMobile ? spacing : Insets.xl),
-            _MetricsRow(metrics: metrics),
-            SizedBox(height: spacing),
-            toolbar,
-            SizedBox(height: isMobile ? Insets.md : Insets.lg),
-            table,
-          ],
-        ),
+        child: onRefresh != null
+            ? RefreshIndicator(onRefresh: onRefresh!, child: list)
+            : list,
       ),
     );
   }
+}
+
+/// A data page's create action, rendered as an extended FAB on phones.
+///
+/// The phone's header keeps its title, metrics and toolbar — the one control
+/// that moves is the create button, from inline in the header to a
+/// thumb-reachable FAB, because it is the control a phone user taps while
+/// holding the device one-handed.
+class DataPageFab {
+  const DataPageFab({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
 }
 
 class _PageHeader extends StatelessWidget {

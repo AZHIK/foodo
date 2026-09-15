@@ -68,6 +68,14 @@ class SuppliersScreen extends ConsumerWidget {
               icon: const Icon(Icons.add_rounded, size: 18),
               label: const Text(AppStrings.addSupplier),
             ),
+      onRefresh: () => ref.read(suppliersProvider.notifier).refresh(),
+      fab: !canCreate
+          ? null
+          : DataPageFab(
+              icon: Icons.add_rounded,
+              label: AppStrings.addSupplier,
+              onPressed: () => showSupplierFormDialog(context),
+            ),
       metrics: [
         SummaryMetricCard(
           label: AppStrings.totalSuppliers,
