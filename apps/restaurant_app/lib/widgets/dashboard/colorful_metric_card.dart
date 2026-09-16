@@ -74,6 +74,7 @@ class ColorfulMetricCard extends StatelessWidget {
               : isMobile
                   ? DashboardStyle.cardPaddingMobile
                   : DashboardStyle.cardPadding,
+          caption: caption,
           isMobile: isMobile,
         );
       },
@@ -84,6 +85,7 @@ class ColorfulMetricCard extends StatelessWidget {
     BuildContext context, {
     required bool showBadge,
     required EdgeInsets padding,
+    required String? caption,
     required bool isMobile,
   }) {
     final colors = context.colors;
@@ -209,19 +211,38 @@ class ColorfulMetricCard extends StatelessWidget {
                               ? context.text.headlineSmall
                               : context.text.headlineMedium)
                           ?.copyWith(
-                        color: colors.onSurface,
+                        // Deep tinted ink rather than near-black onSurface:
+                        // full black vibrates against the pastel fill and
+                        // shouts over the icon chip. onTint is drawn from the
+                        // same hue, so the number sits inside the card instead
+                        // of on top of it. Semibold is plenty at this size.
+                        color: family.onTint,
+                        fontWeight: FontWeight.w600,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                   ),
                   if (caption case final text?) ...[
                     const SizedBox(height: 3),
-                    Text(
-                      text,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.text.caption.copyWith(
-                        color: colors.onSurfaceVariant,
+                    // Same shrink-to-fit as the value above: the full caption
+                    // ("vs TSh 96.2k yesterday") always stays on one line and
+                    // scales down only as much as a narrow card needs, so the
+                    // leading "vs" is never chopped and every card in the row
+                    // keeps the same height. The 4px left nudge keeps the
+                    // first glyph clear of the card's hairline edge.
+                    Padding(
+                      padding: const EdgeInsets.only(left: 5),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          text,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.text.caption.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -361,12 +382,16 @@ class _HeroBody extends StatelessWidget {
                       ),
                     ),
                     if (caption case final text?)
-                      Text(
-                        text,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.text.caption.copyWith(
-                          color: Colors.white.withValues(alpha: 0.8),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          text,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.text.caption.copyWith(
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
                         ),
                       ),
                   ],
