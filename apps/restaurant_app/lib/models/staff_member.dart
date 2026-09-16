@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 
-import '../constants/app_strings.dart';
+import '../l10n/l10n.dart';
 import '../widgets/data_page/status_badge.dart';
 
 /// Where a staff account stands.
 enum StaffStatus {
-  active(AppStrings.activeStatus),
-  inactive(AppStrings.inactiveStatus),
-  pendingInvite(AppStrings.pendingInviteStatus);
+  active('activeStatus', 'Active'),
+  inactive('inactiveStatus', 'Inactive'),
+  pendingInvite('pendingInviteStatus', 'Pending invite');
 
-  const StaffStatus(this.label);
-  final String label;
+  const StaffStatus(this.labelKey, this.labelDefault);
+  final String labelKey;
+  final String labelDefault;
+
+  String get label => L10n.t(labelKey, labelDefault);
 
   StatusTone get tone => switch (this) {
     StaffStatus.active => StatusTone.positive,

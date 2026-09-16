@@ -335,7 +335,7 @@ class PermissionGatedScreen extends ConsumerWidget {
 
   static Widget _errorScreen(String message) {
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.errorTitle)),
+      appBar: AppBar(title: Text(AppStrings.errorTitle)),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(Insets.lg),
@@ -357,7 +357,7 @@ class _LegacyDeniedScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.accessDenied)),
+      appBar: AppBar(title: Text(AppStrings.accessDenied)),
       body: Center(
         child: Padding(
           padding: EdgeInsets.all(Insets.lg),
@@ -378,7 +378,7 @@ class _LegacyUnknownScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.offlineMode)),
+      appBar: AppBar(title: Text(AppStrings.offlineMode)),
       body: Center(
         child: Padding(
           padding: EdgeInsets.all(Insets.lg),

@@ -16,14 +16,14 @@ import '../theme/breakpoints.dart';
 /// to serve an item photo at ~190px, a business logo, and a staff avatar at
 /// considerably less.
 class ImageUploadField extends StatefulWidget {
-  const ImageUploadField({
+  ImageUploadField({
     super.key,
     required this.image,
     required this.onPicked,
     required this.onRemoved,
     this.size = 190,
-    this.label = AppStrings.uploadImage,
-    this.hint = AppStrings.imageHint,
+    this.label,
+    this.hint,
     this.enabled = true,
   });
 
@@ -39,11 +39,11 @@ class ImageUploadField extends StatefulWidget {
   /// Edge length of the square.
   final double size;
 
-  final String label;
+  final String? label;
 
   /// File type and size guidance under the label. Empty string hides it, for
   /// sizes too small to fit two lines of text.
-  final String hint;
+  final String? hint;
 
   final bool enabled;
 
@@ -109,7 +109,7 @@ class _ImageUploadFieldState extends State<ImageUploadField> {
 
     // Small squares (an avatar picker) have no room for the hint line, and a
     // clipped caption reads worse than no caption.
-    final showHint = widget.hint.isNotEmpty && widget.size >= 150;
+    final showHint = (widget.hint ?? AppStrings.imageHint).isNotEmpty && widget.size >= 150;
     final showLabel = widget.size >= 96;
 
     return CustomPaint(
@@ -148,7 +148,7 @@ class _ImageUploadFieldState extends State<ImageUploadField> {
                 if (showLabel) ...[
                   const SizedBox(height: Insets.sm),
                   Text(
-                    widget.label,
+                    widget.label ?? AppStrings.uploadImage,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
@@ -160,7 +160,7 @@ class _ImageUploadFieldState extends State<ImageUploadField> {
                 if (showHint) ...[
                   const SizedBox(height: 2),
                   Text(
-                    widget.hint,
+                    widget.hint ?? AppStrings.imageHint,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,

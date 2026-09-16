@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../constants/app_durations.dart';
 import '../constants/app_limits.dart';
+import '../constants/app_strings.dart';
 import '../models/ai_insight.dart';
 import '../models/inventory_item.dart';
 import '../models/stock_movement.dart';
@@ -9,6 +10,7 @@ import '../router/app_router.dart';
 import '../utils/formatters.dart';
 import 'dashboard_provider.dart';
 import 'inventory_provider.dart';
+import 'preferences_provider.dart';
 import 'stock_movement_provider.dart';
 
 /// Generates the assistant's observations from the app's real state.
@@ -22,6 +24,10 @@ import 'stock_movement_provider.dart';
 /// shape of the output is the same either way, which is the point of putting
 /// the derivation behind a provider.
 final aiInsightsProvider = Provider<List<AiInsight>>((ref) {
+  // Language is read for its side effect only: insight titles/bodies are
+  // localized at build time, so the cached list must recompute on toggle.
+  // Without this, widgets rebuild but keep receiving the old-language objects.
+  ref.watch(appLanguageProvider);
   final items = ref.watch(inventoryItemsListProvider);
   final movements = ref.watch(stockMovementsProvider);
   final summary = ref.watch(dashboardSummaryProvider);
@@ -46,12 +52,10 @@ List<AiInsight> _stockInsights(Ref ref, List<InventoryItem> items) {
   final reorder = ref.watch(reorderListProvider);
   if (reorder.isEmpty) {
     return [
-      const AiInsight(
+      AiInsight(
         id: 'stock-healthy',
-        title: 'Every line is above its reorder threshold',
-        body:
-            'Nothing needs ordering today. The next thing worth watching is '
-            'whichever line moves fastest over the weekend.',
+        title: AppStrings.insightStockHealthyTitle,
+        body: AppStrings.insightStockHealthyBody,
         category: InsightCategory.stock,
         priority: InsightPriority.informational,
       ),
@@ -65,46 +69,61 @@ List<AiInsight> _stockInsights(Ref ref, List<InventoryItem> items) {
     if (out.isNotEmpty)
       AiInsight(
         id: 'stock-out',
-        title: '${out.length} ${out.length == 1 ? 'line is' : 'lines are'} '
-            'out of stock',
-        body:
-            'These cannot be sold or prepped until a delivery lands. '
-            '${out.take(AppLimits.lowStockNamesShown).map((i) => i.name).join(', ')}'
-            '${out.length > 3 ? ' and ${out.length - 3} more' : ''}.',
+        title: AppStrings.insightStockOutTitle(
+          out.length,
+          out.length == 1
+              ? AppStrings.insightStockOutOne
+              : AppStrings.insightStockOutMany,
+        ),
+        body: AppStrings.insightStockOutBody(
+          out.take(AppLimits.lowStockNamesShown).map((i) => i.name).join(', '),
+          out.length > AppLimits.lowStockNamesShown
+              ? AppStrings.insightStockOutMore(
+                  out.length - AppLimits.lowStockNamesShown)
+              : '',
+        ),
         category: InsightCategory.stock,
         priority: InsightPriority.urgent,
         evidence: [
-          (label: 'Out of stock', value: '${out.length}'),
+          (label: AppStrings.evidenceOutOfStock, value: '${out.length}'),
           (
-            label: 'Value at risk',
+            label: AppStrings.evidenceValueAtRisk,
             value: Fmt.moneyCompact(
               out.fold<double>(0, (sum, i) => sum + i.reorderLevel * i.unitCost),
             ),
           ),
         ],
-        actionLabel: 'Open inventory',
+        actionLabel: AppStrings.actionOpenInventory,
         // Always Groceries: an out-of-stock insight is about raw materials,
         // never a till item.
         actionRoute: AppRoute.groceriesName,
       ),
     AiInsight(
       id: 'stock-reorder',
-      title: '${worst.name} is the most urgent reorder',
-      body:
-          'It is at ${Fmt.quantity(worst.stock)} ${worst.unit} against a threshold of '
-          '${Fmt.quantity(worst.reorderLevel)}. Restocking to threshold costs about '
-          '${Fmt.money((worst.reorderLevel - worst.stock).clamp(0, 1 << 30) * worst.unitCost)} '
-          'at cost.',
+      title: AppStrings.insightReorderTitle(worst.name),
+      body: AppStrings.insightReorderBody(
+        Fmt.quantity(worst.stock),
+        worst.unit,
+        Fmt.quantity(worst.reorderLevel),
+        Fmt.money((worst.reorderLevel - worst.stock).clamp(0, 1 << 30) *
+            worst.unitCost),
+      ),
       category: InsightCategory.stock,
       priority: worst.status == StockStatus.outOfStock
           ? InsightPriority.urgent
           : InsightPriority.advisory,
       evidence: [
-        (label: 'On hand', value: '${Fmt.quantity(worst.stock)} ${worst.unit}'),
-        (label: 'Threshold', value: '${Fmt.quantity(worst.reorderLevel)} ${worst.unit}'),
-        (label: 'Unit cost', value: Fmt.money(worst.unitCost)),
+        (
+          label: AppStrings.evidenceOnHand,
+          value: '${Fmt.quantity(worst.stock)} ${worst.unit}'
+        ),
+        (
+          label: AppStrings.evidenceThreshold,
+          value: '${Fmt.quantity(worst.reorderLevel)} ${worst.unit}'
+        ),
+        (label: AppStrings.evidenceUnitCost, value: Fmt.money(worst.unitCost)),
       ],
-      actionLabel: 'View item',
+      actionLabel: AppStrings.actionViewItem,
       actionRoute: AppRoute.itemDetailName,
       actionParams: {'itemId': worst.id},
     ),
@@ -136,14 +155,11 @@ List<AiInsight> _wasteInsights(
   }
 
   if (wastedUnits.isEmpty) {
-    return const [
+    return [
       AiInsight(
         id: 'waste-none',
-        title: 'No waste logged in the last 30 days',
-        body:
-            'Either the kitchen is running very tight, or waste is not being '
-            'recorded. Worth confirming which — untracked waste hides a real '
-            'cost.',
+        title: AppStrings.insightWasteNoneTitle,
+        body: AppStrings.insightWasteNoneBody,
         category: InsightCategory.waste,
         priority: InsightPriority.advisory,
       ),
@@ -165,22 +181,25 @@ List<AiInsight> _wasteInsights(
   return [
     AiInsight(
       id: 'waste-top',
-      title: '${nameById[worstId] ?? 'One line'} is your costliest waste',
-      body:
-          'It accounts for ${Fmt.money(worstCost)} of the '
-          '${Fmt.money(totalCost)} written off in the last 30 days. Check '
-          'portioning and delivery frequency before reordering at the same '
-          'volume.',
+      title: AppStrings.insightWasteTopTitle(
+          nameById[worstId] ?? AppStrings.insightWasteFallbackName),
+      body: AppStrings.insightWasteTopBody(
+        Fmt.money(worstCost),
+        Fmt.money(totalCost),
+      ),
       category: InsightCategory.waste,
       priority: worstCost > totalCost * 0.4
           ? InsightPriority.advisory
           : InsightPriority.informational,
       evidence: [
-        (label: 'This line', value: Fmt.money(worstCost)),
-        (label: 'All waste, 30d', value: Fmt.money(totalCost)),
-        (label: 'Units lost', value: Fmt.quantity(wastedUnits[worstId] ?? 0)),
+        (label: AppStrings.evidenceThisLine, value: Fmt.money(worstCost)),
+        (label: AppStrings.evidenceAllWaste, value: Fmt.money(totalCost)),
+        (
+          label: AppStrings.evidenceUnitsLost,
+          value: Fmt.quantity(wastedUnits[worstId] ?? 0)
+        ),
       ],
-      actionLabel: 'View item',
+      actionLabel: AppStrings.actionViewItem,
       actionRoute: AppRoute.itemDetailName,
       actionParams: {'itemId': worstId},
     ),
@@ -199,39 +218,50 @@ List<AiInsight> _salesInsights(DashboardSummary summary) {
       AiInsight(
         id: 'sales-trend',
         title: change >= 0
-            ? 'Takings are up ${Fmt.percent(change)} on yesterday'
-            : 'Takings are down ${Fmt.percent(change.abs())} on yesterday',
+            ? AppStrings.insightSalesUpTitle(Fmt.percent(change))
+            : AppStrings.insightSalesDownTitle(Fmt.percent(change.abs())),
         body: change >= 0
-            ? 'Today is running ahead at ${Fmt.money(summary.takingsToday)} '
-                  'across ${summary.ordersToday} orders.'
-            : 'Today is at ${Fmt.money(summary.takingsToday)} across '
-                  '${summary.ordersToday} orders. One slow day is noise; two '
-                  'is a pattern worth checking against staffing.',
+            ? AppStrings.insightSalesUpBody(
+                Fmt.money(summary.takingsToday), summary.ordersToday)
+            : AppStrings.insightSalesDownBody(
+                Fmt.money(summary.takingsToday), summary.ordersToday),
         category: InsightCategory.sales,
         priority: change >= 0
             ? InsightPriority.informational
             : InsightPriority.advisory,
         evidence: [
-          (label: 'Today', value: Fmt.money(summary.takingsToday)),
-          (label: 'Yesterday', value: Fmt.money(summary.takingsYesterday)),
-          (label: 'Avg ticket', value: Fmt.money(summary.averageTicket)),
+          (
+            label: AppStrings.evidenceToday,
+            value: Fmt.money(summary.takingsToday)
+          ),
+          (
+            label: AppStrings.evidenceYesterday,
+            value: Fmt.money(summary.takingsYesterday)
+          ),
+          (
+            label: AppStrings.evidenceAvgTicket,
+            value: Fmt.money(summary.averageTicket)
+          ),
         ],
-        actionLabel: 'Open sales',
+        actionLabel: AppStrings.actionOpenSales,
         actionRoute: AppRoute.salesName,
       ),
     if (summary.openOrders > 0)
       AiInsight(
         id: 'sales-open',
-        title: '${summary.openOrders} '
-            '${summary.openOrders == 1 ? 'ticket is' : 'tickets are'} '
-            'still open',
-        body:
-            'Unsettled tickets do not count towards takings and are the usual '
-            'cause of a till that will not reconcile at close.',
+        title: AppStrings.insightOpenTicketsTitle(
+          summary.openOrders,
+          summary.openOrders == 1
+              ? AppStrings.insightOpenOne
+              : AppStrings.insightOpenMany,
+        ),
+        body: AppStrings.insightOpenTicketsBody,
         category: InsightCategory.sales,
         priority: InsightPriority.advisory,
-        evidence: [(label: 'Open', value: '${summary.openOrders}')],
-        actionLabel: 'Open sales',
+        evidence: [
+          (label: AppStrings.evidenceOpen, value: '${summary.openOrders}')
+        ],
+        actionLabel: AppStrings.actionOpenSales,
         actionRoute: AppRoute.salesName,
       ),
   ];
@@ -242,11 +272,16 @@ List<AiInsight> _salesInsights(DashboardSummary summary) {
 /// Written against data the app actually holds, so none of them promise an
 /// answer the insight engine above could not produce.
 final suggestedPromptsProvider = Provider<List<String>>(
-  (ref) => const [
-    'What needs reordering before the weekend?',
-    'Where is my waste money going?',
-    'How did today compare with yesterday?',
-    'Which items have not moved in a month?',
-    'Who processed the most orders this week?',
-  ],
+  (ref) {
+    // Same caching trap as above: prompts are localized strings, so they
+    // must recompute when the language changes.
+    ref.watch(appLanguageProvider);
+    return [
+      AppStrings.promptReorderWeekend,
+      AppStrings.promptWasteMoney,
+      AppStrings.promptTodayVsYesterday,
+      AppStrings.promptDeadStock,
+      AppStrings.promptTopServer,
+    ];
+  },
 );

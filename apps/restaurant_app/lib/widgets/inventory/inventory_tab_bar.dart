@@ -31,7 +31,7 @@ class InventoryTabBar extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.fromLTRB(pad, Insets.md, pad, Insets.md),
       child: SegmentedButton<InventoryTab>(
-        segments: const [
+        segments: [
           ButtonSegment(
             value: InventoryTab.groceries,
             label: Text(AppStrings.groceriesTab),

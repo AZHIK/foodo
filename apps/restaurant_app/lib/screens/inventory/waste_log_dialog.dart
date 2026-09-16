@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/inventory_item.dart';
 import '../../constants/app_strings.dart';
+import '../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
@@ -14,14 +15,16 @@ import '../../widgets/responsive_form_dialog.dart';
 import 'stock_dialog_shared.dart';
 
 enum WasteReason {
-  expired(AppStrings.wasteReasonExpired),
-  spoiled(AppStrings.wasteReasonSpoiled),
-  prepError(AppStrings.wasteReasonPrep),
-  damaged(AppStrings.wasteReasonDropped),
-  other(AppStrings.wasteReasonOther);
+  expired('wasteReasonExpired', 'Expired'),
+  spoiled('wasteReasonSpoiled', 'Spoiled'),
+  prepError('wasteReasonPrep', 'Prep error'),
+  damaged('wasteReasonDropped', 'Dropped / damaged'),
+  other('wasteReasonOther', 'Other');
 
-  const WasteReason(this.label);
-  final String label;
+  const WasteReason(this.labelKey, this.labelDefault);
+  final String labelKey;
+  final String labelDefault;
+  String get label => L10n.t(labelKey, labelDefault);
 }
 
 /// Opens the waste log dialog for [item].
@@ -137,7 +140,7 @@ class _WasteLogDialogState extends ConsumerState<WasteLogDialog> {
         OutlinedButton(
           key: StockDialogKeys.cancel,
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
+          child: Text(AppStrings.cancel),
         ),
         FilledButton(
           key: StockDialogKeys.submit,
@@ -148,7 +151,7 @@ class _WasteLogDialogState extends ConsumerState<WasteLogDialog> {
             backgroundColor: semantic.warning,
             foregroundColor: semantic.onWarning,
           ),
-          child: const Text(AppStrings.logWaste),
+          child: Text(AppStrings.logWaste),
         ),
       ],
       child: Column(

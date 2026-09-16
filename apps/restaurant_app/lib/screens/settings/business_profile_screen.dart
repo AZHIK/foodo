@@ -115,7 +115,7 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
 
     if (profile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.noProfileLoaded)),
+        SnackBar(content: Text(AppStrings.noProfileLoaded)),
       );
       return;
     }
@@ -142,7 +142,7 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
       if (mounted) {
         setState(() => _dirty = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AppStrings.businessProfileSaved)),
+          SnackBar(content: Text(AppStrings.businessProfileSaved)),
         );
       }
     } catch (e) {
@@ -538,7 +538,7 @@ class _DetailsPanel extends StatelessWidget {
                   key: BusinessProfileKeys.name,
                   controller: name,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: AppStrings.businessNameHint2,
                   ),
                   validator: (value) => (value ?? '').trim().isEmpty
@@ -607,7 +607,7 @@ class _DetailsPanel extends StatelessWidget {
                     key: BusinessProfileKeys.taxId,
                     controller: taxId,
                     textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: AppStrings.optionalField,
                     ),
                   ),
@@ -619,7 +619,7 @@ class _DetailsPanel extends StatelessWidget {
                     key: BusinessProfileKeys.registrationNumber,
                     controller: registrationNumber,
                     textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: AppStrings.optionalField,
                     ),
                   ),
@@ -634,7 +634,7 @@ class _DetailsPanel extends StatelessWidget {
                   controller: licenseDocumentUrl,
                   keyboardType: TextInputType.url,
                   decoration:
-                      const InputDecoration(hintText: AppStrings.urlExample),
+                      InputDecoration(hintText: AppStrings.urlExample),
                 ),
               ),
             ],
@@ -655,7 +655,7 @@ class _DetailsPanel extends StatelessWidget {
                     key: BusinessProfileKeys.email,
                     controller: email,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: AppStrings.emailHint2,
                     ),
                   ),
@@ -667,7 +667,7 @@ class _DetailsPanel extends StatelessWidget {
                     key: BusinessProfileKeys.phone,
                     controller: phone,
                     keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: AppStrings.phoneHint2,
                     ),
                   ),
@@ -682,7 +682,7 @@ class _DetailsPanel extends StatelessWidget {
                   controller: address,
                   maxLines: 2,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: AppStrings.addressHint2,
                   ),
                 ),
@@ -695,7 +695,7 @@ class _DetailsPanel extends StatelessWidget {
                   key: BusinessProfileKeys.city,
                   controller: city,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: AppStrings.cityExample,
                   ),
                 ),

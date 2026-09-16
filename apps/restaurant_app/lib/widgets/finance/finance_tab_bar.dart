@@ -18,7 +18,7 @@ class FinanceTabBar extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.fromLTRB(pad, Insets.md, pad, Insets.md),
       child: SegmentedButton<FinanceTab>(
-        segments: const [
+        segments: [
           ButtonSegment(
             value: FinanceTab.expenses,
             label: Text(AppStrings.financeExpensesTab),

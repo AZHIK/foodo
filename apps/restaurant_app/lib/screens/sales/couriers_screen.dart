@@ -18,7 +18,7 @@ class CouriersScreen extends ConsumerWidget {
     final inactive = couriers.where((c) => c.status == CourierStatus.inactive).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.couriersTitle), elevation: 0),
+      appBar: AppBar(title: Text(AppStrings.couriersTitle), elevation: 0),
       body: ListView(
         padding: const EdgeInsets.all(Insets.lg),
         children: [

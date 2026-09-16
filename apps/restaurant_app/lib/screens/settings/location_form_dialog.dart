@@ -206,7 +206,7 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
         OutlinedButton(
           key: LocationFormKeys.cancel,
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
+          child: Text(AppStrings.cancel),
         ),
         FilledButton(
           key: LocationFormKeys.submit,
@@ -229,7 +229,7 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
                 key: LocationFormKeys.name,
                 controller: _name,
                 textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: AppStrings.locationNameExample,
                 ),
                 validator: (value) {
@@ -305,7 +305,7 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
                   key: LocationFormKeys.phone,
                   controller: _phone,
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: AppStrings.phoneExample4,
                   ),
                 ),
@@ -322,7 +322,7 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
                       AppLimits.staffCountMaxDigits,
                     ),
                   ],
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: AppStrings.staffCountHint,
                   ),
                 ),
@@ -338,7 +338,7 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
                 initialValue: _managerId,
                 isExpanded: true,
                 items: [
-                  const DropdownMenuItem<String?>(
+                  DropdownMenuItem<String?>(
                     child: Text(StoreLocation.unassignedManager),
                   ),
                   for (final member in staff)
@@ -369,7 +369,7 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
                 if (isCurrent) return;
                 if (!value && !_canDeactivate) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       content: Text(AppStrings.oneActiveRequired),
                     ),
                   );

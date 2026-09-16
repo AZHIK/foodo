@@ -1,34 +1,48 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
 import '../widgets/data_page/status_badge.dart';
 
 /// How much attention an insight is asking for.
 enum InsightPriority {
   /// Something is going wrong now and costs money today.
-  urgent('Act now', StatusTone.danger),
+  urgent(StatusTone.danger),
 
   /// Worth handling this week.
-  advisory('Worth a look', StatusTone.warning),
+  advisory(StatusTone.warning),
 
   /// Good news, or a neutral observation.
-  informational('FYI', StatusTone.info);
+  informational(StatusTone.info);
 
-  const InsightPriority(this.label, this.tone);
-  final String label;
+  const InsightPriority(this.tone);
   final StatusTone tone;
+
+  /// Localized on every read so a language toggle re-renders badges.
+  String get label => switch (this) {
+        InsightPriority.urgent => AppStrings.insightPriorityUrgent,
+        InsightPriority.advisory => AppStrings.insightPriorityAdvisory,
+        InsightPriority.informational => AppStrings.insightPriorityInfo,
+      };
 }
 
 /// What kind of question the insight answers, which decides where "See detail"
 /// sends the user.
 enum InsightCategory {
-  stock('Stock', Icons.inventory_2_outlined),
-  waste('Waste', Icons.delete_sweep_outlined),
-  sales('Sales', Icons.trending_up_rounded),
-  staffing('Staffing', Icons.groups_outlined);
+  stock(Icons.inventory_2_outlined),
+  waste(Icons.delete_sweep_outlined),
+  sales(Icons.trending_up_rounded),
+  staffing(Icons.groups_outlined);
 
-  const InsightCategory(this.label, this.icon);
-  final String label;
+  const InsightCategory(this.icon);
   final IconData icon;
+
+  /// Localized on every read so a language toggle re-renders cards.
+  String get label => switch (this) {
+        InsightCategory.stock => AppStrings.insightCategoryStock,
+        InsightCategory.waste => AppStrings.insightCategoryWaste,
+        InsightCategory.sales => AppStrings.insightCategorySales,
+        InsightCategory.staffing => AppStrings.insightCategoryStaffing,
+      };
 }
 
 /// One generated observation about the business.

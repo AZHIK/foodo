@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../constants/app_strings.dart';
+import '../l10n/l10n.dart';
 import '../utils/formatters.dart';
 import '../widgets/data_page/status_badge.dart';
 
@@ -10,14 +10,17 @@ import '../widgets/data_page/status_badge.dart';
 /// auditable fact on its own — a sale, a spill and a transfer are three very
 /// different conversations with a supplier.
 enum StockMovementType {
-  restock(AppStrings.restockMovement),
-  sale(AppStrings.saleMovement),
-  waste(AppStrings.wasteMovement),
-  adjustment(AppStrings.adjustmentMovement),
-  transfer(AppStrings.transferMovement);
+  restock('restockMovement', 'Restock'),
+  sale('saleMovement', 'Sale'),
+  waste('wasteMovement', 'Waste'),
+  adjustment('adjustmentMovement', 'Adjustment'),
+  transfer('transferMovement', 'Transfer');
 
-  const StockMovementType(this.label);
-  final String label;
+  const StockMovementType(this.labelKey, this.labelDefault);
+  final String labelKey;
+  final String labelDefault;
+
+  String get label => L10n.t(labelKey, labelDefault);
 
   IconData get icon => switch (this) {
     StockMovementType.restock => Icons.local_shipping_outlined,

@@ -151,7 +151,7 @@ class PosNoResults extends ConsumerWidget {
                       MenuCategory.all.id;
                 },
                 icon: const Icon(Icons.filter_alt_off_outlined, size: 18),
-                label: const Text(AppStrings.clearFilters),
+                label: Text(AppStrings.clearFilters),
               ),
             ],
           ],

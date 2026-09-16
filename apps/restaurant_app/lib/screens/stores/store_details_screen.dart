@@ -55,7 +55,7 @@ class StoreDetailsScreen extends ConsumerWidget {
                     AppRoute.settingsName,
                   ),
             icon: const Icon(Icons.arrow_back_rounded, size: 18),
-            label: const Text(AppStrings.back),
+            label: Text(AppStrings.back),
           ),
         ],
         bottom: TabBar(
@@ -209,7 +209,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AppStrings.storeDetailsSaved)),
+          SnackBar(content: Text(AppStrings.storeDetailsSaved)),
         );
       }
     } on DioException catch (e) {
@@ -279,7 +279,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                           controller: _latitude,
                           keyboardType: TextInputType.numberWithOptions(decimal: true, signed: true),
                           decoration: InputDecoration(
-                            label: const Text(AppStrings.latitudeLabel),
+                            label: Text(AppStrings.latitudeLabel),
                             hintText: 'e.g., -6.7924',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                           ),
@@ -291,7 +291,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                           controller: _longitude,
                           keyboardType: TextInputType.numberWithOptions(decimal: true, signed: true),
                           decoration: InputDecoration(
-                            label: const Text(AppStrings.longitudeLabel),
+                            label: Text(AppStrings.longitudeLabel),
                             hintText: 'e.g., 39.2083',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                           ),
@@ -307,7 +307,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
-                      label: const Text(AppStrings.storeEmailLabel),
+                      label: Text(AppStrings.storeEmailLabel),
                       hintText: 'contact@store.com',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                     ),
@@ -317,7 +317,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                     controller: _phone,
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
-                      label: const Text(AppStrings.storePhoneLabel),
+                      label: Text(AppStrings.storePhoneLabel),
                       hintText: '+255 7XX XXX XXX',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                     ),
@@ -344,14 +344,14 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                   const SizedBox(height: Insets.md),
                   DropdownButtonFormField<String>(
                     value: _currency,
-                    items: const [
+                    items: [
                       DropdownMenuItem(value: 'TZS', child: Text(AppStrings.tzShilling)),
                       DropdownMenuItem(value: 'USD', child: Text(AppStrings.usDollar)),
                       DropdownMenuItem(value: 'EUR', child: Text(AppStrings.euroLabel)),
                     ],
                     onChanged: (v) => setState(() => _currency = v ?? 'TZS'),
                     decoration: InputDecoration(
-                      label: const Text(AppStrings.storeCurrencyLabel),
+                      label: Text(AppStrings.storeCurrencyLabel),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                     ),
                   ),
@@ -373,7 +373,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                           controller: _amount,
                           keyboardType: TextInputType.numberWithOptions(decimal: true),
                           decoration: InputDecoration(
-                            label: const Text(AppStrings.creditLimitLabel),
+                            label: Text(AppStrings.creditLimitLabel),
                             hintText: '10000',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                           ),
@@ -385,7 +385,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                           controller: _maxPaymentTime,
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
-                            label: const Text(AppStrings.maxPaymentTimeLabel),
+                            label: Text(AppStrings.maxPaymentTimeLabel),
                             hintText: '1440',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                           ),
@@ -411,7 +411,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                     controller: _logoUrl,
                     keyboardType: TextInputType.url,
                     decoration: InputDecoration(
-                        label: const Text(AppStrings.logoUrlLabel),
+                        label: Text(AppStrings.logoUrlLabel),
                       hintText: 'https://...',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md)),
                     ),
@@ -430,14 +430,14 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
                   Text(AppStrings.storeHoursReceiptsSection, style: context.text.titleMedium),
                   const SizedBox(height: Insets.md),
                   ListTile(
-                    title: const Text(AppStrings.hoursOfOperation),
-                    subtitle: const Text(AppStrings.comingSoon),
+                    title: Text(AppStrings.hoursOfOperation),
+                    subtitle: Text(AppStrings.comingSoon),
                     trailing: const Icon(Icons.lock_rounded, size: 18),
                   ),
                   const Divider(),
                   ListTile(
-                    title: const Text(AppStrings.receiptSettings),
-                    subtitle: const Text(AppStrings.comingSoon),
+                    title: Text(AppStrings.receiptSettings),
+                    subtitle: Text(AppStrings.comingSoon),
                     trailing: const Icon(Icons.lock_rounded, size: 18),
                   ),
                 ],
@@ -483,11 +483,11 @@ class _StaffTab extends ConsumerWidget {
                       FilledButton.icon(
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text(AppStrings.addStaffComingSoon)),
+                            SnackBar(content: Text(AppStrings.addStaffComingSoon)),
                           );
                         },
                         icon: const Icon(Icons.add_rounded, size: 18),
-                        label: const Text(AppStrings.add),
+                        label: Text(AppStrings.add),
                       ),
                     ],
                   ),

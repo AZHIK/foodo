@@ -97,7 +97,7 @@ class _PosTopBarState extends ConsumerState<PosTopBar> {
             // A real terminal hands this to a scanner service; the affordance
             // has to exist for the layout to be honest.
             onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text(AppStrings.scannerNotConnected)),
+              SnackBar(content: Text(AppStrings.scannerNotConnected)),
             ),
           ),
           if (!isMobile) ...[

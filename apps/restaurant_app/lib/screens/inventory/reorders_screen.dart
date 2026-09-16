@@ -32,7 +32,7 @@ class ReordersScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppStrings.reordersTitle),
+        title: Text(AppStrings.reordersTitle),
         elevation: 0,
       ),
       body: RefreshIndicator(
@@ -128,7 +128,7 @@ class _ReorderTile extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text(AppStrings.receiveReorderTitle),
+        title: Text(AppStrings.receiveReorderTitle),
         content: Text(
           AppStrings.receiveReorderAdds(
             Fmt.quantity(reorder.quantity),
@@ -138,11 +138,11 @@ class _ReorderTile extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(AppStrings.receiveAction),
+            child: Text(AppStrings.receiveAction),
           ),
         ],
       ),
@@ -153,7 +153,7 @@ class _ReorderTile extends ConsumerWidget {
     try {
       await ref.read(reordersProvider.notifier).receive(reorder);
       messenger.showSnackBar(
-        const SnackBar(content: Text(AppStrings.reorderReceivedMessage)),
+        SnackBar(content: Text(AppStrings.reorderReceivedMessage)),
       );
     } catch (e) {
       messenger.showSnackBar(
@@ -166,16 +166,16 @@ class _ReorderTile extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text(AppStrings.cancelReorderTitle),
-        content: const Text(AppStrings.cannotBeUndone),
+        title: Text(AppStrings.cancelReorderTitle),
+        content: Text(AppStrings.cannotBeUndone),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(AppStrings.keepIt),
+            child: Text(AppStrings.keepIt),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(AppStrings.cancelReorderAction),
+            child: Text(AppStrings.cancelReorderAction),
           ),
         ],
       ),
@@ -186,7 +186,7 @@ class _ReorderTile extends ConsumerWidget {
     try {
       await ref.read(reordersProvider.notifier).cancel(reorder);
       messenger.showSnackBar(
-        const SnackBar(content: Text(AppStrings.reorderCancelledMessage)),
+        SnackBar(content: Text(AppStrings.reorderCancelledMessage)),
       );
     } catch (e) {
       messenger.showSnackBar(
@@ -278,14 +278,14 @@ class _ReorderTile extends ConsumerWidget {
                 if (canCancel)
                   TextButton(
                     onPressed: () => _cancel(context, ref),
-                    child: const Text(AppStrings.cancel),
+                    child: Text(AppStrings.cancel),
                   ),
                 if (canReceive) ...[
                   const SizedBox(width: Insets.sm),
                   FilledButton.icon(
                     onPressed: () => _receive(context, ref),
                     icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
-                    label: const Text(AppStrings.receiveAction),
+                    label: Text(AppStrings.receiveAction),
                   ),
                 ],
               ],

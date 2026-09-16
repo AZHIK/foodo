@@ -290,7 +290,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
         FilledButton(
           key: OtpLoginKeys.sendCode,
           onPressed: _sendCode,
-          child: const Text(AppStrings.sendCode),
+          child: Text(AppStrings.sendCode),
         ),
       ],
     );
@@ -345,7 +345,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
                 : TextButton(
                     key: OtpLoginKeys.resend,
                     onPressed: _startCooldown,
-                    child: const Text(AppStrings.resendCode),
+                    child: Text(AppStrings.resendCode),
                   ),
           ),
         ),

@@ -22,13 +22,13 @@ class NotificationsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppStrings.notificationsTitle),
+        title: Text(AppStrings.notificationsTitle),
         elevation: 0,
         actions: [
           if (notifications.isNotEmpty)
             TextButton(
               onPressed: () => notifier.markAllRead(),
-              child: const Text(AppStrings.markAllRead),
+              child: Text(AppStrings.markAllRead),
             ),
           IconButton(
             onPressed: () => context.pop(),
@@ -199,7 +199,7 @@ class _NotificationTile extends StatelessWidget {
                         if (!notification.isRead)
                           TextButton(
                             onPressed: onMarkRead,
-                            child: const Text(AppStrings.markAsRead),
+                            child: Text(AppStrings.markAsRead),
                           ),
                       ],
                     ),

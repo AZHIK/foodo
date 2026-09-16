@@ -56,7 +56,7 @@ class InsightHighlights extends ConsumerWidget {
             ),
             TextButton(
               onPressed: () => context.goNamed(AppRoute.insightsName),
-              child: const Text(AppStrings.seeAll),
+              child: Text(AppStrings.seeAll),
             ),
           ],
         ),

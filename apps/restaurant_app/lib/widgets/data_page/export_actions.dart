@@ -62,12 +62,12 @@ List<Widget> exportActions({
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : const Icon(Icons.picture_as_pdf_outlined, size: 18),
-      label: const Text(AppStrings.exportPdf),
+      label: Text(AppStrings.exportPdf),
     ),
     OutlinedButton.icon(
       onPressed: busy ? null : onExportExcel,
       icon: const Icon(Icons.table_view_outlined, size: 18),
-      label: const Text(AppStrings.exportExcel),
+      label: Text(AppStrings.exportExcel),
     ),
   ];
 }

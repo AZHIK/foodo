@@ -54,7 +54,7 @@ class OtherIncomesScreen extends ConsumerWidget {
                 : FilledButton.icon(
                     onPressed: () => showOtherIncomeFormDialog(context),
                     icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text(AppStrings.addIncome),
+                    label: Text(AppStrings.addIncome),
                   ),
             onRefresh: () =>
                 ref.read(otherIncomesProvider.notifier).refresh(),
@@ -96,7 +96,7 @@ class OtherIncomesScreen extends ConsumerWidget {
               activeFilterCount: filters.activeCount,
               onClearFilters: ref.read(otherIncomeFiltersProvider.notifier).clear,
               filterBuilder: (_) => const OtherIncomeFilterPanel(),
-              sortOptions: const [
+              sortOptions: [
                 SortOption(label: AppStrings.dateSort, field: OtherIncomeSort.date),
                 SortOption(
                   label: AppStrings.categorySort,
@@ -152,15 +152,15 @@ class OtherIncomesScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(AppStrings.deleteIncomeTitle(income.description)),
-        content: const Text(AppStrings.deleteIncomeBody),
+        content: Text(AppStrings.deleteIncomeBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(AppStrings.deleteAction),
+            child: Text(AppStrings.deleteAction),
           ),
         ],
       ),

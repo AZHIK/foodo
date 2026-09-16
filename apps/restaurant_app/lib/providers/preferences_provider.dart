@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../constants/app_strings.dart';
+import '../l10n/l10n.dart';
 import '../theme/breakpoints.dart';
 
 /// How tightly the data tables pack their rows.
@@ -11,15 +11,34 @@ import '../theme/breakpoints.dart';
 /// wants to see twenty lines of stock at once.
 enum TableDensity {
   comfortable(
-    AppStrings.comfortableDensity,
-    AppStrings.comfortableBlurb,
+    'comfortableDensity',
+    'Comfortable',
+    'comfortableBlurb',
+    'Roomier rows, easier to tap',
   ),
-  compact(AppStrings.compactDensity, AppStrings.compactBlurb);
+  compact(
+    'compactDensity',
+    'Compact',
+    'compactBlurb',
+    'More rows on screen at once',
+  );
 
-  const TableDensity(this.label, this.description);
+  const TableDensity(
+    this.labelKey,
+    this.labelDefault,
+    this.descriptionKey,
+    this.descriptionDefault,
+  );
 
-  final String label;
-  final String description;
+  final String labelKey;
+  final String labelDefault;
+  final String descriptionKey;
+  final String descriptionDefault;
+
+  /// Localized display name — re-evaluated on every build.
+  String get label => L10n.t(labelKey, labelDefault);
+
+  String get description => L10n.t(descriptionKey, descriptionDefault);
 
   /// Vertical padding inside a table row. Read by [ReusableDataTable], which is
   /// what makes this setting a real one rather than a stored boolean.
@@ -60,19 +79,37 @@ final tableDensityProvider =
 /// setting is what a second language needs, and adding one should be a line
 /// here rather than a new control on the screen.
 enum AppLanguage {
-  english(AppStrings.englishLanguage, 'en');
+  english('en'),
+  swahili('sw');
 
-  const AppLanguage(this.label, this.code);
+  const AppLanguage(this.code);
 
-  final String label;
   final String code;
+
+  /// Display name — English localizes to 'Kiingereza', Kiswahili is the
+  /// same word in both languages.
+  String get label => switch (this) {
+    AppLanguage.english => L10n.t('englishLanguage', 'English'),
+    AppLanguage.swahili => 'Kiswahili',
+  };
 }
 
 class AppLanguageNotifier extends Notifier<AppLanguage> {
   @override
-  AppLanguage build() => AppLanguage.english;
+  AppLanguage build() {
+    // Provider is the source of truth for the UI; keep the synchronous
+    // L10n runtime in sync so L10n.t()/isSw and the API Accept-Language
+    // header always match the visible selection.
+    final initial = L10n.isSw ? AppLanguage.swahili : AppLanguage.english;
+    if (L10n.code.value != initial.code) L10n.code.value = initial.code;
+    return initial;
+  }
 
-  void set(AppLanguage language) => state = language;
+  void set(AppLanguage language) {
+    if (state == language && L10n.code.value == language.code) return;
+    state = language;
+    if (L10n.code.value != language.code) L10n.code.value = language.code;
+  }
 }
 
 final appLanguageProvider = NotifierProvider<AppLanguageNotifier, AppLanguage>(

@@ -80,7 +80,7 @@ class ProductionHistoryScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppStrings.productionTitle),
+        title: Text(AppStrings.productionTitle),
         elevation: 0,
         actions: [
           IconButton(
@@ -99,7 +99,7 @@ class ProductionHistoryScreen extends ConsumerWidget {
                   key: const Key('productionHistory.record'),
                   onPressed: () => _startRun(context, ref),
                   icon: const Icon(Icons.add_rounded),
-                  label: const Text(AppStrings.recordAction),
+                  label: Text(AppStrings.recordAction),
                 )
               : null,
       body: RefreshIndicator(
@@ -214,7 +214,7 @@ class _RecipePickerDialog extends ConsumerWidget {
       actions: [
         OutlinedButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
+          child: Text(AppStrings.cancel),
         ),
       ],
       child: recipes.isEmpty
@@ -365,7 +365,7 @@ Future<void> showProductionEventDetail(
       actions: [
         FilledButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.close),
+          child: Text(AppStrings.close),
         ),
       ],
       child: _ProductionDetailBody(event: event),

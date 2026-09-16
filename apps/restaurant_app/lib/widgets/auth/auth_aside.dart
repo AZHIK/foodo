@@ -39,7 +39,7 @@ class AuthAside extends ConsumerWidget {
 
   /// What the product does, in the till's own terms. Only shown on the brand
   /// variant — during onboarding the step list has more to say than a pitch.
-  static const _features = <({IconData icon, String label})>[
+  static final _features = <({IconData icon, String label})>[
     (icon: Icons.bolt_rounded, label: AppStrings.asideOrderFast),
     (icon: Icons.call_split_rounded, label: AppStrings.asideSplitBill),
     (icon: Icons.nightlight_round, label: AppStrings.asideCashUp),

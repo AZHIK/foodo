@@ -54,7 +54,7 @@ class OtherExpensesScreen extends ConsumerWidget {
                 : FilledButton.icon(
                     onPressed: () => showOtherExpenseFormDialog(context),
                     icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text(AppStrings.addExpense),
+                    label: Text(AppStrings.addExpense),
                   ),
             onRefresh: () =>
                 ref.read(otherExpensesProvider.notifier).refresh(),
@@ -94,7 +94,7 @@ class OtherExpensesScreen extends ConsumerWidget {
               activeFilterCount: filters.activeCount,
               onClearFilters: ref.read(otherExpenseFiltersProvider.notifier).clear,
               filterBuilder: (_) => const OtherExpenseFilterPanel(),
-              sortOptions: const [
+              sortOptions: [
                 SortOption(label: AppStrings.dateSort, field: OtherExpenseSort.date),
                 SortOption(
                   label: AppStrings.categorySort,
@@ -150,15 +150,15 @@ class OtherExpensesScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(AppStrings.deleteExpenseTitle(expense.description)),
-        content: const Text(AppStrings.deleteExpenseBody),
+        content: Text(AppStrings.deleteExpenseBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(AppStrings.deleteAction),
+            child: Text(AppStrings.deleteAction),
           ),
         ],
       ),

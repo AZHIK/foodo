@@ -492,7 +492,7 @@ class _DangerZone extends ConsumerWidget {
                 side: BorderSide(color: danger.withValues(alpha: 0.5)),
               ),
               icon: const Icon(Icons.person_off_outlined, size: 18),
-              label: const Text(AppStrings.deactivateAccount),
+              label: Text(AppStrings.deactivateAccount),
             ),
           ),
         ],
@@ -506,19 +506,19 @@ class _DangerZone extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text(AppStrings.deactivateTitle),
+        title: Text(AppStrings.deactivateTitle),
         content: Text(AppStrings.deactivateBody(name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(AppStrings.keepMyAccount),
+            child: Text(AppStrings.keepMyAccount),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: dialogContext.semantic.danger,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(AppStrings.deactivateConfirm),
+            child: Text(AppStrings.deactivateConfirm),
           ),
         ],
       ),

@@ -89,7 +89,7 @@ class StaffScreen extends ConsumerWidget {
             : OutlinedButton.icon(
                 onPressed: () => context.pushNamed(AppRoute.rolesName),
                 icon: const Icon(Icons.shield_outlined, size: 18),
-                label: const Text(AppStrings.rolesAction),
+                label: Text(AppStrings.rolesAction),
               ),
       ],
       // Hidden rather than shown-disabled: an owner who can't invite anyone
@@ -100,7 +100,7 @@ class StaffScreen extends ConsumerWidget {
           : FilledButton.icon(
               onPressed: () => showInviteStaffDialog(context),
               icon: const Icon(Icons.person_add_alt_rounded, size: 18),
-              label: const Text(AppStrings.inviteStaff),
+              label: Text(AppStrings.inviteStaff),
             ),
       onRefresh: () => ref.read(staffMembersProvider.notifier).refresh(),
       fab: !canInvite
@@ -146,7 +146,7 @@ class StaffScreen extends ConsumerWidget {
         activeFilterCount: filters.activeCount,
         onClearFilters: ref.read(staffFiltersProvider.notifier).clear,
         filterBuilder: (_) => const StaffFilterPanel(),
-        sortOptions: const [
+        sortOptions: [
           SortOption(label: AppStrings.nameSort, field: StaffSort.name),
           SortOption(label: AppStrings.roleSort, field: StaffSort.role),
           SortOption(label: AppStrings.statusSort, field: StaffSort.status),
@@ -215,12 +215,12 @@ class StaffScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: dialogContext.semantic.danger),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(AppStrings.removeAction),
+            child: Text(AppStrings.removeAction),
           ),
         ],
       ),

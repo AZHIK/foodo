@@ -128,7 +128,7 @@ class _NumberRangeFieldState extends State<NumberRangeField> {
         Expanded(
           child: _field(_min, AppStrings.rangeMin, AppStrings.quantityHint),
         ),
-        const Padding(
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: Insets.md),
           child: Text(AppStrings.rangeSeparator),
         ),

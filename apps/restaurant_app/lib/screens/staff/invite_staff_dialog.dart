@@ -121,7 +121,7 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
         actions: [
           OutlinedButton(
             onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: _canSubmit ? _submit : null,
@@ -131,7 +131,7 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
                     width: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text(AppStrings.sendInvite),
+                : Text(AppStrings.sendInvite),
           ),
         ],
         child: Column(
@@ -161,7 +161,7 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
                 textCapitalization: TextCapitalization.words,
                 textInputAction: TextInputAction.next,
                 decoration:
-                    const InputDecoration(hintText: AppStrings.teammateExample),
+                    InputDecoration(hintText: AppStrings.teammateExample),
                 onChanged: (_) => setState(() {}),
                 validator: validateName,
               ),
@@ -246,7 +246,7 @@ class _AddRoleDialogState extends ConsumerState<AddRoleDialog> {
       actions: [
         OutlinedButton(
           onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
+          child: Text(AppStrings.cancel),
         ),
         FilledButton(
           onPressed: _roleId != null && !_submitting ? _submit : null,
@@ -256,7 +256,7 @@ class _AddRoleDialogState extends ConsumerState<AddRoleDialog> {
                   width: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text(AppStrings.addRoleButton),
+              : Text(AppStrings.addRoleButton),
         ),
       ],
       child: Column(
@@ -385,7 +385,7 @@ class RolePickerField extends StatelessWidget {
           child: DropdownButtonFormField<String>(
             initialValue: value,
             isExpanded: true,
-            hint: const Text(AppStrings.selectRoleHint),
+            hint: Text(AppStrings.selectRoleHint),
             items: [
               for (final role in roles)
                 DropdownMenuItem(

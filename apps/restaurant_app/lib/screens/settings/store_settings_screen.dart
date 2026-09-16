@@ -123,7 +123,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(
-      const SnackBar(content: Text(AppStrings.storeSettingsSaved)),
+      SnackBar(content: Text(AppStrings.storeSettingsSaved)),
     );
   }
 
@@ -146,7 +146,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
               key: StoreSettingsKeys.save,
               onPressed: _dirty ? _save : null,
               icon: const Icon(Icons.check_rounded, size: 18),
-              label: const Text(AppStrings.saveChangesAction),
+              label: Text(AppStrings.saveChangesAction),
             ),
           ],
         ),
@@ -229,7 +229,7 @@ class _TaxPanel extends StatelessWidget {
                   decimal: true,
                 ),
                 inputFormatters: _rateFormatters,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: AppStrings.taxExample,
                   suffixText: AppStrings.percentSuffix,
                 ),
@@ -246,7 +246,7 @@ class _TaxPanel extends StatelessWidget {
                   decimal: true,
                 ),
                 inputFormatters: _rateFormatters,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: AppStrings.quantityHint,
                   suffixText: AppStrings.percentSuffix,
                 ),
@@ -400,7 +400,7 @@ class _OrderPanel extends StatelessWidget {
                 key: StoreSettingsKeys.receiptPrefix,
                 controller: receiptPrefix,
                 textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: AppStrings.receiptPrefixHint,
                 ),
                 validator: (value) => (value ?? '').trim().length >

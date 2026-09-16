@@ -52,7 +52,7 @@ class _RefundConfirmDialogState extends State<_RefundConfirmDialog> {
           TextField(
             controller: _reason,
             autofocus: true,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: AppStrings.reasonLabel,
               hintText: AppStrings.refundWhyHint,
             ),
@@ -63,13 +63,13 @@ class _RefundConfirmDialogState extends State<_RefundConfirmDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
+          child: Text(AppStrings.cancel),
         ),
         FilledButton(
           onPressed: _reason.text.trim().isEmpty
               ? null
               : () => Navigator.of(context).pop(_reason.text.trim()),
-          child: const Text(AppStrings.refundAction),
+          child: Text(AppStrings.refundAction),
         ),
       ],
     );

@@ -100,7 +100,7 @@ class SalesScreen extends ConsumerWidget {
         activeFilterCount: filters.activeCount,
         onClearFilters: ref.read(salesFiltersProvider.notifier).clear,
         filterBuilder: (_) => const SalesFilterPanel(),
-        sortOptions: const [
+        sortOptions: [
           SortOption(label: AppStrings.dateSort, field: SalesSort.date),
           SortOption(label: AppStrings.orderSort, field: SalesSort.orderId),
           SortOption(label: AppStrings.itemsSort, field: SalesSort.items),

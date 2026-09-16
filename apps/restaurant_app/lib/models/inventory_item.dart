@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import '../constants/app_strings.dart';
+import '../l10n/l10n.dart';
 
 /// A picked product photo, held in memory.
 ///
@@ -26,12 +26,15 @@ class ItemImage {
 /// Derived from stock rather than stored, so it can never disagree with the
 /// number next to it in the table.
 enum StockStatus {
-  inStock(AppStrings.inStockStatus),
-  lowStock(AppStrings.lowStockStatus),
-  outOfStock(AppStrings.outOfStockStatus);
+  inStock('inStockStatus', 'In stock'),
+  lowStock('lowStockStatus', 'Low stock'),
+  outOfStock('outOfStockStatus', 'Out of stock');
 
-  const StockStatus(this.label);
-  final String label;
+  const StockStatus(this.labelKey, this.labelDefault);
+  final String labelKey;
+  final String labelDefault;
+
+  String get label => L10n.t(labelKey, labelDefault);
 }
 
 /// A stockroom category. Separate from the menu's categories — flour and

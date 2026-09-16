@@ -97,7 +97,7 @@ class _Header extends ConsumerWidget {
           OutlinedButton.icon(
             onPressed: () => showAddRoleDialog(context, member),
             icon: const Icon(Icons.badge_outlined, size: 18),
-            label: const Text(AppStrings.addRole),
+            label: Text(AppStrings.addRole),
           ),
         _OverflowMenu(member: member),
       ],
@@ -158,12 +158,12 @@ class _OverflowMenu extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: dialogContext.semantic.danger),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(AppStrings.removeAction),
+            child: Text(AppStrings.removeAction),
           ),
         ],
       ),
@@ -269,7 +269,7 @@ class _AccessPanel extends ConsumerWidget {
                 minimumSize: const Size(0, 32),
                 visualDensity: VisualDensity.compact,
               ),
-              child: const Text(AppStrings.addAction),
+              child: Text(AppStrings.addAction),
             )
           : null,
       child: Column(
@@ -328,7 +328,7 @@ class _AccessPanel extends ConsumerWidget {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {
       messenger.showSnackBar(
-        const SnackBar(content: Text(AppStrings.couldNotRemoveRole)),
+        SnackBar(content: Text(AppStrings.couldNotRemoveRole)),
       );
     }
   }
@@ -510,7 +510,7 @@ class _NotFound extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: () => context.goNamed(AppRoute.staffName),
                   icon: const Icon(Icons.groups_outlined, size: 18),
-                  label: const Text(AppStrings.backToStaff),
+                  label: Text(AppStrings.backToStaff),
                 ),
               ],
             ),

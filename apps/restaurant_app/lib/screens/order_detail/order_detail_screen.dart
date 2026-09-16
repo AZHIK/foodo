@@ -491,7 +491,7 @@ class _Actions extends ConsumerWidget {
             SnackBar(content: Text(AppStrings.receiptSent(order.id))),
           ),
           icon: const Icon(Icons.print_outlined, size: 18),
-          label: const Text(AppStrings.printReceipt),
+          label: Text(AppStrings.printReceipt),
         ),
         if (isDelivery)
           OutlinedButton.icon(
@@ -586,7 +586,7 @@ class _NotFound extends StatelessWidget {
             FilledButton.icon(
               onPressed: () => context.goNamed(AppRoute.salesName),
               icon: const Icon(Icons.receipt_long_rounded, size: 18),
-              label: const Text(AppStrings.backToSales),
+              label: Text(AppStrings.backToSales),
             ),
           ],
         ),

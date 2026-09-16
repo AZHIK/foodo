@@ -121,7 +121,7 @@ class _CustomerFormDialogState extends ConsumerState<_CustomerFormDialog> {
         actions: [
           OutlinedButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: _saving ? null : _save,
@@ -139,7 +139,7 @@ class _CustomerFormDialogState extends ConsumerState<_CustomerFormDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SectionLabel(AppStrings.contactInfo),
+            SectionLabel(AppStrings.contactInfo),
             const SizedBox(height: Insets.md),
             LabeledFormField(
               label: AppStrings.nameColumn,
@@ -148,7 +148,7 @@ class _CustomerFormDialogState extends ConsumerState<_CustomerFormDialog> {
                 controller: _name,
                 textCapitalization: TextCapitalization.words,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: AppStrings.fullNameHint,
                 ),
                 validator: (value) => (value ?? '').trim().isEmpty
@@ -164,7 +164,7 @@ class _CustomerFormDialogState extends ConsumerState<_CustomerFormDialog> {
                 controller: _phone,
                 textInputAction: TextInputAction.next,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: AppStrings.phoneExample2,
                 ),
                 validator: (value) => (value ?? '').trim().isEmpty
@@ -179,7 +179,7 @@ class _CustomerFormDialogState extends ConsumerState<_CustomerFormDialog> {
                 controller: _email,
                 textInputAction: TextInputAction.next,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: AppStrings.emailExample2,
                 ),
               ),
@@ -190,7 +190,7 @@ class _CustomerFormDialogState extends ConsumerState<_CustomerFormDialog> {
               child: TextFormField(
                 controller: _address,
                 textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: AppStrings.addressExample2,
                 ),
               ),

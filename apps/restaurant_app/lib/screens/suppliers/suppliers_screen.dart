@@ -66,7 +66,7 @@ class SuppliersScreen extends ConsumerWidget {
           : FilledButton.icon(
               onPressed: () => showSupplierFormDialog(context),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text(AppStrings.addSupplier),
+              label: Text(AppStrings.addSupplier),
             ),
       onRefresh: () => ref.read(suppliersProvider.notifier).refresh(),
       fab: !canCreate
@@ -91,7 +91,7 @@ class SuppliersScreen extends ConsumerWidget {
         activeFilterCount: 0,
         onClearFilters: () {},
         filterBuilder: (_) => const SizedBox.shrink(),
-        sortOptions: const [SortOption(label: AppStrings.nameColumn, field: 'name')],
+        sortOptions: [SortOption(label: AppStrings.nameColumn, field: 'name')],
         sortField: query.sortField,
         sortAscending: query.ascending,
         onSortChanged: (field, ascending) => notifier.setSort(field, ascending: ascending),
@@ -137,15 +137,15 @@ class SuppliersScreen extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.deleteSupplierTitle(supplier.name)),
-        content: const Text(AppStrings.deleteSupplierBody),
+        content: Text(AppStrings.deleteSupplierBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(AppStrings.deleteAction),
+            child: Text(AppStrings.deleteAction),
           ),
         ],
       ),

@@ -59,7 +59,7 @@ class ReportsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppStrings.reportsTitle),
+        title: Text(AppStrings.reportsTitle),
         elevation: 0,
         actions: [
           IconButton(
@@ -250,7 +250,7 @@ class _TakingsSection extends ConsumerWidget {
           rows: days,
           exportTitle: AppStrings.dailyTakingsSection,
           body: days.isEmpty
-              ? const _EmptySection(hint: AppStrings.noSalesInWindow)
+              ? _EmptySection(hint: AppStrings.noSalesInWindow)
               : Column(
                   children: [
                     for (final day in days)
@@ -306,7 +306,7 @@ class _ItemMixSection extends ConsumerWidget {
       rows: lines,
       exportTitle: AppStrings.itemMixSection,
       body: lines.isEmpty
-          ? const _EmptySection(hint: AppStrings.nothingSold)
+          ? _EmptySection(hint: AppStrings.nothingSold)
           : Column(
               children: [
                 for (final line in lines)
@@ -366,7 +366,7 @@ class _StaffSection extends ConsumerWidget {
       rows: lines,
       exportTitle: AppStrings.staffPerformanceSection,
       body: lines.isEmpty
-          ? const _EmptySection(hint: AppStrings.noStaffSales)
+          ? _EmptySection(hint: AppStrings.noStaffSales)
           : Column(
               children: [
                 for (final line in lines)
@@ -454,7 +454,7 @@ class _FinanceSection extends ConsumerWidget {
           rows: summary?.expensesByCategory ?? const [],
           exportTitle: AppStrings.spendByCategory,
           body: (summary == null || summary.expensesByCategory.isEmpty)
-              ? const _EmptySection(hint: AppStrings.noExpenses)
+              ? _EmptySection(hint: AppStrings.noExpenses)
               : Column(
                   children: [
                     for (final line in summary.expensesByCategory)
@@ -508,7 +508,7 @@ class _WasteSection extends ConsumerWidget {
       rows: lines,
       exportTitle: AppStrings.wasteSection,
       body: lines.isEmpty
-          ? const _EmptySection(hint: AppStrings.noWaste)
+          ? _EmptySection(hint: AppStrings.noWaste)
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -595,7 +595,7 @@ class _ProductionSection extends ConsumerWidget {
           rows: summary?.ingredientsConsumed ?? const [],
           exportTitle: AppStrings.ingredientsConsumed,
           body: (summary == null || summary.ingredientsConsumed.isEmpty)
-              ? const _EmptySection(hint: AppStrings.noProduction)
+              ? _EmptySection(hint: AppStrings.noProduction)
               : Column(
                   children: [
                     for (final line in summary.ingredientsConsumed)
@@ -664,7 +664,7 @@ class _ValuationSection extends ConsumerWidget {
           rows: valuation?.lines ?? const [],
           exportTitle: AppStrings.inventoryValuation,
           body: (valuation == null || valuation.lines.isEmpty)
-              ? const _EmptySection(hint: AppStrings.nothingOnHand)
+              ? _EmptySection(hint: AppStrings.nothingOnHand)
               : Column(
                   children: [
                     for (final line in valuation.lines)

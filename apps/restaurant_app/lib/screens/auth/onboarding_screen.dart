@@ -56,7 +56,7 @@ abstract final class OnboardingKeys {
 
 /// The steps, named once. Drives both the aside's list and the count the bar
 /// divides itself into, so adding a step here is the only edit needed.
-const _steps = <AuthStep>[
+final _steps = <AuthStep>[
   AuthStep(
     label: AppStrings.obYourBusiness,
     blurb: AppStrings.obYourBusinessBlurb,
@@ -468,7 +468,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   child: OutlinedButton(
                     key: OnboardingKeys.back,
                     onPressed: _back,
-                    child: const Text(AppStrings.back),
+                    child: Text(AppStrings.back),
                   ),
                 ),
                 const SizedBox(width: Insets.md),
@@ -537,7 +537,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             autofocus: true,
             textCapitalization: TextCapitalization.words,
             decoration:
-                const InputDecoration(hintText: AppStrings.businessNameExample),
+                InputDecoration(hintText: AppStrings.businessNameExample),
             onChanged: (_) => setState(() {}),
           ),
         ),
@@ -581,7 +581,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             controller: _cuisineType,
             textCapitalization: TextCapitalization.words,
             decoration:
-                const InputDecoration(hintText: AppStrings.cuisineExample),
+                InputDecoration(hintText: AppStrings.cuisineExample),
           ),
         ),
         const SizedBox(height: Insets.lg),
@@ -592,7 +592,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             key: OnboardingKeys.licenseDocumentUrl,
             controller: _licenseDocumentUrl,
             keyboardType: TextInputType.url,
-            decoration: const InputDecoration(hintText: AppStrings.urlExample),
+            decoration: InputDecoration(hintText: AppStrings.urlExample),
           ),
         ),
       ],
@@ -614,7 +614,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             controller: _locationName,
             autofocus: true,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(hintText: AppStrings.locationExample),
+            decoration: InputDecoration(hintText: AppStrings.locationExample),
             onChanged: (_) => setState(() {}),
           ),
         ),
@@ -749,7 +749,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             key: OnboardingKeys.taxId,
             controller: _taxId,
             decoration:
-                const InputDecoration(hintText: AppStrings.taxIdExample),
+                InputDecoration(hintText: AppStrings.taxIdExample),
           ),
         ),
         const SizedBox(height: Insets.lg),
@@ -760,7 +760,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             key: OnboardingKeys.registrationNumber,
             controller: _registrationNumber,
             decoration:
-                const InputDecoration(hintText: AppStrings.regNumberExample),
+                InputDecoration(hintText: AppStrings.regNumberExample),
           ),
         ),
         const SizedBox(height: Insets.lg),
@@ -832,7 +832,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             key: OnboardingKeys.addTeammate,
             onPressed: _addTeammate,
             icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text(AppStrings.addAnother),
+            label: Text(AppStrings.addAnother),
           ),
         ),
         const SizedBox(height: Insets.sm),
@@ -914,7 +914,7 @@ class _TeammateRow extends StatelessWidget {
                 controller: member.name,
                 textCapitalization: TextCapitalization.words,
                 decoration:
-                    const InputDecoration(hintText: AppStrings.teammateNameExample),
+                    InputDecoration(hintText: AppStrings.teammateNameExample),
                 onChanged: (_) => onChanged(),
               ),
             ),

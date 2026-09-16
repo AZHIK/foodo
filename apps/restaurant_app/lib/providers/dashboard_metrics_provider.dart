@@ -15,6 +15,7 @@ import 'inventory_provider.dart';
 import 'orders_provider.dart';
 import 'other_expenses_provider.dart';
 import 'other_incomes_provider.dart';
+import 'preferences_provider.dart';
 import 'roles_provider.dart';
 import 'staff_provider.dart';
 
@@ -110,6 +111,8 @@ const int _trendDays = AppLimits.trendDays;
 const Duration _onShiftWindow = AppDurations.onShiftWindow;
 
 final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
+  // Category slice labels are localized, so recompute them on toggle.
+  ref.watch(appLanguageProvider);
   final orders = ref.watch(ordersListProvider);
   final items = ref.watch(inventoryItemsListProvider);
   final expenses = ref.watch(otherExpensesListProvider);
@@ -220,7 +223,7 @@ final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
       [
         for (final entry in categoryTotals.entries)
           CategorySlice(
-            label: MockMenu.categoryLabel(entry.key),
+            label: AppStrings.menuCategoryName(entry.key),
             value: entry.value,
             colorIndex: MockMenu.categoryIndex(entry.key),
           ),
@@ -295,6 +298,9 @@ final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
 /// the shape a manager actually scans: "what happened", not three separate
 /// per-domain logs.
 final dashboardActivityProvider = Provider<List<ActivityEntry>>((ref) {
+  // Titles/details are localized at build time, so recompute on toggle.
+  // Otherwise the feed keeps serving the previous language from cache.
+  ref.watch(appLanguageProvider);
   final orders = ref.watch(ordersListProvider);
   final metrics = ref.watch(dashboardMetricsProvider);
   final staff = ref.watch(staffMembersProvider).valueOrNull ?? const [];
@@ -362,8 +368,8 @@ final dashboardActivityProvider = Provider<List<ActivityEntry>>((ref) {
       ActivityEntry(
         id: 'act-staff-${member.id}',
         at: member.lastActiveAt!,
-        title: '${member.name} clocked in',
-        detail: roleName[member.roleId] ?? 'Staff',
+        title: AppStrings.staffClockedIn(member.name),
+        detail: roleName[member.roleId] ?? AppStrings.staffFallbackRole,
         icon: Icons.login_rounded,
         tone: StatusTone.info,
       ),

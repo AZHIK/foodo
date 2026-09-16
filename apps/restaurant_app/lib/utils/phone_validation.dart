@@ -5,7 +5,7 @@
 library;
 
 import '../constants/app_limits.dart';
-import '../constants/app_strings.dart';
+import '../l10n/l10n.dart';
 
 /// True when [digits] (national number, no +255 prefix) is a valid
 /// Tanzanian mobile number: 9 digits, starting with 6 or 7.
@@ -14,4 +14,7 @@ bool isValidTanzanianPhone(String digits) {
   return digits.startsWith('6') || digits.startsWith('7');
 }
 
-const tanzanianPhoneHint = AppStrings.tanzanianPhoneError;
+String get tanzanianPhoneHint => L10n.t(
+  'tanzanianPhoneError',
+  'Enter a valid Tanzanian phone number (6 or 7XXXXXXXX)',
+);

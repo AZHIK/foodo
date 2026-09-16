@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../providers/notifications_provider.dart';
 import '../constants/app_strings.dart';
+import '../providers/preferences_provider.dart';
 import '../providers/settings_provider.dart';
 import '../router/app_router.dart';
 import '../theme/app_theme.dart';
@@ -19,6 +20,10 @@ class AppTopBar extends ConsumerWidget {
     final colors = context.colors;
     final themeMode = ref.watch(themeModeProvider);
     final staff = ref.watch(currentStaffProvider);
+    // Watch the provider (not the static L10n flag) so this bar rebuilds
+    // on every toggle. L10n.code is kept in sync by AppLanguageNotifier.
+    final language = ref.watch(appLanguageProvider);
+    final isSw = language == AppLanguage.swahili;
 
     return Material(
       color: colors.surface,
@@ -49,8 +54,19 @@ class AppTopBar extends ConsumerWidget {
                 tooltip: AppStrings.help,
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text(AppStrings.helpComingSoon)),
+                    SnackBar(content: Text(AppStrings.helpComingSoon)),
                   );
+                },
+              ),
+              const SizedBox(width: Insets.md),
+              _IconButton(
+                icon: isSw ? Icons.terrain_rounded : Icons.language_rounded,
+                tooltip: isSw ? 'Kiingereza' : 'English',
+                onPressed: () {
+                  final next = isSw
+                      ? AppLanguage.english
+                      : AppLanguage.swahili;
+                  ref.read(appLanguageProvider.notifier).set(next);
                 },
               ),
               const SizedBox(width: Insets.md),
@@ -107,7 +123,7 @@ class AppTopBar extends ConsumerWidget {
                       children: [
                         const Icon(Icons.start_rounded, size: 18),
                         const SizedBox(width: Insets.sm),
-                        const Text(AppStrings.authTestSplash),
+                        Text(AppStrings.authTestSplash),
                       ],
                     ),
                   ),
@@ -118,7 +134,7 @@ class AppTopBar extends ConsumerWidget {
                       children: [
                         const Icon(Icons.login_rounded, size: 18),
                         const SizedBox(width: Insets.sm),
-                        const Text(AppStrings.authTestOtp),
+                        Text(AppStrings.authTestOtp),
                       ],
                     ),
                   ),
@@ -129,7 +145,7 @@ class AppTopBar extends ConsumerWidget {
                       children: [
                         const Icon(Icons.info_rounded, size: 18),
                         const SizedBox(width: Insets.sm),
-                        const Text(AppStrings.authTestOnboarding),
+                        Text(AppStrings.authTestOnboarding),
                       ],
                     ),
                   ),
@@ -140,7 +156,7 @@ class AppTopBar extends ConsumerWidget {
                       children: [
                         const Icon(Icons.lock_rounded, size: 18),
                         const SizedBox(width: Insets.sm),
-                        const Text(AppStrings.authTestSetPin),
+                        Text(AppStrings.authTestSetPin),
                       ],
                     ),
                   ),
@@ -151,7 +167,7 @@ class AppTopBar extends ConsumerWidget {
                       children: [
                         const Icon(Icons.lock_open_rounded, size: 18),
                         const SizedBox(width: Insets.sm),
-                        const Text(AppStrings.authTestPinUnlock),
+                        Text(AppStrings.authTestPinUnlock),
                       ],
                     ),
                   ),
@@ -162,7 +178,7 @@ class AppTopBar extends ConsumerWidget {
                       children: [
                         const Icon(Icons.person_rounded, size: 18),
                         const SizedBox(width: Insets.sm),
-                        const Text(AppStrings.authTestProfiles),
+                        Text(AppStrings.authTestProfiles),
                       ],
                     ),
                   ),

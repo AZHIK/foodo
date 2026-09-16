@@ -94,7 +94,7 @@ class _AppearancePanel extends ConsumerWidget {
   final VoidCallback onChanged;
   final Widget Function(String field) tick;
 
-  static const _options = <(ThemeMode, String, IconData, Key)>[
+  static final _options = <(ThemeMode, String, IconData, Key)>[
     (
       ThemeMode.light,
       AppStrings.themeLight,
@@ -378,7 +378,7 @@ class _AccountPanel extends ConsumerWidget {
               ),
             ),
             icon: const Icon(Icons.logout_rounded, size: 18),
-            label: const Text(AppStrings.logOut),
+            label: Text(AppStrings.logOut),
           ),
         ],
       ),
@@ -389,7 +389,7 @@ class _AccountPanel extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text(AppStrings.logOutTitle),
+        title: Text(AppStrings.logOutTitle),
         content: Text(
           name == null
               ? AppStrings.logOutGeneric
@@ -398,14 +398,14 @@ class _AccountPanel extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(AppStrings.staySignedIn),
+            child: Text(AppStrings.staySignedIn),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: dialogContext.semantic.danger,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(AppStrings.logOut),
+            child: Text(AppStrings.logOut),
           ),
         ],
       ),
@@ -417,7 +417,7 @@ class _AccountPanel extends ConsumerWidget {
     // button that silently does nothing; when the Auth screens land, this
     // becomes a call to the session notifier and a redirect to the PIN screen.
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text(AppStrings.signOutPending),
       ),
     );

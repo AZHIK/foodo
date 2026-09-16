@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/inventory_item.dart';
 import '../../constants/app_strings.dart';
+import '../../l10n/l10n.dart';
 import '../../models/stock_movement.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
@@ -19,14 +20,16 @@ import 'stock_dialog_shared.dart';
 /// delivery would file itself under "Adjustment" and the history would lose the
 /// distinction the moment it was written.
 enum AdjustReason {
-  restock(AppStrings.adjustReasonAdd, StockMovementType.restock),
-  recount(AppStrings.adjustReasonRecount, StockMovementType.adjustment),
-  damaged(AppStrings.adjustReasonDamaged, StockMovementType.adjustment),
-  other(AppStrings.adjustReasonOther, StockMovementType.adjustment);
+  restock('adjustReasonAdd', 'Restock', StockMovementType.restock),
+  recount('adjustReasonRecount', 'Recount / correction', StockMovementType.adjustment),
+  damaged('adjustReasonDamaged', 'Damaged', StockMovementType.adjustment),
+  other('adjustReasonOther', 'Other', StockMovementType.adjustment);
 
-  const AdjustReason(this.label, this.movementType);
-  final String label;
+  const AdjustReason(this.labelKey, this.labelDefault, this.movementType);
+  final String labelKey;
+  final String labelDefault;
   final StockMovementType movementType;
+  String get label => L10n.t(labelKey, labelDefault);
 }
 
 /// Opens the stock adjustment dialog for [item].
@@ -135,12 +138,12 @@ class _StockAdjustDialogState extends ConsumerState<StockAdjustDialog> {
         OutlinedButton(
           key: StockDialogKeys.cancel,
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
+          child: Text(AppStrings.cancel),
         ),
         FilledButton(
           key: StockDialogKeys.submit,
           onPressed: _canSubmit ? _submit : null,
-          child: const Text(AppStrings.confirmAdjustment),
+          child: Text(AppStrings.confirmAdjustment),
         ),
       ],
       child: Column(

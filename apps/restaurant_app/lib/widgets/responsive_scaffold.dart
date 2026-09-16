@@ -39,7 +39,11 @@ const double _railCollapsedWidth = 76;
 
 /// Order matters — these line up index-for-index with the shell branches in
 /// [goRouterProvider].
-const _destinations = <NavDestinationSpec>[
+///
+/// This is a getter (not a top-level `final`) so `AppStrings.nav*` labels are
+/// re-evaluated on every build. A cached list would snapshot the launch
+/// language and ignore later toggles.
+List<NavDestinationSpec> get _destinations => <NavDestinationSpec>[
   NavDestinationSpec(
     label: AppStrings.navDashboard,
     icon: Icons.dashboard_outlined,
@@ -290,7 +294,7 @@ class _BottomNav extends ConsumerWidget {
               label: _destinations[i].label,
               tooltip: _destinations[i].label,
             ),
-          const NavigationDestination(
+          NavigationDestination(
             icon: Icon(Icons.more_horiz_rounded),
             selectedIcon: Icon(Icons.more_horiz_rounded),
             label: AppStrings.navMore,

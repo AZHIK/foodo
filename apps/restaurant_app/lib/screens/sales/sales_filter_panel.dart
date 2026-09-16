@@ -23,7 +23,7 @@ class SalesFilterPanel extends ConsumerWidget {
       children: [
         // The same control as the page header, driving the same state — so
         // changing the period here updates the header chip, and vice versa.
-        const FilterSection(
+        FilterSection(
           title: AppStrings.dateRangeFilter,
           child: Align(
             alignment: Alignment.centerLeft,

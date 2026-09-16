@@ -298,7 +298,7 @@ class _TablePicker extends ConsumerWidget {
         onSelected: (value) =>
             ref.read(tableNumberProvider.notifier).state = value,
         itemBuilder: (context) => [
-          const PopupMenuItem(
+          PopupMenuItem(
             value: null,
             child: Text(AppStrings.counterNoTable),
           ),

@@ -89,7 +89,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
               controller: _fullName,
               autofocus: true,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(hintText: AppStrings.nameExample),
+              decoration: InputDecoration(hintText: AppStrings.nameExample),
               onChanged: (_) => setState(() {}),
               onSubmitted: (_) => _submit(),
             ),
@@ -130,7 +130,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                     width: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text(AppStrings.continueAction),
+                : Text(AppStrings.continueAction),
           ),
         ],
       ),

@@ -151,14 +151,14 @@ class _StockTransferDialogState extends ConsumerState<StockTransferDialog> {
         OutlinedButton(
           key: StockDialogKeys.cancel,
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
+          child: Text(AppStrings.cancel),
         ),
         FilledButton(
           key: StockDialogKeys.submit,
           onPressed: _canSubmit(destination)
               ? () => _submit(destination!)
               : null,
-          child: const Text(AppStrings.transferStock),
+          child: Text(AppStrings.transferStock),
         ),
       ],
       child: Column(
@@ -175,7 +175,7 @@ class _StockTransferDialogState extends ConsumerState<StockTransferDialog> {
               key: StockDialogKeys.destination,
               initialValue: destination,
               isExpanded: true,
-              hint: const Text(AppStrings.selectLocation),
+              hint: Text(AppStrings.selectLocation),
               items: [
                 for (final location in targets)
                   DropdownMenuItem(

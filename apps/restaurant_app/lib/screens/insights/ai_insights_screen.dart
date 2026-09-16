@@ -248,7 +248,7 @@ class _AskPanelState extends State<_AskPanel> {
     // No model is wired up yet. Saying so is better than a fake reply that
     // would be indistinguishable from a real one until someone relied on it.
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text(AppStrings.askNotConnected),
         duration: AppDurations.aiSnackbar,
       ),
@@ -292,7 +292,7 @@ class _AskPanelState extends State<_AskPanel> {
           FilledButton.icon(
             onPressed: _controller.text.trim().isEmpty ? null : _ask,
             icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-            label: const Text(AppStrings.askAction),
+            label: Text(AppStrings.askAction),
           ),
           const SizedBox(height: Insets.lg),
           Text(

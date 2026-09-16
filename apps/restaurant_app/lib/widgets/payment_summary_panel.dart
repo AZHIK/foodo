@@ -140,7 +140,7 @@ class PaymentBreakdown extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            const Expanded(child: SectionLabel(AppStrings.totalLabel)),
+            Expanded(child: SectionLabel(AppStrings.totalLabel)),
             const SizedBox(width: Insets.sm),
             Flexible(
               child: Text(

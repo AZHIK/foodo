@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 
-import '../constants/app_strings.dart';
+import '../l10n/l10n.dart';
 
 enum NotificationType {
-  newOrder(AppStrings.newOrderType, Icons.receipt_long_rounded),
-  lowStock(AppStrings.lowStockType, Icons.warning_amber_rounded),
-  aiInsight(AppStrings.aiInsightType, Icons.auto_awesome_rounded),
-  deliveryUpdate(AppStrings.deliveryUpdateType, Icons.two_wheeler_rounded);
+  newOrder('newOrderType', 'New Order', Icons.receipt_long_rounded),
+  lowStock('lowStockType', 'Low Stock', Icons.warning_amber_rounded),
+  aiInsight('aiInsightType', 'AI Insight', Icons.auto_awesome_rounded),
+  deliveryUpdate('deliveryUpdateType', 'Delivery Update', Icons.two_wheeler_rounded);
 
-  const NotificationType(this.label, this.icon);
-  final String label;
+  const NotificationType(this.labelKey, this.labelDefault, this.icon);
+  final String labelKey;
+  final String labelDefault;
   final IconData icon;
+
+  String get label => L10n.t(labelKey, labelDefault);
 }
 
 /// An app notification: order alert, inventory warning, etc.

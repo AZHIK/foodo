@@ -76,7 +76,7 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
     if (!_formKey.currentState!.validate()) return;
     if (_supplierId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.selectSupplierFirst)),
+        SnackBar(content: Text(AppStrings.selectSupplierFirst)),
       );
       return;
     }
@@ -132,7 +132,7 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
         actions: [
           OutlinedButton(
             onPressed: _saving ? null : () => Navigator.of(context).pop(),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: _saving ? null : _save,
@@ -142,13 +142,13 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text(AppStrings.createReorder),
+                : Text(AppStrings.createReorder),
           ),
         ],
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SectionLabel(AppStrings.reorderDetails),
+            SectionLabel(AppStrings.reorderDetails),
             const SizedBox(height: Insets.md),
             LabeledFormField(
               label: AppStrings.currentStockReadonly,
@@ -178,7 +178,7 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
                   ? OutlinedButton.icon(
                       onPressed: _pickSupplier,
                       icon: const Icon(Icons.storefront_outlined, size: 18),
-                      label: const Text(AppStrings.selectSupplierButton),
+                      label: Text(AppStrings.selectSupplierButton),
                     )
                   : Container(
                       padding: const EdgeInsets.symmetric(
@@ -201,7 +201,7 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
                           ),
                           TextButton(
                             onPressed: _pickSupplier,
-                            child: const Text(AppStrings.changeSupplier),
+                            child: Text(AppStrings.changeSupplier),
                           ),
                         ],
                       ),
@@ -261,7 +261,7 @@ class _ReorderDialogState extends ConsumerState<_ReorderDialog> {
                 controller: _expectedDays,
                 keyboardType: TextInputType.number,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: AppStrings.deliveryHint,
                   suffixText: AppStrings.daysSuffix,
                 ),
@@ -339,7 +339,7 @@ class _SupplierPickerDialogState extends ConsumerState<_SupplierPickerDialog> {
         : allSuppliers.where((s) => s.name.toLowerCase().contains(query)).toList();
 
     return AlertDialog(
-      title: const Text(AppStrings.selectSupplierTitle),
+      title: Text(AppStrings.selectSupplierTitle),
       contentPadding: const EdgeInsets.fromLTRB(Insets.lg, Insets.md, Insets.lg, Insets.sm),
       content: SizedBox(
         width: widget.width,
@@ -349,7 +349,7 @@ class _SupplierPickerDialogState extends ConsumerState<_SupplierPickerDialog> {
           children: [
             TextField(
               autofocus: widget.autofocus,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 prefixIcon: Icon(Icons.search_rounded),
                 hintText: AppStrings.searchSuppliers,
               ),
@@ -392,7 +392,7 @@ class _SupplierPickerDialogState extends ConsumerState<_SupplierPickerDialog> {
                   }
                 },
                 icon: const Icon(Icons.add_business_outlined, size: 18),
-                label: const Text(AppStrings.addNewSupplier),
+                label: Text(AppStrings.addNewSupplier),
               ),
             ],
           ],
@@ -401,7 +401,7 @@ class _SupplierPickerDialogState extends ConsumerState<_SupplierPickerDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
+          child: Text(AppStrings.cancel),
         ),
       ],
     );

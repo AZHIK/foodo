@@ -195,7 +195,7 @@ class _OtherExpenseFormDialogState extends ConsumerState<OtherExpenseFormDialog>
                     children: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text(AppStrings.cancel),
+                        child: Text(AppStrings.cancel),
                       ),
                       const SizedBox(width: Insets.md),
                       FilledButton(

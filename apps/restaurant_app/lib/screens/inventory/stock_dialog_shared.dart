@@ -109,12 +109,12 @@ class StockItemContext extends StatelessWidget {
 /// The quantity input the three dialogs share: digits only, unit as a suffix,
 /// and an inline error when the amount is impossible.
 class StockQuantityField extends StatelessWidget {
-  const StockQuantityField({
+  StockQuantityField({
     super.key,
     required this.controller,
     required this.item,
     required this.onChanged,
-    this.label = AppStrings.quantityLabel,
+    this.label,
     this.helper,
     this.errorText,
     this.autofocus = true,
@@ -123,7 +123,7 @@ class StockQuantityField extends StatelessWidget {
   final TextEditingController controller;
   final InventoryItem item;
   final ValueChanged<String> onChanged;
-  final String label;
+  final String? label;
   final String? helper;
 
   /// Supplied by the dialog rather than a validator, because the same message
@@ -136,7 +136,7 @@ class StockQuantityField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LabeledFormField(
-      label: label,
+      label: label ?? AppStrings.quantityLabel,
       isRequired: true,
       helper: helper,
       child: TextFormField(
@@ -158,28 +158,28 @@ class StockQuantityField extends StatelessWidget {
 
 /// Optional free-text notes. Identical in all three dialogs.
 class StockNotesField extends StatelessWidget {
-  const StockNotesField({
+  StockNotesField({
     super.key,
     required this.controller,
-    this.label = AppStrings.notesLabel,
-    this.hint = AppStrings.notesHint,
+    this.label,
+    this.hint,
   });
 
   final TextEditingController controller;
-  final String label;
-  final String hint;
+  final String? label;
+  final String? hint;
 
   @override
   Widget build(BuildContext context) {
     return LabeledFormField(
-      label: label,
+      label: label ?? AppStrings.notesLabel,
       child: TextFormField(
         key: StockDialogKeys.notes,
         controller: controller,
         maxLines: 2,
         textCapitalization: TextCapitalization.sentences,
         decoration: InputDecoration(
-          hintText: hint,
+          hintText: hint ?? AppStrings.notesHint,
           // The pill border the theme applies to single-line inputs looks
           // wrong wrapped around a two-line box.
           border: OutlineInputBorder(

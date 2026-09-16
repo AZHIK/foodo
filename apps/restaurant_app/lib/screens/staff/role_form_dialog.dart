@@ -185,7 +185,7 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
         actions: [
           OutlinedButton(
             onPressed: _saving ? null : () => Navigator.of(context).pop(),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: _canSave ? _save : null,
@@ -218,7 +218,7 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
               ),
               const SizedBox(height: Insets.lg),
             ],
-            const SectionLabel(AppStrings.basicInfoSection),
+            SectionLabel(AppStrings.basicInfoSection),
             const SizedBox(height: Insets.md),
 
             if (_isProtected) ...[
@@ -236,7 +236,7 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
                 autofocus: !_isProtected,
                 textCapitalization: TextCapitalization.words,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: AppStrings.roleNameExample,
                 ),
                 onChanged: (_) => setState(() {}),
@@ -255,7 +255,7 @@ class _RoleFormDialogState extends ConsumerState<RoleFormDialog> {
                 controller: _description,
                 enabled: !_isProtected,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: AppStrings.roleDescriptionExample,
                 ),
               ),
@@ -346,7 +346,7 @@ class _PermissionsHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SectionLabel(AppStrings.permissionsSection),
+            SectionLabel(AppStrings.permissionsSection),
             const SizedBox(height: 2),
             Text(
               AppStrings.permissionsSelected(
@@ -367,11 +367,11 @@ class _PermissionsHeader extends StatelessWidget {
           children: [
             TextButton(
               onPressed: onSelectAll,
-              child: const Text(AppStrings.selectAll),
+              child: Text(AppStrings.selectAll),
             ),
             TextButton(
               onPressed: onClearAll,
-              child: const Text(AppStrings.clearAllFilters),
+              child: Text(AppStrings.clearAllFilters),
             ),
           ],
         );

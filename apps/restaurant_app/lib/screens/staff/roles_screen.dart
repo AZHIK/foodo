@@ -49,7 +49,7 @@ class RolesScreen extends ConsumerWidget {
               ? context.pop()
               : context.goNamed(AppRoute.staffName),
           icon: const Icon(Icons.arrow_back_rounded, size: 18),
-          label: const Text(AppStrings.backToStaffButton),
+          label: Text(AppStrings.backToStaffButton),
         ),
       ],
       primaryAction: !canCreate
@@ -57,7 +57,7 @@ class RolesScreen extends ConsumerWidget {
           : FilledButton.icon(
               onPressed: () => showRoleFormDialog(context),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text(AppStrings.createRoleButton),
+              label: Text(AppStrings.createRoleButton),
             ),
       onRefresh: () => ref.read(rolesProvider.notifier).refresh(),
       fab: !canCreate
@@ -159,15 +159,15 @@ class RolesScreen extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.deleteRoleTitle(role.name)),
-        content: const Text(AppStrings.deleteRoleBody),
+        content: Text(AppStrings.deleteRoleBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(AppStrings.deleteAction),
+            child: Text(AppStrings.deleteAction),
           ),
         ],
       ),

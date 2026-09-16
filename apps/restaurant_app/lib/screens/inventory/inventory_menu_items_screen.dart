@@ -66,7 +66,7 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
             primaryAction: FilledButton.icon(
               onPressed: () => showItemFormDialog(context),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text(AppStrings.addItem),
+              label: Text(AppStrings.addItem),
             ),
             onRefresh: () =>
                 ref.read(inventoryItemsProvider.notifier).refresh(),
@@ -117,7 +117,7 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
               activeFilterCount: filters.activeCount,
               onClearFilters: ref.read(menuItemFiltersProvider.notifier).clear,
               filterBuilder: (_) => const MenuItemFilterPanel(),
-              sortOptions: const [
+              sortOptions: [
                 SortOption(
                   label: AppStrings.nameColumn,
                   field: MenuItemSort.name,
@@ -214,15 +214,15 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.deleteItemTitle(item.name)),
-        content: const Text(AppStrings.deleteMenuItemBody),
+        content: Text(AppStrings.deleteMenuItemBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(AppStrings.deleteAction),
+            child: Text(AppStrings.deleteAction),
           ),
         ],
       ),

@@ -46,7 +46,7 @@ class CustomerPickerField extends ConsumerWidget {
       return OutlinedButton.icon(
         onPressed: () => showCustomerPickerDialog(context, ref),
         icon: const Icon(Icons.person_search_outlined, size: 18),
-        label: const Text(AppStrings.walkInAttachCustomer),
+        label: Text(AppStrings.walkInAttachCustomer),
       );
     }
 
@@ -90,7 +90,7 @@ class CustomerPickerField extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => showCustomerPickerDialog(context, ref),
-            child: const Text(AppStrings.change),
+            child: Text(AppStrings.change),
           ),
           IconButton(
             tooltip: AppStrings.removeCustomer,
@@ -158,7 +158,7 @@ class _CustomerPickerDialogState extends ConsumerState<_CustomerPickerDialog> {
             .toList();
 
     return AlertDialog(
-      title: const Text(AppStrings.attachCustomer),
+      title: Text(AppStrings.attachCustomer),
       contentPadding: const EdgeInsets.fromLTRB(Insets.lg, Insets.md, Insets.lg, Insets.sm),
       content: SizedBox(
         width: widget.width,
@@ -168,7 +168,7 @@ class _CustomerPickerDialogState extends ConsumerState<_CustomerPickerDialog> {
           children: [
             TextField(
               autofocus: widget.autofocus,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 prefixIcon: Icon(Icons.search_rounded),
                 hintText: AppStrings.searchNameOrPhone,
               ),
@@ -177,7 +177,7 @@ class _CustomerPickerDialogState extends ConsumerState<_CustomerPickerDialog> {
             const SizedBox(height: Insets.sm),
             ListTile(
               leading: const Icon(Icons.person_off_outlined),
-              title: const Text(AppStrings.noCustomerWalkIn),
+              title: Text(AppStrings.noCustomerWalkIn),
               onTap: () => Navigator.of(context).pop('no-customer-sentinel'),
             ),
             const Divider(height: 1),
@@ -224,7 +224,7 @@ class _CustomerPickerDialogState extends ConsumerState<_CustomerPickerDialog> {
                   }
                 },
                 icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-                label: const Text(AppStrings.addNewCustomer),
+                label: Text(AppStrings.addNewCustomer),
               ),
             ],
           ],
@@ -233,7 +233,7 @@ class _CustomerPickerDialogState extends ConsumerState<_CustomerPickerDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
+          child: Text(AppStrings.cancel),
         ),
       ],
     );

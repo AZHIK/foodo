@@ -1,14 +1,24 @@
 import 'package:flutter/foundation.dart';
 
-import '../constants/app_strings.dart';
+import '../l10n/l10n.dart';
 
 enum CourierStatus {
-  active(AppStrings.activeStatus, AppStrings.courierAvailable),
-  inactive(AppStrings.inactiveStatus, AppStrings.courierUnavailable);
+  active('activeStatus', 'Active', 'courierAvailable', 'Available for deliveries'),
+  inactive('inactiveStatus', 'Inactive', 'courierUnavailable', 'Not available');
 
-  const CourierStatus(this.label, this.subtitle);
-  final String label;
-  final String subtitle;
+  const CourierStatus(
+    this.labelKey,
+    this.labelDefault,
+    this.subtitleKey,
+    this.subtitleDefault,
+  );
+  final String labelKey;
+  final String labelDefault;
+  final String subtitleKey;
+  final String subtitleDefault;
+
+  String get label => L10n.t(labelKey, labelDefault);
+  String get subtitle => L10n.t(subtitleKey, subtitleDefault);
 }
 
 /// A delivery courier/driver.

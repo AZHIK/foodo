@@ -58,9 +58,9 @@ class BrandMark extends ConsumerWidget {
 /// The brand mark with the business name beside it, as the nav rail and drawer
 /// show it.
 class BrandLockup extends ConsumerWidget {
-  const BrandLockup({super.key, this.subtitle = AppStrings.frontOfHouse});
+  const BrandLockup({super.key, this.subtitle});
 
-  final String subtitle;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -80,7 +80,7 @@ class BrandLockup extends ConsumerWidget {
                 style: context.text.titleSmall,
               ),
               Text(
-                subtitle,
+                subtitle ?? AppStrings.frontOfHouse,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: context.text.bodySmall?.copyWith(

@@ -197,12 +197,12 @@ class _RecordProductionDialogState
         OutlinedButton(
           key: ProductionDialogKeys.cancel,
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
+          child: Text(AppStrings.cancel),
         ),
         FilledButton(
           key: ProductionDialogKeys.submit,
           onPressed: _canSubmit ? _submit : null,
-          child: const Text(AppStrings.recordProductionTitle),
+          child: Text(AppStrings.recordProductionTitle),
         ),
       ],
       child: Column(
@@ -288,7 +288,7 @@ class _RecordProductionDialogState
                   FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
                 ],
                 decoration:
-                    const InputDecoration(hintText: AppStrings.sameAsSuggested),
+                    InputDecoration(hintText: AppStrings.sameAsSuggested),
                 onChanged: (value) {
                   _actualEdited = value.trim().isNotEmpty;
                   setState(() {});

@@ -1,15 +1,25 @@
 import 'package:flutter/foundation.dart';
 
-import '../constants/app_strings.dart';
+import '../l10n/l10n.dart';
 
 enum ReorderStatus {
-  pending(AppStrings.reorderPending, AppStrings.reorderPendingBlurb),
-  received(AppStrings.reorderReceived, AppStrings.reorderReceivedBlurb),
-  cancelled(AppStrings.reorderCancelled, AppStrings.reorderCancelledBlurb);
+  pending('reorderPending', 'Pending', 'reorderPendingBlurb', 'Awaiting delivery'),
+  received('reorderReceived', 'Received', 'reorderReceivedBlurb', 'Stock added'),
+  cancelled('reorderCancelled', 'Cancelled', 'reorderCancelledBlurb', 'Order cancelled');
 
-  const ReorderStatus(this.label, this.subtitle);
-  final String label;
-  final String subtitle;
+  const ReorderStatus(
+    this.labelKey,
+    this.labelDefault,
+    this.subtitleKey,
+    this.subtitleDefault,
+  );
+  final String labelKey;
+  final String labelDefault;
+  final String subtitleKey;
+  final String subtitleDefault;
+
+  String get label => L10n.t(labelKey, labelDefault);
+  String get subtitle => L10n.t(subtitleKey, subtitleDefault);
 }
 
 /// A purchase order for restocking inventory.

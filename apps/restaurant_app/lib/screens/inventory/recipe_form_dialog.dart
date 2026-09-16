@@ -215,7 +215,7 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text(AppStrings.deleteRecipeTitle),
+        title: Text(AppStrings.deleteRecipeTitle),
         content: Text(
           AppStrings.deleteRecipeBody(
             recipe.name,
@@ -225,11 +225,11 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(AppStrings.keepAction),
+            child: Text(AppStrings.keepAction),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(AppStrings.deleteAction),
+            child: Text(AppStrings.deleteAction),
           ),
         ],
       ),
@@ -268,7 +268,7 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
         OutlinedButton(
           key: RecipeFormKeys.cancel,
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
+          child: Text(AppStrings.cancel),
         ),
         if (isEdit)
           TextButton(
@@ -277,7 +277,7 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
             style: TextButton.styleFrom(
               foregroundColor: context.semantic.warning,
             ),
-            child: const Text(AppStrings.deleteAction),
+            child: Text(AppStrings.deleteAction),
           ),
         FilledButton(
           key: RecipeFormKeys.submit,
@@ -308,7 +308,7 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
                     key: RecipeFormKeys.sellable,
                     initialValue: initial,
                     isExpanded: true,
-                    hint: const Text(AppStrings.selectHint),
+                    hint: Text(AppStrings.selectHint),
                     items: [
                       for (final item in sellables)
                         DropdownMenuItem(
@@ -339,7 +339,7 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
               decoration:
-                  const InputDecoration(hintText: AppStrings.recipeNameExample),
+                  InputDecoration(hintText: AppStrings.recipeNameExample),
             ),
           ),
           const SizedBox(height: Insets.xl),
@@ -394,7 +394,7 @@ class _SectionHeader extends StatelessWidget {
           key: RecipeFormKeys.addIngredient,
           onPressed: onAdd,
           icon: const Icon(Icons.add_rounded, size: 16),
-          label: const Text(AppStrings.addIngredient),
+          label: Text(AppStrings.addIngredient),
         ),
       ],
     );
@@ -435,7 +435,7 @@ class _IngredientEditor extends StatelessWidget {
             key: RecipeFormKeys.ingredientItem(index),
             initialValue: selected?.catalogItemId,
             isExpanded: true,
-            hint: const Text(AppStrings.ingredientHint),
+            hint: Text(AppStrings.ingredientHint),
             items: [
               for (final item in ingredients)
                 DropdownMenuItem(

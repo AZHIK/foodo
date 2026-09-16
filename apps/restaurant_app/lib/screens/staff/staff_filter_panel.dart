@@ -26,7 +26,7 @@ class StaffFilterPanel extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SectionLabel(AppStrings.roleFilter),
+        SectionLabel(AppStrings.roleFilter),
         const SizedBox(height: Insets.sm),
         Wrap(
           spacing: Insets.sm,
@@ -41,7 +41,7 @@ class StaffFilterPanel extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: Insets.xl),
-        const SectionLabel(AppStrings.statusFilter),
+        SectionLabel(AppStrings.statusFilter),
         const SizedBox(height: Insets.sm),
         Wrap(
           spacing: Insets.sm,

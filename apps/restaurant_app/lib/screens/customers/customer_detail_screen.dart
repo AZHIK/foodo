@@ -72,7 +72,7 @@ class _Header extends ConsumerWidget {
             onPressed: () => showCustomerFormDialog(context,
                 existingCustomer: customer),
             icon: const Icon(Icons.edit_outlined, size: 18),
-            label: const Text(AppStrings.editAction),
+            label: Text(AppStrings.editAction),
           ),
       ],
     );
@@ -370,7 +370,7 @@ class _NotFound extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: () => context.goNamed(AppRoute.customersName),
                   icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                  label: const Text(AppStrings.backToCustomers),
+                  label: Text(AppStrings.backToCustomers),
                 ),
               ],
             ),

@@ -45,13 +45,13 @@ class StoreManagementScreen extends ConsumerWidget {
               ? context.pop()
               : context.goNamed(AppRoute.settingsName),
           icon: const Icon(Icons.arrow_back_rounded, size: 18),
-          label: const Text(AppStrings.backToSettings),
+          label: Text(AppStrings.backToSettings),
         ),
       ],
       primaryAction: FilledButton.icon(
         onPressed: () => showLocationFormDialog(context),
         icon: const Icon(Icons.add_rounded, size: 18),
-        label: const Text(AppStrings.addLocationAction),
+        label: Text(AppStrings.addLocationAction),
       ),
       onRefresh: () => refreshStores(ref),
       fab: DataPageFab(
@@ -165,11 +165,11 @@ class StoreManagementScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(AppStrings.deleteAction),
+            child: Text(AppStrings.deleteAction),
           ),
         ],
       ),

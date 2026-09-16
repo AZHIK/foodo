@@ -88,7 +88,7 @@ class InventoryGroceriesScreen extends ConsumerWidget {
             primaryAction: FilledButton.icon(
               onPressed: () => showItemFormDialog(context),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text(AppStrings.addItem),
+              label: Text(AppStrings.addItem),
             ),
             onRefresh: () =>
                 ref.read(inventoryItemsProvider.notifier).refresh(),
@@ -147,7 +147,7 @@ class InventoryGroceriesScreen extends ConsumerWidget {
               activeFilterCount: filters.activeCount,
               onClearFilters: ref.read(inventoryFiltersProvider.notifier).clear,
               filterBuilder: (_) => const InventoryFilterPanel(),
-              sortOptions: const [
+              sortOptions: [
                 SortOption(label: AppStrings.nameColumn, field: InventorySort.name),
                 SortOption(
                   label: AppStrings.categoryColumn,
@@ -245,15 +245,15 @@ class InventoryGroceriesScreen extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.deleteItemTitle(item.name)),
-        content: const Text(AppStrings.deleteGroceryBody),
+        content: Text(AppStrings.deleteGroceryBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(AppStrings.deleteAction),
+            child: Text(AppStrings.deleteAction),
           ),
         ],
       ),

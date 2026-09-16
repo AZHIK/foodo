@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 
-import '../constants/app_strings.dart';
+import '../l10n/l10n.dart';
 import 'cart.dart';
 import 'order_totals.dart';
 import 'payment.dart';
 
 enum PaymentType {
-  cash(AppStrings.cashLabel, Icons.payments_outlined),
-  card(AppStrings.cardLabel, Icons.credit_card_rounded),
-  qris(AppStrings.qrisLabel, Icons.qr_code_2_rounded),
-  mobile(AppStrings.mobilePayLabel, Icons.contactless_rounded),
-  giftCard(AppStrings.giftCardLabel, Icons.card_giftcard_rounded);
+  cash('cashLabel', 'Cash', Icons.payments_outlined),
+  card('cardLabel', 'Card', Icons.credit_card_rounded),
+  qris('qrisLabel', 'QRIS', Icons.qr_code_2_rounded),
+  mobile('mobilePayLabel', 'Mobile Pay', Icons.contactless_rounded),
+  giftCard('giftCardLabel', 'Gift Card', Icons.card_giftcard_rounded);
 
-  const PaymentType(this.label, this.icon);
-  final String label;
+  const PaymentType(this.labelKey, this.labelDefault, this.icon);
+  final String labelKey;
+  final String labelDefault;
   final IconData icon;
+
+  String get label => L10n.t(labelKey, labelDefault);
 
   /// The tenders a terminal offers at the counter, in the order they appear on
   /// the payment screen. The rest of the enum still exists because historical
@@ -27,16 +30,19 @@ enum PaymentType {
 }
 
 enum OrderStatus {
-  paid(AppStrings.paidStatus),
-  refunded(AppStrings.refundedStatus),
+  paid('paidStatus', 'Paid'),
+  refunded('refundedStatus', 'Refunded'),
 
   /// Cancelled before payment settled — distinct from a refund, which returns
   /// money that was actually taken.
-  voided(AppStrings.voidedStatus),
-  pending(AppStrings.pendingStatus);
+  voided('voidedStatus', 'Voided'),
+  pending('pendingStatus', 'Pending');
 
-  const OrderStatus(this.label);
-  final String label;
+  const OrderStatus(this.labelKey, this.labelDefault);
+  final String labelKey;
+  final String labelDefault;
+
+  String get label => L10n.t(labelKey, labelDefault);
 
   /// Voided and refunded tickets are both excluded from takings.
   bool get countsAsRevenue => this == OrderStatus.paid;
@@ -44,27 +50,33 @@ enum OrderStatus {
 
 /// Fulfillment stage of an order (kitchen workflow), independent of payment status.
 enum FulfillmentStatus {
-  new_(AppStrings.newStatus, Icons.inbox_rounded),
-  preparing(AppStrings.preparingStatus, Icons.schedule_rounded),
-  ready(AppStrings.readyStatus, Icons.check_circle_rounded),
-  outForDelivery(AppStrings.outForDeliveryStatus, Icons.two_wheeler_rounded),
-  completed(AppStrings.completedStatus, Icons.done_all_rounded);
+  new_('newStatus', 'New', Icons.inbox_rounded),
+  preparing('preparingStatus', 'Preparing', Icons.schedule_rounded),
+  ready('readyStatus', 'Ready', Icons.check_circle_rounded),
+  outForDelivery('outForDeliveryStatus', 'Out for Delivery', Icons.two_wheeler_rounded),
+  completed('completedStatus', 'Completed', Icons.done_all_rounded);
 
-  const FulfillmentStatus(this.label, this.icon);
-  final String label;
+  const FulfillmentStatus(this.labelKey, this.labelDefault, this.icon);
+  final String labelKey;
+  final String labelDefault;
   final IconData icon;
+
+  String get label => L10n.t(labelKey, labelDefault);
 }
 
 /// How the order leaves the counter. Drives the table-number field on the POS
 /// order panel and is recorded on the finished sale.
 enum OrderType {
-  dineIn(AppStrings.dineInType, Icons.restaurant_rounded),
-  takeaway(AppStrings.takeawayType, Icons.takeout_dining_rounded),
-  delivery(AppStrings.deliveryType, Icons.delivery_dining_rounded);
+  dineIn('dineInType', 'Dine-in', Icons.restaurant_rounded),
+  takeaway('takeawayType', 'Takeaway', Icons.takeout_dining_rounded),
+  delivery('deliveryType', 'Delivery', Icons.delivery_dining_rounded);
 
-  const OrderType(this.label, this.icon);
-  final String label;
+  const OrderType(this.labelKey, this.labelDefault, this.icon);
+  final String labelKey;
+  final String labelDefault;
   final IconData icon;
+
+  String get label => L10n.t(labelKey, labelDefault);
 
   /// Only dine-in orders are seated, so only they take a table number.
   bool get usesTable => this == OrderType.dineIn;

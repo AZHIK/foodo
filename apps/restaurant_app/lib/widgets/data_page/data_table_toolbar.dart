@@ -370,7 +370,7 @@ class _FilterBody extends StatelessWidget {
                     onClear!();
                     Navigator.of(context).pop();
                   },
-                  child: const Text(AppStrings.clearAllFilters),
+                  child: Text(AppStrings.clearAllFilters),
                 ),
             ],
           ),
@@ -387,7 +387,7 @@ class _FilterBody extends StatelessWidget {
           padding: const EdgeInsets.all(Insets.lg),
           child: FilledButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(AppStrings.done),
+            child: Text(AppStrings.done),
           ),
         ),
       ],

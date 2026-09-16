@@ -38,14 +38,14 @@ class _AssignCourierDialog extends ConsumerWidget {
       actions: [
         OutlinedButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
+          child: Text(AppStrings.cancel),
         ),
       ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (currentCourier != null) ...[
-            const SectionLabel(AppStrings.currentlyAssigned),
+            SectionLabel(AppStrings.currentlyAssigned),
             const SizedBox(height: Insets.md),
             Container(
               padding: const EdgeInsets.all(Insets.md),
@@ -83,10 +83,10 @@ class _AssignCourierDialog extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: Insets.xl),
-            const SectionLabel(AppStrings.reassignTo),
+            SectionLabel(AppStrings.reassignTo),
             const SizedBox(height: Insets.md),
           ] else ...[
-            const SectionLabel(AppStrings.selectCourier),
+            SectionLabel(AppStrings.selectCourier),
             const SizedBox(height: Insets.md),
           ],
           if (activeCouriers.isEmpty)

@@ -42,7 +42,7 @@ class CustomersScreen extends ConsumerWidget {
           : FilledButton.icon(
               onPressed: () => showCustomerFormDialog(context),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text(AppStrings.addCustomer),
+              label: Text(AppStrings.addCustomer),
             ),
       onRefresh: () => ref.read(customersProvider.notifier).refresh(),
       // Same action as the header button, moved to the thumb zone on phones.
@@ -82,7 +82,7 @@ class CustomersScreen extends ConsumerWidget {
         activeFilterCount: 0,
         onClearFilters: () {},
         filterBuilder: (_) => const SizedBox.shrink(),
-        sortOptions: const [
+        sortOptions: [
           SortOption(label: AppStrings.nameColumn, field: CustomerSort.name),
           SortOption(label: AppStrings.phoneColumn, field: CustomerSort.phone),
           SortOption(
@@ -149,15 +149,15 @@ class CustomersScreen extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.deleteCustomerTitle(customer.name)),
-        content: const Text(AppStrings.deleteCustomerBody),
+        content: Text(AppStrings.deleteCustomerBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(AppStrings.deleteAction),
+            child: Text(AppStrings.deleteAction),
           ),
         ],
       ),

@@ -65,7 +65,7 @@ class OtherIncomeFilterPanel extends ConsumerWidget {
             ),
             if (filters.activeCount > 0) ...[
               SizedBox(height: Insets.lg),
-              SizedBox(width: double.infinity, child: OutlinedButton(onPressed: notifier.clear, child: const Text(AppStrings.clearAllFilters))),
+              SizedBox(width: double.infinity, child: OutlinedButton(onPressed: notifier.clear, child: Text(AppStrings.clearAllFilters))),
             ],
           ],
         ),

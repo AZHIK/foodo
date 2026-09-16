@@ -8,8 +8,8 @@ import 'package:uuid/uuid.dart';
 import '../data/mock_orders.dart';
 import '../constants/app_durations.dart';
 import '../constants/app_limits.dart';
-import '../constants/app_strings.dart';
 import '../database/app_database.dart';
+import '../l10n/l10n.dart';
 import '../models/cart.dart';
 import '../models/order.dart';
 import '../models/order_totals.dart';
@@ -41,14 +41,17 @@ abstract final class SalesSort {
 
 /// Date windows offered by the header selector and the filter panel.
 enum SalesDateRange {
-  today(AppStrings.todayRange),
-  week(AppStrings.weekRange),
-  month(AppStrings.monthRange),
-  all(AppStrings.allTimeRange),
-  custom(AppStrings.customRange);
+  today('todayRange', 'Today'),
+  week('weekRange', 'This week'),
+  month('monthRange', 'This month'),
+  all('allTimeRange', 'All time'),
+  custom('customRange', 'Custom');
 
-  const SalesDateRange(this.label);
-  final String label;
+  const SalesDateRange(this.labelKey, this.labelDefault);
+  final String labelKey;
+  final String labelDefault;
+
+  String get label => L10n.t(labelKey, labelDefault);
 }
 
 // ---------------------------------------------------------------------------

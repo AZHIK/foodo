@@ -271,7 +271,7 @@ class DashboardGreetingHeader extends ConsumerWidget {
                 : FilledButton.icon(
                     onPressed: () => context.goNamed(AppRoute.posName),
                     icon: const Icon(Icons.point_of_sale_rounded, size: 18),
-                    label: const Text(AppStrings.openTill),
+                    label: Text(AppStrings.openTill),
                   ),
           ],
         ),

@@ -218,7 +218,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
           OutlinedButton(
             key: ItemFormKeys.cancel,
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             key: ItemFormKeys.submit,
@@ -286,7 +286,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
             key: ItemFormKeys.chooseBoth,
             onPressed: () => notifier.chooseType('both'),
             icon: const Icon(Icons.swap_horiz_rounded, size: 16),
-            label: const Text(AppStrings.bothOptionBlurb),
+            label: Text(AppStrings.bothOptionBlurb),
           ),
         ),
       ],
@@ -319,7 +319,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
           TextButton(
             key: ItemFormKeys.changeType,
             onPressed: () => ref.read(_provider.notifier).resetType(),
-            child: const Text(AppStrings.changeType),
+            child: Text(AppStrings.changeType),
           ),
         ],
       ),
@@ -377,7 +377,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
           _typeSummaryBar(context, state),
           const SizedBox(height: Insets.lg),
         ],
-        const SectionLabel(AppStrings.basicInfo),
+        SectionLabel(AppStrings.basicInfo),
         const SizedBox(height: Insets.md),
         LabeledFormField(
           label: AppStrings.itemNameLabel,
@@ -387,7 +387,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
             controller: _name,
             textCapitalization: TextCapitalization.words,
             textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: AppStrings.itemNameExample,
             ),
             onChanged: notifier.setName,
@@ -405,7 +405,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
               // Without this the menu sizes to its widest entry and pushes past
               // the field instead of ellipsising inside it.
               isExpanded: true,
-              hint: const Text(AppStrings.selectOption),
+              hint: Text(AppStrings.selectOption),
               items: [
                 for (final category in ref.watch(categoriesListProvider))
                   DropdownMenuItem(
@@ -430,7 +430,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
               textCapitalization: TextCapitalization.characters,
               textInputAction: TextInputAction.next,
               decoration:
-                  const InputDecoration(hintText: AppStrings.skuExample),
+                  InputDecoration(hintText: AppStrings.skuExample),
               onChanged: notifier.setSku,
             ),
           ),
@@ -468,7 +468,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
         ),
 
         const SizedBox(height: Insets.xl),
-        const SectionLabel(AppStrings.pricingStock),
+        SectionLabel(AppStrings.pricingStock),
         const SizedBox(height: Insets.md),
         // The toggle governs the fields under it, so it comes before them —
         // switching it off after typing a threshold reads as a mistake.
@@ -516,7 +516,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
               keyboardType: TextInputType.number,
               textInputAction: TextInputAction.next,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(hintText: AppStrings.quantityHint),
+              decoration: InputDecoration(hintText: AppStrings.quantityHint),
               onChanged: notifier.setLowStockAlert,
               validator: (value) => state.trackStock
                   ? ItemFormState.validateLowStockAlert(value)
@@ -535,7 +535,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
               keyboardType: TextInputType.number,
               textInputAction: TextInputAction.next,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(hintText: AppStrings.quantityHint),
+              decoration: InputDecoration(hintText: AppStrings.quantityHint),
               onChanged: notifier.setReorderQuantity,
               validator: ItemFormState.validateReorderQuantity,
             ),
@@ -594,7 +594,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
                       controller: _stock,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(hintText: AppStrings.quantityHint),
+              decoration: InputDecoration(hintText: AppStrings.quantityHint),
                       onChanged: notifier.setStock,
                       validator: ItemFormState.validateStock,
                     ),
@@ -626,7 +626,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
         ],
 
         const SizedBox(height: Insets.xl),
-        const SectionLabel(AppStrings.statusSection),
+        SectionLabel(AppStrings.statusSection),
         const SizedBox(height: Insets.md),
         SelectableOptionGrid(
           perRow: 2,
@@ -678,7 +678,7 @@ class _PhotoSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SectionLabel(AppStrings.photoSection),
+        SectionLabel(AppStrings.photoSection),
         const SizedBox(height: Insets.md),
         if (centered) Center(child: field) else field,
         if (state.image != null) ...[

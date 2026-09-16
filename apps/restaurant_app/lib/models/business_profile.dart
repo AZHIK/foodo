@@ -3,27 +3,36 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../auth/auth_dtos.dart';
-import '../constants/app_strings.dart';
+import '../l10n/l10n.dart';
 import '../theme/app_theme.dart';
 
 /// Business types from backend.
 enum BusinessType {
-  restaurant(AppStrings.restaurantType, Icons.restaurant_rounded, 'restaurant'),
-  supplier(AppStrings.supplierType, Icons.local_shipping_rounded, 'supplier'),
-  farmer(AppStrings.farmerType, Icons.agriculture_rounded, 'farmer'),
-  distributor(AppStrings.distributorType, Icons.warehouse_rounded, 'distributor'),
+  restaurant('restaurantType', 'Restaurant', Icons.restaurant_rounded, 'restaurant'),
+  supplier('supplierType', 'Supplier', Icons.local_shipping_rounded, 'supplier'),
+  farmer('farmerType', 'Farmer', Icons.agriculture_rounded, 'farmer'),
+  distributor('distributorType', 'Distributor', Icons.warehouse_rounded, 'distributor'),
   platformOperator(
-    AppStrings.platformOperatorType,
+    'platformOperatorType',
+    'Platform Operator',
     Icons.public_rounded,
     'platform_operator',
   ),
-  other(AppStrings.otherType, Icons.storefront_rounded, 'restaurant'); // default fallback
+  other('otherType', 'Other', Icons.storefront_rounded, 'restaurant'); // default fallback
 
-  const BusinessType(this.label, this.icon, this.backendValue);
+  const BusinessType(
+    this.labelKey,
+    this.labelDefault,
+    this.icon,
+    this.backendValue,
+  );
 
-  final String label;
+  final String labelKey;
+  final String labelDefault;
   final IconData icon;
   final String backendValue;
+
+  String get label => L10n.t(labelKey, labelDefault);
 
   static BusinessType fromBackend(String value) {
     return values.firstWhere(

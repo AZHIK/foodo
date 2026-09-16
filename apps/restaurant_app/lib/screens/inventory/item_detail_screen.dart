@@ -118,7 +118,7 @@ class _Header extends ConsumerWidget {
         OutlinedButton.icon(
           onPressed: () => showItemFormDialog(context, existingItem: item),
           icon: const Icon(Icons.edit_outlined, size: 18),
-          label: const Text(AppStrings.editAction),
+          label: Text(AppStrings.editAction),
         ),
         _OverflowMenu(item: item),
       ],
@@ -240,15 +240,15 @@ class _OverflowMenu extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.deleteItemTitle(item.name)),
-        content: const Text(AppStrings.deleteItemBodyFull),
+        content: Text(AppStrings.deleteItemBodyFull),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(AppStrings.deleteAction),
+            child: Text(AppStrings.deleteAction),
           ),
         ],
       ),
@@ -435,7 +435,7 @@ class _QuickActions extends ConsumerWidget {
         FilledButton.icon(
           onPressed: () => showStockAdjustDialog(context, item),
           icon: const Icon(Icons.tune_rounded, size: 18),
-          label: const Text(AppStrings.adjustStock),
+          label: Text(AppStrings.adjustStock),
         ),
         // A sellable-only item can never be purchase-received (see
         // `stock_movement_service.py`'s `_COMPATIBILITY_RULES`) — reordering
@@ -444,14 +444,14 @@ class _QuickActions extends ConsumerWidget {
           OutlinedButton.icon(
             onPressed: () => showReorderDialog(context, item),
             icon: const Icon(Icons.shopping_cart_outlined, size: 18),
-            label: const Text(AppStrings.createReorder),
+            label: Text(AppStrings.createReorder),
           ),
         OutlinedButton.icon(
           onPressed: item.stock == 0
               ? null
               : () => showWasteLogDialog(context, item),
           icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-          label: const Text(AppStrings.logWaste),
+          label: Text(AppStrings.logWaste),
           style: OutlinedButton.styleFrom(
             foregroundColor: item.stock == 0 ? null : context.semantic.warning,
           ),
@@ -461,7 +461,7 @@ class _QuickActions extends ConsumerWidget {
               ? null
               : () => showStockTransferDialog(context, item),
           icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-          label: const Text(AppStrings.transferStock),
+          label: Text(AppStrings.transferStock),
         ),
       ],
     ];
@@ -528,7 +528,7 @@ class _QuickActions extends ConsumerWidget {
       return OutlinedButton.icon(
         onPressed: () => showRecipeFormDialog(context, recipe: recipe),
         icon: const Icon(Icons.receipt_long_outlined, size: 18),
-        label: const Text(AppStrings.editRecipe),
+        label: Text(AppStrings.editRecipe),
       );
     }
     if (recipe == null &&
@@ -537,7 +537,7 @@ class _QuickActions extends ConsumerWidget {
         onPressed: () =>
             showRecipeFormDialog(context, sellable: item),
         icon: const Icon(Icons.add_rounded, size: 18),
-        label: const Text(AppStrings.addRecipe),
+        label: Text(AppStrings.addRecipe),
       );
     }
     return null;
@@ -566,7 +566,7 @@ class _RecordProductionButton extends ConsumerWidget {
     return FilledButton.icon(
       onPressed: () => showRecordProductionDialog(context, recipe),
       icon: const Icon(Icons.soup_kitchen_outlined, size: 18),
-      label: const Text(AppStrings.recordProduction),
+      label: Text(AppStrings.recordProduction),
     );
   }
 }
@@ -894,7 +894,7 @@ class _NotFound extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: () => context.goNamed(AppRoute.groceriesName),
                   icon: const Icon(Icons.inventory_2_outlined, size: 18),
-                  label: const Text(AppStrings.backToInventory),
+                  label: Text(AppStrings.backToInventory),
                 ),
               ],
             ),

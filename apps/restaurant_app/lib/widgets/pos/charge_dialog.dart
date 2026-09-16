@@ -125,7 +125,7 @@ class ChargeDialog extends ConsumerWidget {
     );
 
     return AlertDialog(
-      title: const Text(AppStrings.takePayment),
+      title: Text(AppStrings.takePayment),
       contentPadding: const EdgeInsets.fromLTRB(
         Insets.xl,
         Insets.lg,
@@ -160,12 +160,12 @@ class ChargeDialog extends ConsumerWidget {
               // would only ever 403.
               if (ref.watch(hasPermissionProvider(AppPermissions.customersView))) ...[
                 const SizedBox(height: Insets.lg),
-                const SectionLabel(AppStrings.chargeCustomer),
+                SectionLabel(AppStrings.chargeCustomer),
                 const SizedBox(height: Insets.sm),
                 const CustomerPickerField(),
               ],
               const SizedBox(height: Insets.lg),
-              const SectionLabel(AppStrings.chargePaymentMethod),
+              SectionLabel(AppStrings.chargePaymentMethod),
               const SizedBox(height: Insets.sm),
               SelectableOptionGrid(
                 // Three across on desktop and tablet; two on a phone, where a
@@ -185,7 +185,7 @@ class ChargeDialog extends ConsumerWidget {
               ),
               if (payment.isCash) ...[
                 const SizedBox(height: Insets.lg),
-                const SectionLabel(AppStrings.cashReceived),
+                SectionLabel(AppStrings.cashReceived),
                 const SizedBox(height: Insets.sm),
                 // Autofocus only where there is a hardware keyboard: on a
                 // phone it would throw the system keyboard over the chips.
@@ -201,7 +201,7 @@ class ChargeDialog extends ConsumerWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text(AppStrings.cancel),
+          child: Text(AppStrings.cancel),
         ),
         FilledButton.icon(
           // Dead until the cash covers the total — a ticket cannot be settled

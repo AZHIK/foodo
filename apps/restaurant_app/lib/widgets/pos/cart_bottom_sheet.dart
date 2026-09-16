@@ -113,7 +113,7 @@ class CartSummaryBar extends ConsumerWidget {
                     ? null
                     : () => CartBottomSheet.show(context),
                 icon: const Icon(Icons.shopping_bag_outlined, size: 20),
-                label: const Text(AppStrings.cartView),
+                label: Text(AppStrings.cartView),
               ),
             ],
           ),
