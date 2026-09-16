@@ -253,7 +253,7 @@ class StockPreviewLine extends StatelessWidget {
             maxLines: 1,
             style: context.text.titleSmall?.copyWith(
               color: accent,
-              fontWeight: FontWeight.w800,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ],

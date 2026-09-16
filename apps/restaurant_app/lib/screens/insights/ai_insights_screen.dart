@@ -207,19 +207,15 @@ class _EvidenceChip extends StatelessWidget {
             label.toUpperCase(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: context.text.labelSmall?.copyWith(
+            style: context.text.eyebrow.copyWith(
               color: colors.onSurfaceVariant,
-              letterSpacing: 0.7,
-              fontWeight: FontWeight.w700,
             ),
           ),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: context.text.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            style: context.text.titleSmall,
           ),
         ],
       ),
@@ -301,10 +297,8 @@ class _AskPanelState extends State<_AskPanel> {
           const SizedBox(height: Insets.lg),
           Text(
             AppStrings.tryAsking,
-            style: context.text.labelSmall?.copyWith(
+            style: context.text.eyebrow.copyWith(
               color: colors.onSurfaceVariant,
-              letterSpacing: 0.9,
-              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: Insets.sm),

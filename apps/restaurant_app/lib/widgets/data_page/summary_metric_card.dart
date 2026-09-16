@@ -93,10 +93,8 @@ class SummaryMetricCard extends StatelessWidget {
                   label.toUpperCase(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: context.text.labelSmall?.copyWith(
+                  style: context.text.eyebrow.copyWith(
                     color: colors.onSurfaceVariant,
-                    letterSpacing: 0.9,
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -112,7 +110,7 @@ class SummaryMetricCard extends StatelessWidget {
               value,
               maxLines: 1,
               style: context.text.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ),

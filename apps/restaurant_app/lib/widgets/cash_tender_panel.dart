@@ -94,7 +94,7 @@ class _CashTenderPanelState extends ConsumerState<CashTenderPanel> {
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
           ],
-          style: context.text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          style: context.text.moneyLarge,
           decoration: InputDecoration(
             labelText: AppStrings.amountTendered,
             prefixText: '${Fmt.currencySymbol} ',
@@ -195,7 +195,6 @@ class _QuickChip extends StatelessWidget {
                       color: emphasis
                           ? colors.onPrimaryContainer
                           : colors.onSurface,
-                      fontWeight: FontWeight.w700,
                     );
 
             return Container(
@@ -285,7 +284,7 @@ class _ChangeCallout extends StatelessWidget {
               textAlign: TextAlign.right,
               style: context.text.headlineSmall?.copyWith(
                 color: foreground,
-                fontWeight: FontWeight.w800,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ),

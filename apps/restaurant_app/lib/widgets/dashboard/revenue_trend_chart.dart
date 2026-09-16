@@ -143,20 +143,15 @@ class RevenueTrendChart extends StatelessWidget {
                     for (final spot in spots)
                       LineTooltipItem(
                         Fmt.money(spot.y),
-                        TextStyle(
+                        (context.text.labelLarge ?? const TextStyle()).copyWith(
                           color: context.colors.onInverseSurface,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
                         ),
                         children: [
                           TextSpan(
                             text:
                                 '\n${Fmt.dayMonth(points[spot.x.round()].day)}',
-                            style: TextStyle(
-                              color: context.colors.onInverseSurface
-                                  .withValues(alpha: 0.75),
-                              fontWeight: FontWeight.w500,
-                              fontSize: 11,
+                            style: context.text.caption.copyWith(
+                              color: context.colors.onInverseSurface,
                             ),
                           ),
                         ],

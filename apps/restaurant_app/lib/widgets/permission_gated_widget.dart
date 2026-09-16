@@ -74,9 +74,8 @@ class PermissionGatedWidget extends ConsumerWidget {
             color: context.colors.onSurfaceVariant.withValues(alpha: 0.2),
             child: Text(
               AppStrings.noPermission,
-              style: TextStyle(
+              style: context.text.labelLarge?.copyWith(
                 color: context.colors.onSurfaceVariant,
-                fontSize: 12,
               ),
             ),
           ),
@@ -94,7 +93,9 @@ class PermissionGatedWidget extends ConsumerWidget {
           padding: const EdgeInsets.all(8),
           child: Text(
             AppStrings.offlineMode,
-            style: TextStyle(color: context.semantic.warning, fontSize: 12),
+            style: context.text.labelLarge?.copyWith(
+              color: context.semantic.warning,
+            ),
           ),
         ),
       ),
@@ -117,7 +118,9 @@ class PermissionGatedWidget extends ConsumerWidget {
           color: context.semantic.danger.withValues(alpha: 0.1),
           child: Text(
             AppStrings.errorTitle,
-            style: TextStyle(color: context.semantic.danger, fontSize: 12),
+            style: context.text.labelLarge?.copyWith(
+              color: context.semantic.danger,
+            ),
           ),
         ),
       ),
@@ -275,15 +278,15 @@ class PermissionGatedScreen extends ConsumerWidget {
                 const SizedBox(height: Insets.lg),
                 Text(
                   AppStrings.accessDeniedFor(feature),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: context.text.headlineSmall,
                 ),
                 const SizedBox(height: Insets.sm),
                 Text(
                   AppStrings.lackingScreenPermission,
                   textAlign: TextAlign.center,
+                  style: context.text.bodyMedium?.copyWith(
+                    color: context.colors.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -312,14 +315,15 @@ class PermissionGatedScreen extends ConsumerWidget {
                   color: context.semantic.warning,
                 ),
                 const SizedBox(height: Insets.lg),
-                const Text(
+                Text(
                   AppStrings.offlineMode,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: context.text.headlineSmall,
                 ),
                 const SizedBox(height: Insets.sm),
-                const Text(
+                Text(
                   AppStrings.offlineSubtitle,
                   textAlign: TextAlign.center,
+                  style: context.text.bodyMedium,
                 ),
               ],
             ),

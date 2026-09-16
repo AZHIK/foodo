@@ -83,10 +83,9 @@ class MenuItemCard extends ConsumerWidget {
                             item.name,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
+                            style: context.text.bodySmall?.copyWith(
                               fontWeight: FontWeight.w600,
-                              height: 1.1,
+                              height: 1.25,
                               color: colors.onSurface,
                             ),
                           ),
@@ -96,9 +95,7 @@ class MenuItemCard extends ConsumerWidget {
                           Fmt.money(item.price),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
+                          style: context.text.moneySmall.copyWith(
                             color: colors.onSurface,
                           ),
                         ),
@@ -165,10 +162,8 @@ class _Artwork extends StatelessWidget {
                       ),
                       child: Text(
                         AppStrings.soldOutBadge,
-                        style: TextStyle(
+                        style: context.text.eyebrow.copyWith(
                           color: context.semantic.danger,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 10,
                         ),
                       ),
                     ),
@@ -216,11 +211,7 @@ class _QuantityBadge extends StatelessWidget {
         alignment: Alignment.center,
         child: Text(
           AppStrings.quantityBadge(quantity),
-          style: TextStyle(
-            color: colors.onPrimary,
-            fontWeight: FontWeight.w700,
-            fontSize: 10,
-          ),
+          style: context.text.labelLarge?.copyWith(color: colors.onPrimary),
         ),
       ),
     );

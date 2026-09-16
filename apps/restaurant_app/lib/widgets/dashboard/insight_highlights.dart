@@ -170,10 +170,8 @@ class _InsightCard extends StatelessWidget {
                           insight.category.label.toUpperCase(),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: context.text.labelSmall?.copyWith(
+                          style: context.text.eyebrow.copyWith(
                             color: colors.onSurfaceVariant,
-                            letterSpacing: 0.8,
-                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
@@ -189,9 +187,7 @@ class _InsightCard extends StatelessWidget {
                     insight.title,
                     maxLines: compact ? 1 : 2,
                     overflow: TextOverflow.ellipsis,
-                    style: context.text.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: context.text.titleSmall,
                   ),
                   const SizedBox(height: Insets.xs),
                   Text(
@@ -261,9 +257,8 @@ class _EvidenceChip extends StatelessWidget {
           Text(
             value,
             maxLines: 1,
-            style: context.text.labelSmall?.copyWith(
+            style: context.text.labelLarge?.copyWith(
               color: accent,
-              fontWeight: FontWeight.w800,
             ),
           ),
         ],

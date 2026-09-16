@@ -884,10 +884,8 @@ class _TeammateRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   AppStrings.teammate(index),
-                  style: context.text.labelSmall?.copyWith(
+                  style: context.text.eyebrow.copyWith(
                     color: context.colors.onSurfaceVariant,
-                    letterSpacing: 0.9,
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),

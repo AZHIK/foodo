@@ -192,11 +192,8 @@ class ColorfulMetricCard extends StatelessWidget {
                     label.toUpperCase(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
+                    style: context.text.eyebrow.copyWith(
                       color: colors.onSurfaceVariant,
-                      letterSpacing: 0.9,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 10.5,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -208,11 +205,11 @@ class ColorfulMetricCard extends StatelessWidget {
                     child: Text(
                       value,
                       maxLines: 1,
-                      style: TextStyle(
+                      style: (isMobile
+                              ? context.text.headlineSmall
+                              : context.text.headlineMedium)
+                          ?.copyWith(
                         color: colors.onSurface,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                        fontSize: isMobile ? 21 : 25,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
@@ -223,10 +220,8 @@ class ColorfulMetricCard extends StatelessWidget {
                       text,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: colors.onSurfaceVariant.withValues(alpha: 0.85),
-                        fontSize: isMobile ? 11 : 12,
-                        fontWeight: FontWeight.w500,
+                      style: context.text.caption.copyWith(
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -345,11 +340,8 @@ class _HeroBody extends StatelessWidget {
                       label.toUpperCase(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.78),
-                        letterSpacing: 0.9,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 10.5,
+                      style: context.text.eyebrow.copyWith(
+                        color: Colors.white.withValues(alpha: 0.8),
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -359,11 +351,11 @@ class _HeroBody extends StatelessWidget {
                       child: Text(
                         value,
                         maxLines: 1,
-                        style: TextStyle(
+                        style: (isMobile
+                                ? context.text.headlineSmall
+                                : context.text.headlineMedium)
+                            ?.copyWith(
                           color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                          fontSize: isMobile ? 24 : 28,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
@@ -373,10 +365,8 @@ class _HeroBody extends StatelessWidget {
                         text,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.75),
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w500,
+                        style: context.text.caption.copyWith(
+                          color: Colors.white.withValues(alpha: 0.8),
                         ),
                       ),
                   ],
@@ -405,10 +395,8 @@ class _HeroBody extends StatelessWidget {
                       const SizedBox(width: 2),
                       Text(
                         AppStrings.trendPercent((change ?? 0).abs() * 100),
-                        style: const TextStyle(
+                        style: context.text.labelLarge?.copyWith(
                           color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -462,9 +450,8 @@ class _TrendBadge extends StatelessWidget {
               AppStrings.trendPercent(percent),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: context.text.labelSmall?.copyWith(
-                color: colour.withValues(alpha: 0.85),
-                fontWeight: FontWeight.w700,
+              style: context.text.labelLarge?.copyWith(
+                color: colour,
               ),
             ),
           ),

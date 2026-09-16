@@ -176,7 +176,6 @@ class DashboardGreetingHeader extends ConsumerWidget {
                 child: Text(
                   initial,
                   style: context.text.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
                     color: colors.primary,
                   ),
                 ),
@@ -194,10 +193,7 @@ class DashboardGreetingHeader extends ConsumerWidget {
                         : AppStrings.greetingFor(greeting, firstName),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: context.text.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.6,
-                    ),
+                    style: context.text.headlineSmall,
                   ),
                   const SizedBox(height: 4),
                   // Store + date as a single pill chip: compact on a 360px
@@ -562,10 +558,8 @@ class DashboardSectionHeader extends StatelessWidget {
             title.toUpperCase(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: context.text.labelMedium?.copyWith(
+            style: context.text.eyebrow.copyWith(
               color: context.colors.onSurfaceVariant,
-              letterSpacing: 1.0,
-              fontWeight: FontWeight.w800,
             ),
           ),
         ),

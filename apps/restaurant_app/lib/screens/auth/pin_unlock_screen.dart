@@ -337,7 +337,6 @@ class _LockedOut extends StatelessWidget {
             AppStrings.countdownSeconds(secondsLeft),
             style: context.text.displaySmall?.copyWith(
               color: danger,
-              fontWeight: FontWeight.w800,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),

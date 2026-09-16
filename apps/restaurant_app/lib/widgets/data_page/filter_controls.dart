@@ -21,10 +21,8 @@ class FilterSection extends StatelessWidget {
       children: [
         Text(
           title.toUpperCase(),
-          style: context.text.labelSmall?.copyWith(
+          style: context.text.eyebrow.copyWith(
             color: context.colors.onSurfaceVariant,
-            letterSpacing: 0.9,
-            fontWeight: FontWeight.w700,
           ),
         ),
         const SizedBox(height: Insets.md),

@@ -91,10 +91,8 @@ class CartSummaryBar extends ConsumerWidget {
                           : AppStrings.cartItemCount(count),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: context.text.labelSmall?.copyWith(
+                      style: context.text.caption.copyWith(
                         color: colors.onSurfaceVariant,
-                        letterSpacing: 0.4,
-                        fontSize: 12,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -103,8 +101,7 @@ class CartSummaryBar extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: context.text.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 22,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                   ],

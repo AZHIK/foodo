@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../constants/app_durations.dart';
 import 'breakpoints.dart';
@@ -121,7 +120,16 @@ abstract final class AppTheme {
   /// lighting a counter terminal actually lives under.
   static const seed = Color(0xFF0B6B57);
 
-  static const _fontFamily = 'Poppins';
+  static const _fontFamily = 'Inter';
+
+  /// The only weights the app uses. Inter is a variable font so any value
+  /// interpolates, but restricting call sites to these four stops the
+  /// w500/w600/w700/w800 soup that made every screen look like a different
+  /// app — especially on phones where heavy weights blotch at small sizes.
+  static const _regular = FontWeight.w400;
+  static const _medium = FontWeight.w500;
+  static const _semiBold = FontWeight.w600;
+  static const _bold = FontWeight.w700;
 
   static ThemeData light() => _build(Brightness.light);
 
@@ -143,7 +151,10 @@ abstract final class AppTheme {
     final base = ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      fontFamily: GoogleFonts.poppins().fontFamily,
+      // Inter is bundled locally (assets/fonts/Inter.ttf, registered in
+      // pubspec) so text renders identically offline — no GoogleFonts network
+      // fetch, no FOUT swapping Poppins in late on a slow counter terminal.
+      fontFamily: _fontFamily,
     );
 
     return base.copyWith(
@@ -165,10 +176,11 @@ abstract final class AppTheme {
         backgroundColor: scheme.surface,
         surfaceTintColor: Colors.transparent,
         foregroundColor: scheme.onSurface,
-        titleTextStyle: GoogleFonts.poppins(
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.3,
+        titleTextStyle: TextStyle(
+          fontFamily: _fontFamily,
+          fontSize: 19,
+          fontWeight: _bold,
+          letterSpacing: -0.25,
           color: scheme.onSurface,
         ),
       ),
@@ -218,9 +230,11 @@ abstract final class AppTheme {
         style: FilledButton.styleFrom(
           minimumSize: const Size(0, 48),
           padding: const EdgeInsets.symmetric(horizontal: Insets.xl),
-          textStyle: GoogleFonts.poppins(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
+          textStyle: const TextStyle(
+            fontFamily: _fontFamily,
+            fontSize: 14,
+            fontWeight: _semiBold,
+            letterSpacing: 0,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(Radii.md),
@@ -232,9 +246,11 @@ abstract final class AppTheme {
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(0, 48),
           side: BorderSide(color: scheme.outlineVariant),
-          textStyle: GoogleFonts.poppins(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
+          textStyle: const TextStyle(
+            fontFamily: _fontFamily,
+            fontSize: 14,
+            fontWeight: _semiBold,
+            letterSpacing: 0,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(Radii.md),
@@ -244,9 +260,11 @@ abstract final class AppTheme {
 
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          textStyle: GoogleFonts.poppins(
+          textStyle: const TextStyle(
+            fontFamily: _fontFamily,
             fontSize: 14,
-            fontWeight: FontWeight.w600,
+            fontWeight: _semiBold,
+            letterSpacing: 0,
           ),
         ),
       ),
@@ -267,7 +285,8 @@ abstract final class AppTheme {
         labelStyle: TextStyle(
           fontFamily: _fontFamily,
           fontSize: 13,
-          fontWeight: FontWeight.w600,
+          fontWeight: _semiBold,
+          letterSpacing: 0,
           color: scheme.onSurface,
         ),
       ),
@@ -284,8 +303,9 @@ abstract final class AppTheme {
             fontFamily: _fontFamily,
             fontSize: 12,
             fontWeight: states.contains(WidgetState.selected)
-                ? FontWeight.w700
-                : FontWeight.w500,
+                ? _semiBold
+                : _medium,
+            letterSpacing: 0,
           ),
         ),
       ),
@@ -298,13 +318,15 @@ abstract final class AppTheme {
         selectedLabelTextStyle: TextStyle(
           fontFamily: _fontFamily,
           fontSize: 13,
-          fontWeight: FontWeight.w700,
+          fontWeight: _semiBold,
+          letterSpacing: 0,
           color: scheme.onSurface,
         ),
         unselectedLabelTextStyle: TextStyle(
           fontFamily: _fontFamily,
           fontSize: 13,
-          fontWeight: FontWeight.w500,
+          fontWeight: _medium,
+          letterSpacing: 0,
           color: scheme.onSurfaceVariant,
         ),
       ),
@@ -337,72 +359,155 @@ abstract final class AppTheme {
     );
   }
 
-  /// Tighter tracking on the large sizes; roomier on the small ones. This is
-  /// what makes the hierarchy read as deliberate rather than default.
+  /// One family (Inter), whole-point sizes, four weights, two text colours.
+  ///
+  /// Why Inter and nothing else: it is drawn for dense UI at 11–14px where
+  /// Poppins (a geometric display face) turns blobby on phones, its tabular
+  /// figures keep every price/quantity column aligned, and it ships bundled
+  /// so the POS renders identically offline. Every M3 slot is set explicitly
+  /// so no surface silently falls back to Roboto and re-introduces a second
+  /// voice. w800 is banned — Inter ExtraBold at mobile sizes reads as noise.
   static TextTheme _textTheme(TextTheme base) {
+    TextStyle style({
+      TextStyle? from,
+      required double size,
+      required FontWeight weight,
+      required double height,
+      double letterSpacing = 0,
+      bool tabular = false,
+    }) {
+      return (from ?? const TextStyle()).copyWith(
+        fontFamily: _fontFamily,
+        fontSize: size,
+        fontWeight: weight,
+        height: height,
+        letterSpacing: letterSpacing,
+        fontFeatures: tabular ? const [FontFeature.tabularFigures()] : null,
+      );
+    }
+
+    final display = style(
+      from: base.displaySmall,
+      size: 26,
+      weight: _bold,
+      height: 1.2,
+      letterSpacing: -0.25,
+    );
+    final headline = style(
+      from: base.headlineMedium,
+      size: 22,
+      weight: _bold,
+      height: 1.25,
+      letterSpacing: -0.25,
+    );
+    final headlineSm = style(
+      from: base.headlineSmall,
+      size: 19,
+      weight: _bold,
+      height: 1.3,
+      letterSpacing: -0.25,
+    );
+    final titleLg = style(
+      from: base.titleLarge,
+      size: 17,
+      weight: _semiBold,
+      height: 1.35,
+      letterSpacing: -0.1,
+    );
+    final titleMd = style(
+      from: base.titleMedium,
+      size: 15,
+      weight: _semiBold,
+      height: 1.4,
+      letterSpacing: -0.1,
+    );
+    final titleSm = style(
+      from: base.titleSmall,
+      size: 14,
+      weight: _semiBold,
+      height: 1.4,
+    );
+    final bodyLg = style(
+      from: base.bodyLarge,
+      size: 15,
+      weight: _regular,
+      height: 1.5,
+    );
+    final bodyMd = style(
+      from: base.bodyMedium,
+      size: 14,
+      weight: _regular,
+      height: 1.5,
+    );
+    final bodySm = style(
+      from: base.bodySmall,
+      size: 13,
+      weight: _regular,
+      height: 1.45,
+    );
+    final labelLg = style(
+      from: base.labelLarge,
+      size: 13,
+      weight: _semiBold,
+      height: 1.4,
+    );
+    // The single "eyebrow" voice: section headers, KPI labels, table heads.
+    // 12px floor (never 10/10.5 — unreadable on phones), one tracking value.
+    final eyebrow = style(
+      from: base.labelMedium,
+      size: 12,
+      weight: _semiBold,
+      height: 1.35,
+      letterSpacing: 0.6,
+    );
+    final caption = style(
+      from: base.labelSmall,
+      size: 12,
+      weight: _medium,
+      height: 1.35,
+    );
+
     return base.copyWith(
-      displaySmall: GoogleFonts.poppins(
-        textStyle: base.displaySmall,
-        fontWeight: FontWeight.w700,
-        letterSpacing: -1,
-        fontSize: 28,
-      ),
-      headlineMedium: GoogleFonts.poppins(
-        textStyle: base.headlineMedium,
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.8,
-        fontSize: 24,
-      ),
-      headlineSmall: GoogleFonts.poppins(
-        textStyle: base.headlineSmall,
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.5,
-        fontSize: 20,
-      ),
-      titleLarge: GoogleFonts.poppins(
-        textStyle: base.titleLarge,
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.3,
-        fontSize: 18,
-      ),
-      titleMedium: GoogleFonts.poppins(
-        textStyle: base.titleMedium,
-        fontWeight: FontWeight.w600,
-        letterSpacing: -0.2,
-        fontSize: 15,
-      ),
-      titleSmall: GoogleFonts.poppins(
-        textStyle: base.titleSmall,
-        fontWeight: FontWeight.w600,
-        fontSize: 13,
-      ),
-      bodyMedium: GoogleFonts.poppins(
-        textStyle: base.bodyMedium,
-        height: 1.4,
-        fontSize: 14,
-      ),
-      bodySmall: GoogleFonts.poppins(
-        textStyle: base.bodySmall,
-        height: 1.35,
-        fontSize: 12,
-      ),
-      labelLarge: GoogleFonts.poppins(
-        textStyle: base.labelLarge,
-        fontWeight: FontWeight.w600,
-        fontSize: 12,
-      ),
-      labelMedium: GoogleFonts.poppins(
-        textStyle: base.labelMedium,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.2,
-        fontSize: 11,
-      ),
-      labelSmall: GoogleFonts.poppins(
-        textStyle: base.labelSmall,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.4,
-        fontSize: 10,
-      ),
+      displayLarge: display.copyWith(fontSize: 30),
+      displayMedium: display.copyWith(fontSize: 28),
+      displaySmall: display,
+      headlineLarge: headline.copyWith(fontSize: 24),
+      headlineMedium: headline,
+      headlineSmall: headlineSm,
+      titleLarge: titleLg,
+      titleMedium: titleMd,
+      titleSmall: titleSm,
+      bodyLarge: bodyLg,
+      bodyMedium: bodyMd,
+      bodySmall: bodySm,
+      labelLarge: labelLg,
+      labelMedium: eyebrow,
+      labelSmall: caption,
     );
   }
+}
+
+/// Shared semantic text helpers so call sites stop inventing one-off
+/// sizes/weights/colours. All resolve from the theme — Inter throughout.
+extension AppTypography on TextTheme {
+  /// 12px uppercase section/KPI/table header. Caller uppercases the string;
+  /// tracking lives here so every eyebrow matches.
+  TextStyle get eyebrow => labelMedium!;
+
+  /// Secondary 12px line under a value ("3 of 9 on shift").
+  TextStyle get caption => labelSmall!;
+
+  /// Prices and totals. Tabular figures keep columns aligned as values change.
+  /// Pick the size that matches the surrounding body text.
+  TextStyle get moneyLarge => titleLarge!.copyWith(
+    fontFeatures: const [FontFeature.tabularFigures()],
+  );
+  TextStyle get moneyMedium => bodyMedium!.copyWith(
+    fontWeight: FontWeight.w600,
+    fontFeatures: const [FontFeature.tabularFigures()],
+  );
+  TextStyle get moneySmall => bodySmall!.copyWith(
+    fontWeight: FontWeight.w600,
+    fontFeatures: const [FontFeature.tabularFigures()],
+  );
 }

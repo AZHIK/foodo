@@ -62,9 +62,7 @@ class DataRowCard<T> extends StatelessWidget {
                             primary.value(row),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: context.text.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: context.text.titleSmall,
                           ),
                   ),
                   if (status != null) ...[
@@ -115,10 +113,8 @@ class _Detail extends StatelessWidget {
           label.toUpperCase(),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: context.text.labelSmall?.copyWith(
+          style: context.text.eyebrow.copyWith(
             color: colors.onSurfaceVariant,
-            letterSpacing: 0.7,
-            fontWeight: FontWeight.w700,
           ),
         ),
         Text(

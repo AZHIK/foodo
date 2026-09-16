@@ -150,9 +150,11 @@ class PaymentBreakdown extends StatelessWidget {
                 textAlign: TextAlign.right,
                 style:
                     (compact
-                            ? context.text.titleLarge
+                            ? context.text.moneyLarge
                             : context.text.headlineSmall)
-                        ?.copyWith(fontWeight: FontWeight.w800),
+                        ?.copyWith(
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
             ),
           ],

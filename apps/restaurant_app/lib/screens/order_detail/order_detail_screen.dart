@@ -162,10 +162,8 @@ class _Panel extends StatelessWidget {
           children: [
             Text(
               title.toUpperCase(),
-              style: context.text.labelSmall?.copyWith(
+              style: context.text.eyebrow.copyWith(
                 color: context.colors.onSurfaceVariant,
-                letterSpacing: 0.9,
-                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: Insets.md),
@@ -393,16 +391,14 @@ class _PaymentPanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   AppStrings.totalRow,
-                  style: context.text.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: context.text.titleMedium,
                 ),
               ),
               Text(
                 Fmt.money(order.total),
                 maxLines: 1,
                 style: context.text.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             ],

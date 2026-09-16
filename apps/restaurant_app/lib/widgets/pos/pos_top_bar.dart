@@ -166,7 +166,6 @@ class _CashierChip extends ConsumerWidget {
             staff.characters.first.toUpperCase(),
             style: context.text.titleSmall?.copyWith(
               color: colors.onPrimaryContainer,
-              fontWeight: FontWeight.w700,
             ),
           ),
         ),

@@ -185,15 +185,13 @@ class _CategoryDonutChartState extends State<CategoryDonutChart> {
       color: colour,
       radius: radius,
       title: label,
-      titleStyle: TextStyle(
+      titleStyle: context.text.labelLarge?.copyWith(
         // Picked against the slice, not the theme: dark mode's palette is
         // pastel, and white-on-mint is the one pairing on this screen that
         // fails contrast outright.
         color: ThemeData.estimateBrightnessForColor(colour) == Brightness.light
             ? Colors.black.withValues(alpha: 0.82)
             : Colors.white,
-        fontWeight: FontWeight.w800,
-        fontSize: 11,
         height: 1,
       ),
       titlePositionPercentageOffset: 0.5,
@@ -226,9 +224,7 @@ class _CentreReadout extends StatelessWidget {
             child: Text(
               value,
               maxLines: 1,
-              style: context.text.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              style: context.text.moneyLarge,
             ),
           ),
           Text(
@@ -236,10 +232,8 @@ class _CentreReadout extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: context.text.labelSmall?.copyWith(
+            style: context.text.eyebrow.copyWith(
               color: colors.onSurfaceVariant,
-              letterSpacing: 0.8,
-              fontWeight: FontWeight.w700,
             ),
           ),
         ],

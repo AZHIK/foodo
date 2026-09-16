@@ -110,16 +110,14 @@ class _CartBar extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                   style: context.text.titleMedium?.copyWith(
                     color: colors.onPrimary,
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
               Text(
                 Fmt.money(total),
                 maxLines: 1,
-                style: context.text.titleMedium?.copyWith(
+                style: context.text.moneyMedium.copyWith(
                   color: colors.onPrimary,
-                  fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(width: Insets.xs),

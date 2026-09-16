@@ -467,10 +467,8 @@ class _DangerZone extends ConsumerWidget {
                   AppStrings.dangerZone,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: context.text.labelSmall?.copyWith(
+                  style: context.text.eyebrow.copyWith(
                     color: danger,
-                    letterSpacing: 0.9,
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),

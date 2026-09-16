@@ -16,10 +16,8 @@ class SectionLabel extends StatelessWidget {
       text.toUpperCase(),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: context.text.labelSmall?.copyWith(
+      style: context.text.eyebrow.copyWith(
         color: context.colors.onSurfaceVariant,
-        letterSpacing: 0.9,
-        fontWeight: FontWeight.w700,
       ),
     );
   }

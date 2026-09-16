@@ -158,10 +158,7 @@ class _PageHeader extends StatelessWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: context.text.titleLarge?.copyWith(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: context.text.headlineSmall,
               ),
               Text(
                 subtitle,

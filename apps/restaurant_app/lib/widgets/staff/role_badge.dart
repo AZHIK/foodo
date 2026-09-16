@@ -104,9 +104,8 @@ class StaffAvatar extends StatelessWidget {
       child: Text(
         initials,
         maxLines: 1,
-        style: context.text.labelMedium?.copyWith(
+        style: context.text.labelLarge?.copyWith(
           color: accent,
-          fontWeight: FontWeight.w800,
           // Scales with the circle so the same widget serves a 36px table cell
           // and a 56px detail header.
           fontSize: size * 0.36,

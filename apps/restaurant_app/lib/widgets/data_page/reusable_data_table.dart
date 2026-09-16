@@ -241,10 +241,8 @@ class _HeaderCell<T> extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: column.numeric ? TextAlign.right : TextAlign.left,
-                style: context.text.labelSmall?.copyWith(
+                style: context.text.eyebrow.copyWith(
                   color: active ? colors.onSurface : colors.onSurfaceVariant,
-                  letterSpacing: 0.8,
-                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),

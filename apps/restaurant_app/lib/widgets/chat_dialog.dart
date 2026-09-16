@@ -90,10 +90,8 @@ class _ChatDialogState extends ConsumerState<ChatDialog> {
                 children: [
                   Text(
                     AppStrings.assistantTitle,
-                    style: TextStyle(
+                    style: context.text.titleMedium?.copyWith(
                       color: colors.onPrimary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
                     ),
                   ),
                   IconButton(
@@ -122,19 +120,16 @@ class _ChatDialogState extends ConsumerState<ChatDialog> {
                             const SizedBox(height: Insets.lg),
                             Text(
                               AppStrings.startConversation,
-                              style: TextStyle(
+                              style: context.text.titleSmall?.copyWith(
                                 color: colors.onSurface,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
                               ),
                             ),
                             const SizedBox(height: Insets.sm),
                             Text(
                               AppStrings.askAboutOrders,
                               textAlign: TextAlign.center,
-                              style: TextStyle(
+                              style: context.text.bodySmall?.copyWith(
                                 color: colors.onSurfaceVariant,
-                                fontSize: 13,
                               ),
                             ),
                           ],
@@ -171,12 +166,10 @@ class _ChatDialogState extends ConsumerState<ChatDialog> {
                               ),
                               child: Text(
                                 message.content,
-                                style: TextStyle(
+                                style: context.text.bodyMedium?.copyWith(
                                   color: isUser
                                       ? colors.onPrimary
                                       : colors.onSurface,
-                                  fontSize: 13,
-                                  height: 1.4,
                                 ),
                               ),
                             ),

@@ -97,9 +97,8 @@ class RankedListTile extends StatelessWidget {
           ),
           child: Text(
             AppStrings.rankBadge(rank),
-            style: context.text.labelMedium?.copyWith(
+            style: context.text.labelLarge?.copyWith(
               color: family.onTint,
-              fontWeight: FontWeight.w800,
             ),
           ),
         ),
@@ -113,7 +112,7 @@ class RankedListTile extends StatelessWidget {
               color: colors.surfaceContainerHighest.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Text(leadingEmoji!, style: const TextStyle(fontSize: 17)),
+            child: Text(leadingEmoji!, style: const TextStyle(fontSize: 18)),
           ),
           const SizedBox(width: Insets.sm),
         ],
@@ -152,8 +151,7 @@ class RankedListTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.right,
-            style: context.text.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
+            style: context.text.titleSmall?.copyWith(
               color: family.accent,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),

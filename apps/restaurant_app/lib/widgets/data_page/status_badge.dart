@@ -100,9 +100,8 @@ class StatusBadge extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: context.text.labelSmall?.copyWith(
+              style: context.text.labelLarge?.copyWith(
                 color: foreground,
-                fontWeight: FontWeight.w700,
               ),
             ),
           ),

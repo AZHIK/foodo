@@ -198,10 +198,8 @@ class AppTopBar extends ConsumerWidget {
                     child: Center(
                       child: Text(
                         staff.characters.first.toUpperCase(),
-                        style: TextStyle(
+                        style: context.text.titleSmall?.copyWith(
                           color: colors.onPrimaryContainer,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
                         ),
                       ),
                     ),

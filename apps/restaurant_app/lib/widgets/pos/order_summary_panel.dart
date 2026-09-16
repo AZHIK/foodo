@@ -160,9 +160,7 @@ class OrderTicketHeader extends ConsumerWidget {
                       orderId,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: context.text.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: context.text.titleSmall,
                     ),
                   ],
                 ),
@@ -411,7 +409,7 @@ class _EmptyOrder extends StatelessWidget {
             Text(
               AppStrings.noItemsYet,
               textAlign: TextAlign.center,
-              style: context.text.titleSmall?.copyWith(fontSize: 13),
+              style: context.text.titleSmall,
             ),
             const SizedBox(height: 4),
             Text(
@@ -419,7 +417,6 @@ class _EmptyOrder extends StatelessWidget {
               textAlign: TextAlign.center,
               style: context.text.bodySmall?.copyWith(
                 color: colors.onSurfaceVariant,
-                fontSize: 12,
               ),
             ),
           ],
@@ -499,7 +496,6 @@ class OrderTotalsFooter extends ConsumerWidget {
                             : AppStrings.chargeTotal(Fmt.money(totals.total)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13),
                       ),
                     ),
                   ),

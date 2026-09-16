@@ -37,10 +37,8 @@ class CartLineItemTile extends ConsumerWidget {
         ? Text(
             AppStrings.cartLineQuantity(line.quantity),
             maxLines: 1,
-            style: TextStyle(
+            style: context.text.labelLarge?.copyWith(
               color: colors.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
             ),
           )
         : QuantityStepper(
@@ -64,10 +62,8 @@ class CartLineItemTile extends ConsumerWidget {
                   line.item.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    height: 1.2,
-                    fontSize: 13,
+                  style: context.text.titleSmall?.copyWith(
+                    height: 1.3,
                     color: colors.onSurface,
                   ),
                 ),
@@ -85,18 +81,15 @@ class CartLineItemTile extends ConsumerWidget {
                 AppStrings.cartLineEach(Fmt.money(line.item.price)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
+                style: context.text.bodySmall?.copyWith(
                   color: colors.onSurfaceVariant,
-                  fontSize: 11,
                 ),
               ),
               Text(
                 Fmt.money(line.lineTotal),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
+                style: context.text.moneySmall.copyWith(
                   color: colors.onSurface,
                 ),
               ),
@@ -108,10 +101,8 @@ class CartLineItemTile extends ConsumerWidget {
               line.note!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: context.semantic.warning,
-                fontStyle: FontStyle.italic,
-                fontSize: 11,
+              style: context.text.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
               ),
             ),
           ],
