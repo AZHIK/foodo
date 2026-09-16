@@ -279,8 +279,11 @@ abstract final class ExportHelper {
     if (number == null) return TextCellValue(text);
 
     // Only treat it as numeric if nothing but the formatting was stripped —
-    // "42 kg" keeps its unit rather than silently becoming 42.
-    final hasTrailingUnit = RegExp(r'[a-zA-Z]').hasMatch(text);
+    // "42 kg" keeps its unit rather than silently becoming 42. A leading
+    // currency symbol ("TSh22", "$22") is formatting, not a unit, so the
+    // check runs on the text after it.
+    final body = text.replaceFirst(RegExp(r'^[^0-9.\-]+'), '');
+    final hasTrailingUnit = RegExp(r'[a-zA-Z]').hasMatch(body);
     if (hasTrailingUnit) return TextCellValue(text);
 
     return number == number.roundToDouble() && !text.contains('.')

@@ -280,13 +280,14 @@ void main() {
 
       expect(
         sheet.row(0).map((c) => c?.value.toString()).toList(),
-        ['Order', 'Date & time', 'Items', 'Total', 'Payment', 'Status'],
+        ['Order', 'Date & time', 'Items', 'Total', 'Payment', 'Fulfillment', 'Status'],
       );
       final row = sheet.row(1).map((c) => c?.value.toString()).toList();
       expect(row[0], 'ORD-9001');
       expect(row[2], '2');
       expect(row[4], 'Card');
-      expect(row[5], 'Refunded');
+      expect(row[5], 'New');
+      expect(row[6], 'Refunded');
       // Totals must survive as numbers so a finance team can sum the column.
       // A whole number round-trips through xlsx as an int, so assert on
       // numeric-ness rather than on which numeric type came back.

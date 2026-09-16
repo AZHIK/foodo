@@ -65,9 +65,9 @@ class StaffScreen extends ConsumerWidget {
         ),
         context.isMobile
             ? SizedBox(
-                // 48x48: minimum comfortable touch target on a phone.
-                height: 48,
-                width: 48,
+                // Matches the header bar height so every action sits evenly.
+                height: kDataPageActionHeight,
+                width: kDataPageActionHeight,
                     child: Tooltip(
                       message: AppStrings.rolesAction,
                   child: Material(

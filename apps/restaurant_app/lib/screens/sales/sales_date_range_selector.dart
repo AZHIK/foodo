@@ -6,6 +6,7 @@ import '../../providers/orders_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/data_page/export_actions.dart';
 
 /// Today / This week / This month / All time / Custom.
 ///
@@ -58,8 +59,8 @@ class SalesDateRangeSelector extends ConsumerWidget {
             ),
         ],
         child: SizedBox(
-          height: 40,
-          width: 40,
+          height: kDataPageActionHeight,
+          width: kDataPageActionHeight,
           child: Icon(
             Icons.calendar_today_rounded,
             size: 20,
@@ -70,7 +71,7 @@ class SalesDateRangeSelector extends ConsumerWidget {
     }
 
     return PopupMenuButton<SalesDateRange>(
-      tooltip: 'Change period',
+      tooltip: AppStrings.changePeriod,
       position: PopupMenuPosition.under,
       onSelected: (range) => range == SalesDateRange.custom
           ? pickCustom()
@@ -81,13 +82,15 @@ class SalesDateRangeSelector extends ConsumerWidget {
             value: range,
             checked: range == filters.range,
             child: Text(
-              range == SalesDateRange.custom ? 'Custom…' : range.label,
+              range == SalesDateRange.custom
+                  ? AppStrings.customPeriod
+                  : range.label,
             ),
           ),
       ],
       child: Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
+        height: kDataPageActionHeight,
+        padding: const EdgeInsets.symmetric(horizontal: Insets.md),
         decoration: BoxDecoration(
           color: filled ? colors.primaryContainer : null,
           borderRadius: BorderRadius.circular(Radii.md),

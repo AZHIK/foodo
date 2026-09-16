@@ -13,6 +13,7 @@ import '../../utils/formatters.dart';
 import '../../widgets/data_page/data_column_spec.dart';
 import '../../widgets/data_page/data_page_scaffold.dart';
 import '../../widgets/data_page/data_table_toolbar.dart';
+import '../../widgets/data_page/export_actions.dart';
 import '../../widgets/data_page/reusable_data_table.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
 import 'customer_form_dialog.dart';
@@ -34,7 +35,15 @@ class CustomersScreen extends ConsumerWidget {
     return DataPageScaffold(
       title: AppStrings.customersTitle,
       subtitle: AppStrings.customersSubtitle,
-      actions: [],
+      // Exports the filtered list — every matching row, not just the page
+      // on screen.
+      actions: dataPageExportActions<Customer>(
+        context: context,
+        columns: _columns,
+        rows: ref.watch(filteredCustomersProvider),
+        title: AppStrings.customersTitle,
+        subtitle: _exportSubtitle(ref.watch(customerSearchProvider)),
+      ),
       // Hidden rather than shown-disabled: someone who can't add customers
       // shouldn't see a control that only ever 403s.
       primaryAction: !canCreate
@@ -177,10 +186,23 @@ class CustomersScreen extends ConsumerWidget {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
+
+  /// Records on the exported file which view produced it.
+  static String _exportSubtitle(String search) {
+    if (search.trim().isEmpty) return AppStrings.allCustomersExport;
+    return AppStrings.exportFiltered(
+      AppStrings.exportMatching(search.trim()),
+    );
+  }
 }
 
 /// Column config for the customers table.
-final _columns = <DataColumnSpec<Customer>>[
+///
+/// A getter (not a top-level `final`) so `AppStrings` labels are re-evaluated
+/// on every build — a cached list would snapshot the launch language and
+/// ignore later toggles. Exporters reuse the same definitions, so the
+/// spreadsheet carries the same columns the screen shows.
+List<DataColumnSpec<Customer>> get _columns => <DataColumnSpec<Customer>>[
   DataColumnSpec(
     label: AppStrings.nameColumn,
     field: CustomerSort.name,

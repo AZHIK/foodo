@@ -182,13 +182,19 @@ class _PageHeader extends StatelessWidget {
       builder: (context, constraints) {
         final isMobile = context.isMobile;
         // Wide enough for the title and every button on one line; otherwise
-        // the buttons wrap under the heading rather than crushing it.
-        final inline = constraints.maxWidth >= 760;
+        // the buttons wrap under the heading rather than crushing it. A
+        // single button (e.g. Add supplier) always stays on the title row —
+        // the title shrinks with ellipsis instead, so the action never sits
+        // alone on a second row.
+        final inline = constraints.maxWidth >= 760 || buttons.length <= 1;
 
+        // Actions hug the trailing edge in every layout — inline beside the
+        // heading on wide screens, right-aligned on their own run below it
+        // on narrow ones.
         final actionBar = Wrap(
           spacing: isMobile ? 4.0 : Insets.sm,
           runSpacing: isMobile ? 4.0 : Insets.sm,
-          alignment: inline ? WrapAlignment.end : WrapAlignment.start,
+          alignment: WrapAlignment.end,
           children: buttons,
         );
 
@@ -208,7 +214,12 @@ class _PageHeader extends StatelessWidget {
           children: [
             heading,
             SizedBox(height: isMobile ? Insets.sm : Insets.lg),
-            actionBar,
+            // Explicit trailing pin: the action bar (e.g. the Add supplier
+            // button) always hugs the far right edge, never the start.
+            Align(
+              alignment: Alignment.centerRight,
+              child: actionBar,
+            ),
           ],
         );
       },

@@ -507,10 +507,20 @@ abstract final class AppStrings {
   static String get exportAny => L10n.t('exportAny', 'any');
   static String exportStockRange(String min, String max) =>
       'stock $min–$max';
-  static String exportMatching(String search) => 'matching "$search"';
+  static String exportMatching(String search) => L10n.tp(
+        'exportMatching',
+        'matching "{search}"',
+        {'search': search},
+      );
   static String get exportAllGroceries => L10n.t('exportAllGroceries', 'All groceries');
   static String get exportAllMenuItems => L10n.t('exportAllMenuItems', 'All menu items');
-  static String exportFiltered(String parts) => 'Filtered by $parts';
+  static String exportFiltered(String parts) => L10n.tp(
+        'exportFiltered',
+        'Filtered by {parts}',
+        {'parts': parts},
+      );
+  static String get allCustomersExport => L10n.t('allCustomersExport', 'All customers');
+  static String get allSuppliersExport => L10n.t('allSuppliersExport', 'All suppliers');
   static String get availableAtTill => L10n.t('availableAtTill', 'Available at the till');
   static String get noDemoSales => L10n.t('noDemoSales', 'No demo sales yet');
   static String demoTopSeller(Object units) => '$units sold · last 7 days, demo data';
@@ -854,17 +864,32 @@ abstract final class AppStrings {
   // -------------------------------------------------------------------------
 
   static String get salesTitle => L10n.t('salesTitle', 'Sales');
-  static String salesSubtitle(String date) =>
-      'Orders, takings and refunds across $date';
+  static String salesSubtitle(String date) => L10n.tp(
+        'salesSubtitle',
+        'Orders, takings and refunds across {date}',
+        {'date': date},
+      );
   static String get checkNewOrders => L10n.t('checkNewOrders', 'Check for new orders');
   static String get totalSales => L10n.t('totalSales', 'Total sales');
-  static String netOfRefunds(String period) => 'Net of refunds, $period';
+  static String netOfRefunds(String period) => L10n.tp(
+        'netOfRefunds',
+        'Net of refunds, {period}',
+        {'period': period},
+      );
   static String get selectedPeriod => L10n.t('selectedPeriod', 'the selected period');
   static String get ordersMetric => L10n.t('ordersMetric', 'Orders');
-  static String itemsSold(int count) => '$count items sold';
+  static String itemsSold(int count) => L10n.tp(
+        'itemsSold',
+        '{count} items sold',
+        {'count': '$count'},
+      );
   static String get averageOrder => L10n.t('averageOrder', 'Average order');
   static String get noRefundsInView => L10n.t('noRefundsInView', 'No refunds in this view');
-  static String refundedCount(int count) => '$count refunded';
+  static String refundedCount(int count) => L10n.tp(
+        'refundedCount',
+        '{count} refunded',
+        {'count': '$count'},
+      );
   static String get searchOrders => L10n.t('searchOrders', 'Search order, server, item or payment');
   static String get dateSort => L10n.t('dateSort', 'Date');
   static String get orderSort => L10n.t('orderSort', 'Order');
@@ -878,11 +903,26 @@ abstract final class AppStrings {
   static String get refundOrder => L10n.t('refundOrder', 'Refund order');
   static String get printReceipt => L10n.t('printReceipt', 'Print receipt');
   static String receiptSentWithNumber(String prefix, String suffix) =>
-      'Receipt $prefix$suffix sent to printer';
-  static String refundTitle(String id) => 'Refund $id?';
-  static String refundBody(String total, String method) =>
-      '$total will be returned to $method and removed from takings.';
-  static String orderRefunded(String id) => '$id refunded';
+      L10n.tp(
+        'receiptSentWithNumber',
+        'Receipt {prefix}{suffix} sent to printer',
+        {'prefix': prefix, 'suffix': suffix},
+      );
+  static String refundTitle(String id) => L10n.tp(
+        'refundTitle',
+        'Refund {id}?',
+        {'id': id},
+      );
+  static String refundBody(String total, String method) => L10n.tp(
+        'refundBody',
+        '{total} will be returned to {method} and removed from takings.',
+        {'total': total, 'method': method},
+      );
+  static String orderRefunded(String id) => L10n.tp(
+        'orderRefunded',
+        '{id} refunded',
+        {'id': id},
+      );
   static String get dateRangeFilter => L10n.t('dateRangeFilter', 'Date range');
   static String get paymentMethodFilter => L10n.t('paymentMethodFilter', 'Payment method');
   static String get statusFilter => L10n.t('statusFilter', 'Status');
@@ -890,7 +930,21 @@ abstract final class AppStrings {
   static String get changePeriod => L10n.t('changePeriod', 'Change period');
   static String get customPeriod => L10n.t('customPeriod', 'Custom…');
   static String get customLabel => L10n.t('customLabel', 'Custom');
-  static String customRangeLabel(String from, String to) => '$from – $to';
+  static String customRangeLabel(String from, String to) => L10n.tp(
+        'customRangeLabel',
+        '{from} – {to}',
+        {'from': from, 'to': to},
+      );
+  static String relativeToday(String time) => L10n.tp(
+        'relativeToday',
+        'Today, {time}',
+        {'time': time},
+      );
+  static String relativeYesterday(String time) => L10n.tp(
+        'relativeYesterday',
+        'Yesterday, {time}',
+        {'time': time},
+      );
   static String get couriersTitle => L10n.t('couriersTitle', 'Couriers');
   static String get availableMetric => L10n.t('availableMetric', 'Available');
   static String get readyForDelivery => L10n.t('readyForDelivery', 'Ready for delivery');
@@ -898,8 +952,16 @@ abstract final class AppStrings {
   static String get offlineTrend => L10n.t('offlineTrend', 'Offline');
   static String get totalMetric => L10n.t('totalMetric', 'Total');
   static String get couriersOnTeam => L10n.t('couriersOnTeam', 'Couriers on team');
-  static String activeCount(int count) => 'Active ($count)';
-  static String inactiveCount(int count) => 'Inactive ($count)';
+  static String activeCount(int count) => L10n.tp(
+        'activeCount',
+        'Active ({count})',
+        {'count': '$count'},
+      );
+  static String inactiveCount(int count) => L10n.tp(
+        'inactiveCount',
+        'Inactive ({count})',
+        {'count': '$count'},
+      );
   static String get noCouriers => L10n.t('noCouriers', 'No couriers added');
   static String get recentBadge => L10n.t('recentBadge', 'NEW');
   static String get orderColumn => L10n.t('orderColumn', 'Order');
@@ -979,13 +1041,20 @@ abstract final class AppStrings {
       isEdit ? 'Income updated' : 'Income added';
   static String get refundWhyHint => L10n.t('refundWhyHint', 'Why is this being refunded?');
   static String get refundAction => L10n.t('refundAction', 'Refund');
-  static String assignCourierTitle(String order) => 'Assign courier for $order';
+  static String assignCourierTitle(String order) => L10n.tp(
+        'assignCourierTitle',
+        'Assign courier for {order}',
+        {'order': order},
+      );
   static String get currentlyAssigned => L10n.t('currentlyAssigned', 'Currently assigned');
   static String get reassignTo => L10n.t('reassignTo', 'Reassign to');
   static String get selectCourier => L10n.t('selectCourier', 'Select courier');
   static String get noCouriersAvailable => L10n.t('noCouriersAvailable', 'No couriers available');
-  static String courierAssigned(String name, String order) =>
-      '$name assigned to $order';
+  static String courierAssigned(String name, String order) => L10n.tp(
+        'courierAssigned',
+        '{name} assigned to {order}',
+        {'name': name, 'order': order},
+      );
 
   // -------------------------------------------------------------------------
   // Customers

@@ -11,6 +11,7 @@ import '../../providers/table_query_provider.dart';
 import '../../widgets/data_page/data_column_spec.dart';
 import '../../widgets/data_page/data_page_scaffold.dart';
 import '../../widgets/data_page/data_table_toolbar.dart';
+import '../../widgets/data_page/export_actions.dart';
 import '../../widgets/data_page/reusable_data_table.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/dialogs/supplier_form_dialog.dart';
@@ -58,7 +59,15 @@ class SuppliersScreen extends ConsumerWidget {
     return DataPageScaffold(
       title: AppStrings.suppliersTitle,
       subtitle: AppStrings.suppliersSubtitle,
-      actions: const [],
+      // Exports the filtered list — every matching row, not just the page
+      // on screen.
+      actions: dataPageExportActions<Supplier>(
+        context: context,
+        columns: _columns,
+        rows: _exportRows(ref),
+        title: AppStrings.suppliersTitle,
+        subtitle: _exportSubtitle(ref.watch(supplierSearchProvider)),
+      ),
       // Hidden rather than shown-disabled: someone who can't add suppliers
       // shouldn't see a control that only ever 403s.
       primaryAction: !canCreate
@@ -128,6 +137,21 @@ class SuppliersScreen extends ConsumerWidget {
       ),
   ];
 
+  /// Search-filtered suppliers in table order for the exporters.
+  static List<Supplier> _exportRows(WidgetRef ref) {
+    final rows = [...ref.watch(_filteredSuppliersProvider)]
+      ..sort((a, b) => a.name.compareTo(b.name));
+    return rows;
+  }
+
+  /// Records on the exported file which view produced it.
+  static String _exportSubtitle(String search) {
+    if (search.trim().isEmpty) return AppStrings.allSuppliersExport;
+    return AppStrings.exportFiltered(
+      AppStrings.exportMatching(search.trim()),
+    );
+  }
+
   Future<void> _confirmDelete(
     BuildContext context,
     WidgetRef ref,
@@ -167,7 +191,13 @@ class SuppliersScreen extends ConsumerWidget {
   }
 }
 
-final _columns = <DataColumnSpec<Supplier>>[
+/// Column config for the suppliers table.
+///
+/// A getter (not a top-level `final`) so `AppStrings` labels are re-evaluated
+/// on every build — a cached list would snapshot the launch language and
+/// ignore later toggles. Exporters reuse the same definitions, so the
+/// spreadsheet carries the same columns the screen shows.
+List<DataColumnSpec<Supplier>> get _columns => <DataColumnSpec<Supplier>>[
   DataColumnSpec(
     label: AppStrings.nameColumn,
     field: 'name',

@@ -398,14 +398,10 @@ class _HeroBody extends StatelessWidget {
                 ),
               ),
               if (showBadge)
-                Container(
+                Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: Insets.sm,
                     vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(Radii.pill),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -453,12 +449,10 @@ class _TrendBadge extends StatelessWidget {
     final colour = up ? semantic.success : semantic.danger;
     final percent = (change.abs() * 100);
 
-    return Container(
+    // No background fill: the percentage reads as plain coloured text with
+    // its direction arrow, sitting directly on the card.
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Insets.sm, vertical: 3),
-      decoration: BoxDecoration(
-        color: colour.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(Radii.pill),
-      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

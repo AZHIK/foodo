@@ -47,11 +47,17 @@ class SalesScreen extends ConsumerWidget {
       // Exports the filtered, sorted list — every matching row, not just the
       // page on screen.
       actions: [
-        IconButton(
-          onPressed: () async =>
-              ref.read(ordersProvider.notifier).checkForNewOrders(),
-          icon: const Icon(Icons.refresh_rounded),
-          tooltip: AppStrings.checkNewOrders,
+        SizedBox(
+          height: kDataPageActionHeight,
+          width: kDataPageActionHeight,
+          child: IconButton(
+            padding: EdgeInsets.zero,
+            iconSize: 20,
+            onPressed: () async =>
+                ref.read(ordersProvider.notifier).checkForNewOrders(),
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: AppStrings.checkNewOrders,
+          ),
         ),
         ...dataPageExportActions<Order>(
           context: context,
@@ -212,9 +218,11 @@ class SalesScreen extends ConsumerWidget {
 
 /// Column config for the ledger.
 ///
-/// Top-level so the exporters can reuse the exact same definitions — the
-/// spreadsheet then carries the same columns the screen shows.
-final salesColumns = <DataColumnSpec<Order>>[
+/// A getter (not a top-level `final`) so `AppStrings` labels are re-evaluated
+/// on every build — a cached list would snapshot the launch language and
+/// ignore later toggles. Exporters reuse the same definitions, so the
+/// spreadsheet carries the same columns the screen shows.
+List<DataColumnSpec<Order>> get salesColumns => <DataColumnSpec<Order>>[
   DataColumnSpec(
     label: AppStrings.orderColumn,
     field: SalesSort.orderId,

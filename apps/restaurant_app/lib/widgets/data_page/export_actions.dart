@@ -3,8 +3,20 @@ import 'package:flutter/services.dart';
 
 import '../../constants/app_durations.dart';
 import '../../constants/app_strings.dart';
+import '../../theme/breakpoints.dart';
 import '../../utils/export_helper.dart';
 import 'data_column_spec.dart';
+
+/// Uniform height for every data-page header action: export buttons, refresh
+/// icons, the period selector and Filled/Outlined primary actions (which use
+/// the M3 default of 40) all sit on one even bar.
+const double kDataPageActionHeight = 40.0;
+
+/// Fixed width of each export button. Identical for PDF and Excel so the pair
+/// always matches, whatever the labels say. Fits "Export Excel" / "Pakua
+/// Excel" comfortably; the label auto-shrinks via [FittedBox] rather than
+/// clipping if a larger text scale ever overflows it.
+const double kExportButtonWidth = 140.0;
 
 /// The pair of export buttons every data page carries.
 ///
@@ -22,8 +34,8 @@ List<Widget> exportActions({
   if (isMobile) {
     return [
       SizedBox(
-        height: 40,
-        width: 40,
+        height: kDataPageActionHeight,
+        width: kDataPageActionHeight,
         child: IconButton(
           tooltip: AppStrings.exportPdf,
           padding: EdgeInsets.zero,
@@ -39,8 +51,8 @@ List<Widget> exportActions({
         ),
       ),
       SizedBox(
-        height: 40,
-        width: 40,
+        height: kDataPageActionHeight,
+        width: kDataPageActionHeight,
         child: IconButton(
           tooltip: AppStrings.exportExcel,
           padding: EdgeInsets.zero,
@@ -52,22 +64,54 @@ List<Widget> exportActions({
     ];
   }
 
-  return [
-    OutlinedButton.icon(
-      onPressed: busy ? null : onExportPdf,
-      icon: busy
-          ? const SizedBox(
-              height: 16,
-              width: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.picture_as_pdf_outlined, size: 18),
-      label: Text(AppStrings.exportPdf),
+  // Compact, paired buttons: the short "Pakua" labels plus tight padding
+  // keep the pair narrow so the header's Wrap rarely needs a second run.
+  // Grouped in one Row so the Wrap can never split PDF and Excel across two
+  // rows — the pair moves as a unit. Both share one fixed size, so they
+  // always match each other and the buttons beside them.
+  final style = OutlinedButton.styleFrom(
+    fixedSize: const Size(kExportButtonWidth, kDataPageActionHeight),
+    padding: const EdgeInsets.symmetric(horizontal: 10),
+    // Without this M3 pads every button to a 48px touch target, which would
+    // silently undo the uniform bar height.
+    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    textStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+      fontWeight: FontWeight.w600,
     ),
-    OutlinedButton.icon(
-      onPressed: busy ? null : onExportExcel,
-      icon: const Icon(Icons.table_view_outlined, size: 18),
-      label: Text(AppStrings.exportExcel),
+  );
+  // No Expanded/Flexible here: OutlinedButton.icon already wraps the label
+  // in its own Flexible (which bounds the width), and a second flex widget
+  // would fight it for the same parent data. FittedBox alone shrinks the
+  // text instead of clipping if a large text scale ever overflows.
+  Widget label(String text) => FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(text, maxLines: 1),
+      );
+  return [
+    Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: Insets.sm,
+      children: [
+        OutlinedButton.icon(
+          style: style,
+          onPressed: busy ? null : onExportPdf,
+          icon: busy
+              ? const SizedBox(
+                  height: 14,
+                  width: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.picture_as_pdf_outlined, size: 16),
+          label: label(AppStrings.exportPdf),
+        ),
+        OutlinedButton.icon(
+          style: style,
+          onPressed: busy ? null : onExportExcel,
+          icon: const Icon(Icons.table_view_outlined, size: 16),
+          label: label(AppStrings.exportExcel),
+        ),
+      ],
     ),
   ];
 }

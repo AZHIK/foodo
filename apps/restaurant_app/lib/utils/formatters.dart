@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+import '../constants/app_strings.dart';
+import '../l10n/l10n.dart';
 import '../models/store_settings.dart';
 
 /// Display formatting helpers. Centralised so currency/locale becomes a single
@@ -40,10 +42,42 @@ abstract final class Fmt {
         symbol: currency.symbol,
       );
 
-  static final _time = DateFormat.jm();
-  static final _dayMonth = DateFormat('d MMM');
-  static final _dayMonthTime = DateFormat('d MMM, h:mm a');
-  static final _weekday = DateFormat('EEEE, d MMMM');
+  /// Locale-aware date formats, built per call so a language toggle takes
+  /// effect on the next build. (Cached `static final` formats would pin
+  /// month/weekday names to the launch language.)
+  ///
+  /// Swahili symbols load async at startup (`initializeDateFormatting` in
+  /// `main`); if they are not ready yet — tests, first frame — formatting
+  /// falls back to the default locale instead of throwing.
+  static String _date(String pattern, DateTime dt) {
+    if (L10n.isSw) {
+      try {
+        return DateFormat(pattern, 'sw').format(dt);
+      } catch (_) {
+        return DateFormat(pattern).format(dt);
+      }
+    }
+    return DateFormat(pattern).format(dt);
+  }
+
+  static String _timeOfDay(DateTime dt) {
+    if (L10n.isSw) {
+      try {
+        return DateFormat.jm('sw').format(dt);
+      } catch (_) {
+        return DateFormat.jm().format(dt);
+      }
+    }
+    return DateFormat.jm().format(dt);
+  }
+
+  static String time(DateTime dt) => _timeOfDay(dt);
+
+  static String dayMonth(DateTime dt) => _date('d MMM', dt);
+
+  static String dayMonthTime(DateTime dt) => _date('d MMM, h:mm a', dt);
+
+  static String longDate(DateTime dt) => _date('EEEE, d MMMM', dt);
 
   static String money(double value) => _money.format(value);
 
@@ -85,15 +119,8 @@ abstract final class Fmt {
   /// items) as `2.5` — never `35.0` or a long float tail.
   static String quantity(double value) => _quantity.format(value);
 
-  static String time(DateTime dt) => _time.format(dt);
-
-  static String dayMonth(DateTime dt) => _dayMonth.format(dt);
-
-  static String dayMonthTime(DateTime dt) => _dayMonthTime.format(dt);
-
-  static String longDate(DateTime dt) => _weekday.format(dt);
-
-  /// "Today, 2:15 PM" / "Yesterday, 9:03 AM" / "6 Aug, 7:40 PM".
+  /// "Today, 2:15 PM" / "Yesterday, 9:03 AM" / "6 Aug, 7:40 PM"
+  /// (localized day words + month names).
   static String relativeDateTime(DateTime dt, {DateTime? now}) {
     final reference = now ?? DateTime.now();
     final days = DateTime(
@@ -103,8 +130,8 @@ abstract final class Fmt {
     ).difference(DateTime(dt.year, dt.month, dt.day)).inDays;
 
     return switch (days) {
-      0 => 'Today, ${time(dt)}',
-      1 => 'Yesterday, ${time(dt)}',
+      0 => AppStrings.relativeToday(time(dt)),
+      1 => AppStrings.relativeYesterday(time(dt)),
       _ => dayMonthTime(dt),
     };
   }

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'database/app_database.dart';
 import 'database/database_connection.dart';
 import 'database/encryption_key_service.dart';
@@ -20,7 +23,12 @@ void main() async {
   final keyService = EncryptionKeyService();
   final encryptionKey = await keyService.getOrCreateKey();
 
-  // 2. Create and open the database.
+  // 2. Load date symbols for supported locales so month/weekday names
+  // (Fmt.dayMonth, longDate, …) render in Swahili when selected.
+  // Unawaited failures fall back to English — dates never crash the launch.
+  unawaited(initializeDateFormatting('sw').catchError((_) {}));
+
+  // 3. Create and open the database.
   final database = AppDatabase(driftDatabaseConnection(encryptionKey));
 
   // 3. Run the app with the database injected into providers.
