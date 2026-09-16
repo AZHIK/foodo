@@ -66,8 +66,9 @@ Future<void> refreshDashboard(WidgetRef ref) async {
 /// about what a KPI says — they only differ in how the cards are arranged.
 List<Widget> buildDashboardKpiCards(
   BuildContext context,
-  DashboardMetrics metrics,
-) {
+  DashboardMetrics metrics, {
+  bool profitHero = false,
+}) {
   final palette = DashboardPalette.of(context);
   return [
     ColorfulMetricCard(
@@ -116,6 +117,7 @@ List<Widget> buildDashboardKpiCards(
       caption: AppStrings.vsYesterday(
         Fmt.moneyCompact(metrics.netProfit.previous),
       ),
+      hero: profitHero,
     ),
   ];
 }
@@ -143,6 +145,9 @@ class DashboardGreetingHeader extends ConsumerWidget {
       _ => AppStrings.goodEvening,
     };
     final firstName = user?.name.split(' ').first;
+    final initial = (firstName ?? storeName).trim().isEmpty
+        ? '•'
+        : (firstName ?? storeName).trim()[0].toUpperCase();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -150,6 +155,34 @@ class DashboardGreetingHeader extends ConsumerWidget {
         Row(
           children: [
             const NavMenuButton(),
+            // Avatar with gradient ring — the one personal touch on an
+            // otherwise numbers-first screen.
+            Container(
+              height: 46,
+              width: 46,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [colors.primary, colors.tertiary],
+                ),
+                shape: BoxShape.circle,
+              ),
+              padding: const EdgeInsets.all(2),
+              child: Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerLowest,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  initial,
+                  style: context.text.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: colors.primary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: Insets.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,70 +199,75 @@ class DashboardGreetingHeader extends ConsumerWidget {
                       letterSpacing: -0.6,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.storefront_outlined,
-                        size: 14,
-                        color: colors.onSurfaceVariant,
+                  const SizedBox(height: 4),
+                  // Store + date as a single pill chip: compact on a 360px
+                  // phone, and it stops the date pushing past the edge.
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Insets.sm,
+                        vertical: 3,
                       ),
-                      const SizedBox(width: Insets.xs + 1),
-                      // One rich line rather than two Texts in a Row: the date is
-                      // long enough to overflow a 360px phone, and only a single
-                      // text run can ellipsise across both styles instead of the
-                      // second one pushing past the edge.
-                      Expanded(
-                        child: Text.rich(
-                          TextSpan(
-                            children: [
-                              TextSpan(
-                                text: storeName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              TextSpan(
-                                text: AppStrings.dateSuffix(
-                                  Fmt.longDate(DateTime.now()),
-                                ),
-                              ),
-                            ],
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: context.text.bodySmall?.copyWith(
+                      decoration: BoxDecoration(
+                        color: colors.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(Radii.pill),
+                        border: Border.all(color: context.semantic.hairline),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.storefront_outlined,
+                            size: 12,
                             color: colors.onSurfaceVariant,
                           ),
-                        ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '$storeName · ${Fmt.longDate(DateTime.now())}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.text.labelSmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: Insets.lg),
+            const SizedBox(width: Insets.md),
             MediaQuery.sizeOf(context).width < _labelledActionMin
                 ? SizedBox(
                     // 48x48: the minimum comfortable touch target on a phone.
-                    // A smaller box here would force thumb-aiming at the one
-                    // button the shift starts with.
                     height: 48,
                     width: 48,
                     child: Tooltip(
                       message: AppStrings.openTill,
                       child: Material(
-                        color: colors.primary,
                         clipBehavior: Clip.antiAlias,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          iconSize: 22,
-                          onPressed: () => context.goNamed(AppRoute.posName),
-                          icon: const Icon(Icons.point_of_sale_rounded),
-                          color: colors.onPrimary,
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [colors.primary, colors.tertiary],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            iconSize: 22,
+                            onPressed: () => context.goNamed(AppRoute.posName),
+                            icon: const Icon(Icons.point_of_sale_rounded),
+                            color: colors.onPrimary,
+                          ),
                         ),
                       ),
                     ),
@@ -381,12 +419,15 @@ class DashboardTopItemsList extends StatelessWidget {
     }
 
     final shown = items.take(AppLimits.dashboardListLimit).toList();
+    final maxRevenue =
+        shown.map((e) => e.revenue).reduce((a, b) => a > b ? a : b);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        for (var i = 0; i < shown.length; i++)
+        for (var i = 0; i < shown.length; i++) ...[
+          if (i > 0) const Divider(height: 1, indent: 40),
           RankedListTile(
             rank: i + 1,
             title: shown[i].name,
@@ -394,7 +435,10 @@ class DashboardTopItemsList extends StatelessWidget {
             subtitle: Fmt.money(shown[i].revenue),
             trailing: AppStrings.unitsSold(shown[i].units),
             colorIndex: shown[i].colorIndex,
+            // Bar shows relative revenue so the ranking reads at a glance.
+            progress: maxRevenue <= 0 ? 0 : shown[i].revenue / maxRevenue,
           ),
+        ],
       ],
     );
   }
@@ -404,32 +448,44 @@ class DashboardTopItemsList extends StatelessWidget {
 // Card shell
 // ---------------------------------------------------------------------------
 
-/// The dashboard's panel: rounded, softly shadowed, no hairline border.
+/// The dashboard's panel: rounded, softly shadowed, hairline-bordered.
 ///
-/// Distinct from [DetailPanel] on purpose — the detail screens use a bordered
-/// surface that sits quietly behind dense content, where this one is meant to
-/// lift off the page.
+/// Distinct from [DetailPanel] on purpose — the detail screens use a flatter
+/// bordered surface that sits quietly behind dense content, where this one
+/// is meant to lift off the page with a stronger radius + shadow.
 class DashboardCard extends StatelessWidget {
   const DashboardCard({
     super.key,
     required this.title,
     required this.child,
     this.subtitle,
+    this.action,
+    this.leading,
   });
 
   final String title;
   final String? subtitle;
   final Widget child;
 
+  /// Trailing header slot — e.g. a "See all" button or total pill.
+  final Widget? action;
+
+  /// Leading header slot — small icon chip for scannability.
+  final Widget? leading;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final mobile = context.isMobile;
 
     return Container(
-      padding: DashboardStyle.cardPadding,
+      padding: mobile
+          ? DashboardStyle.cardPaddingMobile
+          : DashboardStyle.cardPadding,
       decoration: BoxDecoration(
         color: colors.surfaceContainerLowest,
-        borderRadius: DashboardStyle.radius,
+        borderRadius: const BorderRadius.all(Radius.circular(20)),
+        border: Border.all(color: context.semantic.hairline),
         boxShadow: DashboardStyle.shadow(Theme.of(context).brightness),
       ),
       child: Column(
@@ -437,37 +493,101 @@ class DashboardCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              if (leading != null) ...[
+                leading!,
+                const SizedBox(width: Insets.sm),
+              ],
               Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.text.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    if (subtitle case final sub?)
+                      Text(
+                        sub,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.text.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              if (subtitle case final sub?) ...[
+              if (action != null) ...[
                 const SizedBox(width: Insets.sm),
-                Flexible(
-                  child: Text(
-                    sub,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ),
+                action!,
               ],
             ],
           ),
-          const SizedBox(height: Insets.lg),
+          const SizedBox(height: Insets.md),
           child,
         ],
       ),
+    );
+  }
+}
+
+/// Small section label used on mobile between slivers — uppercase,
+/// letterspaced, with an optional trailing action.
+class DashboardSectionHeader extends StatelessWidget {
+  const DashboardSectionHeader({
+    super.key,
+    required this.title,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String title;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.text.labelMedium?.copyWith(
+              color: context.colors.onSurfaceVariant,
+              letterSpacing: 1.0,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        if (actionLabel != null && onAction != null)
+          InkWell(
+            onTap: onAction,
+            borderRadius: BorderRadius.circular(Radii.pill),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Insets.sm,
+                vertical: Insets.xs,
+              ),
+              child: Text(
+                actionLabel!,
+                style: context.text.labelMedium?.copyWith(
+                  color: context.colors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

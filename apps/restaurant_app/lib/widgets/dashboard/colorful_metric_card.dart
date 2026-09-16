@@ -25,6 +25,7 @@ class ColorfulMetricCard extends StatelessWidget {
     this.change,
     this.caption,
     this.onTap,
+    this.hero = false,
   });
 
   final String label;
@@ -47,6 +48,11 @@ class ColorfulMetricCard extends StatelessWidget {
 
   final VoidCallback? onTap;
 
+  /// Full-width feature variant (net profit on mobile): deep tinted gradient
+  /// with light-on-dark text so the hero reads as one deliberate banner
+  /// rather than a fifth identical tile.
+  final bool hero;
+
   /// Below this the card cannot hold an icon and a badge on one line, so the
   /// badge is dropped rather than crushed to a sliver. The caption underneath
   /// still carries the comparison in words.
@@ -65,7 +71,9 @@ class ColorfulMetricCard extends StatelessWidget {
           showBadge: change != null && constraints.maxWidth >= _badgeMin,
           padding: constraints.maxWidth < _tightPadding
               ? const EdgeInsets.all(12)
-              : DashboardStyle.cardPadding,
+              : isMobile
+                  ? DashboardStyle.cardPaddingMobile
+                  : DashboardStyle.cardPadding,
           isMobile: isMobile,
         );
       },
@@ -79,103 +87,337 @@ class ColorfulMetricCard extends StatelessWidget {
     required bool isMobile,
   }) {
     final colors = context.colors;
+    final bright = Theme.of(context).brightness == Brightness.light;
 
-    final card = Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: DashboardStyle.radius,
-        border: Border(
-          left: BorderSide(
-            color: family.accent.withValues(alpha: 0.6),
-            width: 4,
+    Widget card;
+    if (hero) {
+      card = _HeroBody(
+        padding: padding,
+        isMobile: isMobile,
+        showBadge: showBadge,
+        label: label,
+        value: value,
+        caption: caption,
+        icon: icon,
+        family: family,
+        change: change,
+      );
+    } else {
+      // Tinted wash rather than plain white: a soft gradient from the family
+      // tint into the surface, so the row reads warm without shouting.
+      // The old 4px left-border treatment is gone — modern KPI tiles carry
+      // colour in the icon chip + value accent-free hierarchy instead.
+      final bg = bright
+          ? LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [family.tint, colors.surfaceContainerLowest],
+            )
+          : LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                family.tint,
+                Color.lerp(family.tint, Colors.black, 0.35) ?? family.tint,
+              ],
+            );
+      final _ = colors;
+      card = Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          gradient: bg,
+          borderRadius: const BorderRadius.all(Radius.circular(20)),
+          border: Border.all(
+            color: family.accent.withValues(alpha: bright ? 0.16 : 0.32),
           ),
+          boxShadow: DashboardStyle.shadow(Theme.of(context).brightness),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.all(Radius.circular(20)),
+          child: Stack(
             children: [
-              Container(
-                height: 40,
-                width: 40,
-                decoration: BoxDecoration(
-                  color: family.accent.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+              // Soft decorative wash top-right — pure decoration, kept
+              // behind content so it never affects legibility.
+              Positioned(
+                right: -28,
+                top: -28,
+                child: Container(
+                  height: 92,
+                  width: 92,
+                  decoration: BoxDecoration(
+                    color: family.accent.withValues(alpha: bright ? 0.10 : 0.18),
+                    shape: BoxShape.circle,
+                  ),
                 ),
-                child: Icon(icon, size: 22, color: family.accent),
               ),
-              const SizedBox(width: Insets.md),
-              // Expanded + right-align rather than Spacer + Flexible: both of
-              // those are flex:1, so they split the leftover width evenly and
-              // the badge gets squeezed to "↑ 1…" on a two-up phone grid.
-              // This way the badge sizes to its content and only the empty
-              // space flexes.
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: showBadge
-                      ? _TrendBadge(change: change!, family: family)
-                      : const SizedBox.shrink(),
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        height: 38,
+                        width: 38,
+                        decoration: BoxDecoration(
+                          color: colors.surfaceContainerLowest.withValues(
+                            alpha: bright ? 0.9 : 0.55,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: family.accent.withValues(alpha: 0.18),
+                          ),
+                        ),
+                        child: Icon(icon, size: 20, color: family.accent),
+                      ),
+                      const SizedBox(width: Insets.sm),
+                      // Expanded + right-align rather than Spacer + Flexible:
+                      // both of those are flex:1, so they split the leftover
+                      // width evenly and the badge gets squeezed to "↑ 1…" on
+                      // a two-up phone grid. This way the badge sizes to its
+                      // content and only the empty space flexes.
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: showBadge
+                              ? _TrendBadge(change: change!, family: family)
+                              : const SizedBox.shrink(),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: isMobile ? Insets.md : Insets.lg),
+                  Text(
+                    label.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colors.onSurfaceVariant,
+                      letterSpacing: 0.9,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // Scales down rather than wrapping, so a long currency value
+                  // keeps every card in the row the same height.
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      value,
+                      maxLines: 1,
+                      style: TextStyle(
+                        color: colors.onSurface,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        fontSize: isMobile ? 21 : 25,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                  if (caption case final text?) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: colors.onSurfaceVariant.withValues(alpha: 0.85),
+                        fontSize: isMobile ? 11 : 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
-          SizedBox(height: isMobile ? Insets.md : Insets.lg),
-          Text(
-            label.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: colors.onSurfaceVariant,
-              letterSpacing: 0.8,
-              fontWeight: FontWeight.w600,
-              fontSize: isMobile ? 11 : 11,
-            ),
-          ),
-          const SizedBox(height: 6),
-          // Scales down rather than wrapping, so a long currency value keeps
-          // every card in the row the same height.
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: TextStyle(
-                color: family.accent,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.3,
-                fontSize: isMobile ? 20 : 24,
-              ),
-            ),
-          ),
-          if (caption case final text?) ...[
-            const SizedBox(height: 4),
-            Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: colors.onSurfaceVariant.withValues(alpha: 0.7),
-                fontSize: isMobile ? 11 : 12,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
+        ),
+      );
+    }
 
     if (onTap == null) return card;
 
     return Material(
       color: Colors.transparent,
-      borderRadius: DashboardStyle.radius,
+      borderRadius: const BorderRadius.all(Radius.circular(20)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(onTap: onTap, child: card),
+    );
+  }
+}
+
+/// Deep-tinted hero treatment for the full-width profit card.
+class _HeroBody extends StatelessWidget {
+  const _HeroBody({
+    required this.padding,
+    required this.isMobile,
+    required this.showBadge,
+    required this.label,
+    required this.value,
+    required this.caption,
+    required this.icon,
+    required this.family,
+    required this.change,
+  });
+
+  final EdgeInsets padding;
+  final bool isMobile;
+  final bool showBadge;
+  final String label;
+  final String value;
+  final String? caption;
+  final IconData icon;
+  final DashboardColor family;
+  final double? change;
+
+  @override
+  Widget build(BuildContext context) {
+    final bright = Theme.of(context).brightness == Brightness.light;
+    final base = family.accent;
+    final start = bright
+        ? Color.lerp(base, Colors.black, 0.12) ?? base
+        : Color.lerp(base, Colors.white, 0.08) ?? base;
+    final end = bright
+        ? Color.lerp(base, Colors.black, 0.42) ?? base
+        : Color.lerp(base, Colors.black, 0.45) ?? base;
+
+    return Container(
+      padding: padding.copyWith(
+        left: padding.left + 4,
+        right: padding.right + 4,
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [start, end],
+        ),
+        borderRadius: const BorderRadius.all(Radius.circular(20)),
+        boxShadow: DashboardStyle.shadow(Theme.of(context).brightness),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -30,
+            top: -34,
+            child: Container(
+              height: 130,
+              width: 130,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.10),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            right: 44,
+            bottom: -52,
+            child: Container(
+              height: 110,
+              width: 110,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.07),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              Container(
+                height: 44,
+                width: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, size: 23, color: Colors.white),
+              ),
+              const SizedBox(width: Insets.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.78),
+                        letterSpacing: 0.9,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 10.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
+                          fontSize: isMobile ? 24 : 28,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ),
+                    if (caption case final text?)
+                      Text(
+                        text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.75),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (showBadge)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Insets.sm,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(Radii.pill),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        (change ?? 0) >= 0
+                            ? Icons.arrow_upward_rounded
+                            : Icons.arrow_downward_rounded,
+                        size: 13,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        AppStrings.trendPercent((change ?? 0).abs() * 100),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

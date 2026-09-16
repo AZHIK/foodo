@@ -20,6 +20,7 @@ class RankedListTile extends StatelessWidget {
     this.leadingEmoji,
     this.subtitle,
     this.onTap,
+    this.progress,
   });
 
   /// One-based.
@@ -36,6 +37,9 @@ class RankedListTile extends StatelessWidget {
   final String? leadingEmoji;
   final String? subtitle;
   final VoidCallback? onTap;
+
+  /// 0..1 relative bar under the row. Null hides it (desktop density).
+  final double? progress;
 
   @override
   Widget build(BuildContext context) {
@@ -76,71 +80,110 @@ class RankedListTile extends StatelessWidget {
     required ColorScheme colors,
     required bool showEmoji,
   }) {
-    return Row(
-        children: [
+    final row = Row(
+      children: [
+        Container(
+          height: 30,
+          width: 30,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [family.tint, family.tint],
+            ),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: family.accent.withValues(alpha: 0.22),
+            ),
+          ),
+          child: Text(
+            AppStrings.rankBadge(rank),
+            style: context.text.labelMedium?.copyWith(
+              color: family.onTint,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(width: Insets.md),
+        if (showEmoji) ...[
           Container(
-            height: 28,
-            width: 28,
+            height: 34,
+            width: 34,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: family.tint,
-              borderRadius: BorderRadius.circular(8),
+              color: colors.surfaceContainerHighest.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Text(
-              AppStrings.rankBadge(rank),
-              style: context.text.labelMedium?.copyWith(
-                color: family.onTint,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          const SizedBox(width: Insets.md),
-          if (showEmoji) ...[
-            Text(leadingEmoji!, style: const TextStyle(fontSize: 18)),
-            const SizedBox(width: Insets.sm),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.text.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (subtitle case final sub?)
-                  Text(
-                    sub,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-              ],
-            ),
+            child: Text(leadingEmoji!, style: const TextStyle(fontSize: 17)),
           ),
           const SizedBox(width: Insets.sm),
-          // Flexible, not a bare Text: "11 sold" is wide enough to push the
-          // row past its card in a narrow side column, and the count is worth
-          // ellipsising rather than overflowing.
-          Flexible(
-            child: Text(
-              trailing,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.right,
-              style: context.text.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: family.accent,
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.text.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
+              if (subtitle case final sub?)
+                Text(
+                  sub,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: Insets.sm),
+        // Flexible, not a bare Text: "11 sold" is wide enough to push the
+        // row past its card in a narrow side column, and the count is worth
+        // ellipsising rather than overflowing.
+        Flexible(
+          child: Text(
+            trailing,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+            style: context.text.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: family.accent,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
-        ],
+        ),
+      ],
+    );
+
+    if (progress == null) return row;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        row,
+        const SizedBox(height: 6),
+        Padding(
+          padding: const EdgeInsets.only(left: 42),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(Radii.pill),
+            child: LinearProgressIndicator(
+              value: progress!.clamp(0.0, 1.0),
+              minHeight: 4,
+              backgroundColor:
+                  colors.surfaceContainerHighest.withValues(alpha: 0.7),
+              valueColor: AlwaysStoppedAnimation(family.accent),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

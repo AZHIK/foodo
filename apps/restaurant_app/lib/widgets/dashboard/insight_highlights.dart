@@ -63,10 +63,34 @@ class InsightHighlights extends ConsumerWidget {
         const SizedBox(height: Insets.sm),
         LayoutBuilder(
           builder: (context, constraints) {
+            // Phones: horizontal snap carousel with a peek of the next card.
+            // Three stacked insight cards bury the charts a full screen down;
+            // a swipeable row keeps the section one card tall and invites
+            // exploration with a thumb.
+            if (constraints.maxWidth < _sideBySideMin) {
+              return SizedBox(
+                height: 212,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  clipBehavior: Clip.none,
+                  padding: EdgeInsets.zero,
+                  itemCount: insights.length,
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(width: Insets.md),
+                  itemBuilder: (context, i) => SizedBox(
+                    width: (constraints.maxWidth * 0.82)
+                        .clamp(260.0, 320.0),
+                    child: _InsightCard(
+                      insight: insights[i],
+                      compact: true,
+                    ),
+                  ),
+                ),
+              );
+            }
             const spacing = Insets.md;
-            final columns = constraints.maxWidth >= _sideBySideMin
-                ? insights.length
-                : 1;
+            final columns = insights.length;
             final width =
                 (constraints.maxWidth - spacing * (columns - 1)) / columns;
 
@@ -89,9 +113,13 @@ class InsightHighlights extends ConsumerWidget {
 }
 
 class _InsightCard extends StatelessWidget {
-  const _InsightCard({required this.insight});
+  const _InsightCard({required this.insight, this.compact = false});
 
   final AiInsight insight;
+
+  /// Carousel mode on phones: tighter padding, 2-line body so the card fits
+  /// its fixed carousel height without overflowing.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -123,11 +151,11 @@ class _InsightCard extends StatelessWidget {
               child: Container(width: 3, color: accent),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(
+              padding: EdgeInsets.fromLTRB(
                 Insets.lg,
+                compact ? Insets.md : Insets.lg,
                 Insets.lg,
-                Insets.lg,
-                Insets.lg,
+                compact ? Insets.md : Insets.lg,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,10 +184,10 @@ class _InsightCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: Insets.md),
+                  SizedBox(height: compact ? Insets.sm : Insets.md),
                   Text(
                     insight.title,
-                    maxLines: 2,
+                    maxLines: compact ? 1 : 2,
                     overflow: TextOverflow.ellipsis,
                     style: context.text.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w700,
@@ -168,7 +196,7 @@ class _InsightCard extends StatelessWidget {
                   const SizedBox(height: Insets.xs),
                   Text(
                     insight.body,
-                    maxLines: 3,
+                    maxLines: compact ? 2 : 3,
                     overflow: TextOverflow.ellipsis,
                     style: context.text.bodySmall?.copyWith(
                       color: colors.onSurfaceVariant,
@@ -177,7 +205,7 @@ class _InsightCard extends StatelessWidget {
                   // One piece of evidence, so the card makes a claim and backs
                   // it in the same breath. The rest is on the Insights screen.
                   if (insight.evidence.isNotEmpty) ...[
-                    const SizedBox(height: Insets.md),
+                    SizedBox(height: compact ? Insets.sm : Insets.md),
                     _EvidenceChip(
                       label: insight.evidence.first.label,
                       value: insight.evidence.first.value,
