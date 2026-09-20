@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/preferences_provider.dart';
 import '../../constants/app_strings.dart';
 import '../../providers/roles_provider.dart';
+import '../../providers/session_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/staff_provider.dart';
 import '../../router/app_router.dart';
@@ -370,7 +371,7 @@ class _AccountPanel extends ConsumerWidget {
           // confirmation dialog handles.
           OutlinedButton.icon(
             key: AppPreferencesKeys.logOut,
-            onPressed: () => _confirmLogOut(context, member?.name),
+            onPressed: () => _confirmLogOut(context, ref, member?.name),
             style: OutlinedButton.styleFrom(
               foregroundColor: context.semantic.danger,
               side: BorderSide(
@@ -385,7 +386,11 @@ class _AccountPanel extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmLogOut(BuildContext context, String? name) async {
+  Future<void> _confirmLogOut(
+    BuildContext context,
+    WidgetRef ref,
+    String? name,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -413,14 +418,9 @@ class _AccountPanel extends ConsumerWidget {
 
     if (confirmed != true || !context.mounted) return;
 
-    // There is no auth layer to sign out of yet. Saying so is better than a
-    // button that silently does nothing; when the Auth screens land, this
-    // becomes a call to the session notifier and a redirect to the PIN screen.
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(AppStrings.signOutPending),
-      ),
-    );
+    // Online + offline: revoke backend session, clear stored tokens, drop
+    // local session. The route guard sends the user to the picker/login.
+    await ref.read(sessionProvider.notifier).logout();
   }
 
   static String _initials(String name) {

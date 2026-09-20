@@ -104,13 +104,10 @@ abstract final class AppStrings {
   static String get help => L10n.t('help', 'Help');
   static String get helpComingSoon => L10n.t('helpComingSoon', 'Help center coming soon');
   static String get accountAndOptions => L10n.t('accountAndOptions', 'Account & options');
-  static String get authTestSplash => L10n.t('authTestSplash', 'Splash Screen');
-  static String get authTestOtp => L10n.t('authTestOtp', 'OTP Login');
-  static String get authTestOnboarding => L10n.t('authTestOnboarding', 'Onboarding');
-  static String get authTestSetPin => L10n.t('authTestSetPin', 'Set PIN');
-  static String get authTestPinUnlock => L10n.t('authTestPinUnlock', 'PIN Unlock');
-  static String get authTestProfiles => L10n.t('authTestProfiles', 'Profile Picker');
+  static String get endShift => L10n.t('endShift', 'End shift');
+  static String get endShiftSubtitle => L10n.t('endShiftSubtitle', 'Lock this terminal — sign back in with your PIN');
   static String get logout => L10n.t('logout', 'Logout');
+  static String get logoutSubtitle => L10n.t('logoutSubtitle', 'Sign out everywhere on this terminal');
   static String get notifications => L10n.t('notifications', 'Notifications');
   static String get filterLabel => L10n.t('filterLabel', 'Filter');
   static String get sortTooltip => L10n.t('sortTooltip', 'Sort');

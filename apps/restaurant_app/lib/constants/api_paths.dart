@@ -15,6 +15,7 @@ abstract final class IdentityApiPaths {
   static const onboardingStatus = '/users/me/onboarding-status';
   static const updateMe = '/users/me';
   static const refresh = '/auth/refresh';
+  static const logout = '/auth/logout';
   static const switchContext = '/auth/context/switch';
   static const businesses = '/businesses';
 

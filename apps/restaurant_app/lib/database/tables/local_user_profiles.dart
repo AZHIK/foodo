@@ -49,6 +49,13 @@ class LocalUserProfiles extends Table {
   /// Profile Picker open). Null means never checked since local creation.
   DateTimeColumn get lastRevocationCheckAt => dateTime().nullable()();
 
+  /// Whether this profile was deactivated by logout. A deactivated row keeps
+  /// its PIN hash, role label and cached permissions — so a re-login
+  /// reactivates instantly — but is hidden from the Profile Picker, PIN
+  /// unlock and every saved-profile list until then. Distinct from row
+  /// deletion (`forgetProfile`), which is forgetting the device entirely.
+  BoolColumn get isDeactivated => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

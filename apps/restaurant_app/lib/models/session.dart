@@ -135,6 +135,9 @@ class SessionState {
     // needs its own flag — the same reason BusinessProfile.clearLogo exists.
     bool clearLockout = false,
     bool clearActiveStaff = false,
+    // `pin` follows the same rule: a newcomer signing in over a stale
+    // in-memory PIN needs an explicit clear, not "leave it alone".
+    bool clearPin = false,
   }) {
     return SessionState(
       savedProfileIds: savedProfileIds ?? this.savedProfileIds,
@@ -142,7 +145,7 @@ class SessionState {
           ? null
           : (activeStaffId ?? this.activeStaffId),
       isLoggedIn: isLoggedIn ?? this.isLoggedIn,
-      pin: pin ?? this.pin,
+      pin: clearPin ? null : (pin ?? this.pin),
       isUnlocked: isUnlocked ?? this.isUnlocked,
       hasCompletedOnboarding:
           hasCompletedOnboarding ?? this.hasCompletedOnboarding,

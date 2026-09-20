@@ -55,6 +55,30 @@ class LocalProfileRepository {
     return _db.select(_db.localUserProfiles).get();
   }
 
+  /// Retrieves only profiles that logout has not deactivated. Every
+  /// saved-profile list (Profile Picker, boot restore, local staff) reads
+  /// through here — a logged-out profile keeps its row (PIN, role, cached
+  /// permissions) for instant reactivation but is never offered.
+  Future activeProfiles() {
+    return (_db.select(_db.localUserProfiles)
+          ..where((row) => row.isDeactivated.equals(false)))
+        .get();
+  }
+
+  /// Deactivates (`true`) or reactivates (`false`) a profile without
+  /// deleting its row. Logout deactivates; the next login reactivates.
+  /// A missing row is a no-op — creation paths write active rows directly.
+  Future<void> setDeactivated(String staffId, bool deactivated) {
+    return (_db.update(_db.localUserProfiles)
+          ..where((row) => row.id.equals(staffId)))
+        .write(
+      LocalUserProfilesCompanion(
+        isDeactivated: Value(deactivated),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
   /// Inserts or updates a staff profile.
   Future<void> upsertProfile(LocalUserProfilesCompanion profile) {
     return _db.into(_db.localUserProfiles).insertOnConflictUpdate(profile);
@@ -65,6 +89,9 @@ class LocalProfileRepository {
   /// PIN to create the row. Creates a placeholder profile (empty PIN hash/
   /// salt, filled in later by `setPin`) if one doesn't exist yet; otherwise
   /// only refreshes the name, never touching an existing PIN.
+  ///
+  /// Always marks the row active: this runs in the login flow, so a
+  /// re-logging user reactivates here even before Set PIN.
   Future<void> upsertDisplayName(String staffId, String displayName) async {
     final existing = await getProfile(staffId);
     final now = DateTime.now();
@@ -77,12 +104,14 @@ class LocalProfileRepository {
           pinSalt: '',
           createdAt: now,
           updatedAt: now,
+          isDeactivated: const Value(false),
         ),
       );
     } else {
       await (_db.update(_db.localUserProfiles)..where((row) => row.id.equals(staffId))).write(
         LocalUserProfilesCompanion(
           displayName: Value(displayName),
+          isDeactivated: const Value(false),
           updatedAt: Value(now),
         ),
       );

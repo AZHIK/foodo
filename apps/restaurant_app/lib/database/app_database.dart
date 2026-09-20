@@ -126,6 +126,10 @@
 /// SQLite the way this codebase's Drift version emits it, so it carries a
 /// `''` "unset" sentinel default rather than being genuinely nullable —
 /// see `CachedItems.unitId`'s doc comment).
+///
+/// v12 adds `LocalUserProfiles.isDeactivated` (default false, so existing
+/// rows stay active): logout deactivates the row instead of leaving it
+/// offered on the Profile Picker, and the next login reactivates it.
 library;
 
 import 'package:decimal/decimal.dart';
@@ -186,7 +190,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.connection);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -285,6 +289,12 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 11) {
         await m.addColumn(cachedItems, cachedItems.imageUrl);
+      }
+      if (from < 12) {
+        await m.addColumn(
+          localUserProfiles,
+          localUserProfiles.isDeactivated,
+        );
       }
     },
     beforeOpen: (details) async {

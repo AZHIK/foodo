@@ -130,6 +130,21 @@ class $LocalUserProfilesTable extends LocalUserProfiles
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _isDeactivatedMeta = const VerificationMeta(
+    'isDeactivated',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeactivated = GeneratedColumn<bool>(
+    'is_deactivated',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deactivated" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -143,6 +158,7 @@ class $LocalUserProfilesTable extends LocalUserProfiles
     createdAt,
     updatedAt,
     lastRevocationCheckAt,
+    isDeactivated,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -246,6 +262,15 @@ class $LocalUserProfilesTable extends LocalUserProfiles
         ),
       );
     }
+    if (data.containsKey('is_deactivated')) {
+      context.handle(
+        _isDeactivatedMeta,
+        isDeactivated.isAcceptableOrUnknown(
+          data['is_deactivated']!,
+          _isDeactivatedMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -299,6 +324,10 @@ class $LocalUserProfilesTable extends LocalUserProfiles
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_revocation_check_at'],
       ),
+      isDeactivated: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deactivated'],
+      )!,
     );
   }
 
@@ -344,6 +373,13 @@ class LocalUserProfile extends DataClass
   /// a revocation check (active-profile-only on reconnect, all-profiles on
   /// Profile Picker open). Null means never checked since local creation.
   final DateTime? lastRevocationCheckAt;
+
+  /// Whether this profile was deactivated by logout. A deactivated row keeps
+  /// its PIN hash, role label and cached permissions — so a re-login
+  /// reactivates instantly — but is hidden from the Profile Picker, PIN
+  /// unlock and every saved-profile list until then. Distinct from row
+  /// deletion (`forgetProfile`), which is forgetting the device entirely.
+  final bool isDeactivated;
   const LocalUserProfile({
     required this.id,
     required this.displayName,
@@ -356,6 +392,7 @@ class LocalUserProfile extends DataClass
     required this.createdAt,
     required this.updatedAt,
     this.lastRevocationCheckAt,
+    required this.isDeactivated,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -381,6 +418,7 @@ class LocalUserProfile extends DataClass
         lastRevocationCheckAt,
       );
     }
+    map['is_deactivated'] = Variable<bool>(isDeactivated);
     return map;
   }
 
@@ -405,6 +443,7 @@ class LocalUserProfile extends DataClass
       lastRevocationCheckAt: lastRevocationCheckAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastRevocationCheckAt),
+      isDeactivated: Value(isDeactivated),
     );
   }
 
@@ -427,6 +466,7 @@ class LocalUserProfile extends DataClass
       lastRevocationCheckAt: serializer.fromJson<DateTime?>(
         json['lastRevocationCheckAt'],
       ),
+      isDeactivated: serializer.fromJson<bool>(json['isDeactivated']),
     );
   }
   @override
@@ -446,6 +486,7 @@ class LocalUserProfile extends DataClass
       'lastRevocationCheckAt': serializer.toJson<DateTime?>(
         lastRevocationCheckAt,
       ),
+      'isDeactivated': serializer.toJson<bool>(isDeactivated),
     };
   }
 
@@ -461,6 +502,7 @@ class LocalUserProfile extends DataClass
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> lastRevocationCheckAt = const Value.absent(),
+    bool? isDeactivated,
   }) => LocalUserProfile(
     id: id ?? this.id,
     displayName: displayName ?? this.displayName,
@@ -477,6 +519,7 @@ class LocalUserProfile extends DataClass
     lastRevocationCheckAt: lastRevocationCheckAt.present
         ? lastRevocationCheckAt.value
         : this.lastRevocationCheckAt,
+    isDeactivated: isDeactivated ?? this.isDeactivated,
   );
   LocalUserProfile copyWithCompanion(LocalUserProfilesCompanion data) {
     return LocalUserProfile(
@@ -501,6 +544,9 @@ class LocalUserProfile extends DataClass
       lastRevocationCheckAt: data.lastRevocationCheckAt.present
           ? data.lastRevocationCheckAt.value
           : this.lastRevocationCheckAt,
+      isDeactivated: data.isDeactivated.present
+          ? data.isDeactivated.value
+          : this.isDeactivated,
     );
   }
 
@@ -517,7 +563,8 @@ class LocalUserProfile extends DataClass
           ..write('lockedUntil: $lockedUntil, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('lastRevocationCheckAt: $lastRevocationCheckAt')
+          ..write('lastRevocationCheckAt: $lastRevocationCheckAt, ')
+          ..write('isDeactivated: $isDeactivated')
           ..write(')'))
         .toString();
   }
@@ -535,6 +582,7 @@ class LocalUserProfile extends DataClass
     createdAt,
     updatedAt,
     lastRevocationCheckAt,
+    isDeactivated,
   );
   @override
   bool operator ==(Object other) =>
@@ -550,7 +598,8 @@ class LocalUserProfile extends DataClass
           other.lockedUntil == this.lockedUntil &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.lastRevocationCheckAt == this.lastRevocationCheckAt);
+          other.lastRevocationCheckAt == this.lastRevocationCheckAt &&
+          other.isDeactivated == this.isDeactivated);
 }
 
 class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
@@ -565,6 +614,7 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> lastRevocationCheckAt;
+  final Value<bool> isDeactivated;
   final Value<int> rowid;
   const LocalUserProfilesCompanion({
     this.id = const Value.absent(),
@@ -578,6 +628,7 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.lastRevocationCheckAt = const Value.absent(),
+    this.isDeactivated = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalUserProfilesCompanion.insert({
@@ -592,6 +643,7 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
     required DateTime createdAt,
     required DateTime updatedAt,
     this.lastRevocationCheckAt = const Value.absent(),
+    this.isDeactivated = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        displayName = Value(displayName),
@@ -611,6 +663,7 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? lastRevocationCheckAt,
+    Expression<bool>? isDeactivated,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -626,6 +679,7 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (lastRevocationCheckAt != null)
         'last_revocation_check_at': lastRevocationCheckAt,
+      if (isDeactivated != null) 'is_deactivated': isDeactivated,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -642,6 +696,7 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? lastRevocationCheckAt,
+    Value<bool>? isDeactivated,
     Value<int>? rowid,
   }) {
     return LocalUserProfilesCompanion(
@@ -657,6 +712,7 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
       updatedAt: updatedAt ?? this.updatedAt,
       lastRevocationCheckAt:
           lastRevocationCheckAt ?? this.lastRevocationCheckAt,
+      isDeactivated: isDeactivated ?? this.isDeactivated,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -699,6 +755,9 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
         lastRevocationCheckAt.value,
       );
     }
+    if (isDeactivated.present) {
+      map['is_deactivated'] = Variable<bool>(isDeactivated.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -719,6 +778,7 @@ class LocalUserProfilesCompanion extends UpdateCompanion<LocalUserProfile> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('lastRevocationCheckAt: $lastRevocationCheckAt, ')
+          ..write('isDeactivated: $isDeactivated, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -17517,6 +17577,7 @@ typedef $$LocalUserProfilesTableCreateCompanionBuilder =
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<DateTime?> lastRevocationCheckAt,
+      Value<bool> isDeactivated,
       Value<int> rowid,
     });
 typedef $$LocalUserProfilesTableUpdateCompanionBuilder =
@@ -17532,6 +17593,7 @@ typedef $$LocalUserProfilesTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> lastRevocationCheckAt,
+      Value<bool> isDeactivated,
       Value<int> rowid,
     });
 
@@ -17634,6 +17696,11 @@ class $$LocalUserProfilesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get isDeactivated => $composableBuilder(
+    column: $table.isDeactivated,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> cachedPermissionsRefs(
     Expression<bool> Function($$CachedPermissionsTableFilterComposer f) f,
   ) {
@@ -17723,6 +17790,11 @@ class $$LocalUserProfilesTableOrderingComposer
     column: $table.lastRevocationCheckAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isDeactivated => $composableBuilder(
+    column: $table.isDeactivated,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LocalUserProfilesTableAnnotationComposer
@@ -17774,6 +17846,11 @@ class $$LocalUserProfilesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get lastRevocationCheckAt => $composableBuilder(
     column: $table.lastRevocationCheckAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDeactivated => $composableBuilder(
+    column: $table.isDeactivated,
     builder: (column) => column,
   );
 
@@ -17848,6 +17925,7 @@ class $$LocalUserProfilesTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> lastRevocationCheckAt = const Value.absent(),
+                Value<bool> isDeactivated = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalUserProfilesCompanion(
                 id: id,
@@ -17861,6 +17939,7 @@ class $$LocalUserProfilesTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 lastRevocationCheckAt: lastRevocationCheckAt,
+                isDeactivated: isDeactivated,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -17876,6 +17955,7 @@ class $$LocalUserProfilesTableTableManager
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<DateTime?> lastRevocationCheckAt = const Value.absent(),
+                Value<bool> isDeactivated = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalUserProfilesCompanion.insert(
                 id: id,
@@ -17889,6 +17969,7 @@ class $$LocalUserProfilesTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 lastRevocationCheckAt: lastRevocationCheckAt,
+                isDeactivated: isDeactivated,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

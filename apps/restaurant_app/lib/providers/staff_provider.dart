@@ -161,7 +161,9 @@ final currentUserNameProvider = Provider<String>(
 final localSavedStaffProvider = FutureProvider<List<StaffMember>>((ref) async {
   try {
     final profileRepo = ref.watch(localProfileRepositoryProvider);
-    final profiles = await profileRepo.allProfiles() as List;
+    // Logout-deactivated profiles are hidden until their owner logs in
+    // again — see `SessionNotifier.logout` / `completeOtpLogin`.
+    final profiles = await profileRepo.activeProfiles() as List;
 
     return [
       for (final profile in profiles)

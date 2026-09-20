@@ -314,10 +314,14 @@ class AuthNotifier extends Notifier<AuthContext> {
         ),
       );
 
-      final userId = state.userId;
-      if (userId != null) {
-        await _profileRepo.upsertDisplayName(userId, output.fullName);
+      // Defensive: userId is normally set at OTP verify, but a missing id
+      // must never silently skip the local write (the "no error, but no
+      // row" symptom) — re-derive it from the token we just used.
+      var userId = state.userId ?? decodeAccessToken(accessToken).sub;
+      if (userId.isEmpty) {
+        throw StateError('User ID not set after OTP verify');
       }
+      await _profileRepo.upsertDisplayName(userId, output.fullName);
     } catch (e) {
       state = state.copyWith(error: e.toString());
       rethrow;
@@ -502,7 +506,8 @@ class AuthNotifier extends Notifier<AuthContext> {
       final now = DateTime.now();
       final claims = decodeAccessToken(state.accessToken!);
 
-      // Create or update the profile.
+      // Create or update the profile. A re-login reactivates a
+      // logout-deactivated row here (see `SessionNotifier.logout`).
       final name = state.fullName;
       final roleLabel = claims.roles.isNotEmpty ? claims.roles.join(', ') : null;
       await _profileRepo.upsertProfile(
@@ -512,6 +517,7 @@ class AuthNotifier extends Notifier<AuthContext> {
           pinHash: Value(pinHash),
           pinSalt: Value(salt),
           roleLabel: Value(roleLabel),
+          isDeactivated: const Value(false),
           createdAt: Value(now),
           updatedAt: Value(now),
         ),
@@ -590,6 +596,50 @@ class AuthNotifier extends Notifier<AuthContext> {
   /// Reset state for next login.
   void reset() {
     state = const AuthContext();
+  }
+
+  /// Signs out of the *online* session.
+  ///
+  /// Revokes the stored refresh token on the backend (best-effort: offline
+  /// or an already-expired token must not block signing out), then always
+  /// clears the locally stored tokens and resets the in-memory auth state.
+  /// The *offline* session (PIN lock, [SessionNotifier]) is cleared by the
+  /// caller — see [SessionNotifier.logout] which orchestrates both.
+  Future<void> logout() async {
+    var accessToken = state.accessToken;
+    var refreshToken = state.refreshToken;
+
+    // After a cold start the in-memory state may be empty while secure
+    // storage still holds the online session — fall back to it so the
+    // backend revocation still gets the right refresh token.
+    if (accessToken == null || refreshToken == null) {
+      try {
+        final stored = await _tokenStorage.getTokenSet();
+        accessToken ??= stored?.accessToken;
+        refreshToken ??= stored?.refreshToken;
+      } catch (_) {
+        // Storage unreadable — fall through to local cleanup.
+      }
+    }
+
+    if (accessToken != null && refreshToken != null) {
+      try {
+        await _api.logout(
+          refreshToken: refreshToken,
+          bearerToken: accessToken,
+        );
+      } catch (_) {
+        // Best-effort revocation — local cleanup below still runs so logout
+        // works offline and with expired/revoked tokens.
+      }
+    }
+
+    try {
+      await _tokenStorage.clearTokenSet();
+    } catch (_) {
+      // Secure-storage failure must not leave the in-memory session alive.
+    }
+    reset();
   }
 }
 

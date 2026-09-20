@@ -5,11 +5,18 @@ import 'package:go_router/go_router.dart';
 import '../providers/notifications_provider.dart';
 import '../constants/app_strings.dart';
 import '../providers/preferences_provider.dart';
+import '../providers/session_provider.dart';
 import '../providers/settings_provider.dart';
 import '../router/app_router.dart';
 import '../theme/app_theme.dart';
 import '../theme/breakpoints.dart';
 import 'chat_dialog.dart';
+
+abstract final class AppTopBarKeys {
+  static const accountMenu = Key('appTopBar.accountMenu');
+  static const endShift = Key('appTopBar.endShift');
+  static const logout = Key('appTopBar.logout');
+}
 
 /// Top app bar with notifications, account, and other actions.
 class AppTopBar extends ConsumerWidget {
@@ -18,7 +25,6 @@ class AppTopBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
-    final themeMode = ref.watch(themeModeProvider);
     final staff = ref.watch(currentStaffProvider);
     // Watch the provider (not the static L10n flag) so this bar rebuilds
     // on every toggle. L10n.code is kept in sync by AppLanguageNotifier.
@@ -71,119 +77,35 @@ class AppTopBar extends ConsumerWidget {
               ),
               const SizedBox(width: Insets.md),
               PopupMenuButton<String>(
+                key: AppTopBarKeys.accountMenu,
                 tooltip: AppStrings.accountAndOptions,
-                onSelected: (value) {
-                  if (value == 'theme') {
-                    ref.read(themeModeProvider.notifier).cycle();
-                  } else if (value.startsWith('auth_')) {
-                    final paths = <String, String>{
-                      'auth_splash': '/',
-                      'auth_login': '/auth/login',
-                      'auth_onboarding': '/auth/onboarding',
-                      'auth_pin': '/auth/set-pin',
-                      'auth_unlock': '/auth/unlock',
-                      'auth_profile': '/auth/profiles',
-                    };
-                    final path = paths[value];
-                    if (path != null) context.go(path);
+                onSelected: (value) async {
+                  if (value == 'end_shift') {
+                    // Offline session only: lock the till, keep tokens so a
+                    // PIN unlock resumes online access without a new OTP.
+                    ref.read(sessionProvider.notifier).endShift();
+                  } else if (value == 'logout') {
+                    // Online + offline: revoke backend session, clear stored
+                    // tokens, drop local session. Guard routes to picker/login.
+                    await ref.read(sessionProvider.notifier).logout();
                   }
                 },
                 itemBuilder: (context) => [
-                  // Theme selection
                   PopupMenuItem(
-                    value: 'theme',
+                    key: AppTopBarKeys.endShift,
+                    value: 'end_shift',
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          switch (themeMode) {
-                            ThemeMode.system => Icons.brightness_auto_rounded,
-                            ThemeMode.light => Icons.light_mode_rounded,
-                            ThemeMode.dark => Icons.dark_mode_rounded,
-                          },
-                          size: 18,
-                        ),
+                        const Icon(Icons.lock_outline_rounded, size: 18),
                         const SizedBox(width: Insets.sm),
-                        Text(
-                          switch (themeMode) {
-                            ThemeMode.system => AppStrings.followSystem,
-                            ThemeMode.light => AppStrings.lightTheme,
-                            ThemeMode.dark => AppStrings.darkTheme,
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuDivider(),
-                  // Auth screens for testing
-                  PopupMenuItem(
-                    value: 'auth_splash',
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.start_rounded, size: 18),
-                        const SizedBox(width: Insets.sm),
-                        Text(AppStrings.authTestSplash),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'auth_login',
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.login_rounded, size: 18),
-                        const SizedBox(width: Insets.sm),
-                        Text(AppStrings.authTestOtp),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'auth_onboarding',
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.info_rounded, size: 18),
-                        const SizedBox(width: Insets.sm),
-                        Text(AppStrings.authTestOnboarding),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'auth_pin',
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.lock_rounded, size: 18),
-                        const SizedBox(width: Insets.sm),
-                        Text(AppStrings.authTestSetPin),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'auth_unlock',
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.lock_open_rounded, size: 18),
-                        const SizedBox(width: Insets.sm),
-                        Text(AppStrings.authTestPinUnlock),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'auth_profile',
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.person_rounded, size: 18),
-                        const SizedBox(width: Insets.sm),
-                        Text(AppStrings.authTestProfiles),
+                        Text(AppStrings.endShift),
                       ],
                     ),
                   ),
                   const PopupMenuDivider(),
                   PopupMenuItem(
+                    key: AppTopBarKeys.logout,
                     value: 'logout',
                     child: Row(
                       mainAxisSize: MainAxisSize.min,

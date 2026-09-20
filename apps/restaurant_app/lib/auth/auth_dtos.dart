@@ -131,6 +131,15 @@ class TokenRefreshInput {
   Map<String, dynamic> toJson() => {'refresh_token': refreshToken};
 }
 
+/// Request body for POST /auth/logout.
+class LogoutInput {
+  final String refreshToken;
+
+  LogoutInput({required this.refreshToken});
+
+  Map<String, dynamic> toJson() => {'refresh_token': refreshToken};
+}
+
 /// Request body for POST /api/v1/businesses (business creation / onboarding).
 class BusinessCreateInput {
   final String name;

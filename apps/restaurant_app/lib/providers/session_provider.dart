@@ -56,10 +56,11 @@ class SessionNotifier extends Notifier<SessionState> {
 
   /// Loads saved profiles from the database and updates the session state.
   /// Called during app initialization to populate the profile picker if users
-  /// have previously signed in.
+  /// have previously signed in. Logout-deactivated profiles are excluded —
+  /// they reappear only when their owner logs in again.
   Future<void> loadSavedProfiles() async {
     try {
-      final profiles = await _profileRepo.allProfiles() as List;
+      final profiles = await _profileRepo.activeProfiles() as List;
       if (profiles.isNotEmpty) {
         final profileIds = [for (final profile in profiles) profile.id as String];
         state = state.copyWith(savedProfileIds: profileIds);
@@ -149,6 +150,30 @@ class SessionNotifier extends Notifier<SessionState> {
       if (staffId == null) throw StateError('User ID not set after OTP verify');
 
       final device = await _profileRepo.currentDevice();
+      // The PIN belongs to the *profile*, not the device: after an end-shift
+      // the in-memory `pin` still holds the previous user's value, so it
+      // must be reloaded for whoever just signed in. A newcomer (no row, or
+      // a row without a PIN yet) clears it, which routes them to Set PIN —
+      // the step that creates their local profile and caches permissions.
+      // Without this, a second user sails past Set PIN on the first user's
+      // stale `hasPin` and never gets a local row at all.
+      String? storedHash;
+      try {
+        final profile = await _profileRepo.getProfile(staffId);
+        storedHash = profile?.pinHash as String?;
+      } catch (_) {
+        storedHash = null;
+      }
+
+      // A re-login reactivates a logout-deactivated row: the profile
+      // reappears on the picker from here on. Best-effort — a missing row
+      // is created active by complete-profile/Set PIN later, and a DB
+      // failure must not fail the login itself.
+      try {
+        await _profileRepo.setDeactivated(staffId, false);
+      } catch (_) {
+        // Ignore; creation paths write active rows regardless.
+      }
 
       // OTP is a stronger proof than PIN, so it unlocks immediately.
       state = state.copyWith(
@@ -156,6 +181,8 @@ class SessionNotifier extends Notifier<SessionState> {
         isLoggedIn: true,
         isUnlocked: true,
         hasCompletedOnboarding: device != null,
+        pin: storedHash,
+        clearPin: storedHash == null || storedHash.isEmpty,
         savedProfileIds: _withProfile(staffId),
         failedAttempts: 0,
         clearLockout: true,
@@ -166,16 +193,61 @@ class SessionNotifier extends Notifier<SessionState> {
     }
   }
 
-  /// Drops back to the signed-out state but keeps the device's saved profiles
-  /// — signing out is not the same as forgetting who works here.
+  /// Drops back to the signed-out state. The outgoing profile is also
+  /// removed from the saved list so it stops being offered immediately
+  /// (logout deactivates its row too — see [logout]; account removal
+  /// deletes it — see [forgetProfile]).
   void signOut() {
+    final outgoingId = state.activeStaffId;
     state = state.copyWith(
       isLoggedIn: false,
       isUnlocked: false,
       failedAttempts: 0,
       clearLockout: true,
       clearActiveStaff: true,
+      savedProfileIds: outgoingId == null
+          ? null
+          : [
+              for (final id in state.savedProfileIds)
+                if (id != outgoingId) id,
+            ],
     );
+  }
+
+  /// Ends the current shift: kills only the *offline* session.
+  ///
+  /// Locks the terminal (PIN required to resume) while leaving the *online*
+  /// session — the stored access/refresh tokens and the backend session —
+  /// untouched, so unlocking with the PIN restores API access without a new
+  /// OTP login. Routing follows automatically: the guard sends a locked
+  /// session to `/auth/unlock`.
+  void endShift() => lock();
+
+  /// Logs out: kills both the *online* and the *offline* session.
+  ///
+  /// Revokes the backend session and clears stored tokens (best-effort —
+  /// works offline), deactivates the local profile row (PIN, role and
+  /// cached permissions are kept, but the profile disappears from the
+  /// picker until its owner logs in again), then drops the local session
+  /// state. Other users' profiles stay offered. Routing follows
+  /// automatically via the guard.
+  Future<void> logout() async {
+    final staffId = state.activeStaffId;
+    try {
+      await ref.read(authProvider.notifier).logout();
+    } catch (_) {
+      // Online cleanup already best-effort inside AuthNotifier.logout;
+      // local sign-out below must run regardless.
+    }
+    signOut();
+    if (staffId != null) {
+      try {
+        await _profileRepo.setDeactivated(staffId, true);
+      } catch (_) {
+        // The session is already dropped; a failed flag flip must not
+        // resurrect an error here. The row stays active and visible.
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -226,6 +298,12 @@ class SessionNotifier extends Notifier<SessionState> {
       // Fetch the stored profile.
       final profile = await _profileRepo.getProfile(staffId);
       if (profile == null) return false;
+
+      // A logout-deactivated profile stays locked out until its owner
+      // re-authenticates with OTP (see `completeOtpLogin`). The correct PIN
+      // alone must not revive it — and failed attempts against it are not
+      // counted, since there is no live session to protect.
+      if (profile.isDeactivated == true) return false;
 
       // Verify the entered PIN against the stored hash.
       final isCorrect = PinHasher.verify(entered, profile.pinHash, profile.pinSalt);

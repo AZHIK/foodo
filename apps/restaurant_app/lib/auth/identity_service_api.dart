@@ -97,6 +97,27 @@ class IdentityServiceApi {
     }
   }
 
+  /// POST /auth/logout - Revoke the session backing [refreshToken].
+  ///
+  /// Best-effort by design: the backend treats an unknown token as a no-op
+  /// and callers always clear local tokens afterwards, so a failure here
+  /// (offline, expired token) must never block signing out locally.
+  Future<void> logout({
+    required String refreshToken,
+    required String bearerToken,
+  }) async {
+    try {
+      await _dio.post(
+        IdentityApiPaths.logout,
+        data: LogoutInput(refreshToken: refreshToken).toJson(),
+        options: Options(
+          headers: {'Authorization': 'Bearer $bearerToken'},
+        ),
+      );
+    } on DioException catch (e) {
+      throw AuthException('Logout failed: ${e.message}', e.response?.statusCode);
+    }
+  }
   /// POST /auth/context/switch - Scope token to a business (requires bearer token).
   Future<TokenResponse> switchContext({
     required String businessId,
