@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/inventory_item.dart';
 import '../models/menu_item.dart';
+import 'categories_provider.dart';
 import 'inventory_provider.dart';
 
 /// Turns a raw category id ("dry_goods", "uncategorized") into a label fit
@@ -53,20 +54,31 @@ final menuItemsProvider = Provider<List<MenuItem>>((ref) {
 });
 
 /// Menu categories, with the synthetic "All" tab in front. Derived from
-/// whatever category strings are actually present among sellable items, so
+/// whatever category ids are actually present among sellable items, so
 /// there is nothing to keep in sync with a curated list.
+///
+/// Labels (and icons) resolve against the synced category taxonomy via
+/// [categoryByIdFrom] — the same lookup the Inventory screens use — because
+/// backend ids are UUIDs, not human words. Anything the taxonomy doesn't
+/// know yet (demo-mode string ids like `dry_goods`, or `uncategorized`)
+/// falls back to [_humanizeCategoryLabel], which is only sensible for
+/// non-UUID ids.
 final menuCategoriesProvider = Provider<List<MenuCategory>>((ref) {
   final categoryIds = <String>{
     for (final item in ref.watch(menuItemsProvider)) item.categoryId,
   }.toList()..sort();
+  final taxonomy = ref.watch(categoriesListProvider);
 
   return [
     MenuCategory.all,
     for (final id in categoryIds)
       MenuCategory(
         id: id,
-        label: _humanizeCategoryLabel(id),
-        icon: Icons.local_offer_outlined,
+        label:
+            categoryByIdFrom(taxonomy, id)?.label ?? _humanizeCategoryLabel(id),
+        icon:
+            categoryByIdFrom(taxonomy, id)?.icon ??
+            Icons.local_offer_outlined,
       ),
   ];
 });

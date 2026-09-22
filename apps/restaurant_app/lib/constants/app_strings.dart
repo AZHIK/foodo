@@ -19,6 +19,7 @@ abstract final class AppStrings {
   static String get cancel => L10n.t('cancel', 'Cancel');
   static String get delete => L10n.t('delete', 'Delete');
   static String get retry => L10n.t('retry', 'Retry');
+  static String get refresh => L10n.t('refresh', 'Refresh');
   static String get close => L10n.t('close', 'Close');
   static String get clear => L10n.t('clear', 'Clear');
   static String get add => L10n.t('add', 'Add');

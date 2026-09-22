@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/menu_item.dart';
 import '../../constants/app_strings.dart';
+import '../../providers/inventory_provider.dart';
 import '../../providers/menu_providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
@@ -84,23 +85,29 @@ class PosMenuGrid extends ConsumerWidget {
         final columns = Layout.columnsFor(available, form);
         final cardWidth = (available - spacing * (columns - 1)) / columns;
 
-        return GridView.builder(
-          padding: EdgeInsets.fromLTRB(
-            pad,
-            Insets.xs,
-            pad,
-            bottomPadding ?? Insets.sm,
+        return RefreshIndicator(
+          // The till menu is the inventory cache in sellable form — a
+          // pull-down here re-pulls stock so a count changed in the
+          // stockroom shows at the till without restarting the app.
+          onRefresh: () => ref.read(inventoryItemsProvider.notifier).refresh(),
+          child: GridView.builder(
+            padding: EdgeInsets.fromLTRB(
+              pad,
+              Insets.xs,
+              pad,
+              bottomPadding ?? Insets.sm,
+            ),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              crossAxisSpacing: spacing,
+              mainAxisSpacing: spacing,
+              // An exact extent rather than an aspect ratio, so the caption
+              // block can never be squeezed into an overflow.
+              mainAxisExtent: MenuItemCard.heightFor(cardWidth),
+            ),
+            itemCount: items.length,
+            itemBuilder: (context, index) => MenuItemCard(item: items[index]),
           ),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            crossAxisSpacing: spacing,
-            mainAxisSpacing: spacing,
-            // An exact extent rather than an aspect ratio, so the caption
-            // block can never be squeezed into an overflow.
-            mainAxisExtent: MenuItemCard.heightFor(cardWidth),
-          ),
-          itemCount: items.length,
-          itemBuilder: (context, index) => MenuItemCard(item: items[index]),
         );
       },
     );

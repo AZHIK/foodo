@@ -6,6 +6,7 @@ import '../models/order.dart';
 import '../models/store_settings.dart';
 import '../theme/app_theme.dart';
 import 'business_api_provider.dart';
+import 'staff_provider.dart';
 
 /// App-wide theme mode.
 ///
@@ -172,4 +173,12 @@ final cashQuickAmountsProvider = Provider<List<double>>(
 );
 
 /// Signed-in staff member, used as the default server on new orders.
-final currentStaffProvider = Provider<String>((ref) => 'Ava');
+///
+/// Resolves to whoever is actually signed in at this terminal (via
+/// [currentUserNameProvider]) — never a fixed name — trimmed to the first
+/// name only ("Ava Mensah" renders as "Ava").
+final currentStaffProvider = Provider<String>((ref) {
+  final full = ref.watch(currentUserNameProvider).trim();
+  final space = full.indexOf(' ');
+  return space == -1 ? full : full.substring(0, space);
+});

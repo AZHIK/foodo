@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../models/permission.dart';
 import '../constants/app_strings.dart';
+import '../providers/branch_refresh_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/permissions_provider.dart';
 import '../providers/settings_provider.dart';
@@ -167,12 +168,17 @@ class _ResponsiveScaffoldState extends ConsumerState<ResponsiveScaffold> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   void _onDestinationSelected(int index) {
-    // `initialLocation: true` when re-tapping the active tab pops that branch
-    // back to its root — the standard "tap to go home" behaviour.
+    // Remember the visible tab for the top bar's refresh button, then
+    // switch. Re-tapping the active tab still refreshes: `initialLocation`
+    // pops that branch back to its root (the standard "tap to go home"
+    // behaviour) and the background re-pull below picks up any server-side
+    // changes, so a restart is never needed to see fresh data.
+    ref.read(currentBranchIndexProvider.notifier).state = index;
     widget.navigationShell.goBranch(
       index,
       initialLocation: index == widget.navigationShell.currentIndex,
     );
+    refreshBranchInBackground(ref, index);
   }
 
   void _onDrawerDestinationSelected(int index) {

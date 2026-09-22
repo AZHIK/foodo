@@ -19,7 +19,10 @@ class CouriersScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(AppStrings.couriersTitle), elevation: 0),
-      body: ListView(
+      body: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(couriersProvider),
+        child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(Insets.lg),
         children: [
           Row(
@@ -45,7 +48,8 @@ class CouriersScreen extends ConsumerWidget {
           ],
           if (couriers.isEmpty) Center(child: Padding(padding: const EdgeInsets.symmetric(vertical: Insets.xl), child: Column(children: [Icon(Icons.two_wheeler_rounded, size: 48, color: context.colors.onSurfaceVariant), const SizedBox(height: Insets.md), Text(AppStrings.noCouriers, style: context.text.bodyMedium?.copyWith(color: context.colors.onSurfaceVariant))]))),
         ],
-      ),
+        ),
+        ),
     );
   }
 }

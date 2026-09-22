@@ -33,6 +33,7 @@ from sqlmodel.sql.expression import SelectOfScalar
 from app.core.database import get_db
 from app.deps.auth import get_current_claims, require_business_permission
 from app.models.inventory import ActorType, Item, MovementType, StockLevel
+from app.models.suppliers import Supplier
 from app.schemas.items import ItemCreate, ItemListFilters, ItemRead, ItemUpdate
 from app.services.stock_movement_service import record_movement
 
@@ -53,6 +54,21 @@ async def _get_item_or_404(
     return item
 
 
+async def _validate_supplier_or_404(
+    business_id: UUID,
+    supplier_id: UUID,
+    session: AsyncSession,
+) -> None:
+    stmt = select(Supplier).where(
+        Supplier.id == supplier_id,
+        Supplier.business_id == business_id,
+        Supplier.is_deleted == False,  # noqa: E712
+    )
+    result = await session.exec(stmt)
+    if result.one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Supplier not found")
+
+
 async def _build_list_query(
     business_id: UUID,
     filters: ItemListFilters,
@@ -61,6 +77,8 @@ async def _build_list_query(
 
     if filters.category_id is not None:
         stmt = stmt.where(Item.category_id == filters.category_id)
+    if filters.supplier_id is not None:
+        stmt = stmt.where(Item.supplier_id == filters.supplier_id)
     if filters.is_active is not None:
         stmt = stmt.where(Item.is_active == filters.is_active)
     if filters.store_id is not None:
@@ -74,6 +92,12 @@ async def _build_list_query(
                 StockLevel.current_quantity <= Item.reorder_threshold,
             )
         )
+        if filters.category_id is not None:
+            stmt = stmt.where(Item.category_id == filters.category_id)
+        if filters.supplier_id is not None:
+            stmt = stmt.where(Item.supplier_id == filters.supplier_id)
+        if filters.is_active is not None:
+            stmt = stmt.where(Item.is_active == filters.is_active)
         if filters.store_id is not None:
             stmt = stmt.where(StockLevel.store_id == filters.store_id)
 
@@ -105,12 +129,15 @@ async def create_item(
     authorized via JWT).  A follow-up should add a gRPC or HTTP call to
     Identity Service to validate the store before persisting.
     """
+    if body.supplier_id is not None:
+        await _validate_supplier_or_404(business_id, body.supplier_id, session)
     item = Item(
         business_id=business_id,
         store_id=body.store_id,
         name=body.name,
         unit_id=body.unit_id,
         category_id=body.category_id,
+        supplier_id=body.supplier_id,
         reorder_threshold=body.reorder_threshold,
         reorder_quantity=body.reorder_quantity,
         selling_price=body.selling_price,
@@ -219,6 +246,9 @@ async def update_item(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No fields provided for update",
         )
+
+    if update_data.get("supplier_id") is not None:
+        await _validate_supplier_or_404(business_id, update_data["supplier_id"], session)
 
     for field, value in update_data.items():
         setattr(item, field, value)

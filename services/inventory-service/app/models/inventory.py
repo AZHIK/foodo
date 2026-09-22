@@ -179,6 +179,15 @@ class Item(SQLModel, table=True):
             index=True,
         ),
     )
+    supplier_id: UUID | None = Field(
+        default=None,
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("supplier.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
     reorder_threshold: Decimal = Field(
         nullable=False,
         sa_type=Numeric(precision=12, scale=3),

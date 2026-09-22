@@ -38,6 +38,7 @@ class ItemBase(BaseModel):
     name: str
     unit_id: UUID
     category_id: UUID | None = None
+    supplier_id: UUID | None = None
     reorder_threshold: Decimal
     reorder_quantity: Decimal
     selling_price: Decimal | None = None
@@ -79,6 +80,7 @@ class ItemUpdate(BaseModel):
     name: str | None = None
     unit_id: UUID | None = None
     category_id: UUID | None = None
+    supplier_id: UUID | None = None
     reorder_threshold: Decimal | None = None
     reorder_quantity: Decimal | None = None
     selling_price: Decimal | None = None
@@ -96,6 +98,12 @@ class ItemRead(ItemBase):
     id: UUID
     business_id: UUID
     store_id: UUID
+    # Relaxed from ItemBase's required UUID: legacy rows predating the
+    # mandatory-unit rule may carry NULL, and one such row must never 500
+    # the whole list (ResponseValidationError). Creation still requires a
+    # unit — see ItemBase — and reordering a unit-less item is refused
+    # with 422 at receive/create time.
+    unit_id: UUID | None = None
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -124,6 +132,7 @@ class ItemListFilters(BaseModel):
     """Query-parameter schema for the list-items endpoint (Stage 4)."""
 
     category_id: UUID | None = None
+    supplier_id: UUID | None = None
     is_active: bool | None = None
     below_threshold: bool | None = None
     store_id: UUID | None = None

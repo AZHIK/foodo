@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../providers/notifications_provider.dart';
 import '../constants/app_strings.dart';
+import '../providers/branch_refresh_provider.dart';
 import '../providers/preferences_provider.dart';
 import '../providers/session_provider.dart';
 import '../providers/settings_provider.dart';
@@ -43,6 +44,10 @@ class AppTopBar extends ConsumerWidget {
             children: [
               // Spacer for alignment with nav rail/drawer on larger screens
               const SizedBox.shrink(),
+              // Desktop gets an explicit refresh action for the visible tab;
+              // phones and tablets pull down at the top of any list instead.
+              if (context.isDesktop) const _RefreshButton(),
+              if (context.isDesktop) const SizedBox(width: Insets.md),
               const Spacer(),
               // Actions on the right
               _IconButton(
@@ -152,6 +157,41 @@ class AppTopBar extends ConsumerWidget {
   }
 }
 
+/// Re-reads whatever the visible tab shows, with a spinner while it runs.
+///
+/// Desktop-only (the scaffold hides it elsewhere): on phones and tablets the
+/// same refresh is a pull-down at the top of any list.
+class _RefreshButton extends ConsumerStatefulWidget {
+  const _RefreshButton();
+
+  @override
+  ConsumerState<_RefreshButton> createState() => _RefreshButtonState();
+}
+
+class _RefreshButtonState extends ConsumerState<_RefreshButton> {
+  bool _spinning = false;
+
+  Future<void> _onPressed() async {
+    if (_spinning) return;
+    setState(() => _spinning = true);
+    try {
+      await refreshBranch(ref, ref.read(currentBranchIndexProvider));
+    } finally {
+      if (mounted) setState(() => _spinning = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _IconButton(
+      icon: Icons.refresh_rounded,
+      tooltip: AppStrings.refresh,
+      onPressed: _onPressed,
+      spinning: _spinning,
+    );
+  }
+}
+
 class _NotificationButton extends ConsumerWidget {
   const _NotificationButton({required this.onPressed});
 
@@ -176,16 +216,32 @@ class _IconButton extends StatelessWidget {
     required this.tooltip,
     required this.onPressed,
     this.badgeCount = 0,
+    this.spinning = false,
   });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback onPressed;
   final int badgeCount;
+  final bool spinning;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+
+    final button = IconButton(
+      padding: EdgeInsets.zero,
+      iconSize: 20,
+      onPressed: spinning ? null : onPressed,
+      icon: spinning
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(icon),
+      color: colors.onSurface,
+    );
 
     return Tooltip(
       message: tooltip,
@@ -200,23 +256,8 @@ class _IconButton extends StatelessWidget {
             side: BorderSide(color: context.semantic.hairline),
           ),
           child: badgeCount > 0
-              ? Badge.count(
-                  count: badgeCount,
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    iconSize: 20,
-                    onPressed: onPressed,
-                    icon: Icon(icon),
-                    color: colors.onSurface,
-                  ),
-                )
-              : IconButton(
-                  padding: EdgeInsets.zero,
-                  iconSize: 20,
-                  onPressed: onPressed,
-                  icon: Icon(icon),
-                  color: colors.onSurface,
-                ),
+              ? Badge.count(count: badgeCount, child: button)
+              : button,
         ),
       ),
     );

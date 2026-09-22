@@ -44,6 +44,11 @@ class SupplierRead(SupplierBase):
 
     id: UUID
     business_id: UUID
+    # Exposed (not excluded like other soft-delete bookkeeping) because
+    # the app parses `is_deleted` as a non-nullable bool on every sync —
+    # omitting it throws client-side and silently empties the supplier
+    # list. The list endpoint already filters deleted rows by default.
+    is_deleted: bool
     created_at: datetime
     updated_at: datetime
 
