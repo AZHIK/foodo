@@ -55,12 +55,31 @@ final currentBranchIndexProvider = StateProvider<int>((ref) => 0);
 /// background — so awaiting here never blanks the screen the user is looking
 /// at; the spinner only reflects real completion.
 ///
-/// Navigation taps call this without awaiting (the switch itself stays
-/// instant); the top bar's refresh button awaits it to drive its spinner.
+/// Re-reads whatever backs [branchIndex] and completes when it has.
+///
+/// Every list notifier in this app follows the same stale-while-revalidate
+/// contract — `build()` returns the cached rows immediately and syncs in the
+/// background — so awaiting here never blanks the screen the user is looking
+/// at; the spinner only reflects real completion.
+///
+/// Never throws: nav taps and the top-bar button have no error UI, and an
+/// unhandled throw in a fire-and-forget refresh crashes the app (a 401 from
+/// an expired session must stay a silent empty screen, not a red screen).
+/// Screens keep showing their cached data; the next tap retries.
 ///
 /// Takes a [WidgetRef] (rather than a bare [Ref]) because the reports and
 /// store refresh helpers it delegates to are typed that way.
 Future<void> refreshBranch(WidgetRef ref, int branchIndex) async {
+  try {
+    await _refreshBranchUnchecked(ref, branchIndex);
+  } catch (_) {
+    // Swallowed by design — see above.
+  }
+}
+
+/// The actual per-branch refresh. Must stay exception-free to callers via
+/// [refreshBranch]'s guard — do not call directly from UI handlers.
+Future<void> _refreshBranchUnchecked(WidgetRef ref, int branchIndex) async {
   switch (branchIndex) {
     case ShellBranch.dashboard:
       // Derived read models recompute; the invalidated sources below pull

@@ -40,8 +40,16 @@ class TokenRefreshInterceptor extends Interceptor {
   static const _publicAuthPaths = IdentityApiPaths.publicAuthPaths;
 
   // Lock to prevent multiple simultaneous refresh attempts.
-  bool _isRefreshing = false;
-  late Future<void> _refreshFuture;
+  //
+  // Static (process-wide), not per instance: every Dio client owns its own
+  // interceptor, but they all share the one refresh token in TokenStorage.
+  // The backend rotates the refresh token on each use and treats a second
+  // concurrent use as token reuse — so N parallel 401s (a screen firing
+  // several pulls at once) must produce exactly ONE refresh call, with the
+  // losers waiting and retrying on the winner's tokens. A per-instance lock
+  // lets every client refresh at once and kills the session instead.
+  static bool _isRefreshing = false;
+  static Future<void>? _refreshFuture;
 
   TokenRefreshInterceptor({
     required TokenStorage tokenStorage,
@@ -107,26 +115,56 @@ class TokenRefreshInterceptor extends Interceptor {
       return;
     }
 
-    try {
-      // If already refreshing, wait for that to complete.
-      if (_isRefreshing) {
-        await _refreshFuture;
-        // Retry the original request with the new token.
-        return handler.resolve(await _retry(err.requestOptions));
+    // A sibling client is already refreshing with the same token: wait for
+    // it, then retry with whatever it stored. Never fire a second refresh
+    // (see the lock's doc comment). The check-and-branch below runs with no
+    // await in between, so exactly one client becomes the refresher.
+    if (_isRefreshing) {
+      final inFlight = _refreshFuture;
+      if (inFlight != null) {
+        try {
+          await inFlight;
+        } on DioException catch (e) {
+          handler.next(e);
+          return;
+        }
       }
+      try {
+        handler.resolve(await _retry(err.requestOptions));
+      } on DioException catch (e) {
+        handler.next(e);
+      }
+      return;
+    }
 
-      // Start a refresh.
-      _isRefreshing = true;
-      _refreshFuture = _performRefresh(tokenSet.refreshToken);
-
+    // Start the single shared refresh.
+    _isRefreshing = true;
+    _refreshFuture = _performRefresh(tokenSet.refreshToken);
+    try {
       await _refreshFuture;
+    } catch (e) {
+      // The session is dead (refresh rejected or storage failed — tokens
+      // are already cleared by _performRefresh). Only the refresher resets
+      // the lock; waiters above never touch it.
+      _isRefreshing = false;
+      _refreshFuture = null;
+      if (e is DioException) {
+        handler.next(e);
+      } else {
+        handler.next(
+          DioException(requestOptions: err.requestOptions, error: e),
+        );
+      }
+      return;
+    }
+    _isRefreshing = false;
+    _refreshFuture = null;
 
-      // Retry the original request.
+    // Retry the original request with the new token.
+    try {
       handler.resolve(await _retry(err.requestOptions));
     } on DioException catch (e) {
       handler.next(e);
-    } finally {
-      _isRefreshing = false;
     }
   }
 
