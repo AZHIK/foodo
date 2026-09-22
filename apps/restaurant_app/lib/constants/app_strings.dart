@@ -196,6 +196,9 @@ abstract final class AppStrings {
   static String chargeReceiptPart(String receipt) =>
       ' · receipt $receipt printing';
   static String get cashReceived => L10n.t('cashReceived', 'Cash received');
+  static String get chargeAmountDue => L10n.t('chargeAmountDue', 'Amount due');
+  static String get cashTendered => L10n.t('cashTendered', 'Cash tendered');
+  static String get chargeChange => L10n.t('chargeChange', 'Change');
   static String chargeTotal(String total) => 'Charge $total';
   static String terminalNotice(String method) =>
       'Complete the ${method.toLowerCase()} payment on the terminal, '
