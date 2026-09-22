@@ -77,6 +77,13 @@ abstract final class InventoryApiPaths {
       '/businesses/$businessId/recipes/$recipeId';
   static String produce(String businessId, String recipeId) =>
       '/businesses/$businessId/recipes/$recipeId/produce';
+  static String planProduction(String businessId, String recipeId) =>
+      '/businesses/$businessId/recipes/$recipeId/plan';
+  static String runs(String businessId) => '/businesses/$businessId/runs';
+  static String run(String businessId, String runId) =>
+      '/businesses/$businessId/runs/$runId';
+  static String runAction(String businessId, String runId, String action) =>
+      '/businesses/$businessId/runs/$runId/$action';
   static String productionEvents(String businessId) =>
       '/businesses/$businessId/production-events';
   static String productionEvent(String businessId, String eventId) =>

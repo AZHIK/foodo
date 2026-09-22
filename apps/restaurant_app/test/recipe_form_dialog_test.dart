@@ -102,6 +102,16 @@ List<InventoryItem> get demoGroceries => [
       stockItem(id: 'meat', name: 'Meat'),
     ];
 
+/// Taps a control that may sit below the fold: the form body scrolls by
+/// design (longer since batch-yield fields joined it), so tests bring the
+/// target into view before tapping instead of assuming it is visible.
+Future<void> tapVisible(WidgetTester tester, Finder finder) async {
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   group('RecipeFormDialog edit mode', () {
     testWidgets('pre-fills name and rows; submit is live', (tester) async {
@@ -149,12 +159,11 @@ void main() {
         groceries: demoGroceries,
       );
 
-      await tester.tap(find.byKey(RecipeFormKeys.addIngredient));
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.byKey(RecipeFormKeys.addIngredient));
       expect(find.byKey(RecipeFormKeys.ingredientQty(2)), findsOneWidget);
 
-      await tester.tap(find.byKey(RecipeFormKeys.removeIngredient(2)));
-      await tester.pumpAndSettle();
+      await tapVisible(
+          tester, find.byKey(RecipeFormKeys.removeIngredient(2)));
       expect(find.byKey(RecipeFormKeys.ingredientQty(2)), findsNothing);
     });
 
@@ -166,8 +175,7 @@ void main() {
       );
 
       // Second row currently Meat — switch it to Rice as well.
-      await tester.tap(find.byKey(RecipeFormKeys.ingredientItem(1)));
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.byKey(RecipeFormKeys.ingredientItem(1)));
       await tester.tap(find.text('Rice (kg)').last);
       await tester.pumpAndSettle();
 
@@ -233,8 +241,7 @@ void main() {
         reason: 'nothing picked yet',
       );
 
-      await tester.tap(find.byKey(RecipeFormKeys.ingredientItem(0)));
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.byKey(RecipeFormKeys.ingredientItem(0)));
       await tester.tap(find.text('Rice (kg)').last);
       await tester.pumpAndSettle();
       await tester.enterText(

@@ -624,3 +624,211 @@ def test_production_permission_codes_registered() -> None:
     """The two production codes exist in this service's PermissionCode copy."""
     assert PermissionCode.PRODUCTION_CREATE.value == "production.create"
     assert PermissionCode.PRODUCTION_VIEW.value == "production.view"
+
+
+def _plan_url(recipe_id: UUID) -> str:
+    return f"{RECIPES_PREFIX}/{recipe_id}/plan"
+
+
+# ── Target-based flow ────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_plan_recommends_every_ingredient_for_target(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Target 10 plates → Rice 2.0, Meat 1.0, Oil 0.2; no stock moves."""
+    _, rice, meat, oil, recipe_id = await _make_pilau_kitchen(client, db_session)
+
+    resp = await client.post(
+        _plan_url(recipe_id),
+        json={"target_output_quantity": "10.000"},
+        headers=AUTH_HEADER,
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["target_output_quantity"] == "10.000"
+    by_id = {c["raw_material_item_id"]: c for c in data["components"]}
+    assert by_id[str(rice.id)]["planned_quantity"] == "2.000"
+    assert by_id[str(meat.id)]["planned_quantity"] == "1.000"
+    assert by_id[str(oil.id)]["planned_quantity"] == "0.200"
+    assert by_id[str(rice.id)]["quantity_required_per_unit"] == "0.200"
+
+    async with db_session as s:
+        assert await _level(s, rice.id) == Decimal("10.000")
+
+
+@pytest.mark.asyncio
+async def test_plan_rejects_non_positive_target(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Zero target never reaches the multiplication (422)."""
+    _, _, _, _, recipe_id = await _make_pilau_kitchen(client, db_session)
+    resp = await client.post(
+        _plan_url(recipe_id),
+        json={"target_output_quantity": "0.000"},
+        headers=AUTH_HEADER,
+    )
+    assert resp.status_code == 422, resp.text
+
+
+@pytest.mark.asyncio
+async def test_target_produce_adjustable_components_yield_below(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Target 10, adjusted ingredients consumed exactly, actual 8 → below."""
+    pilau, rice, meat, oil, recipe_id = await _make_pilau_kitchen(
+        client, db_session
+    )
+
+    resp = await client.post(
+        _produce_url(recipe_id),
+        json={
+            "leading_item_id": str(rice.id),
+            "leading_quantity_used": "2.200",
+            "target_output_quantity": "10.000",
+            "components": [
+                {"raw_material_item_id": str(rice.id), "quantity_used": "2.200"},
+                {"raw_material_item_id": str(meat.id), "quantity_used": "1.100"},
+                {"raw_material_item_id": str(oil.id), "quantity_used": "0.220"},
+            ],
+            "actual_output_quantity": "8.000",
+        },
+        headers=AUTH_HEADER,
+    )
+    assert resp.status_code == 201, resp.text
+    data = resp.json()
+    assert data["target_output_quantity"] == "10.000"
+    assert data["suggested_output_quantity"] == "10.000"
+    assert data["actual_output_quantity"] == "8.000"
+    assert data["yield_goal_quantity"] == "10.000"
+    assert data["yield_status"] == "below"
+    assert Decimal(data["yield_variance"]) == Decimal("-2.000")
+    by_name = {c["raw_material_name"]: c for c in data["components"]}
+    assert by_name["Rice"]["quantity_consumed"] == "2.200"
+    assert by_name["Meat"]["quantity_consumed"] == "1.100"
+    assert by_name["Oil"]["quantity_consumed"] == "0.220"
+
+    async with db_session as s:
+        assert await _level(s, rice.id) == Decimal("7.800")
+        assert await _level(s, pilau.id) == Decimal("8.000")
+
+
+@pytest.mark.asyncio
+async def test_target_produce_within_threshold_band(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Actual 10.4 vs target 10 is inside the default ±5% band."""
+    _, rice, _, _, recipe_id = await _make_pilau_kitchen(client, db_session)
+
+    resp = await client.post(
+        _produce_url(recipe_id),
+        json={
+            "leading_item_id": str(rice.id),
+            "leading_quantity_used": "2.000",
+            "target_output_quantity": "10.000",
+            "actual_output_quantity": "10.400",
+        },
+        headers=AUTH_HEADER,
+    )
+    assert resp.status_code == 201, resp.text
+    data = resp.json()
+    assert data["yield_status"] == "within_threshold"
+    assert data["yield_goal_quantity"] == "10.000"
+
+
+@pytest.mark.asyncio
+async def test_target_produce_above_threshold(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Actual 12 vs target 10 exceeds the band → above."""
+    _, rice, _, _, recipe_id = await _make_pilau_kitchen(client, db_session)
+
+    resp = await client.post(
+        _produce_url(recipe_id),
+        json={
+            "leading_item_id": str(rice.id),
+            "leading_quantity_used": "2.000",
+            "target_output_quantity": "10.000",
+            "actual_output_quantity": "12.000",
+        },
+        headers=AUTH_HEADER,
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["yield_status"] == "above"
+
+
+@pytest.mark.asyncio
+async def test_produce_components_must_cover_whole_recipe(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A partial override (missing oil) is rejected — 422, nothing written."""
+    pilau, rice, meat, _, recipe_id = await _make_pilau_kitchen(
+        client, db_session
+    )
+
+    resp = await client.post(
+        _produce_url(recipe_id),
+        json={
+            "leading_item_id": str(rice.id),
+            "leading_quantity_used": "2.000",
+            "target_output_quantity": "10.000",
+            "components": [
+                {"raw_material_item_id": str(rice.id), "quantity_used": "2.000"},
+                {"raw_material_item_id": str(meat.id), "quantity_used": "1.000"},
+            ],
+            "actual_output_quantity": "10.000",
+        },
+        headers=AUTH_HEADER,
+    )
+    assert resp.status_code == 422, resp.text
+
+    async with db_session as s:
+        events = (
+            await s.exec(
+                select(ProductionEvent).where(
+                    ProductionEvent.business_id == BUSINESS_ID
+                )
+            )
+        ).all()
+        assert events == []
+        assert await _level(s, rice.id) == Decimal("10.000")
+        assert await _level(s, pilau.id) == Decimal("0.000")
+
+
+@pytest.mark.asyncio
+async def test_history_reads_carry_target_and_verdict(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """List + detail echo the stored target and the computed verdict."""
+    _, rice, meat, oil, recipe_id = await _make_pilau_kitchen(
+        client, db_session
+    )
+    resp = await client.post(
+        _produce_url(recipe_id),
+        json={
+            "leading_item_id": str(rice.id),
+            "leading_quantity_used": "2.000",
+            "target_output_quantity": "10.000",
+            "components": [
+                {"raw_material_item_id": str(rice.id), "quantity_used": "2.000"},
+                {"raw_material_item_id": str(meat.id), "quantity_used": "1.000"},
+                {"raw_material_item_id": str(oil.id), "quantity_used": "0.200"},
+            ],
+            "actual_output_quantity": "8.000",
+        },
+        headers=AUTH_HEADER,
+    )
+    assert resp.status_code == 201, resp.text
+    event_id = resp.json()["id"]
+
+    resp = await client.get(HISTORY_PREFIX, headers=AUTH_HEADER)
+    assert resp.status_code == 200, resp.text
+    listed = resp.json()
+    assert len(listed) == 1
+    assert listed[0]["target_output_quantity"] == "10.000"
+    assert listed[0]["yield_status"] == "below"
+
+    resp = await client.get(f"{HISTORY_PREFIX}/{event_id}", headers=AUTH_HEADER)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["yield_goal_quantity"] == "10.000"

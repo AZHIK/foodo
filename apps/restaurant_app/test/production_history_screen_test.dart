@@ -30,6 +30,10 @@ ProductionEventDto productionEvent({
       leadingQuantityUsed: Decimal.parse('2.000'),
       suggestedOutputQuantity: Decimal.parse(suggested),
       actualOutputQuantity: Decimal.parse(actual),
+      yieldGoalQuantity: Decimal.parse(suggested),
+      yieldVariance: Decimal.parse(actual) - Decimal.parse(suggested),
+      yieldStatus: YieldStatusDto.below,
+      yieldTolerancePercent: Decimal.parse('5'),
       occurredAt: DateTime.utc(2026, 9, 14, 7),
       createdAt: DateTime.utc(2026, 9, 14, 7),
       components: [
@@ -101,9 +105,10 @@ void main() {
       await tester.tap(find.text('Pilau').first);
       await tester.pumpAndSettle();
 
-      // Detail keeps suggested and actual apart.
+      // Detail keeps suggested and actual apart, plus the yield verdict.
       expect(find.text('Output'), findsOneWidget);
-      expect(find.textContaining('under'), findsOneWidget);
+      expect(find.textContaining('under'), findsWidgets);
+      expect(find.textContaining('Below target'), findsOneWidget);
       expect(find.text('Rice'), findsWidgets);
     });
 
@@ -132,7 +137,7 @@ void main() {
 
       // The picker hands off to the record dialog for the chosen recipe.
       expect(find.text('What are you making?'), findsNothing);
-      expect(find.byKey(ProductionDialogKeys.leadingQty), findsOneWidget);
+      expect(find.byKey(ProductionDialogKeys.targetQty), findsOneWidget);
     });
 
     testWidgets('an empty catalog explains itself in the picker', (

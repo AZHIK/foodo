@@ -20,7 +20,7 @@ import '../screens/inventory/inventory_groceries_screen_gated.dart';
 import '../screens/inventory/inventory_menu_items_screen_gated.dart';
 import '../screens/insights/ai_insights_screen.dart';
 import '../screens/inventory/item_detail_screen.dart';
-import '../screens/inventory/production_history_screen_gated.dart';
+import '../screens/inventory/production_module_screen_gated.dart';
 import '../screens/inventory/reorders_screen_gated.dart';
 import '../screens/reports/reports_screen_gated.dart';
 import '../screens/suppliers/suppliers_screen_gated.dart';
@@ -390,7 +390,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 path: AppRoute.productionPath,
                 name: AppRoute.productionName,
                 builder: (context, state) =>
-                    const ProductionHistoryScreenGated(),
+                    const ProductionModuleScreenGated(),
               ),
             ],
           ),

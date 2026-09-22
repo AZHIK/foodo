@@ -247,6 +247,12 @@ class Recipe(SQLModel, table=True):
     which defaults to the sellable item's own name but may diverge if recipe
     variants ever land).
 
+    BATCH FORMULA SEMANTICS: component quantities are totals for the
+    recipe's ``target_yield_quantity`` (e.g. "2kg rice for 50 portions"),
+    not per-unit amounts. Per-unit math divides by the target yield, so a
+    recipe with the default target of 1 behaves exactly like the original
+    per-unit recipe — all pre-batch data is math-identical.
+
     ``business_id`` follows this module's cross-service convention: a plain
     indexed UUID with no FK (Identity Service owns that table). ``name`` is
     snapshot at creation — renaming the sellable item later does not rewrite
@@ -273,6 +279,16 @@ class Recipe(SQLModel, table=True):
         ),
     )
     name: str = Field(nullable=False, max_length=255)
+    # Kitchen category: prep / sauce / finished dish (free text so kitchens
+    # can add their own; the app offers presets). Null = uncategorised.
+    category: str | None = Field(default=None, max_length=50)
+    # Standard batch size this formula is written for ("makes 50 portions").
+    # Components are totals for this yield; per-unit math divides by it.
+    target_yield_quantity: Decimal = Field(
+        default=Decimal("1"),
+        sa_type=Numeric(precision=12, scale=3),
+    )
+    target_yield_unit: str = Field(default="portions", max_length=50)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_type=DateTime(timezone=True),
@@ -302,7 +318,9 @@ class RecipeComponent(SQLModel, table=True):
 
     Quantities are in the raw material item's own unit (see
     ``RecipeComponentRead`` — reads resolve the unit code so owners see
-    "200g Rice", not a bare number).
+    "200g Rice", not a bare number). Batch semantics: the quantity is the
+    TOTAL for the recipe's ``target_yield_quantity`` — per-unit math
+    divides by it (see ``Recipe``).
     """
 
     __table_args__ = (
@@ -340,6 +358,165 @@ class RecipeComponent(SQLModel, table=True):
     )
 
 
+class RunStatus(str, PyEnum):
+    """Lifecycle of a scheduled production run (Production Module, Tab 2).
+
+    * ``pending`` — planned (recipe + target + recommended lines), no stock
+      moved. The only deletable state.
+    * ``in_progress`` — started: the (possibly adjusted) ingredients were
+      deducted from inventory. Output is NOT stocked yet.
+    * ``completed`` — actual yield (+ optional waste/variance reason)
+      recorded. Output is still NOT stocked — it lands in inventory when
+      the run is **published** (Tab 3's "Publish to POS & Inventory").
+    """
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+
+class ProductionRun(SQLModel, table=True):
+    """One scheduled cooking batch: plan → start → complete → publish.
+
+    A run snapshots the plan at creation (recipe + target + per-ingredient
+    planned quantities) so later recipe edits never rewrite a cook's
+    shift plan. Starting deducts the measured (adjustable) inputs;
+    completing records what cooking actually produced and why any stock
+    was lost; publishing stocks the output, writes the immutable
+    ``ProductionEvent`` history row (linked back via ``run_id``), and
+    stamps ``published_at`` — that publish is the "one-click conversion"
+    that makes the finished item sellable on the POS.
+    """
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        nullable=False,
+        sa_type=PG_UUID,
+    )
+    business_id: UUID = Field(
+        nullable=False,
+        index=True,
+        sa_type=PG_UUID,
+    )
+    store_id: UUID = Field(
+        nullable=False,
+        index=True,
+        sa_type=PG_UUID,
+    )
+    recipe_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("recipe.id", ondelete="RESTRICT"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    target_output_quantity: Decimal = Field(
+        nullable=False,
+        sa_type=Numeric(precision=12, scale=3),
+    )
+    status: RunStatus = Field(
+        default=RunStatus.PENDING,
+        sa_column=Column(
+            SAEnum(RunStatus, values_callable=_enum_db_values, name="runstatus"),
+            nullable=False,
+        ),
+    )
+    leading_component_item_id: UUID | None = Field(
+        default=None,
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("item.id", ondelete="RESTRICT"),
+            nullable=True,
+        ),
+    )
+    yield_tolerance_percent: Decimal = Field(
+        default=Decimal("5"),
+        sa_type=Numeric(precision=12, scale=3),
+    )
+    actual_output_quantity: Decimal | None = Field(
+        default=None,
+        sa_type=Numeric(precision=12, scale=3),
+    )
+    # Loss tracking: why stock went missing (spillage, burning,
+    # over-portioning). Free text — the kitchen's own words.
+    waste_reason: str | None = Field(default=None, max_length=500)
+    published_at: datetime | None = Field(
+        default=None, sa_type=DateTime(timezone=True)
+    )
+    created_by: UUID | None = Field(default=None, sa_type=PG_UUID)
+    started_at: datetime | None = Field(
+        default=None, sa_type=DateTime(timezone=True)
+    )
+    completed_at: datetime | None = Field(
+        default=None, sa_type=DateTime(timezone=True)
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_type=DateTime(timezone=True),
+        sa_column_kwargs={"server_default": func.now()},
+        nullable=False,
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_type=DateTime(timezone=True),
+        sa_column_kwargs={
+            "server_default": func.now(),
+            "onupdate": func.now(),
+        },
+        nullable=False,
+    )
+
+
+class ProductionRunComponent(SQLModel, table=True):
+    """One ingredient line of a ``ProductionRun``'s snapshot plan.
+
+    ``planned_quantity`` is the recommendation (per-unit requirement ×
+    target) frozen at creation; ``measured_quantity`` is what the cook
+    actually weighed at start (adjustable — null until the run starts,
+    then exactly what was deducted).
+    """
+
+    __table_args__ = (
+        UniqueConstraint(
+            "production_run_id",
+            "raw_material_item_id",
+            name="uq_run_components_run_ingredient",
+        ),
+    )
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        nullable=False,
+        sa_type=PG_UUID,
+    )
+    production_run_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("productionrun.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    raw_material_item_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("item.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+    )
+    planned_quantity: Decimal = Field(
+        nullable=False,
+        sa_type=Numeric(precision=12, scale=3),
+    )
+    measured_quantity: Decimal | None = Field(
+        default=None,
+        sa_type=Numeric(precision=12, scale=3),
+    )
+
+
 class ProductionEvent(SQLModel, table=True):
     """One recorded production run (Stage 2): raw materials in, sellable out.
 
@@ -350,9 +527,12 @@ class ProductionEvent(SQLModel, table=True):
     and confirmed.
 
     ``suggested_output_quantity`` is the recipe-computed output (leading
-    quantity ÷ leading requirement); ``actual_output_quantity`` is what the
-    owner confirmed (portions may be bigger/smaller).  Both are kept — the
-    gap between them is the over-portioning signal for future AI insights.
+    quantity ÷ leading requirement, or the entered target when the
+    target-based flow is used); ``target_output_quantity`` is the goal the
+    cook entered before measuring (nullable for pre-target runs);
+    ``actual_output_quantity`` is what the owner confirmed after cooking.
+    The gap between actual and target/suggested is the yield signal used
+    for the above/within/below-threshold verdict.
 
     ``store_id`` is the sellable item's store (see ``production_service`` —
     derived, not client-supplied).  ``occurred_at`` is the business time of
@@ -400,6 +580,10 @@ class ProductionEvent(SQLModel, table=True):
         nullable=False,
         sa_type=Numeric(precision=12, scale=3),
     )
+    target_output_quantity: Decimal | None = Field(
+        default=None,
+        sa_type=Numeric(precision=12, scale=3),
+    )
     suggested_output_quantity: Decimal = Field(
         nullable=False,
         sa_type=Numeric(precision=12, scale=3),
@@ -408,6 +592,19 @@ class ProductionEvent(SQLModel, table=True):
         nullable=False,
         sa_type=Numeric(precision=12, scale=3),
     )
+    # The run this event published (null for direct/quick records that
+    # never went through the run lifecycle).
+    run_id: UUID | None = Field(
+        default=None,
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("productionrun.id", ondelete="RESTRICT"),
+            nullable=True,
+            index=True,
+        ),
+    )
+    # Loss tracking carried over from the run's completion.
+    waste_reason: str | None = Field(default=None, max_length=500)
     actor_id: UUID | None = Field(default=None, sa_type=PG_UUID)
     occurred_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),

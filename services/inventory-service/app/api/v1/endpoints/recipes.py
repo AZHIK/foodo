@@ -23,6 +23,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
@@ -185,8 +186,16 @@ async def _read_recipes(
     comps_by_recipe: dict[UUID, list[RecipeComponentRead]] = {
         r.id: [] for r in recipes
     }
+    by_recipe: dict[UUID, Recipe] = {r.id: r for r in recipes}
     for comp in components:
         raw = items[comp.raw_material_item_id]
+        target = by_recipe[comp.recipe_id].target_yield_quantity or Decimal("1")
+        per_unit = (comp.quantity_required / target).quantize(Decimal("0.001"))
+        line_cost = (
+            (comp.quantity_required * raw.unit_cost).quantize(Decimal("0.01"))
+            if raw.unit_cost is not None
+            else None
+        )
         comps_by_recipe[comp.recipe_id].append(
             RecipeComponentRead(
                 id=comp.id,
@@ -195,22 +204,36 @@ async def _read_recipes(
                 raw_material_name=raw.name,
                 raw_material_unit=units.get(raw.unit_id) if raw.unit_id else "",
                 quantity_required=comp.quantity_required,
+                quantity_per_unit=per_unit,
+                line_cost=line_cost,
             )
         )
 
-    return [
-        RecipeRead(
-            id=r.id,
-            business_id=r.business_id,
-            sellable_item_id=r.sellable_item_id,
-            sellable_item_name=items[r.sellable_item_id].name,
-            name=r.name,
-            created_at=r.created_at,
-            updated_at=r.updated_at,
-            components=comps_by_recipe[r.id],
+    reads = []
+    for r in recipes:
+        lines = comps_by_recipe[r.id]
+        total = sum((c.line_cost for c in lines if c.line_cost is not None),
+                    Decimal("0.00")).quantize(Decimal("0.01"))
+        target = r.target_yield_quantity or Decimal("1")
+        reads.append(
+            RecipeRead(
+                id=r.id,
+                business_id=r.business_id,
+                sellable_item_id=r.sellable_item_id,
+                sellable_item_name=items[r.sellable_item_id].name,
+                name=r.name,
+                category=r.category,
+                target_yield_quantity=r.target_yield_quantity,
+                target_yield_unit=r.target_yield_unit,
+                total_cost=total,
+                cost_per_unit=(total / target).quantize(Decimal("0.01")),
+                cost_complete=all(c.line_cost is not None for c in lines),
+                created_at=r.created_at,
+                updated_at=r.updated_at,
+                components=lines,
+            )
         )
-        for r in recipes
-    ]
+    return reads
 
 
 @router.post("", response_model=RecipeRead, status_code=status.HTTP_201_CREATED)
@@ -253,6 +276,9 @@ async def create_recipe(
         business_id=business_id,
         sellable_item_id=body.sellable_item_id,
         name=(body.name or sellable.name),
+        category=body.category,
+        target_yield_quantity=body.target_yield_quantity,
+        target_yield_unit=body.target_yield_unit,
     )
     session.add(recipe)
     await session.flush()  # recipe.id needed for the component rows below
@@ -342,6 +368,12 @@ async def update_recipe(
 
     if body.name is not None:
         recipe.name = body.name
+    if body.category is not None:
+        recipe.category = body.category
+    if body.target_yield_quantity is not None:
+        recipe.target_yield_quantity = body.target_yield_quantity
+    if body.target_yield_unit is not None:
+        recipe.target_yield_unit = body.target_yield_unit
     session.add(recipe)
     # Full-set replace: delete-then-insert inside the same transaction, so a
     # failure below rolls the old set back rather than leaving it half-gone.

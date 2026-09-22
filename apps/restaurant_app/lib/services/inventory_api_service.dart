@@ -66,28 +66,42 @@ class InventoryApiException implements Exception {
 }
 
 /// One ingredient line of a recipe, with resolved item details.
+///
+/// Batch semantics: [quantityRequired] is the TOTAL for the recipe's
+/// target yield; [quantityPerUnit] is one sellable unit's share.
+/// [lineCost] is the line's batch cost at current prices (null when the
+/// raw item has no unit cost — unknown, not zero).
 class RecipeIngredientDto {
   final String rawMaterialItemId;
   final String rawMaterialName;
   final String rawMaterialUnit;
   final Decimal quantityRequired;
+  final Decimal quantityPerUnit;
+  final Decimal? lineCost;
 
   RecipeIngredientDto({
     required this.rawMaterialItemId,
     required this.rawMaterialName,
     required this.rawMaterialUnit,
     required this.quantityRequired,
-  });
+    Decimal? quantityPerUnit,
+    this.lineCost,
+  }) : quantityPerUnit = quantityPerUnit ?? quantityRequired;
 
-  factory RecipeIngredientDto.fromJson(Map<String, dynamic> json) =>
-      RecipeIngredientDto(
-        rawMaterialItemId: json['raw_material_item_id'] as String,
-        rawMaterialName: json['raw_material_name'] as String,
-        rawMaterialUnit: json['raw_material_unit'] as String? ?? '',
-        quantityRequired: Decimal.parse(
-          json['quantity_required'].toString(),
-        ),
-      );
+  factory RecipeIngredientDto.fromJson(Map<String, dynamic> json) {
+    final required = Decimal.parse(json['quantity_required'].toString());
+    final perUnit = json['quantity_per_unit'];
+    final cost = json['line_cost'];
+    return RecipeIngredientDto(
+      rawMaterialItemId: json['raw_material_item_id'] as String,
+      rawMaterialName: json['raw_material_name'] as String,
+      rawMaterialUnit: json['raw_material_unit'] as String? ?? '',
+      quantityRequired: required,
+      quantityPerUnit:
+          perUnit == null ? required : Decimal.parse(perUnit.toString()),
+      lineCost: cost == null ? null : Decimal.parse(cost.toString()),
+    );
+  }
 }
 
 /// One ingredient line on a recipe create/update payload: just the raw
@@ -107,13 +121,34 @@ class RecipeComponentInput {
       };
 }
 
+/// Kitchen blueprint categories offered by the recipe form.
+abstract final class RecipeCategories {
+  static const prep = 'prep';
+  static const sauce = 'sauce';
+  static const finished = 'finished';
+
+  static const all = [prep, sauce, finished];
+}
+
 /// A recipe header with its full ingredient set.
+///
+/// [targetYieldQuantity]/[targetYieldUnit] size the batch the component
+/// totals are written for ("makes 50 portions"). [totalCost] is the batch
+/// cost at current raw prices, [costPerUnit] one unit's share;
+/// [costComplete] is false when some ingredient lacks a unit cost (the
+/// totals then understate the truth).
 class RecipeDto {
   final String id;
   final String businessId;
   final String sellableItemId;
   final String sellableItemName;
   final String name;
+  final String? category;
+  final Decimal targetYieldQuantity;
+  final String targetYieldUnit;
+  final Decimal totalCost;
+  final Decimal costPerUnit;
+  final bool costComplete;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<RecipeIngredientDto> components;
@@ -124,24 +159,41 @@ class RecipeDto {
     required this.sellableItemId,
     required this.sellableItemName,
     required this.name,
+    this.category,
+    Decimal? targetYieldQuantity,
+    this.targetYieldUnit = 'portions',
+    Decimal? totalCost,
+    Decimal? costPerUnit,
+    this.costComplete = true,
     required this.createdAt,
     required this.updatedAt,
     required this.components,
-  });
+  })  : targetYieldQuantity = targetYieldQuantity ?? Decimal.fromInt(1),
+        totalCost = totalCost ?? Decimal.zero,
+        costPerUnit = costPerUnit ?? Decimal.zero;
 
-  factory RecipeDto.fromJson(Map<String, dynamic> json) => RecipeDto(
-        id: json['id'] as String,
-        businessId: json['business_id'] as String,
-        sellableItemId: json['sellable_item_id'] as String,
-        sellableItemName: json['sellable_item_name'] as String,
-        name: json['name'] as String,
-        createdAt: DateTime.parse(json['created_at'] as String),
-        updatedAt: DateTime.parse(json['updated_at'] as String),
-        components: (json['components'] as List<dynamic>)
-            .cast<Map<String, dynamic>>()
-            .map(RecipeIngredientDto.fromJson)
-            .toList(),
-      );
+  factory RecipeDto.fromJson(Map<String, dynamic> json) {
+    Decimal? _opt(Object? v) => v == null ? null : Decimal.parse(v.toString());
+    return RecipeDto(
+      id: json['id'] as String,
+      businessId: json['business_id'] as String,
+      sellableItemId: json['sellable_item_id'] as String,
+      sellableItemName: json['sellable_item_name'] as String,
+      name: json['name'] as String,
+      category: json['category'] as String?,
+      targetYieldQuantity: _opt(json['target_yield_quantity']) ?? Decimal.fromInt(1),
+      targetYieldUnit: json['target_yield_unit'] as String? ?? 'portions',
+      totalCost: _opt(json['total_cost']) ?? Decimal.zero,
+      costPerUnit: _opt(json['cost_per_unit']) ?? Decimal.zero,
+      costComplete: json['cost_complete'] as bool? ?? true,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+      components: (json['components'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(RecipeIngredientDto.fromJson)
+          .toList(),
+    );
+  }
 }
 
 /// One ingredient consumed by a production event, with resolved item details.
@@ -170,7 +222,107 @@ class ProductionComponentDto {
       );
 }
 
-/// A recorded production run: measured input plus suggested vs actual output.
+/// Yield verdict of a production run vs its goal, computed server-side.
+enum YieldStatusDto {
+  above,
+  withinThreshold,
+  below;
+
+  static YieldStatusDto fromJson(String value) => switch (value) {
+        'above' => YieldStatusDto.above,
+        'within_threshold' => YieldStatusDto.withinThreshold,
+        'below' => YieldStatusDto.below,
+        _ => YieldStatusDto.withinThreshold,
+      };
+}
+
+/// One adjustable ingredient line on a target-based produce payload.
+class MeasuredComponentInput {
+  MeasuredComponentInput({
+    required this.rawMaterialItemId,
+    required this.quantityUsed,
+  });
+
+  final String rawMaterialItemId;
+  final Decimal quantityUsed;
+
+  Map<String, dynamic> toJson() => {
+        'raw_material_item_id': rawMaterialItemId,
+        'quantity_used': quantityUsed.toString(),
+      };
+}
+
+/// One recommended ingredient line for a target output.
+class PlannedComponentDto {
+  final String rawMaterialItemId;
+  final String rawMaterialName;
+  final String rawMaterialUnit;
+  final Decimal quantityRequiredPerUnit;
+  final Decimal plannedQuantity;
+
+  PlannedComponentDto({
+    required this.rawMaterialItemId,
+    required this.rawMaterialName,
+    required this.rawMaterialUnit,
+    required this.quantityRequiredPerUnit,
+    required this.plannedQuantity,
+  });
+
+  factory PlannedComponentDto.fromJson(Map<String, dynamic> json) =>
+      PlannedComponentDto(
+        rawMaterialItemId: json['raw_material_item_id'] as String,
+        rawMaterialName: json['raw_material_name'] as String,
+        rawMaterialUnit: json['raw_material_unit'] as String? ?? '',
+        quantityRequiredPerUnit: Decimal.parse(
+          json['quantity_required_per_unit'].toString(),
+        ),
+        plannedQuantity: Decimal.parse(
+          json['planned_quantity'].toString(),
+        ),
+      );
+}
+
+/// Recommendation for a target output: one adjustable line per ingredient.
+class ProductionPlanDto {
+  final String recipeId;
+  final String recipeName;
+  final String sellableItemId;
+  final String sellableItemName;
+  final Decimal targetOutputQuantity;
+  final Decimal suggestedOutputQuantity;
+  final List<PlannedComponentDto> components;
+
+  ProductionPlanDto({
+    required this.recipeId,
+    required this.recipeName,
+    required this.sellableItemId,
+    required this.sellableItemName,
+    required this.targetOutputQuantity,
+    required this.suggestedOutputQuantity,
+    required this.components,
+  });
+
+  factory ProductionPlanDto.fromJson(Map<String, dynamic> json) =>
+      ProductionPlanDto(
+        recipeId: json['recipe_id'] as String,
+        recipeName: json['recipe_name'] as String,
+        sellableItemId: json['sellable_item_id'] as String,
+        sellableItemName: json['sellable_item_name'] as String,
+        targetOutputQuantity: Decimal.parse(
+          json['target_output_quantity'].toString(),
+        ),
+        suggestedOutputQuantity: Decimal.parse(
+          json['suggested_output_quantity'].toString(),
+        ),
+        components: (json['components'] as List<dynamic>)
+            .cast<Map<String, dynamic>>()
+            .map(PlannedComponentDto.fromJson)
+            .toList(),
+      );
+}
+
+/// A recorded production run: measured input, goal, suggestion, confirmed
+/// output, and the server-computed yield verdict.
 class ProductionEventDto {
   final String id;
   final String businessId;
@@ -181,8 +333,16 @@ class ProductionEventDto {
   final String sellableItemName;
   final String leadingComponentItemId;
   final Decimal leadingQuantityUsed;
+  final Decimal? targetOutputQuantity;
   final Decimal suggestedOutputQuantity;
   final Decimal actualOutputQuantity;
+  final String? runId;
+  final String? wasteReason;
+  final Decimal yieldGoalQuantity;
+  final Decimal yieldVariance;
+  final Decimal? yieldVariancePercent;
+  final YieldStatusDto yieldStatus;
+  final Decimal yieldTolerancePercent;
   final String? actorId;
   final DateTime occurredAt;
   final DateTime createdAt;
@@ -198,41 +358,226 @@ class ProductionEventDto {
     required this.sellableItemName,
     required this.leadingComponentItemId,
     required this.leadingQuantityUsed,
+    this.targetOutputQuantity,
     required this.suggestedOutputQuantity,
     required this.actualOutputQuantity,
+    this.runId,
+    this.wasteReason,
+    required this.yieldGoalQuantity,
+    required this.yieldVariance,
+    this.yieldVariancePercent,
+    required this.yieldStatus,
+    required this.yieldTolerancePercent,
     this.actorId,
     required this.occurredAt,
     required this.createdAt,
     required this.components,
   });
 
-  factory ProductionEventDto.fromJson(Map<String, dynamic> json) =>
-      ProductionEventDto(
-        id: json['id'] as String,
-        businessId: json['business_id'] as String,
-        storeId: json['store_id'] as String,
-        recipeId: json['recipe_id'] as String,
-        recipeName: json['recipe_name'] as String,
-        sellableItemId: json['sellable_item_id'] as String,
-        sellableItemName: json['sellable_item_name'] as String,
-        leadingComponentItemId: json['leading_component_item_id'] as String,
-        leadingQuantityUsed: Decimal.parse(
-          json['leading_quantity_used'].toString(),
-        ),
-        suggestedOutputQuantity: Decimal.parse(
-          json['suggested_output_quantity'].toString(),
-        ),
-        actualOutputQuantity: Decimal.parse(
-          json['actual_output_quantity'].toString(),
-        ),
-        actorId: json['actor_id'] as String?,
-        occurredAt: DateTime.parse(json['occurred_at'] as String),
-        createdAt: DateTime.parse(json['created_at'] as String),
-        components: (json['components'] as List<dynamic>)
-            .cast<Map<String, dynamic>>()
-            .map(ProductionComponentDto.fromJson)
-            .toList(),
-      );
+  factory ProductionEventDto.fromJson(Map<String, dynamic> json) {
+    Decimal? _optDecimal(Object? v) =>
+        v == null ? null : Decimal.parse(v.toString());
+    return ProductionEventDto(
+      id: json['id'] as String,
+      businessId: json['business_id'] as String,
+      storeId: json['store_id'] as String,
+      recipeId: json['recipe_id'] as String,
+      recipeName: json['recipe_name'] as String,
+      sellableItemId: json['sellable_item_id'] as String,
+      sellableItemName: json['sellable_item_name'] as String,
+      leadingComponentItemId: json['leading_component_item_id'] as String,
+      leadingQuantityUsed: Decimal.parse(
+        json['leading_quantity_used'].toString(),
+      ),
+      targetOutputQuantity: _optDecimal(json['target_output_quantity']),
+      suggestedOutputQuantity: Decimal.parse(
+        json['suggested_output_quantity'].toString(),
+      ),
+      actualOutputQuantity: Decimal.parse(
+        json['actual_output_quantity'].toString(),
+      ),
+      runId: json['run_id'] as String?,
+      wasteReason: json['waste_reason'] as String?,
+      yieldGoalQuantity: Decimal.parse(
+        (json['yield_goal_quantity'] ?? json['suggested_output_quantity'])
+            .toString(),
+      ),
+      yieldVariance: Decimal.parse(
+        (json['yield_variance'] ?? '0').toString(),
+      ),
+      yieldVariancePercent: _optDecimal(json['yield_variance_percent']),
+      yieldStatus: json['yield_status'] == null
+          ? YieldStatusDto.withinThreshold
+          : YieldStatusDto.fromJson(json['yield_status'].toString()),
+      yieldTolerancePercent: Decimal.parse(
+        (json['yield_tolerance_percent'] ?? '5').toString(),
+      ),
+      actorId: json['actor_id'] as String?,
+      occurredAt: DateTime.parse(json['occurred_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String),
+      components: (json['components'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(ProductionComponentDto.fromJson)
+          .toList(),
+    );
+  }
+}
+
+/// Lifecycle state of a scheduled production run.
+enum RunStatusDto {
+  pending,
+  inProgress,
+  completed;
+
+  static RunStatusDto fromJson(String value) => switch (value) {
+        'pending' => RunStatusDto.pending,
+        'in_progress' => RunStatusDto.inProgress,
+        'completed' => RunStatusDto.completed,
+        _ => RunStatusDto.pending,
+      };
+
+  String get apiValue => switch (this) {
+        RunStatusDto.pending => 'pending',
+        RunStatusDto.inProgress => 'in_progress',
+        RunStatusDto.completed => 'completed',
+      };
+}
+
+/// One snapshotted plan line of a run with its measured outcome.
+class RunComponentDto {
+  final String id;
+  final String rawMaterialItemId;
+  final String rawMaterialName;
+  final String rawMaterialUnit;
+  final Decimal plannedQuantity;
+  final Decimal? measuredQuantity;
+
+  RunComponentDto({
+    required this.id,
+    required this.rawMaterialItemId,
+    required this.rawMaterialName,
+    required this.rawMaterialUnit,
+    required this.plannedQuantity,
+    this.measuredQuantity,
+  });
+
+  factory RunComponentDto.fromJson(Map<String, dynamic> json) {
+    final measured = json['measured_quantity'];
+    return RunComponentDto(
+      id: json['id'] as String,
+      rawMaterialItemId: json['raw_material_item_id'] as String,
+      rawMaterialName: json['raw_material_name'] as String,
+      rawMaterialUnit: json['raw_material_unit'] as String? ?? '',
+      plannedQuantity: Decimal.parse(json['planned_quantity'].toString()),
+      measuredQuantity:
+          measured == null ? null : Decimal.parse(measured.toString()),
+    );
+  }
+}
+
+/// A scheduled cooking batch: plan → start → complete → publish.
+class RunDto {
+  final String id;
+  final String businessId;
+  final String storeId;
+  final String recipeId;
+  final String recipeName;
+  final String sellableItemId;
+  final String sellableItemName;
+  final Decimal targetOutputQuantity;
+  final RunStatusDto status;
+  final String? leadingComponentItemId;
+  final Decimal yieldTolerancePercent;
+  final Decimal? actualOutputQuantity;
+  final String? wasteReason;
+  final Decimal yieldGoalQuantity;
+  final Decimal? yieldVariance;
+  final Decimal? yieldVariancePercent;
+  final YieldStatusDto? yieldStatus;
+  final bool published;
+  final DateTime? publishedAt;
+  final DateTime? startedAt;
+  final DateTime? completedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final List<RunComponentDto> components;
+
+  RunDto({
+    required this.id,
+    required this.businessId,
+    required this.storeId,
+    required this.recipeId,
+    required this.recipeName,
+    required this.sellableItemId,
+    required this.sellableItemName,
+    required this.targetOutputQuantity,
+    required this.status,
+    this.leadingComponentItemId,
+    required this.yieldTolerancePercent,
+    this.actualOutputQuantity,
+    this.wasteReason,
+    required this.yieldGoalQuantity,
+    this.yieldVariance,
+    this.yieldVariancePercent,
+    this.yieldStatus,
+    required this.published,
+    this.publishedAt,
+    this.startedAt,
+    this.completedAt,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.components,
+  });
+
+  factory RunDto.fromJson(Map<String, dynamic> json) {
+    Decimal? _opt(Object? v) =>
+        v == null ? null : Decimal.parse(v.toString());
+    final status = RunStatusDto.fromJson(json['status'].toString());
+    final yieldStatus = json['yield_status'];
+    return RunDto(
+      id: json['id'] as String,
+      businessId: json['business_id'] as String,
+      storeId: json['store_id'] as String,
+      recipeId: json['recipe_id'] as String,
+      recipeName: json['recipe_name'] as String,
+      sellableItemId: json['sellable_item_id'] as String,
+      sellableItemName: json['sellable_item_name'] as String,
+      targetOutputQuantity: Decimal.parse(
+        json['target_output_quantity'].toString(),
+      ),
+      status: status,
+      leadingComponentItemId: json['leading_component_item_id'] as String?,
+      yieldTolerancePercent: Decimal.parse(
+        (json['yield_tolerance_percent'] ?? '5').toString(),
+      ),
+      actualOutputQuantity: _opt(json['actual_output_quantity']),
+      wasteReason: json['waste_reason'] as String?,
+      yieldGoalQuantity: Decimal.parse(
+        json['yield_goal_quantity'].toString(),
+      ),
+      yieldVariance: _opt(json['yield_variance']),
+      yieldVariancePercent: _opt(json['yield_variance_percent']),
+      yieldStatus: yieldStatus == null
+          ? null
+          : YieldStatusDto.fromJson(yieldStatus.toString()),
+      published: json['published_at'] != null,
+      publishedAt: json['published_at'] == null
+          ? null
+          : DateTime.parse(json['published_at'] as String),
+      startedAt: json['started_at'] == null
+          ? null
+          : DateTime.parse(json['started_at'] as String),
+      completedAt: json['completed_at'] == null
+          ? null
+          : DateTime.parse(json['completed_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+      components: (json['components'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(RunComponentDto.fromJson)
+          .toList(),
+    );
+  }
 }
 
 /// One item's recorded waste in a window: quantity and cost.
@@ -624,15 +969,42 @@ class InventoryApiService {
     }
   }
 
+  /// Recommends every grocery amount for a target output (no stock change).
+  /// Requires `production.create`. Each line stays adjustable before commit.
+  Future<ProductionPlanDto> planProduction({
+    required String businessId,
+    required String recipeId,
+    required Decimal targetOutputQuantity,
+  }) async {
+    try {
+      final response = await _dio.post(
+        InventoryApiPaths.planProduction(businessId, recipeId),
+        data: {
+          'target_output_quantity': targetOutputQuantity.toString(),
+        },
+      );
+      return ProductionPlanDto.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
   /// Records a production run against a recipe. Requires `production.create`.
-  /// [actualOutputQuantity] is optional — omit it and the server commits the
-  /// computed suggestion, so callers never have to echo it back.
+  ///
+  /// Two flows: omit [targetOutputQuantity]/[components] for the classic
+  /// leading-ingredient ratio; send both for the target flow (goal + the
+  /// adjustable measured amounts, one per ingredient). [actualOutputQuantity]
+  /// is optional — omit it and the server commits the suggestion.
+  /// [yieldTolerancePercent] sets the ±"met plan" band (default 5%).
   Future<ProductionEventDto> recordProduction({
     required String businessId,
     required String recipeId,
     required String leadingItemId,
     required Decimal leadingQuantityUsed,
+    Decimal? targetOutputQuantity,
+    List<MeasuredComponentInput>? components,
     Decimal? actualOutputQuantity,
+    Decimal? yieldTolerancePercent,
   }) async {
     try {
       final response = await _dio.post(
@@ -640,8 +1012,14 @@ class InventoryApiService {
         data: {
           'leading_item_id': leadingItemId,
           'leading_quantity_used': leadingQuantityUsed.toString(),
+          if (targetOutputQuantity != null)
+            'target_output_quantity': targetOutputQuantity.toString(),
+          if (components != null)
+            'components': [for (final c in components) c.toJson()],
           if (actualOutputQuantity != null)
             'actual_output_quantity': actualOutputQuantity.toString(),
+          if (yieldTolerancePercent != null)
+            'yield_tolerance_percent': yieldTolerancePercent.toString(),
         },
       );
       return ProductionEventDto.fromJson(response.data as Map<String, dynamic>);
@@ -780,10 +1158,14 @@ class InventoryApiService {
 
   /// Creates a recipe for a sellable item. Requires `recipes.create`.
   /// At least one component is required — the backend rejects an empty set.
+  /// Component quantities are totals for [targetYieldQuantity] (batch).
   Future<RecipeDto> createRecipe({
     required String businessId,
     required String sellableItemId,
     String? name,
+    String? category,
+    Decimal? targetYieldQuantity,
+    String? targetYieldUnit,
     required List<RecipeComponentInput> components,
   }) async {
     try {
@@ -792,6 +1174,10 @@ class InventoryApiService {
         data: {
           'sellable_item_id': sellableItemId,
           if (name != null) 'name': name,
+          if (category != null) 'category': category,
+          if (targetYieldQuantity != null)
+            'target_yield_quantity': targetYieldQuantity.toString(),
+          if (targetYieldUnit != null) 'target_yield_unit': targetYieldUnit,
           'components': [for (final c in components) c.toJson()],
         },
       );
@@ -807,6 +1193,9 @@ class InventoryApiService {
     required String businessId,
     required String recipeId,
     String? name,
+    String? category,
+    Decimal? targetYieldQuantity,
+    String? targetYieldUnit,
     required List<RecipeComponentInput> components,
   }) async {
     try {
@@ -814,6 +1203,10 @@ class InventoryApiService {
         InventoryApiPaths.recipe(businessId, recipeId),
         data: {
           if (name != null) 'name': name,
+          if (category != null) 'category': category,
+          if (targetYieldQuantity != null)
+            'target_yield_quantity': targetYieldQuantity.toString(),
+          if (targetYieldUnit != null) 'target_yield_unit': targetYieldUnit,
           'components': [for (final c in components) c.toJson()],
         },
       );
@@ -831,6 +1224,154 @@ class InventoryApiService {
   }) async {
     try {
       await _dio.delete(InventoryApiPaths.recipe(businessId, recipeId));
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Schedules a batch (pending): snapshots the plan, moves no stock.
+  /// Requires `production.create`.
+  Future<RunDto> createRun({
+    required String businessId,
+    required String recipeId,
+    required Decimal targetOutputQuantity,
+    Decimal? yieldTolerancePercent,
+  }) async {
+    try {
+      final response = await _dio.post(
+        InventoryApiPaths.runs(businessId),
+        data: {
+          'recipe_id': recipeId,
+          'target_output_quantity': targetOutputQuantity.toString(),
+          if (yieldTolerancePercent != null)
+            'yield_tolerance_percent': yieldTolerancePercent.toString(),
+        },
+      );
+      return RunDto.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Lists scheduled batches, newest first, optionally by status.
+  /// Requires `production.view`.
+  Future<List<RunDto>> fetchRuns({
+    required String businessId,
+    RunStatusDto? status,
+    int limit = AppLimits.catalogFetchPageSize,
+    int offset = 0,
+  }) async {
+    try {
+      final response = await _dio.get(
+        InventoryApiPaths.runs(businessId),
+        queryParameters: {
+          if (status != null) 'status': status.apiValue,
+          'limit': limit,
+          'offset': offset,
+        },
+      );
+      return (response.data as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(RunDto.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Full detail for one run. Requires `production.view`.
+  Future<RunDto> fetchRun({
+    required String businessId,
+    required String runId,
+  }) async {
+    try {
+      final response = await _dio.get(
+        InventoryApiPaths.run(businessId, runId),
+      );
+      return RunDto.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Starts a pending run: deducts the weighed ingredients, instantly.
+  /// Requires `production.create`. Omit [components] to weigh the plan
+  /// exactly; pass the full adjusted list otherwise.
+  Future<RunDto> startRun({
+    required String businessId,
+    required String runId,
+    required String leadingItemId,
+    required Decimal leadingQuantityUsed,
+    List<MeasuredComponentInput>? components,
+  }) async {
+    try {
+      final response = await _dio.post(
+        InventoryApiPaths.runAction(businessId, runId, 'start'),
+        data: {
+          'leading_item_id': leadingItemId,
+          'leading_quantity_used': leadingQuantityUsed.toString(),
+          if (components != null)
+            'components': [
+              for (final c in components)
+                {
+                  'raw_material_item_id': c.rawMaterialItemId,
+                  'quantity_used': c.quantityUsed.toString(),
+                },
+            ],
+        },
+      );
+      return RunDto.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Completes an in-progress run: records actual yield + waste reason.
+  /// Requires `production.create`. Moves no stock — publishing does that.
+  Future<RunDto> completeRun({
+    required String businessId,
+    required String runId,
+    required Decimal actualOutputQuantity,
+    String? wasteReason,
+  }) async {
+    try {
+      final response = await _dio.post(
+        InventoryApiPaths.runAction(businessId, runId, 'complete'),
+        data: {
+          'actual_output_quantity': actualOutputQuantity.toString(),
+          if (wasteReason != null && wasteReason.trim().isNotEmpty)
+            'waste_reason': wasteReason.trim(),
+        },
+      );
+      return RunDto.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Publishes a completed run: stocks the output, writes history + verdict.
+  /// Requires `production.create`.
+  Future<ProductionEventDto> publishRun({
+    required String businessId,
+    required String runId,
+  }) async {
+    try {
+      final response = await _dio.post(
+        InventoryApiPaths.runAction(businessId, runId, 'publish'),
+      );
+      return ProductionEventDto.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Deletes a pending run. Requires `production.create`.
+  Future<void> deleteRun({
+    required String businessId,
+    required String runId,
+  }) async {
+    try {
+      await _dio.delete(InventoryApiPaths.run(businessId, runId));
     } on DioException catch (e) {
       _rethrowAsInventoryError(e);
     }

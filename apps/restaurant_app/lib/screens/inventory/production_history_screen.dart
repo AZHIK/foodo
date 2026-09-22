@@ -357,14 +357,17 @@ Future<void> showProductionEventDetail(
   BuildContext context,
   ProductionEventDto event,
 ) {
+  // NOTE: pop via dialogContext, not the outer `context`. showDialog
+  // lands on the root Navigator while the screen lives in its shell
+  // branch — popping the outer context pops the page itself.
   return showResponsiveFormDialog<void>(
     context,
-    builder: (_) => ResponsiveFormDialog(
+    builder: (dialogContext) => ResponsiveFormDialog(
       title: event.recipeName,
       width: kStockDialogWidth,
       actions: [
         FilledButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(dialogContext).pop(),
           child: Text(AppStrings.close),
         ),
       ],
@@ -382,6 +385,25 @@ class _ProductionDetailBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final recorded = double.parse(event.actualOutputQuantity.toString());
     final suggested = double.parse(event.suggestedOutputQuantity.toString());
+    final goal = double.parse(event.yieldGoalQuantity.toString());
+    final variancePct = event.yieldVariancePercent == null
+        ? '—'
+        : '${double.parse(event.yieldVariancePercent.toString()).toStringAsFixed(1)}%';
+    final verdictLabel = switch (event.yieldStatus) {
+      YieldStatusDto.above => AppStrings.yieldAbove,
+      YieldStatusDto.withinThreshold => AppStrings.yieldWithin,
+      YieldStatusDto.below => AppStrings.yieldBelow,
+    };
+    final verdictTone = switch (event.yieldStatus) {
+      YieldStatusDto.withinThreshold => context.semantic.success,
+      YieldStatusDto.below => context.semantic.warning,
+      YieldStatusDto.above => context.colors.primary,
+    };
+    final verdictIcon = switch (event.yieldStatus) {
+      YieldStatusDto.withinThreshold => Icons.check_circle_outline_rounded,
+      YieldStatusDto.below => Icons.warning_amber_rounded,
+      YieldStatusDto.above => Icons.trending_up_rounded,
+    };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -395,6 +417,28 @@ class _ProductionDetailBody extends StatelessWidget {
           ),
           tone: context.semantic.success,
           icon: Icons.soup_kitchen_outlined,
+        ),
+        if (event.targetOutputQuantity != null) ...[
+          const SizedBox(height: Insets.md),
+          StockPreviewLine(
+            label: AppStrings.targetQuantity,
+            value: AppStrings.outputValue(
+              Fmt.quantity(goal),
+              event.sellableItemName,
+            ),
+            tone: context.colors.primary,
+            icon: Icons.flag_outlined,
+          ),
+        ],
+        const SizedBox(height: Insets.md),
+        StockPreviewLine(
+          label: verdictLabel,
+          value: AppStrings.yieldVarianceLine(
+            Fmt.quantity(recorded - goal),
+            variancePct,
+          ),
+          tone: verdictTone,
+          icon: verdictIcon,
         ),
         if (recorded != suggested) ...[
           const SizedBox(height: Insets.md),

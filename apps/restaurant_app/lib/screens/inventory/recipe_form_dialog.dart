@@ -15,16 +15,17 @@ import '../../widgets/labeled_form_field.dart';
 import '../../widgets/responsive_form_dialog.dart';
 import 'stock_dialog_shared.dart';
 
-/// Opens the recipe form: pass [recipe] to edit, or [sellable] to define a
-/// new recipe for a menu item. Exactly one of the two decides the mode.
+/// Opens the recipe form: pass [recipe] to edit, [sellable] to pre-select
+/// a menu item, or neither for a blank add (user picks inside the form).
+/// Passing both is ambiguous and rejected.
 Future<void> showRecipeFormDialog(
   BuildContext context, {
   InventoryItem? sellable,
   RecipeDto? recipe,
 }) {
   assert(
-    (sellable == null) != (recipe == null),
-    'pass either a sellable (add) or a recipe (edit), not both or neither',
+    !(sellable != null && recipe != null),
+    'pass either a sellable (add) or a recipe (edit), not both',
   );
   return showResponsiveFormDialog<void>(
     context,
@@ -38,6 +39,9 @@ Future<void> showRecipeFormDialog(
 abstract final class RecipeFormKeys {
   static const sellable = Key('recipeForm.sellable');
   static const name = Key('recipeForm.name');
+  static const category = Key('recipeForm.category');
+  static const targetQty = Key('recipeForm.targetQty');
+  static const targetUnit = Key('recipeForm.targetUnit');
   static const addIngredient = Key('recipeForm.addIngredient');
   static const cancel = Key('recipeForm.cancel');
   static const submit = Key('recipeForm.submit');
@@ -75,9 +79,12 @@ class RecipeFormDialog extends ConsumerStatefulWidget {
 
 class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
   final _name = TextEditingController();
+  final _targetQty = TextEditingController(text: '1');
+  final _targetUnit = TextEditingController(text: 'portions');
   final List<_IngredientRow> _rows = [];
 
   String? _sellableCatalogId;
+  String? _category;
   bool _saving = false;
   bool _deleting = false;
 
@@ -87,6 +94,10 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
     final recipe = widget.recipe;
     if (recipe != null) {
       _name.text = recipe.name;
+      _category = recipe.category;
+      _targetQty.text =
+          _plain(double.parse(recipe.targetYieldQuantity.toString()));
+      _targetUnit.text = recipe.targetYieldUnit;
       _sellableCatalogId = recipe.sellableItemId;
       for (final component in recipe.components) {
         _rows.add(
@@ -105,11 +116,15 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
   @override
   void dispose() {
     _name.dispose();
+    _targetQty.dispose();
+    _targetUnit.dispose();
     for (final row in _rows) {
       row.dispose();
     }
     super.dispose();
   }
+
+  double? get _targetYield => parseQuantity(_targetQty.text);
 
   /// Raw materials (and dual-use lines) backed by backend items — the only
   /// lines the server accepts as ingredients.
@@ -136,6 +151,8 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
   }
 
   String? get _error {
+    final target = _targetYield;
+    if (target == null || target <= 0) return AppStrings.targetPositive;
     final filled = [
       for (final row in _rows)
         if (row.rawCatalogId != null) row,
@@ -156,6 +173,8 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
   bool get _canSubmit {
     if (_saving || _deleting) return false;
     if (_sellableCatalogId == null) return false;
+    final target = _targetYield;
+    if (target == null || target <= 0) return false;
     final filled = [
       for (final row in _rows)
         if (row.rawCatalogId != null) row,
@@ -179,6 +198,9 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
     final messenger = ScaffoldMessenger.of(context);
     final recipeId = widget.recipe?.id;
     final nameText = _name.text.trim();
+    final unitText = _targetUnit.text.trim();
+    final target = _targetYield;
+    if (target == null || target <= 0) return;
 
     setState(() => _saving = true);
     try {
@@ -186,6 +208,9 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
           ? await ref.read(recipesCatalogProvider.notifier).createRecipe(
                 sellableItemId: _sellableCatalogId!,
                 name: nameText.isEmpty ? null : nameText,
+                category: _category,
+                targetYieldQuantity: Decimal.parse(target.toString()),
+                targetYieldUnit: unitText.isEmpty ? null : unitText,
                 components: _inputs(),
               )
           : await ref.read(recipesCatalogProvider.notifier).updateRecipe(
@@ -193,6 +218,9 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
                 // Blank keeps the server-side name (the backend treats null
                 // as "don't rename"); only a typed value renames.
                 name: nameText.isEmpty ? null : nameText,
+                category: _category,
+                targetYieldQuantity: Decimal.parse(target.toString()),
+                targetYieldUnit: unitText.isEmpty ? null : unitText,
                 components: _inputs(),
               );
       if (!mounted) return;
@@ -342,10 +370,76 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
                   InputDecoration(hintText: AppStrings.recipeNameExample),
             ),
           ),
+          const SizedBox(height: Insets.lg),
+          LabeledFormField(
+            label: AppStrings.recipeCategory,
+            helper: AppStrings.recipeCategoryHelper,
+            child: DropdownButtonFormField<String>(
+              key: RecipeFormKeys.category,
+              initialValue: _category,
+              isExpanded: true,
+              hint: Text(AppStrings.selectHint),
+              items: [
+                for (final c in RecipeCategories.all)
+                  DropdownMenuItem(
+                    value: c,
+                    child: Text(AppStrings.recipeCategoryName(c)),
+                  ),
+              ],
+              onChanged: (value) => setState(() => _category = value),
+            ),
+          ),
+          const SizedBox(height: Insets.lg),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 2,
+                child: LabeledFormField(
+                  label: AppStrings.targetYieldQty,
+                  helper: AppStrings.targetYieldHelper,
+                  isRequired: true,
+                  child: TextFormField(
+                    key: RecipeFormKeys.targetQty,
+                    controller: _targetQty,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d*$')),
+                    ],
+                    decoration: const InputDecoration(hintText: '50'),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+              ),
+              const SizedBox(width: Insets.md),
+              Expanded(
+                flex: 2,
+                child: LabeledFormField(
+                  label: AppStrings.targetYieldUnit,
+                  child: TextFormField(
+                    key: RecipeFormKeys.targetUnit,
+                    controller: _targetUnit,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(hintText: 'portions'),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: Insets.xl),
           _SectionHeader(
             title: AppStrings.ingredientsSection,
             onAdd: () => setState(() => _rows.add(_IngredientRow())),
+          ),
+          const SizedBox(height: Insets.xs),
+          Text(
+            AppStrings.batchTotalsHint,
+            style: context.text.bodySmall?.copyWith(
+              color: context.colors.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: Insets.md),
           for (var i = 0; i < _rows.length; i++) ...[

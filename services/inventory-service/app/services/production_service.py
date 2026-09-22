@@ -60,6 +60,80 @@ class InvalidProductionInputError(ValueError):
     """
 
 
+def per_unit_requirement(quantity_required: Decimal, target_yield: Decimal) -> Decimal:
+    """One sellable unit's share of a batch-formula ingredient line.
+
+    Components are totals for the recipe's target yield — divide through so
+    ratio math, plans, and consumption all work per unit. A target of 1
+    reproduces the original per-unit recipe exactly.
+    """
+    if target_yield <= Decimal("0"):
+        raise InvalidProductionInputError(
+            f"recipe target yield must be positive, got {target_yield}"
+        )
+    return quantity_required / target_yield
+
+
+async def plan_production_quantities(
+    db: AsyncSession,
+    business_id: UUID,
+    recipe_id: UUID,
+    target_output_quantity: Decimal,
+) -> tuple[Recipe, Item, list[tuple[RecipeComponent, Item]]]:
+    """Recommend every grocery amount for a target output (no stock change).
+
+    Each ingredient's planned quantity is ``quantity_required * target`` —
+    the answer to "I need N products, how much should I measure?". The
+    caller may adjust any line before committing via ``components`` on
+    ``record_production_event``.
+    """
+    if target_output_quantity <= Decimal("0"):
+        raise InvalidProductionInputError(
+            f"target_output_quantity must be positive, got {target_output_quantity}"
+        )
+    result = await db.exec(
+        select(Recipe).where(
+            Recipe.id == recipe_id, Recipe.business_id == business_id
+        )
+    )
+    recipe = result.one_or_none()
+    if recipe is None:
+        raise RecipeNotFoundError(
+            f"Recipe '{recipe_id}' not found in this business"
+        )
+    comp_result = await db.exec(
+        select(RecipeComponent).where(RecipeComponent.recipe_id == recipe.id)
+    )
+    components = list(comp_result.all())
+    if not components:
+        raise InvalidProductionInputError(
+            f"Recipe '{recipe.name}' has no ingredients — cannot plan"
+        )
+    sellable_result = await db.exec(
+        select(Item).where(
+            Item.id == recipe.sellable_item_id, Item.business_id == business_id
+        )
+    )
+    sellable = sellable_result.one_or_none()
+    if sellable is None:
+        raise RecipeNotFoundError(
+            f"Sellable item for recipe '{recipe.name}' no longer exists"
+        )
+    item_result = await db.exec(
+        select(Item).where(
+            Item.id.in_([c.raw_material_item_id for c in components]),
+            Item.business_id == business_id,
+        )
+    )
+    items = {item.id: item for item in item_result.all()}
+    missing = [c for c in components if c.raw_material_item_id not in items]
+    if missing:
+        raise RecipeNotFoundError(
+            f"Ingredient item for recipe '{recipe.name}' no longer exists"
+        )
+    return recipe, sellable, [(c, items[c.raw_material_item_id]) for c in components]
+
+
 async def record_production_event(
     db: AsyncSession,
     business_id: UUID,
@@ -67,47 +141,44 @@ async def record_production_event(
     leading_item_id: UUID,
     leading_quantity_used: Decimal,
     actual_output_quantity: Decimal | None = None,
+    target_output_quantity: Decimal | None = None,
+    components_override: dict[UUID, Decimal] | None = None,
     actor_type: str = "user",
     actor_id: UUID | None = None,
 ) -> ProductionEvent:
     """Record one production run atomically: consume ingredients, add output.
 
+    Two flows share this commit path:
+
+    * LEADING flow (``target_output_quantity=None``,
+      ``components_override=None``): consumption follows the recipe ratio
+      from the measured leading ingredient; the suggestion is that ratio.
+    * TARGET flow (``target_output_quantity`` set): the cook entered a
+      goal first and the app recommended ``quantity_required * target``
+      per ingredient. The goal anchors the suggestion and the
+      above/within/below-threshold verdict. Consumption comes from
+      ``components_override`` when supplied (every line adjustable),
+      else falls back to the leading ratio.
+
     Parameters
     ----------
-    db : AsyncSession
-        The database session. This function owns the transaction: it commits
-        on success and rolls back on any failure.
-    business_id : UUID
-        Owning business — every row touched is scoped to it.
-    recipe_id : UUID
-        The Stage 1 recipe being produced.
-    leading_item_id : UUID
-        The ingredient the owner actually measured. Must be one of the
-        recipe's components; its row consumes ``leading_quantity_used``
-        exactly (no round-trip through the ratio).
-    leading_quantity_used : Decimal
-        What the owner entered, in the leading ingredient's own unit. Must
-        be strictly positive.
-    actual_output_quantity : Decimal | None
-        Owner-confirmed output. ``None`` defaults to the recipe-computed
-        suggestion server-side, so clients never have to echo it back.
-    actor_type : str
-        One of ``"user"``, ``"system"``, ``"service"``.
-    actor_id : UUID | None
-        Who confirmed the run.
-
-    Returns
-    -------
-    ProductionEvent
-        The persisted event row (components are reachable by its id).
+    target_output_quantity : Decimal | None
+        Goal entered before measuring ("I need N products"). Stored on
+        the event and used as the yield goal; ``None`` preserves the
+        original leading-only behaviour.
+    components_override : dict[UUID, Decimal] | None
+        Owner-adjusted measured amounts keyed by raw material id. Must
+        cover the whole recipe exactly once (including the leading
+        ingredient, whose entry must equal ``leading_quantity_used``);
+        every value strictly positive.
 
     Raises
     ------
     RecipeNotFoundError
         Recipe (or its sellable item) is not part of this business.
     InvalidProductionInputError
-        Leading ingredient is not on the recipe, or a quantity is not
-        strictly positive.
+        Leading ingredient is not on the recipe, a quantity is not
+        strictly positive, or the override set does not match the recipe.
     InsufficientStockError
         Any ingredient would go negative without ``allow_negative_stock``.
         Nothing has been written when this raises — the event fails whole.
@@ -115,6 +186,10 @@ async def record_production_event(
     if leading_quantity_used <= Decimal("0"):
         raise InvalidProductionInputError(
             f"leading_quantity_used must be positive, got {leading_quantity_used}"
+        )
+    if target_output_quantity is not None and target_output_quantity <= Decimal("0"):
+        raise InvalidProductionInputError(
+            f"target_output_quantity must be positive, got {target_output_quantity}"
         )
 
     # ── Step 1: load recipe + components, all business-scoped ──────────
@@ -134,21 +209,32 @@ async def record_production_event(
     )
     components = list(comp_result.all())
 
-    leading_requirement: Decimal | None = None
+    leading_batch_requirement: Decimal | None = None
     for comp in components:
         if comp.raw_material_item_id == leading_item_id:
-            leading_requirement = comp.quantity_required
-    if leading_requirement is None:
+            leading_batch_requirement = comp.quantity_required
+    if leading_batch_requirement is None:
         raise InvalidProductionInputError(
             f"Item '{leading_item_id}' is not an ingredient of recipe '{recipe.name}' — "
             "the measured ingredient must be one of the recipe's components"
         )
+    # Batch semantics: components are totals for the target yield — the
+    # ratio works on per-unit shares (a target of 1 is the old behaviour).
+    leading_requirement = per_unit_requirement(
+        leading_batch_requirement, recipe.target_yield_quantity
+    )
 
     # ── Step 2: ratio math (Decimal throughout — never float) ──────────
     # One recipe makes ONE unit of output, so the ratio doubles as the
     # suggested output count: 2000g used ÷ 200g per plate = 10 plates.
+    # In the TARGET flow the entered goal anchors the suggestion instead;
+    # consumption still comes from the adjustable override when supplied,
+    # else from the leading ratio (plan endpoint tells the client what to
+    # send as the override).
     ratio = leading_quantity_used / leading_requirement
-    suggested_output = ratio
+    suggested_output = (
+        target_output_quantity if target_output_quantity is not None else ratio
+    )
     actual_output = (
         suggested_output if actual_output_quantity is None else actual_output_quantity
     )
@@ -157,16 +243,40 @@ async def record_production_event(
             f"actual_output_quantity must be positive, got {actual_output}"
         )
 
-    # Every other ingredient scales by the same ratio; the leading row is
-    # the measured value exactly, so weighing error never compounds.
-    consumption: dict[UUID, Decimal] = {}
-    for comp in components:
-        if comp.raw_material_item_id == leading_item_id:
-            consumption[comp.raw_material_item_id] = leading_quantity_used
-        else:
-            consumption[comp.raw_material_item_id] = (
-                comp.quantity_required * ratio
+    if components_override is not None:
+        recipe_ids = {c.raw_material_item_id for c in components}
+        override_ids = set(components_override.keys())
+        if override_ids != recipe_ids:
+            raise InvalidProductionInputError(
+                "components must cover the whole recipe exactly once — "
+                f"recipe has {len(recipe_ids)} ingredients, "
+                f"got {len(override_ids)}"
             )
+        for raw_id, qty in components_override.items():
+            if qty <= Decimal("0"):
+                raise InvalidProductionInputError(
+                    f"components quantity for '{raw_id}' must be positive, got {qty}"
+                )
+        if components_override[leading_item_id] != leading_quantity_used:
+            raise InvalidProductionInputError(
+                "components entry for the leading ingredient must equal "
+                "leading_quantity_used — adjust both together"
+            )
+        consumption: dict[UUID, Decimal] = dict(components_override)
+    else:
+        # Every other ingredient scales by the same ratio; the leading row
+        # is the measured value exactly, so weighing error never compounds.
+        consumption = {}
+        for comp in components:
+            if comp.raw_material_item_id == leading_item_id:
+                consumption[comp.raw_material_item_id] = leading_quantity_used
+            else:
+                consumption[comp.raw_material_item_id] = (
+                    per_unit_requirement(
+                        comp.quantity_required, recipe.target_yield_quantity
+                    )
+                    * ratio
+                )
 
     # ── Step 3: production site = the sellable item's store ────────────
     # The output level lives at the sellable's store, so inputs are drawn
@@ -230,6 +340,7 @@ async def record_production_event(
         recipe_id=recipe.id,
         leading_component_item_id=leading_item_id,
         leading_quantity_used=leading_quantity_used,
+        target_output_quantity=target_output_quantity,
         suggested_output_quantity=suggested_output,
         actual_output_quantity=actual_output,
         actor_id=actor_id,
@@ -302,6 +413,11 @@ async def record_production_event(
         "store_id": str(store_id),
         "leading_item_id": str(leading_item_id),
         "leading_quantity_used": str(event.leading_quantity_used),
+        "target_output_quantity": (
+            str(event.target_output_quantity)
+            if event.target_output_quantity is not None
+            else None
+        ),
         "suggested_output_quantity": str(event.suggested_output_quantity),
         "actual_output_quantity": str(event.actual_output_quantity),
     }
@@ -315,6 +431,11 @@ async def record_production_event(
         "resource_id": str(event.id),
         "details": {
             "recipe_id": str(recipe.id),
+            "target_output_quantity": (
+                str(event.target_output_quantity)
+                if event.target_output_quantity is not None
+                else None
+            ),
             "suggested_output_quantity": str(event.suggested_output_quantity),
             "actual_output_quantity": str(event.actual_output_quantity),
         },

@@ -54,10 +54,14 @@ class RecipesCatalogNotifier extends AsyncNotifier<List<RecipeDto>> {
   }
 
   /// Creates a recipe, then re-reads the catalog so pickers and detail
-  /// screens see it. Returns what the server stored.
+  /// screens see it. Returns what the server stored. Component quantities
+  /// are totals for [targetYieldQuantity] (the batch the formula makes).
   Future<RecipeDto> createRecipe({
     required String sellableItemId,
     String? name,
+    String? category,
+    Decimal? targetYieldQuantity,
+    String? targetYieldUnit,
     required List<RecipeComponentInput> components,
   }) async {
     final businessId = ref.read(currentBusinessIdProvider);
@@ -66,6 +70,9 @@ class RecipesCatalogNotifier extends AsyncNotifier<List<RecipeDto>> {
           businessId: businessId,
           sellableItemId: sellableItemId,
           name: name,
+          category: category,
+          targetYieldQuantity: targetYieldQuantity,
+          targetYieldUnit: targetYieldUnit,
           components: components,
         );
     await refresh();
@@ -78,6 +85,9 @@ class RecipesCatalogNotifier extends AsyncNotifier<List<RecipeDto>> {
   Future<RecipeDto> updateRecipe({
     required String recipeId,
     String? name,
+    String? category,
+    Decimal? targetYieldQuantity,
+    String? targetYieldUnit,
     required List<RecipeComponentInput> components,
   }) async {
     final businessId = ref.read(currentBusinessIdProvider);
@@ -86,6 +96,9 @@ class RecipesCatalogNotifier extends AsyncNotifier<List<RecipeDto>> {
           businessId: businessId,
           recipeId: recipeId,
           name: name,
+          category: category,
+          targetYieldQuantity: targetYieldQuantity,
+          targetYieldUnit: targetYieldUnit,
           components: components,
         );
     await refresh();
@@ -154,7 +167,10 @@ class ProductionPreview {
       if (component.rawMaterialItemId == leadingItemId) leading = component;
     }
     if (leading == null) return null;
-    final requirement = double.parse(leading.quantityRequired.toString());
+    final batch = double.parse(recipe.targetYieldQuantity.toString());
+    final divisor = batch <= 0 ? 1.0 : batch;
+    final requirement =
+        double.parse(leading.quantityRequired.toString()) / divisor;
     if (requirement <= 0) return null;
 
     final ratio = leadingQty / requirement;
@@ -166,9 +182,30 @@ class ProductionPreview {
           component.rawMaterialItemId:
               component.rawMaterialItemId == leadingItemId
                   ? leadingQty
-                  : double.parse(component.quantityRequired.toString()) * ratio,
+                  : double.parse(component.quantityRequired.toString()) /
+                      divisor *
+                      ratio,
       },
     );
+  }
+
+  /// Recommendation for a target output: per-unit share × target per
+  /// ingredient. Mirrors the backend plan endpoint so the dialog can seed
+  /// its adjustable fields instantly (the server remains authoritative on
+  /// submit). Batch-aware: divides batch totals by the recipe yield.
+  static Map<String, double> plannedForTarget({
+    required RecipeDto recipe,
+    required double target,
+  }) {
+    final batch = double.parse(recipe.targetYieldQuantity.toString());
+    final divisor = batch <= 0 ? 1.0 : batch;
+    return {
+      for (final component in recipe.components)
+        component.rawMaterialItemId:
+            double.parse(component.quantityRequired.toString()) /
+                divisor *
+                target,
+    };
   }
 }
 
@@ -240,16 +277,37 @@ class ProductionHistoryNotifier extends AsyncNotifier<List<ProductionEventDto>> 
     );
   }
 
+  /// Recommends every grocery amount for [targetOutput] ("I need N").
+  ///
+  /// Pure calculation server-side — no stock moves. Each line stays
+  /// adjustable; the dialog seeds its editable fields from the plan.
+  Future<ProductionPlanDto> planProduction({
+    required String recipeId,
+    required double targetOutput,
+  }) async {
+    final businessId = _businessId;
+    if (businessId == null) throw StateError('No active business context');
+    return _api.planProduction(
+      businessId: businessId,
+      recipeId: recipeId,
+      targetOutputQuantity: Decimal.parse(targetOutput.toString()),
+    );
+  }
+
   /// Records a production run, then re-reads history and stock counts.
   ///
   /// Both refreshes matter: the ledger must show the new run, and every
   /// touched stock count moved server-side. Returns the recorded event so
-  /// the dialog can confirm with real numbers.
+  /// the dialog can confirm with real numbers including the server-computed
+  /// yield verdict (above / within / below threshold).
   Future<ProductionEventDto> recordProduction({
     required String recipeId,
     required String leadingItemId,
     required double leadingQuantity,
+    double? targetOutput,
+    Map<String, double>? measuredByItemId,
     double? actualOutput,
+    double? yieldTolerancePercent,
   }) async {
     final businessId = _businessId;
     if (businessId == null) throw StateError('No active business context');
@@ -258,9 +316,24 @@ class ProductionHistoryNotifier extends AsyncNotifier<List<ProductionEventDto>> 
       recipeId: recipeId,
       leadingItemId: leadingItemId,
       leadingQuantityUsed: Decimal.parse(leadingQuantity.toString()),
+      targetOutputQuantity: targetOutput == null
+          ? null
+          : Decimal.parse(targetOutput.toString()),
+      components: measuredByItemId == null
+          ? null
+          : [
+              for (final entry in measuredByItemId.entries)
+                MeasuredComponentInput(
+                  rawMaterialItemId: entry.key,
+                  quantityUsed: Decimal.parse(entry.value.toString()),
+                ),
+            ],
       actualOutputQuantity: actualOutput == null
           ? null
           : Decimal.parse(actualOutput.toString()),
+      yieldTolerancePercent: yieldTolerancePercent == null
+          ? null
+          : Decimal.parse(yieldTolerancePercent.toString()),
     );
     await refresh();
     // Stock moved on every leg — the grocery counts are stale until this
@@ -278,4 +351,153 @@ final productionHistoryProvider =
 /// The ledger, unwrapped for the history screen.
 final productionHistoryListProvider = Provider<List<ProductionEventDto>>(
   (ref) => ref.watch(productionHistoryProvider).valueOrNull ?? const [],
+);
+
+// ---------------------------------------------------------------------------
+// Scheduled runs (Production Module, Tabs 2 + 3)
+// ---------------------------------------------------------------------------
+
+/// Status filter over the runs list. Null means all — the tab chips set
+/// one status or clear back to everything.
+class ProductionRunStatusFilterNotifier extends Notifier<RunStatusDto?> {
+  @override
+  RunStatusDto? build() => null;
+
+  void set(RunStatusDto? status) => state = status;
+
+  void clear() => state = null;
+}
+
+final productionRunStatusFilterProvider =
+    NotifierProvider<ProductionRunStatusFilterNotifier, RunStatusDto?>(
+      ProductionRunStatusFilterNotifier.new,
+    );
+
+/// Scheduled cooking batches, newest first — the shift plan (Tab 2) and
+/// the verification queue (Tab 3) read the same list through different
+/// status filters.
+class ProductionRunsNotifier extends AsyncNotifier<List<RunDto>> {
+  InventoryApiService get _api => ref.read(inventoryApiServiceProvider);
+
+  String? get _businessId => ref.read(currentBusinessIdProvider);
+
+  @override
+  Future<List<RunDto>> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    final filter = ref.watch(productionRunStatusFilterProvider);
+    if (businessId == null) return const [];
+    return _api.fetchRuns(businessId: businessId, status: filter);
+  }
+
+  Future<void> refresh() async {
+    final businessId = _businessId;
+    if (businessId == null) return;
+    final filter = ref.read(productionRunStatusFilterProvider);
+    state = const AsyncLoading<List<RunDto>>().copyWithPrevious(state);
+    state = AsyncData(
+      await _api.fetchRuns(businessId: businessId, status: filter),
+    );
+  }
+
+  /// Schedules a batch (pending): snapshots the plan, moves no stock.
+  Future<RunDto> createRun({
+    required String recipeId,
+    required double targetOutput,
+    double? yieldTolerancePercent,
+  }) async {
+    final businessId = _businessId;
+    if (businessId == null) throw StateError('No active business context');
+    final run = await _api.createRun(
+      businessId: businessId,
+      recipeId: recipeId,
+      targetOutputQuantity: Decimal.parse(targetOutput.toString()),
+      yieldTolerancePercent: yieldTolerancePercent == null
+          ? null
+          : Decimal.parse(yieldTolerancePercent.toString()),
+    );
+    await refresh();
+    return run;
+  }
+
+  /// Starts a pending run: deducts the weighed ingredients, instantly.
+  /// Pass [measuredByItemId] (full recipe coverage) to record adjustments;
+  /// omit it to weigh the plan exactly. Refreshes stock counts too — every
+  /// input leg moved server-side.
+  Future<RunDto> startRun({
+    required String runId,
+    required String leadingItemId,
+    required double leadingQuantity,
+    Map<String, double>? measuredByItemId,
+  }) async {
+    final businessId = _businessId;
+    if (businessId == null) throw StateError('No active business context');
+    final run = await _api.startRun(
+      businessId: businessId,
+      runId: runId,
+      leadingItemId: leadingItemId,
+      leadingQuantityUsed: Decimal.parse(leadingQuantity.toString()),
+      components: measuredByItemId == null
+          ? null
+          : [
+              for (final entry in measuredByItemId.entries)
+                MeasuredComponentInput(
+                  rawMaterialItemId: entry.key,
+                  quantityUsed: Decimal.parse(entry.value.toString()),
+                ),
+            ],
+    );
+    await refresh();
+    await ref.read(inventoryItemsProvider.notifier).refresh();
+    return run;
+  }
+
+  /// Completes an in-progress run: records actual yield + waste reason.
+  /// Moves no stock — publishing does that, so verification stays safe.
+  Future<RunDto> completeRun({
+    required String runId,
+    required double actualOutput,
+    String? wasteReason,
+  }) async {
+    final businessId = _businessId;
+    if (businessId == null) throw StateError('No active business context');
+    final run = await _api.completeRun(
+      businessId: businessId,
+      runId: runId,
+      actualOutputQuantity: Decimal.parse(actualOutput.toString()),
+      wasteReason: wasteReason,
+    );
+    await refresh();
+    return run;
+  }
+
+  /// Publishes a completed run: stocks the output ("Publish to POS &
+  /// Inventory"), writes history + verdict. Refreshes history, runs, and
+  /// stock — all three moved server-side.
+  Future<ProductionEventDto> publishRun({required String runId}) async {
+    final businessId = _businessId;
+    if (businessId == null) throw StateError('No active business context');
+    final event = await _api.publishRun(businessId: businessId, runId: runId);
+    await refresh();
+    await ref.read(productionHistoryProvider.notifier).refresh();
+    await ref.read(inventoryItemsProvider.notifier).refresh();
+    return event;
+  }
+
+  /// Deletes a pending run. Started runs moved stock — complete them.
+  Future<void> deleteRun(String runId) async {
+    final businessId = _businessId;
+    if (businessId == null) throw StateError('No active business context');
+    await _api.deleteRun(businessId: businessId, runId: runId);
+    await refresh();
+  }
+}
+
+final productionRunsProvider =
+    AsyncNotifierProvider<ProductionRunsNotifier, List<RunDto>>(
+      ProductionRunsNotifier.new,
+    );
+
+/// The runs, unwrapped for the Runs and Output tabs.
+final productionRunsListProvider = Provider<List<RunDto>>(
+  (ref) => ref.watch(productionRunsProvider).valueOrNull ?? const [],
 );

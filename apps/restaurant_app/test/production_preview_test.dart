@@ -112,6 +112,111 @@ void main() {
       expect(dto.components.first.quantityRequired, Decimal.parse('0.2'));
     });
 
+    test('RecipeDto parses batch formula, category and costs', () {
+      final dto = RecipeDto.fromJson({
+        'id': 'r1',
+        'business_id': 'b1',
+        'sellable_item_id': 's1',
+        'sellable_item_name': 'Biryani',
+        'name': 'Biryani x50',
+        'category': 'finished',
+        'target_yield_quantity': '50.000',
+        'target_yield_unit': 'portions',
+        'total_cost': '109500.00',
+        'cost_per_unit': '2190.00',
+        'cost_complete': true,
+        'created_at': '2026-09-14T07:00:00Z',
+        'updated_at': '2026-09-14T07:00:00Z',
+        'components': [
+          {
+            'raw_material_item_id': 'rice',
+            'raw_material_name': 'Rice',
+            'raw_material_unit': 'kg',
+            'quantity_required': '10.000',
+            'quantity_per_unit': '0.200',
+            'line_cost': '32000.00',
+          },
+        ],
+      });
+
+      expect(dto.category, 'finished');
+      expect(dto.targetYieldQuantity, Decimal.parse('50'));
+      expect(dto.costPerUnit, Decimal.parse('2190'));
+      expect(dto.costComplete, isTrue);
+      expect(
+        dto.components.first.quantityPerUnit,
+        Decimal.parse('0.2'),
+      );
+    });
+
+    test('RecipeDto tolerates pre-batch payloads', () {
+      final dto = RecipeDto.fromJson({
+        'id': 'r1',
+        'business_id': 'b1',
+        'sellable_item_id': 's1',
+        'sellable_item_name': 'Pilau',
+        'name': 'Pilau',
+        'created_at': '2026-09-14T07:00:00Z',
+        'updated_at': '2026-09-14T07:00:00Z',
+        'components': [
+          {
+            'raw_material_item_id': 'rice',
+            'raw_material_name': 'Rice',
+            'raw_material_unit': 'kg',
+            'quantity_required': '0.200',
+          },
+        ],
+      });
+
+      expect(dto.targetYieldQuantity, Decimal.fromInt(1));
+      expect(dto.components.first.quantityPerUnit, Decimal.parse('0.2'));
+    });
+
+    test('RunDto parses lifecycle, verdict and publish state', () {
+      final dto = RunDto.fromJson({
+        'id': 'run1',
+        'business_id': 'b1',
+        'store_id': 'st1',
+        'recipe_id': 'r1',
+        'recipe_name': 'Pilau',
+        'sellable_item_id': 's1',
+        'sellable_item_name': 'Pilau',
+        'target_output_quantity': '10.000',
+        'status': 'completed',
+        'leading_component_item_id': 'rice',
+        'yield_tolerance_percent': '5',
+        'actual_output_quantity': '8.000',
+        'waste_reason': 'spillage',
+        'yield_goal_quantity': '10.000',
+        'yield_variance': '-2.000',
+        'yield_variance_percent': '-20.00',
+        'yield_status': 'below',
+        'published_at': null,
+        'created_by': null,
+        'started_at': '2026-09-14T07:00:00Z',
+        'completed_at': '2026-09-14T07:30:00Z',
+        'created_at': '2026-09-14T06:00:00Z',
+        'updated_at': '2026-09-14T07:30:00Z',
+        'components': [
+          {
+            'id': 'c1',
+            'production_run_id': 'run1',
+            'raw_material_item_id': 'rice',
+            'raw_material_name': 'Rice',
+            'raw_material_unit': 'kg',
+            'planned_quantity': '2.000',
+            'measured_quantity': '2.000',
+          },
+        ],
+      });
+
+      expect(dto.status, RunStatusDto.completed);
+      expect(dto.published, isFalse);
+      expect(dto.yieldStatus, YieldStatusDto.below);
+      expect(dto.wasteReason, 'spillage');
+      expect(dto.components.first.measuredQuantity, Decimal.parse('2'));
+    });
+
     test('ProductionEventDto keeps suggested and actual apart', () {
       final dto = ProductionEventDto.fromJson({
         'id': 'e1',

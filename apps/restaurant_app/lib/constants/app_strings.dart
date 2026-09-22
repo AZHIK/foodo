@@ -646,6 +646,93 @@ abstract final class AppStrings {
       'Recorded $quantity × $name (suggested $suggested)';
   static String recordFailed(String message) => 'Could not record: $message';
   static String get recordProductionTitle => L10n.t('recordProductionTitle', 'Record production');
+  static String get howManyNeeded => L10n.t('howManyNeeded', 'How many do you need?');
+  static String get howManyNeededHint => L10n.t('howManyNeededHint', 'Enter the number of products to achieve');
+  static String get targetQuantity => L10n.t('targetQuantity', 'Target quantity');
+  static String get continueToMeasure => L10n.t('continueToMeasure', 'See what to measure');
+  static String get measureIngredients => L10n.t('measureIngredients', 'Measure ingredients');
+  static String get measureIngredientsHint => L10n.t('measureIngredientsHint', 'Recommended amounts for your target — adjust anything you measure differently');
+  static String get measuredAmount => L10n.t('measuredAmount', 'Measured');
+  static String get adjustAllHint => L10n.t('adjustAllHint', 'Every line is adjustable before cooking');
+  static String get backToTarget => L10n.t('backToTarget', 'Back');
+  static String get continueToConfirm => L10n.t('continueToConfirm', 'Continue to confirm');
+  static String get confirmAchieved => L10n.t('confirmAchieved', 'Confirm achieved');
+  static String get achievedQuantity => L10n.t('achievedQuantity', 'Amount achieved');
+  static String get achievedHint => L10n.t('achievedHint', 'After cooking, enter what you actually got');
+  static String get yieldAbove => L10n.t('yieldAbove', 'Above target — over-yield');
+  static String get yieldWithin => L10n.t('yieldWithin', 'Within threshold — target met');
+  static String get yieldBelow => L10n.t('yieldBelow', 'Below target — under-yield');
+  static String yieldVarianceLine(String variance, String percent) => 'Variance $variance ($percent)';
+  static String get toleranceLabel => L10n.t('toleranceLabel', 'Threshold ±%');
+  static String get recipesTab => L10n.t('recipesTab', 'Recipes');
+  static String get runsTab => L10n.t('runsTab', 'Runs');
+  static String get outputTab => L10n.t('outputTab', 'Output');
+  static String get newRun => L10n.t('newRun', 'New run');
+  static String get planRunTitle => L10n.t('planRunTitle', 'Plan a batch');
+  static String get pickRecipe => L10n.t('pickRecipe', 'Recipe');
+  static String get runTargetHint => L10n.t('runTargetHint', 'How many to make');
+  static String get startRun => L10n.t('startRun', 'Start');
+  static String get startRunTitle => L10n.t('startRunTitle', 'Start batch');
+  static String get completeRun => L10n.t('completeRun', 'Complete');
+  static String get completeRunTitle => L10n.t('completeRunTitle', 'Record output');
+  static String get actualYield => L10n.t('actualYield', 'Actual yield');
+  static String get actualYieldHint => L10n.t('actualYieldHint', 'What cooking actually produced');
+  static String get wasteReasonHint => L10n.t('wasteReasonHint', 'e.g. spillage, burning, over-portioning (optional)');
+  static String get publishAction => L10n.t('publishAction', 'Publish to POS & Inventory');
+  static String get publishedBadge => L10n.t('publishedBadge', 'Published');
+  static String get awaitingPublish => L10n.t('awaitingPublish', 'Awaiting publish');
+  static String get pendingBadge => L10n.t('pendingBadge', 'Pending');
+  static String get inProgressBadge => L10n.t('inProgressBadge', 'In progress');
+  static String get completedBadge => L10n.t('completedBadge', 'Completed');
+  static String get allFilter => L10n.t('allFilter', 'All');
+  static String get noRunsYetFilter => L10n.t('noRunsYetFilter', 'No runs in this state yet');
+  static String get scheduleFirstRun => L10n.t('scheduleFirstRun', 'Plan the first batch from a recipe');
+  static String get deleteRunTitle => L10n.t('deleteRunTitle', 'Delete this planned batch?');
+  static String deleteRunBody(String recipe, String target) => 'The planned batch of $target × $recipe will be removed. Nothing was deducted.';
+  static String runScheduled(String target, String recipe) => 'Planned $target × $recipe';
+  static String runStarted(String recipe) => '$recipe batch started — ingredients deducted';
+  static String runCompleted(String actual, String recipe) => 'Recorded $actual × $recipe — verify, then publish';
+  static String runPublished(String actual, String recipe) => '$actual × $recipe is now on sale';
+  static String runDeletedLine(String recipe) => 'Planned $recipe batch deleted';
+  static String runFailed(Object e) => 'Could not update run: $e';
+  static String costPerUnit(String cost) => '$cost / unit';
+  static String get costEstimated => L10n.t('costEstimated', 'est.');
+  static String batchYieldLine(String qty, String unit) => 'Makes $qty $unit';
+  static String get ledgerAction => L10n.t('ledgerAction', 'Full ledger');
+  static String get verifyQueueHint => L10n.t('verifyQueueHint', 'Completed batches awaiting verification and publish');
+  static String guidedStepOf(int step, int total) => 'Step $step of $total';
+  static String get whatMakingToday => L10n.t('whatMakingToday', 'What are we making today?');
+  static String get howManyToday => L10n.t('howManyToday', 'How many do you need today?');
+  static String get howManyTodayHint => L10n.t('howManyTodayHint', 'Just the number — we work out every ingredient for you');
+  static String get planSavedTitle => L10n.t('planSavedTitle', 'Plan saved!');
+  static String planSavedBody(String target, String recipe) =>
+      'Your plan for $target × $recipe is saved. Nothing is deducted yet.';
+  static String get whatHappensNext => L10n.t('whatHappensNext', 'What happens next');
+  static String get nextWeigh => L10n.t('nextWeigh', '1. Weigh the ingredients and tap Start cooking');
+  static String get nextCook => L10n.t('nextCook', '2. Cook — take your time, hours if needed');
+  static String get nextRecord => L10n.t('nextRecord', '3. Come back and record what you actually got');
+  static String get seeWhatToWeigh => L10n.t('seeWhatToWeigh', 'See what to weigh');
+  static String get illCookLater => L10n.t('illCookLater', 'I’ll cook later');
+  static String get weighAndStart => L10n.t('weighAndStart', 'Weigh each line, then start');
+  static String get startCookingHint => L10n.t('startCookingHint', 'Adjust anything you measure differently, then start — ingredients leave stock at that moment');
+  static String get cookingTitle => L10n.t('cookingTitle', 'You’re cooking!');
+  static String get cookingBody => L10n.t('cookingBody', 'Ingredients are deducted. Come back to the Runs tab when the food is ready and tap Record output.');
+  static String get welcomeBack => L10n.t('welcomeBack', 'Welcome back!');
+  static String get howManyGot => L10n.t('howManyGot', 'How many did you actually get?');
+  static String targetWasLine(String target, String recipe) => 'Target was $target × $recipe';
+  static String get anythingLost => L10n.t('anythingLost', 'Did anything get lost or wasted?');
+  static String get anythingLostHint => L10n.t('anythingLostHint', 'Optional — helps track losses');
+  static String savedVerify(String actual, String recipe) =>
+      'Saved $actual × $recipe. Check the Output tab to verify and publish.';
+  static String get finishLater => L10n.t('finishLater', 'I’ll finish later');
+  static String get savedCooking => L10n.t('savedCooking', 'Saved — your batch is cooking. Find it under Runs to record the output later.');
+  static String plannedNext(String target, String recipe) =>
+      'Planned $target × $recipe · tap Start when you begin cooking';
+  static String cookingNext(String time) => 'Cooking since $time · tap Record output when done';
+  static String runPublishedVerdict(String actual, String recipe, String verdict) =>
+      '$actual × $recipe published — now selling on POS. $verdict';
+  static String get gotIt => L10n.t('gotIt', 'Got it');
+  static String get toleranceHint => L10n.t('toleranceHint', 'Allowed band around the target (default 5%)');
   static String get measuredIngredient => L10n.t('measuredIngredient', 'Measured ingredient');
   static String get measuredHelper => L10n.t('measuredHelper', 'What you actually put on the scale');
   static String get quantityUsed => L10n.t('quantityUsed', 'Quantity used');
@@ -657,6 +744,8 @@ abstract final class AppStrings {
   static String ingredientOption(String name, String unit) => '$name ($unit)';
   static String makesRecipe(String name, String needs) =>
       'Makes $name · per unit needs $needs';
+  static String makesBatchRecipe(String yieldQty, String yieldUnit, String needs) =>
+      'Makes $yieldQty $yieldUnit · needs $needs';
   static String consumptionLine(String needed, String unit, String onHand) =>
       '$needed $unit · $onHand in stock';
   static String get wasteReasonExpired => L10n.t('wasteReasonExpired', 'Expired');
@@ -734,6 +823,19 @@ abstract final class AppStrings {
   static String get recipeNameExample => L10n.t('recipeNameExample', 'e.g. Pilau');
   static String get recipeNameHelper => L10n.t('recipeNameHelper', 'Shown on production runs');
   static String get recipeNameDefault => L10n.t('recipeNameDefault', 'Defaults to the menu item\u2019s name');
+  static String get recipeCategory => L10n.t('recipeCategory', 'Category');
+  static String get recipeCategoryHelper => L10n.t('recipeCategoryHelper', 'Prep, sauce, or finished dish');
+  static String recipeCategoryName(String category) => switch (category) {
+        'prep' => L10n.t('recipeCategoryPrep', 'Prep'),
+        'sauce' => L10n.t('recipeCategorySauce', 'Sauce'),
+        'finished' => L10n.t('recipeCategoryFinished', 'Finished dish'),
+        _ => category,
+      };
+  static String get targetYieldQty => L10n.t('targetYieldQty', 'Makes (quantity)');
+  static String get targetYieldUnit => L10n.t('targetYieldUnit', 'Makes (unit)');
+  static String get targetYieldHelper => L10n.t('targetYieldHelper', 'Batch size below is written for this yield');
+  static String get targetPositive => L10n.t('targetPositive', 'Target yield must be greater than zero');
+  static String get batchTotalsHint => L10n.t('batchTotalsHint', 'Amounts below are totals for the batch above');
   static String get ingredientsSection => L10n.t('ingredientsSection', 'Ingredients');
   static String get addIngredient => L10n.t('addIngredient', 'Add');
   static String get ingredientHint => L10n.t('ingredientHint', 'Ingredient');

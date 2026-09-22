@@ -4,6 +4,7 @@
 │ PERMISSION MODEL                                                         │
 │                                                                          │
 │   POST /businesses/{id}/recipes/{rid}/produce       → PRODUCTION_CREATE  │
+│   POST /businesses/{id}/recipes/{rid}/plan          → PRODUCTION_CREATE  │
 │   GET  /businesses/{id}/production-events           → PRODUCTION_VIEW    │
 │   GET  /businesses/{id}/production-events/{eid}     → PRODUCTION_VIEW    │
 │                                                                          │
@@ -20,6 +21,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -38,14 +40,21 @@ from app.models.inventory import (
 )
 from app.models.units import Unit
 from app.schemas.production import (
+    DEFAULT_YIELD_TOLERANCE_PERCENT,
+    PlannedComponentRead,
     ProduceRequest,
     ProductionComponentRead,
     ProductionEventRead,
+    ProductionPlanRead,
+    ProductionPlanRequest,
+    evaluate_yield,
 )
 from app.services.production_service import (
     InsufficientStockError,
     InvalidProductionInputError,
     RecipeNotFoundError,
+    per_unit_requirement,
+    plan_production_quantities,
     record_production_event,
 )
 
@@ -62,12 +71,15 @@ history_router = APIRouter(
 async def _read_events(
     events: list[ProductionEvent],
     session: AsyncSession,
+    yield_tolerance_percent=DEFAULT_YIELD_TOLERANCE_PERCENT,
 ) -> list[ProductionEventRead]:
     """Build full read payloads with resolved names/units in bulk.
 
     One constant-size query pass (components → recipes/items → units) no
     matter how many events are listed — the same no-N+1 discipline as the
-    recipes endpoint's reader.
+    recipes endpoint's reader. The yield verdict is computed server-side
+    here (never trusted from the client) against the stored target when
+    the target flow was used, else against the suggestion.
     """
     if not events:
         return []
@@ -120,6 +132,16 @@ async def _read_events(
     for e in events:
         recipe = recipes[e.recipe_id]
         sellable = items[recipe.sellable_item_id]
+        goal = (
+            e.target_output_quantity
+            if e.target_output_quantity is not None
+            else e.suggested_output_quantity
+        )
+        status, variance, variance_percent = evaluate_yield(
+            actual=e.actual_output_quantity,
+            goal=goal,
+            tolerance_percent=yield_tolerance_percent,
+        )
         reads.append(
             ProductionEventRead(
                 id=e.id,
@@ -131,8 +153,16 @@ async def _read_events(
                 sellable_item_name=sellable.name,
                 leading_component_item_id=e.leading_component_item_id,
                 leading_quantity_used=e.leading_quantity_used,
+                target_output_quantity=e.target_output_quantity,
                 suggested_output_quantity=e.suggested_output_quantity,
                 actual_output_quantity=e.actual_output_quantity,
+                run_id=e.run_id,
+                waste_reason=e.waste_reason,
+                yield_goal_quantity=goal,
+                yield_variance=variance,
+                yield_variance_percent=variance_percent,
+                yield_status=status,
+                yield_tolerance_percent=yield_tolerance_percent,
                 actor_id=e.actor_id,
                 occurred_at=e.occurred_at,
                 created_at=e.created_at,
@@ -153,10 +183,21 @@ async def produce(
     _jwt_biz_id: Annotated[str, Depends(require_business_permission("production.create"))],
     claims: Annotated[dict[str, Any], Depends(get_current_claims)],
 ) -> ProductionEventRead:
-    """Record a production run: consume by ratio, stock the confirmed output.
+    """Record a production run: consume ingredients, stock confirmed output.
 
-    ``actual_output_quantity`` may be omitted — the server then commits the
-    computed suggestion (plan-met portions, the common case).
+    Two flows:
+
+    * Omit ``target_output_quantity`` + ``components`` — classic ratio
+      from the measured leading ingredient.
+    * Send ``target_output_quantity`` (the goal) with ``components`` (the
+      adjustable measured amounts, one per ingredient) — the target flow.
+      The server validates full-recipe coverage, consumes exactly those
+      amounts, and anchors the suggestion + yield verdict on the target.
+
+    ``actual_output_quantity`` may be omitted — the server then commits
+    the suggestion (plan-met portions, the common case). The response
+    always carries the server-computed ``yield_status`` (above /
+    within_threshold / below) — the client never decides the verdict.
     """
     raw_sub = claims.get("sub")
     try:
@@ -172,6 +213,12 @@ async def produce(
             leading_item_id=body.leading_item_id,
             leading_quantity_used=body.leading_quantity_used,
             actual_output_quantity=body.actual_output_quantity,
+            target_output_quantity=body.target_output_quantity,
+            components_override=(
+                {c.raw_material_item_id: c.quantity_used for c in body.components}
+                if body.components is not None
+                else None
+            ),
             actor_id=actor_id,
         )
     except RecipeNotFoundError as exc:
@@ -193,7 +240,88 @@ async def produce(
         business_id=str(business_id),
         recipe_id=str(recipe_id),
     )
-    return (await _read_events([event], session))[0]
+    return (
+        await _read_events(
+            [event], session, yield_tolerance_percent=body.yield_tolerance_percent
+        )
+    )[0]
+
+
+@produce_router.post("/plan", response_model=ProductionPlanRead)
+async def plan_production(
+    business_id: UUID,
+    recipe_id: UUID,
+    body: ProductionPlanRequest,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _jwt_biz_id: Annotated[str, Depends(require_business_permission("production.create"))],
+) -> ProductionPlanRead:
+    """Recommend every grocery amount for a target output (no stock change).
+
+    "I need N products" → batch total × N ÷ recipe target yield per
+    ingredient. Each line is adjustable: the cook measures, tweaks any
+    amount, then commits through ``POST .../produce`` with
+    ``target_output_quantity=N`` and the final ``components`` list.
+    """
+    try:
+        recipe, sellable, lines = await plan_production_quantities(
+            db=session,
+            business_id=business_id,
+            recipe_id=recipe_id,
+            target_output_quantity=body.target_output_quantity,
+        )
+    except RecipeNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except InvalidProductionInputError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+
+    unit_ids = {item.unit_id for _, item in lines if item.unit_id is not None}
+    units: dict[UUID, str] = {}
+    if unit_ids:
+        unit_result = await session.exec(
+            select(Unit).where(Unit.id.in_(list(unit_ids)))
+        )
+        units = {unit.id: unit.code for unit in unit_result.all()}
+
+    logger.info(
+        "production.planned",
+        business_id=str(business_id),
+        recipe_id=str(recipe_id),
+        target=str(body.target_output_quantity),
+    )
+    batch_yield = recipe.target_yield_quantity
+    per_unit = {
+        comp.raw_material_item_id: per_unit_requirement(
+            comp.quantity_required, batch_yield
+        ).quantize(Decimal("0.001"))
+        for comp, _ in lines
+    }
+    return ProductionPlanRead(
+        recipe_id=recipe.id,
+        recipe_name=recipe.name,
+        sellable_item_id=sellable.id,
+        sellable_item_name=sellable.name,
+        target_output_quantity=body.target_output_quantity,
+        suggested_output_quantity=body.target_output_quantity,
+        components=[
+            PlannedComponentRead(
+                raw_material_item_id=comp.raw_material_item_id,
+                raw_material_name=item.name,
+                raw_material_unit=(
+                    units.get(item.unit_id) if item.unit_id else ""
+                ),
+                quantity_required_per_unit=per_unit[comp.raw_material_item_id],
+                planned_quantity=(
+                    per_unit[comp.raw_material_item_id]
+                    * body.target_output_quantity
+                ).quantize(Decimal("0.001")),
+            )
+            for comp, item in lines
+        ],
+    )
 
 
 @history_router.get("", response_model=list[ProductionEventRead])
