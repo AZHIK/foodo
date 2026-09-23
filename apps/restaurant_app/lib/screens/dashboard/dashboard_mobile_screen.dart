@@ -165,7 +165,6 @@ class _QuickTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = context.isMobile;
     return Material(
       color: colors.surfaceContainerLowest,
       clipBehavior: Clip.antiAlias,
@@ -187,20 +186,16 @@ class _QuickTile extends StatelessWidget {
                 height: 40,
                 width: 40,
                 decoration: BoxDecoration(
-                  color: isMobile
-                      ? colors.surfaceContainerHighest
-                      : action.family.tint,
+                  color: action.family.tint,
                   borderRadius: BorderRadius.circular(12),
-                  border: isMobile
-                      ? null
-                      : Border.all(
-                          color: action.family.accent.withValues(alpha: 0.2),
-                        ),
+                  border: Border.all(
+                    color: action.family.accent.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Icon(
                   action.icon,
                   size: 20,
-                  color: isMobile ? colors.onSurfaceVariant : action.family.accent,
+                  color: action.family.accent,
                 ),
               ),
               const SizedBox(height: Insets.sm),

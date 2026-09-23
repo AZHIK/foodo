@@ -71,16 +71,17 @@ List<Widget> buildDashboardKpiCards(
 }) {
   final palette = DashboardPalette.of(context);
   return [
-    ColorfulMetricCard(
-      label: AppStrings.todaySales,
-      value: Fmt.moneyCompact(metrics.sales.current),
-      icon: Icons.payments_outlined,
-      family: palette.revenue,
-      change: metrics.sales.change,
-      caption: AppStrings.vsYesterday(
-        Fmt.moneyCompact(metrics.sales.previous),
-      ),
-    ),
+     ColorfulMetricCard(
+       label: AppStrings.todaySales,
+       value: Fmt.moneyCompact(metrics.sales.current),
+       icon: Icons.payments_outlined,
+       family: palette.revenue,
+       change: metrics.sales.change,
+       caption: AppStrings.vsYesterday(
+         Fmt.moneyCompact(metrics.sales.previous),
+       ),
+       deepGradient: true,
+     ),
     ColorfulMetricCard(
       label: AppStrings.ordersToday,
       value: '${metrics.orders.current.round()}',

@@ -80,7 +80,6 @@ class RankedListTile extends StatelessWidget {
     required ColorScheme colors,
     required bool showEmoji,
   }) {
-    final isMobile = context.isMobile;
     final row = Row(
       children: [
         Container(
@@ -88,23 +87,18 @@ class RankedListTile extends StatelessWidget {
           width: 30,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: isMobile
-                ? colors.surfaceContainerHighest
-                : null,
-            gradient: isMobile ? null : LinearGradient(
+            gradient: LinearGradient(
               colors: [family.tint, family.tint],
             ),
             borderRadius: BorderRadius.circular(10),
-            border: isMobile
-                ? Border.all(color: context.semantic.hairline)
-                : Border.all(
-                    color: family.accent.withValues(alpha: 0.22),
-                  ),
+            border: Border.all(
+              color: family.accent.withValues(alpha: 0.22),
+            ),
           ),
           child: Text(
             AppStrings.rankBadge(rank),
             style: context.text.labelLarge?.copyWith(
-              color: isMobile ? colors.onSurface : family.onTint,
+              color: family.onTint,
             ),
           ),
         ),
@@ -135,7 +129,7 @@ class RankedListTile extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              if (subtitle case final sub?)
+              if (subtitle case final sub!)
                 Text(
                   sub,
                   maxLines: 1,
@@ -155,7 +149,7 @@ class RankedListTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.right,
             style: context.text.titleSmall?.copyWith(
-              color: isMobile ? colors.onSurface : family.accent,
+              color: family.accent,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
@@ -180,9 +174,7 @@ class RankedListTile extends StatelessWidget {
               minHeight: 4,
               backgroundColor:
                   colors.surfaceContainerHighest.withValues(alpha: 0.7),
-              valueColor: AlwaysStoppedAnimation(
-                isMobile ? colors.primary : family.accent,
-              ),
+              valueColor: AlwaysStoppedAnimation(family.accent),
             ),
           ),
         ),

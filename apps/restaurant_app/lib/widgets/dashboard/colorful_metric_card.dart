@@ -26,6 +26,7 @@ class ColorfulMetricCard extends StatelessWidget {
     this.caption,
     this.onTap,
     this.hero = false,
+    this.deepGradient = false,
   });
 
   final String label;
@@ -52,6 +53,10 @@ class ColorfulMetricCard extends StatelessWidget {
   /// with light-on-dark text so the hero reads as one deliberate banner
   /// rather than a fifth identical tile.
   final bool hero;
+
+  /// Deep primary-colour gradient on mobile, making the card stand out
+  /// as the headline metric (Today's Sales).
+  final bool deepGradient;
 
   /// Below this the card cannot hold an icon and a badge on one line, so the
   /// badge is dropped rather than crushed to a sliver. The caption underneath
@@ -81,7 +86,7 @@ class ColorfulMetricCard extends StatelessWidget {
     );
   }
 
-  Widget _build(
+   Widget _build(
     BuildContext context, {
     required bool showBadge,
     required EdgeInsets padding,
@@ -102,10 +107,12 @@ class ColorfulMetricCard extends StatelessWidget {
         caption: caption,
         icon: icon,
         change: change,
+        family: family,
       );
     } else if (isMobile) {
-      // Clean and minimal on mobile: plain surface, hairline border,
-      // no gradient, shadow, or decorative elements.
+      // Clean and minimal on mobile: flat surface, hairline border,
+      // subtle family tint on the icon chip and value, no gradient
+      // or shadow. Deep gradient for the headline metric.
       card = _MobileCard(
         padding: padding,
         icon: icon,
@@ -114,6 +121,8 @@ class ColorfulMetricCard extends StatelessWidget {
         caption: caption,
         change: change,
         showBadge: showBadge,
+        family: family,
+        deepGradient: deepGradient,
       );
     } else {
       // Tinted wash rather than plain white: a soft gradient from the family
@@ -167,6 +176,8 @@ class _MobileCard extends StatelessWidget {
     required this.caption,
     required this.change,
     required this.showBadge,
+    required this.family,
+    this.deepGradient = false,
   });
 
   final EdgeInsets padding;
@@ -176,6 +187,8 @@ class _MobileCard extends StatelessWidget {
   final String? caption;
   final double? change;
   final bool showBadge;
+  final DashboardColor family;
+  final bool deepGradient;
 
   @override
   Widget build(BuildContext context) {
@@ -184,9 +197,24 @@ class _MobileCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: colors.surfaceContainerLowest,
+        gradient: deepGradient
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  colors.primary,
+                  colors.primary.withValues(alpha: 0.7),
+                  colors.primary.withValues(alpha: 0.4),
+                ],
+              )
+            : null,
+        color: deepGradient ? null : colors.surfaceContainerLowest,
         borderRadius: const BorderRadius.all(Radius.circular(16)),
-        border: Border.all(color: context.semantic.hairline),
+        border: Border.all(
+          color: deepGradient
+              ? colors.primary.withValues(alpha: 0.3)
+              : context.semantic.hairline,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -199,10 +227,16 @@ class _MobileCard extends StatelessWidget {
                 height: 38,
                 width: 38,
                 decoration: BoxDecoration(
-                  color: colors.surfaceContainerHighest,
+                  color: deepGradient
+                      ? Colors.white.withValues(alpha: 0.15)
+                      : family.tint,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, size: 20, color: colors.onSurfaceVariant),
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: deepGradient ? Colors.white : family.accent,
+                ),
               ),
               const SizedBox(width: Insets.sm),
               Expanded(
@@ -221,7 +255,9 @@ class _MobileCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: context.text.eyebrow.copyWith(
-              color: colors.onSurfaceVariant,
+              color: deepGradient
+                  ? Colors.white.withValues(alpha: 0.8)
+                  : colors.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 4),
@@ -232,7 +268,7 @@ class _MobileCard extends StatelessWidget {
               value,
               maxLines: 1,
               style: context.text.headlineSmall?.copyWith(
-                color: colors.onSurface,
+                color: deepGradient ? Colors.white : family.accent,
                 fontWeight: FontWeight.w600,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
@@ -250,7 +286,9 @@ class _MobileCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: context.text.caption.copyWith(
-                    color: colors.onSurfaceVariant,
+                    color: deepGradient
+                        ? Colors.white.withValues(alpha: 0.7)
+                        : colors.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -402,8 +440,7 @@ class _DesktopCard extends StatelessWidget {
   }
 }
 
-/// Full-width feature variant (net profit on mobile): plain surface
-/// card on mobile, gradient hero on desktop.
+/// Full-width feature variant (net profit).
 class _HeroBody extends StatelessWidget {
   const _HeroBody({
     required this.padding,
@@ -414,6 +451,7 @@ class _HeroBody extends StatelessWidget {
     required this.caption,
     required this.icon,
     required this.change,
+    required this.family,
   });
 
   final EdgeInsets padding;
@@ -424,6 +462,7 @@ class _HeroBody extends StatelessWidget {
   final String? caption;
   final IconData icon;
   final double? change;
+  final DashboardColor family;
 
   @override
   Widget build(BuildContext context) {
@@ -436,9 +475,9 @@ class _HeroBody extends StatelessWidget {
           right: padding.right + 4,
         ),
         decoration: BoxDecoration(
-          color: colors.surfaceContainerLowest,
+          color: family.tint,
           borderRadius: const BorderRadius.all(Radius.circular(16)),
-          border: Border.all(color: context.semantic.hairline),
+          border: Border.all(color: family.accent.withValues(alpha: 0.15)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -451,10 +490,10 @@ class _HeroBody extends StatelessWidget {
                   height: 44,
                   width: 44,
                   decoration: BoxDecoration(
-                    color: colors.surfaceContainerHighest,
+                    color: colors.surfaceContainerLowest,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(icon, size: 23, color: colors.onSurfaceVariant),
+                  child: Icon(icon, size: 23, color: family.accent),
                 ),
                 const SizedBox(width: Insets.md),
                 Expanded(
@@ -478,7 +517,7 @@ class _HeroBody extends StatelessWidget {
                           value,
                           maxLines: 1,
                           style: context.text.headlineSmall?.copyWith(
-                            color: colors.onSurface,
+                            color: family.accent,
                             fontWeight: FontWeight.w600,
                             fontFeatures: const [FontFeature.tabularFigures()],
                           ),
@@ -514,14 +553,14 @@ class _HeroBody extends StatelessWidget {
                               ? Icons.arrow_upward_rounded
                               : Icons.arrow_downward_rounded,
                           size: 13,
-                           color: context.semantic.success,
-                         ),
-                         const SizedBox(width: 2),
-                         Text(
-                           AppStrings.trendPercent((change ?? 0).abs() * 100),
-                           style: context.text.labelLarge?.copyWith(
-                             color: context.semantic.success,
-                           ),
+                          color: context.semantic.success,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          AppStrings.trendPercent((change ?? 0).abs() * 100),
+                          style: context.text.labelLarge?.copyWith(
+                            color: context.semantic.success,
+                          ),
                         ),
                       ],
                     ),
