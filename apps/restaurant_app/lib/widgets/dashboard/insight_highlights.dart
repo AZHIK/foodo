@@ -124,6 +124,7 @@ class _InsightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final isMobile = context.isMobile;
     final accent = switch (insight.priority) {
       InsightPriority.urgent => context.semantic.danger,
       InsightPriority.advisory => context.semantic.warning,
@@ -139,82 +140,68 @@ class _InsightCard extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () => context.goNamed(AppRoute.insightsName),
-        child: Stack(
-          children: [
-            // A colour bar down the leading edge rather than a tinted card:
-            // three of these side by side, each fully tinted, would shout over
-            // the KPI row above them.
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: Container(width: 3, color: accent),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                Insets.lg,
-                compact ? Insets.md : Insets.lg,
-                Insets.lg,
-                compact ? Insets.md : Insets.lg,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            Insets.lg,
+            compact ? Insets.md : Insets.lg,
+            Insets.lg,
+            compact ? Insets.md : Insets.lg,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Icon(insight.category.icon, size: 15, color: accent),
-                      const SizedBox(width: Insets.sm),
-                      Expanded(
-                        child: Text(
-                          insight.category.label.toUpperCase(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: context.text.eyebrow.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ),
+                  Icon(insight.category.icon, size: 15, color: accent),
+                  const SizedBox(width: Insets.sm),
+                  Expanded(
+                    child: Text(
+                      insight.category.label.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.eyebrow.copyWith(
+                        color: colors.onSurfaceVariant,
                       ),
-                      StatusBadge(
-                        label: insight.priority.label,
-                        tone: insight.priority.tone,
-                        dense: true,
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: compact ? Insets.sm : Insets.md),
-                  Text(
-                    insight.title,
-                    maxLines: compact ? 1 : 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.titleSmall,
-                  ),
-                  const SizedBox(height: Insets.xs),
-                  Text(
-                    insight.body,
-                    maxLines: compact ? 2 : 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
                     ),
                   ),
-                  // One piece of evidence, so the card makes a claim and backs
-                  // it in the same breath. The rest is on the Insights screen.
-                  if (insight.evidence.isNotEmpty) ...[
-                    SizedBox(height: compact ? Insets.sm : Insets.md),
-                    _EvidenceChip(
-                      label: insight.evidence.first.label,
-                      value: insight.evidence.first.value,
-                      accent: accent,
-                    ),
-                  ],
+                  StatusBadge(
+                    label: insight.priority.label,
+                    tone: insight.priority.tone,
+                    dense: true,
+                  ),
                 ],
               ),
-            ),
-          ],
+              SizedBox(height: compact ? Insets.sm : Insets.md),
+              Text(
+                insight.title,
+                maxLines: compact ? 1 : 2,
+                overflow: TextOverflow.ellipsis,
+                style: context.text.titleSmall,
+              ),
+              const SizedBox(height: Insets.xs),
+              Text(
+                insight.body,
+                maxLines: compact ? 2 : 3,
+                overflow: TextOverflow.ellipsis,
+                style: context.text.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+              if (insight.evidence.isNotEmpty) ...[
+                SizedBox(height: compact ? Insets.sm : Insets.md),
+                _EvidenceChip(
+                  label: insight.evidence.first.label,
+                  value: insight.evidence.first.value,
+                  accent: accent,
+                  isMobile: isMobile,
+                ),
+              ],
+            ],
+          ),
         ),
       ),
-    );
+     );
   }
 }
 
@@ -223,11 +210,13 @@ class _EvidenceChip extends StatelessWidget {
     required this.label,
     required this.value,
     required this.accent,
+    this.isMobile = false,
   });
 
   final String label;
   final String value;
   final Color accent;
+  final bool isMobile;
 
   @override
   Widget build(BuildContext context) {
@@ -237,8 +226,13 @@ class _EvidenceChip extends StatelessWidget {
         vertical: Insets.xs + 1,
       ),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.10),
+        color: isMobile
+            ? Colors.transparent
+            : accent.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(Radii.sm),
+        border: isMobile
+            ? Border.all(color: accent.withValues(alpha: 0.2))
+            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -249,7 +243,7 @@ class _EvidenceChip extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: context.text.labelSmall?.copyWith(
-                color: context.colors.onSurfaceVariant,
+                color: isMobile ? accent : context.colors.onSurfaceVariant,
               ),
             ),
           ),
@@ -258,7 +252,7 @@ class _EvidenceChip extends StatelessWidget {
             value,
             maxLines: 1,
             style: context.text.labelLarge?.copyWith(
-              color: accent,
+              color: isMobile ? accent : accent,
             ),
           ),
         ],

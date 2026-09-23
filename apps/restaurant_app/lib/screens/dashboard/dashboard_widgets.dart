@@ -134,6 +134,7 @@ class DashboardGreetingHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isMobile = context.isMobile;
     final colors = context.colors;
     final user = ref.watch(currentUserProvider);
     final storeName = ref.watch(storeNameProvider);
@@ -155,18 +156,23 @@ class DashboardGreetingHeader extends ConsumerWidget {
         Row(
           children: [
             const NavMenuButton(),
-            // Avatar with gradient ring — the one personal touch on an
-            // otherwise numbers-first screen.
+            // Avatar — plain circle on mobile, gradient ring on desktop.
             Container(
               height: 46,
               width: 46,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
+                color: isMobile
+                    ? colors.surfaceContainerLowest
+                    : null,
+                shape: BoxShape.circle,
+                gradient: isMobile ? null : LinearGradient(
                   colors: [colors.primary, colors.tertiary],
                 ),
-                shape: BoxShape.circle,
+                border: isMobile
+                    ? Border.all(color: context.semantic.hairline)
+                    : null,
               ),
-              padding: const EdgeInsets.all(2),
+              padding: isMobile ? const EdgeInsets.all(2) : const EdgeInsets.all(2),
               child: Container(
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
@@ -176,7 +182,7 @@ class DashboardGreetingHeader extends ConsumerWidget {
                 child: Text(
                   initial,
                   style: context.text.titleMedium?.copyWith(
-                    color: colors.primary,
+                    color: isMobile ? colors.onSurface : colors.primary,
                   ),
                 ),
               ),
@@ -239,35 +245,42 @@ class DashboardGreetingHeader extends ConsumerWidget {
             ),
             const SizedBox(width: Insets.md),
             MediaQuery.sizeOf(context).width < _labelledActionMin
-                ? SizedBox(
-                    // 48x48: the minimum comfortable touch target on a phone.
-                    height: 48,
-                    width: 48,
-                    child: Tooltip(
-                      message: AppStrings.openTill,
-                      child: Material(
-                        clipBehavior: Clip.antiAlias,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Ink(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [colors.primary, colors.tertiary],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            iconSize: 22,
-                            onPressed: () => context.goNamed(AppRoute.posName),
-                            icon: const Icon(Icons.point_of_sale_rounded),
-                            color: colors.onPrimary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
+                 ? SizedBox(
+                     height: 48,
+                     width: 48,
+                     child: Tooltip(
+                       message: AppStrings.openTill,
+                       child: Material(
+                         color: isMobile
+                             ? colors.surfaceContainerLowest
+                             : null,
+                         clipBehavior: Clip.antiAlias,
+                         shape: RoundedRectangleBorder(
+                           borderRadius: BorderRadius.circular(16),
+                           side: isMobile
+                               ? BorderSide(color: context.semantic.hairline)
+                               : BorderSide.none,
+                         ),
+                         child: Ink(
+                           decoration: BoxDecoration(
+                             gradient: isMobile
+                                 ? null
+                                 : LinearGradient(
+                                     colors: [colors.primary, colors.tertiary],
+                                   ),
+                             borderRadius: BorderRadius.circular(16),
+                           ),
+                           child: IconButton(
+                             padding: EdgeInsets.zero,
+                             iconSize: 22,
+                             onPressed: () => context.goNamed(AppRoute.posName),
+                             icon: const Icon(Icons.point_of_sale_rounded),
+                             color: isMobile ? colors.onSurface : colors.onPrimary,
+                           ),
+                         ),
+                       ),
+                     ),
+                   )
                 : FilledButton.icon(
                     onPressed: () => context.goNamed(AppRoute.posName),
                     icon: const Icon(Icons.point_of_sale_rounded, size: 18),
@@ -482,7 +495,7 @@ class DashboardCard extends StatelessWidget {
         color: colors.surfaceContainerLowest,
         borderRadius: const BorderRadius.all(Radius.circular(20)),
         border: Border.all(color: context.semantic.hairline),
-        boxShadow: DashboardStyle.shadow(Theme.of(context).brightness),
+        boxShadow: mobile ? null : DashboardStyle.shadow(Theme.of(context).brightness),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

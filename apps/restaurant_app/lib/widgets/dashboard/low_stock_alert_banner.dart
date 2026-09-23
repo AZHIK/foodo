@@ -32,7 +32,9 @@ class LowStockAlertBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     if (items.isEmpty) return const SizedBox.shrink();
 
+    final isMobile = context.isMobile;
     final semantic = context.semantic;
+    final colors = context.colors;
     final outCount = items
         .where((i) => i.status == StockStatus.outOfStock)
         .length;
@@ -47,10 +49,13 @@ class LowStockAlertBanner extends StatelessWidget {
         : AppStrings.reorderNeeded(items.length);
 
     return Material(
-      color: semantic.warningContainer,
+      color: isMobile ? colors.surfaceContainerLowest : semantic.warningContainer,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isMobile ? context.semantic.hairline : semantic.warning,
+        ),
       ),
       child: InkWell(
         onTap: onTap,
@@ -64,7 +69,7 @@ class LowStockAlertBanner extends StatelessWidget {
               Icon(
                 Icons.warning_amber_rounded,
                 size: 20,
-                color: semantic.warning,
+                color: isMobile ? colors.onSurfaceVariant : semantic.warning,
               ),
               const SizedBox(width: Insets.md),
               Expanded(
@@ -78,7 +83,7 @@ class LowStockAlertBanner extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: context.text.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: semantic.warning,
+                        color: isMobile ? colors.onSurface : semantic.warning,
                       ),
                     ),
                     Text(
@@ -88,7 +93,9 @@ class LowStockAlertBanner extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: context.text.bodySmall?.copyWith(
-                        color: semantic.warning.withValues(alpha: 0.85),
+                        color: isMobile
+                            ? colors.onSurfaceVariant
+                            : semantic.warning.withValues(alpha: 0.85),
                       ),
                     ),
                   ],
@@ -98,7 +105,7 @@ class LowStockAlertBanner extends StatelessWidget {
               Icon(
                 Icons.chevron_right_rounded,
                 size: 20,
-                color: semantic.warning,
+                color: isMobile ? colors.onSurfaceVariant : semantic.warning,
               ),
             ],
           ),

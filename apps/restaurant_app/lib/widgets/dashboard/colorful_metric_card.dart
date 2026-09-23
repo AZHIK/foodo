@@ -101,14 +101,23 @@ class ColorfulMetricCard extends StatelessWidget {
         value: value,
         caption: caption,
         icon: icon,
-        family: family,
         change: change,
+      );
+    } else if (isMobile) {
+      // Clean and minimal on mobile: plain surface, hairline border,
+      // no gradient, shadow, or decorative elements.
+      card = _MobileCard(
+        padding: padding,
+        icon: icon,
+        label: label,
+        value: value,
+        caption: caption,
+        change: change,
+        showBadge: showBadge,
       );
     } else {
       // Tinted wash rather than plain white: a soft gradient from the family
       // tint into the surface, so the row reads warm without shouting.
-      // The old 4px left-border treatment is gone — modern KPI tiles carry
-      // colour in the icon chip + value accent-free hierarchy instead.
       final bg = bright
           ? LinearGradient(
               begin: Alignment.topLeft,
@@ -123,134 +132,17 @@ class ColorfulMetricCard extends StatelessWidget {
                 Color.lerp(family.tint, Colors.black, 0.35) ?? family.tint,
               ],
             );
-      final _ = colors;
-      card = Container(
+      card = _DesktopCard(
         padding: padding,
-        decoration: BoxDecoration(
-          gradient: bg,
-          borderRadius: const BorderRadius.all(Radius.circular(20)),
-          border: Border.all(
-            color: family.accent.withValues(alpha: bright ? 0.16 : 0.32),
-          ),
-          boxShadow: DashboardStyle.shadow(Theme.of(context).brightness),
-        ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.all(Radius.circular(20)),
-          child: Stack(
-            children: [
-              // Soft decorative wash top-right — pure decoration, kept
-              // behind content so it never affects legibility.
-              Positioned(
-                right: -28,
-                top: -28,
-                child: Container(
-                  height: 92,
-                  width: 92,
-                  decoration: BoxDecoration(
-                    color: family.accent.withValues(alpha: bright ? 0.10 : 0.18),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Container(
-                        height: 38,
-                        width: 38,
-                        decoration: BoxDecoration(
-                          color: colors.surfaceContainerLowest.withValues(
-                            alpha: bright ? 0.9 : 0.55,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: family.accent.withValues(alpha: 0.18),
-                          ),
-                        ),
-                        child: Icon(icon, size: 20, color: family.accent),
-                      ),
-                      const SizedBox(width: Insets.sm),
-                      // Expanded + right-align rather than Spacer + Flexible:
-                      // both of those are flex:1, so they split the leftover
-                      // width evenly and the badge gets squeezed to "↑ 1…" on
-                      // a two-up phone grid. This way the badge sizes to its
-                      // content and only the empty space flexes.
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: showBadge
-                              ? _TrendBadge(change: change!, family: family)
-                              : const SizedBox.shrink(),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: isMobile ? Insets.md : Insets.lg),
-                  Text(
-                    label.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.eyebrow.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  // Scales down rather than wrapping, so a long currency value
-                  // keeps every card in the row the same height.
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      value,
-                      maxLines: 1,
-                      style: (isMobile
-                              ? context.text.headlineSmall
-                              : context.text.headlineMedium)
-                          ?.copyWith(
-                        // Deep tinted ink rather than near-black onSurface:
-                        // full black vibrates against the pastel fill and
-                        // shouts over the icon chip. onTint is drawn from the
-                        // same hue, so the number sits inside the card instead
-                        // of on top of it. Semibold is plenty at this size.
-                        color: family.onTint,
-                        fontWeight: FontWeight.w600,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                  ),
-                  if (caption case final text?) ...[
-                    const SizedBox(height: 3),
-                    // Same shrink-to-fit as the value above: the full caption
-                    // ("vs TSh 96.2k yesterday") always stays on one line and
-                    // scales down only as much as a narrow card needs, so the
-                    // leading "vs" is never chopped and every card in the row
-                    // keeps the same height. The 4px left nudge keeps the
-                    // first glyph clear of the card's hairline edge.
-                    Padding(
-                      padding: const EdgeInsets.only(left: 5),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          text,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: context.text.caption.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ],
-          ),
-        ),
+        bg: bg,
+        icon: icon,
+        label: label,
+        value: value,
+        caption: caption,
+        change: change,
+        showBadge: showBadge,
+        family: family,
+        bright: bright,
       );
     }
 
@@ -265,7 +157,253 @@ class ColorfulMetricCard extends StatelessWidget {
   }
 }
 
-/// Deep-tinted hero treatment for the full-width profit card.
+/// Clean, flat card for mobile — no gradient, shadow, or decorative elements.
+class _MobileCard extends StatelessWidget {
+  const _MobileCard({
+    required this.padding,
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.caption,
+    required this.change,
+    required this.showBadge,
+  });
+
+  final EdgeInsets padding;
+  final IconData icon;
+  final String label;
+  final String value;
+  final String? caption;
+  final double? change;
+  final bool showBadge;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLowest,
+        borderRadius: const BorderRadius.all(Radius.circular(16)),
+        border: Border.all(color: context.semantic.hairline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                height: 38,
+                width: 38,
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, size: 20, color: colors.onSurfaceVariant),
+              ),
+              const SizedBox(width: Insets.sm),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: showBadge
+                      ? _TrendBadge(change: change!)
+                      : const SizedBox.shrink(),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: Insets.md),
+          Text(
+            label.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.text.eyebrow.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: context.text.headlineSmall?.copyWith(
+                color: colors.onSurface,
+                fontWeight: FontWeight.w600,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+          if (caption case final text?) ...[
+            const SizedBox(height: 3),
+            Padding(
+              padding: const EdgeInsets.only(left: 5),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.caption.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Gradient, shadow, decorative circle card for desktop.
+class _DesktopCard extends StatelessWidget {
+  const _DesktopCard({
+    required this.padding,
+    required this.bg,
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.caption,
+    required this.change,
+    required this.showBadge,
+    required this.family,
+    required this.bright,
+  });
+
+  final EdgeInsets padding;
+  final Gradient bg;
+  final IconData icon;
+  final String label;
+  final String value;
+  final String? caption;
+  final double? change;
+  final bool showBadge;
+  final DashboardColor family;
+  final bool bright;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        gradient: bg,
+        borderRadius: const BorderRadius.all(Radius.circular(20)),
+        border: Border.all(
+          color: family.accent.withValues(alpha: bright ? 0.16 : 0.32),
+        ),
+        boxShadow: DashboardStyle.shadow(Theme.of(context).brightness),
+      ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.all(Radius.circular(20)),
+        child: Stack(
+          children: [
+            // Soft decorative wash top-right — pure decoration, kept
+            // behind content so it never affects legibility.
+            Positioned(
+              right: -28,
+              top: -28,
+              child: Container(
+                height: 92,
+                width: 92,
+                decoration: BoxDecoration(
+                  color: family.accent.withValues(alpha: bright ? 0.10 : 0.18),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      height: 38,
+                      width: 38,
+                      decoration: BoxDecoration(
+                        color: colors.surfaceContainerLowest.withValues(
+                          alpha: bright ? 0.9 : 0.55,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: family.accent.withValues(alpha: 0.18),
+                        ),
+                      ),
+                      child: Icon(icon, size: 20, color: family.accent),
+                    ),
+                    const SizedBox(width: Insets.sm),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: showBadge
+                            ? _TrendBadge(change: change!, family: family)
+                            : const SizedBox.shrink(),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: Insets.lg),
+                Text(
+                  label.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.eyebrow.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    style: context.text.headlineMedium?.copyWith(
+                      color: family.onTint,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+                if (caption case final text?) ...[
+                  const SizedBox(height: 3),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 5),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.text.caption.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Full-width feature variant (net profit on mobile): plain surface
+/// card on mobile, gradient hero on desktop.
 class _HeroBody extends StatelessWidget {
   const _HeroBody({
     required this.padding,
@@ -275,7 +413,6 @@ class _HeroBody extends StatelessWidget {
     required this.value,
     required this.caption,
     required this.icon,
-    required this.family,
     required this.change,
   });
 
@@ -286,13 +423,119 @@ class _HeroBody extends StatelessWidget {
   final String value;
   final String? caption;
   final IconData icon;
-  final DashboardColor family;
   final double? change;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    if (isMobile) {
+      return Container(
+        padding: padding.copyWith(
+          left: padding.left + 4,
+          right: padding.right + 4,
+        ),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerLowest,
+          borderRadius: const BorderRadius.all(Radius.circular(16)),
+          border: Border.all(color: context.semantic.hairline),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  height: 44,
+                  width: 44,
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, size: 23, color: colors.onSurfaceVariant),
+                ),
+                const SizedBox(width: Insets.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label.toUpperCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.text.eyebrow.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          value,
+                          maxLines: 1,
+                          style: context.text.headlineSmall?.copyWith(
+                            color: colors.onSurface,
+                            fontWeight: FontWeight.w600,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ),
+                      if (caption case final text?)
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            text,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.text.caption.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (showBadge)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Insets.sm,
+                      vertical: 5,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          (change ?? 0) >= 0
+                              ? Icons.arrow_upward_rounded
+                              : Icons.arrow_downward_rounded,
+                          size: 13,
+                           color: context.semantic.success,
+                         ),
+                         const SizedBox(width: 2),
+                         Text(
+                           AppStrings.trendPercent((change ?? 0).abs() * 100),
+                           style: context.text.labelLarge?.copyWith(
+                             color: context.semantic.success,
+                           ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Desktop hero: gradient with decorative circles and white text.
     final bright = Theme.of(context).brightness == Brightness.light;
-    final base = family.accent;
+    final base = Theme.of(context).colorScheme.primary;
     final start = bright
         ? Color.lerp(base, Colors.black, 0.12) ?? base
         : Color.lerp(base, Colors.white, 0.08) ?? base;
@@ -372,10 +615,7 @@ class _HeroBody extends StatelessWidget {
                       child: Text(
                         value,
                         maxLines: 1,
-                        style: (isMobile
-                                ? context.text.headlineSmall
-                                : context.text.headlineMedium)
-                            ?.copyWith(
+                        style: context.text.headlineMedium?.copyWith(
                           color: Colors.white,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
@@ -433,10 +673,10 @@ class _HeroBody extends StatelessWidget {
 
 /// The "+12.4%" pill in a card's top-right corner.
 class _TrendBadge extends StatelessWidget {
-  const _TrendBadge({required this.change, required this.family});
+  const _TrendBadge({required this.change, this.family});
 
   final double change;
-  final DashboardColor family;
+  final DashboardColor? family;
 
   @override
   Widget build(BuildContext context) {

@@ -80,6 +80,7 @@ class RankedListTile extends StatelessWidget {
     required ColorScheme colors,
     required bool showEmoji,
   }) {
+    final isMobile = context.isMobile;
     final row = Row(
       children: [
         Container(
@@ -87,18 +88,23 @@ class RankedListTile extends StatelessWidget {
           width: 30,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
+            color: isMobile
+                ? colors.surfaceContainerHighest
+                : null,
+            gradient: isMobile ? null : LinearGradient(
               colors: [family.tint, family.tint],
             ),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: family.accent.withValues(alpha: 0.22),
-            ),
+            border: isMobile
+                ? Border.all(color: context.semantic.hairline)
+                : Border.all(
+                    color: family.accent.withValues(alpha: 0.22),
+                  ),
           ),
           child: Text(
             AppStrings.rankBadge(rank),
             style: context.text.labelLarge?.copyWith(
-              color: family.onTint,
+              color: isMobile ? colors.onSurface : family.onTint,
             ),
           ),
         ),
@@ -142,9 +148,6 @@ class RankedListTile extends StatelessWidget {
           ),
         ),
         const SizedBox(width: Insets.sm),
-        // Flexible, not a bare Text: "11 sold" is wide enough to push the
-        // row past its card in a narrow side column, and the count is worth
-        // ellipsising rather than overflowing.
         Flexible(
           child: Text(
             trailing,
@@ -152,7 +155,7 @@ class RankedListTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.right,
             style: context.text.titleSmall?.copyWith(
-              color: family.accent,
+              color: isMobile ? colors.onSurface : family.accent,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
@@ -177,7 +180,9 @@ class RankedListTile extends StatelessWidget {
               minHeight: 4,
               backgroundColor:
                   colors.surfaceContainerHighest.withValues(alpha: 0.7),
-              valueColor: AlwaysStoppedAnimation(family.accent),
+              valueColor: AlwaysStoppedAnimation(
+                isMobile ? colors.primary : family.accent,
+              ),
             ),
           ),
         ),

@@ -165,6 +165,7 @@ class _QuickTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = context.isMobile;
     return Material(
       color: colors.surfaceContainerLowest,
       clipBehavior: Clip.antiAlias,
@@ -186,16 +187,20 @@ class _QuickTile extends StatelessWidget {
                 height: 40,
                 width: 40,
                 decoration: BoxDecoration(
-                  color: action.family.tint,
+                  color: isMobile
+                      ? colors.surfaceContainerHighest
+                      : action.family.tint,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: action.family.accent.withValues(alpha: 0.2),
-                  ),
+                  border: isMobile
+                      ? null
+                      : Border.all(
+                          color: action.family.accent.withValues(alpha: 0.2),
+                        ),
                 ),
                 child: Icon(
                   action.icon,
                   size: 20,
-                  color: action.family.accent,
+                  color: isMobile ? colors.onSurfaceVariant : action.family.accent,
                 ),
               ),
               const SizedBox(height: Insets.sm),
@@ -230,21 +235,15 @@ class _MobileKpiGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final cards = buildDashboardKpiCards(context, metrics, profitHero: true);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const spacing = Insets.sm;
-        final half = (constraints.maxWidth - spacing) / 2;
-
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: [
-            for (final card in cards.take(4))
-              SizedBox(width: half, child: card),
-            SizedBox(width: constraints.maxWidth, child: cards[4]),
-          ],
-        );
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final card in cards) ...[
+          SizedBox(width: double.infinity, child: card),
+          const SizedBox(height: Insets.sm),
+        ],
+      ],
     );
   }
 }
