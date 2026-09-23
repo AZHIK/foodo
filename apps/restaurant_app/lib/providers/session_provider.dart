@@ -250,6 +250,29 @@ class SessionNotifier extends Notifier<SessionState> {
     }
   }
 
+  /// Drops a dead session: the backend rejected a token refresh, so the
+  /// device's tokens are already gone (see `TokenRefreshInterceptor`).
+  ///
+  /// Unlike [logout], the local profile row stays active — the user is
+  /// about to prove themselves again via OTP, not leaving the device — and
+  /// the in-memory profile list is emptied so the guard routes straight to
+  /// the phone-number login screen rather than the profile picker. Raises
+  /// [sessionExpiredAlertProvider] so the app fires its "signed out" alert
+  /// at the same moment. Routing follows automatically via the guard.
+  void expireSession() {
+    if (!state.isLoggedIn) return;
+    state = state.copyWith(
+      isLoggedIn: false,
+      isUnlocked: false,
+      savedProfileIds: const [],
+      clearActiveStaff: true,
+      clearPin: true,
+      failedAttempts: 0,
+      clearLockout: true,
+    );
+    ref.read(sessionExpiredAlertProvider.notifier).state = true;
+  }
+
   // -------------------------------------------------------------------------
   // PIN
   // -------------------------------------------------------------------------
@@ -460,6 +483,12 @@ final savedProfilesProvider = Provider<List<StaffMember>>((ref) {
   final byId = {for (final member in allMembers) member.id: member};
   return [for (final id in ids) ?byId[id]];
 });
+
+/// Raised the moment a dead session is dropped (see
+/// `SessionNotifier.expireSession`). The app watches this once to fire its
+/// "signed out" alert; the dialog clears it on dismiss so a later expiry
+/// can raise it again.
+final sessionExpiredAlertProvider = StateProvider<bool>((ref) => false);
 
 /// Whether the app's main shell may be shown at all.
 final isAuthenticatedProvider = Provider<bool>((ref) {

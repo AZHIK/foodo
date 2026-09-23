@@ -7,6 +7,8 @@
 /// reentrancy issues if the refresh call itself fails with 401.
 library;
 
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import '../constants/api_paths.dart';
 import '../constants/app_durations.dart';
@@ -50,6 +52,16 @@ class TokenRefreshInterceptor extends Interceptor {
   // lets every client refresh at once and kills the session instead.
   static bool _isRefreshing = false;
   static Future<void>? _refreshFuture;
+
+  /// Fires when a refresh is *rejected* by the server — the session is dead
+  /// and the device's tokens are cleared. The app listens once (see
+  /// `sessionExpiryWatcherProvider`) to alert and route back to OTP login.
+  /// Transient failures (offline, 5xx) never fire: those keep their tokens
+  /// and stay silent.
+  static final StreamController<void> _sessionExpiredController =
+      StreamController<void>.broadcast(sync: true);
+
+  static Stream<void> get sessionExpired => _sessionExpiredController.stream;
 
   TokenRefreshInterceptor({
     required TokenStorage tokenStorage,
@@ -170,6 +182,13 @@ class TokenRefreshInterceptor extends Interceptor {
 
   /// Calls the API to refresh the access token.
   /// The backend rotates the refresh token on each refresh.
+  ///
+  /// Only a server *rejection* (400/401/403 — invalid, expired, revoked or
+  /// already-used refresh token) means the session is dead: tokens are
+  /// cleared and [sessionExpired] fires so the app can alert and send the
+  /// user back to OTP login. Anything else (no connection, 5xx) is
+  /// transient — tokens are kept so the next attempt can still succeed, and
+  /// nothing fires: going offline must never log anyone out.
   Future<void> _performRefresh(String refreshToken) async {
     try {
       final output = await _api.refreshAccessToken(refreshToken);
@@ -201,10 +220,23 @@ class TokenRefreshInterceptor extends Interceptor {
         }
       }
     } catch (e) {
-      // If refresh fails, the session is lost. Clear tokens.
-      await _tokenStorage.clearTokenSet();
+      // Rejected by the server: the session is lost. Clear tokens and tell
+      // the app, exactly once per death (the static lock guarantees only one
+      // refresher runs, so this fires once no matter how many requests
+      // 401'd together).
+      if (e is DioException && _isRejection(e)) {
+        await _tokenStorage.clearTokenSet();
+        _sessionExpiredController.add(null);
+      }
       rethrow;
     }
+  }
+
+  /// True when the refresh call itself was refused — as opposed to never
+  /// reaching the server, or the server erroring.
+  static bool _isRejection(DioException e) {
+    final status = e.response?.statusCode;
+    return status == 400 || status == 401 || status == 403;
   }
 
   /// Retries a failed request with the new access token.

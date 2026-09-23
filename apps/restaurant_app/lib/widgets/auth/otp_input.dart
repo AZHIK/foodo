@@ -132,6 +132,7 @@ class _DigitBoxState extends State<_DigitBox> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final filled = widget.controller.text.isNotEmpty;
+    final isMobile = context.formFactor.isMobile;
 
     final borderColor = widget.hasError
         ? context.semantic.danger
@@ -144,20 +145,26 @@ class _DigitBoxState extends State<_DigitBox> {
     return AnimatedContainer(
       duration: AppDurations.quick,
       curve: Curves.easeOut,
-      decoration: BoxDecoration(
-        // A filled box reads as done before you look at the digit in it, which
-        // is what lets someone check their progress at a glance mid-entry.
-        color: filled && !widget.hasError
-            ? colors.primary.withValues(alpha: 0.06)
-            : colors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(Radii.md),
-        border: Border.all(
-          color: borderColor,
-          width: _focused || widget.hasError ? 1.8 : 1,
-        ),
-      ),
-      // The border is drawn by the container above so it can animate, so the
-      // field itself contributes nothing but the glyph.
+      decoration: isMobile
+          ? BoxDecoration(
+              borderRadius: BorderRadius.circular(Radii.md),
+              border: Border.all(
+                color: borderColor,
+                width: _focused || widget.hasError ? 1.8 : 1,
+              ),
+            )
+          : BoxDecoration(
+              // A filled box reads as done before you look at the digit in it, which
+              // is what lets someone check their progress at a glance mid-entry.
+              color: filled && !widget.hasError
+                  ? colors.primary.withValues(alpha: 0.06)
+                  : colors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(Radii.md),
+              border: Border.all(
+                color: borderColor,
+                width: _focused || widget.hasError ? 1.8 : 1,
+              ),
+            ),
       child: TextField(
         controller: widget.controller,
         focusNode: widget.focusNode,

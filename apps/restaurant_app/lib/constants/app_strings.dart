@@ -20,6 +20,13 @@ abstract final class AppStrings {
   static String get delete => L10n.t('delete', 'Delete');
   static String get retry => L10n.t('retry', 'Retry');
   static String get refresh => L10n.t('refresh', 'Refresh');
+  static String get sessionExpiredTitle =>
+      L10n.t('sessionExpiredTitle', 'Session expired');
+  static String get sessionExpiredBody => L10n.t(
+    'sessionExpiredBody',
+    'You have been signed out. Please enter your phone number to sign in again.',
+  );
+  static String get sessionExpiredOk => L10n.t('sessionExpiredOk', 'OK');
   static String get close => L10n.t('close', 'Close');
   static String get clear => L10n.t('clear', 'Clear');
   static String get add => L10n.t('add', 'Add');

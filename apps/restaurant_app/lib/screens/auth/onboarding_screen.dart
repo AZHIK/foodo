@@ -868,6 +868,131 @@ class _TeammateRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = context.formFactor.isMobile;
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                AppStrings.teammate(index),
+                style: context.text.eyebrow.copyWith(
+                  color: context.colors.onSurfaceVariant,
+                ),
+              ),
+            ),
+            if (onRemove case final remove?)
+              IconButton(
+                key: OnboardingKeys.removeTeammate(index),
+                onPressed: remove,
+                tooltip: AppStrings.removeTeammate,
+                visualDensity: VisualDensity.compact,
+                icon: Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: context.colors.onSurfaceVariant,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: Insets.md),
+        // Name and email sit side by side wherever the card is wide enough
+        // and stack where it is not — the same pairing the Staff forms use.
+        FieldPair(
+          left: LabeledFormField(
+            label: AppStrings.teammateName,
+            child: TextField(
+              key: OnboardingKeys.teammateName(index),
+              controller: member.name,
+              textCapitalization: TextCapitalization.words,
+              decoration:
+                  InputDecoration(hintText: AppStrings.teammateNameExample),
+              onChanged: (_) => onChanged(),
+            ),
+          ),
+          right: LabeledFormField(
+            label: AppStrings.emailLabel,
+            child: TextField(
+              key: OnboardingKeys.teammateEmail(index),
+              controller: member.email,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                hintText: AppStrings.teammateEmailExample,
+                errorText:
+                    member.email.text.trim().isEmpty ||
+                        isValidEmailFormat(member.email.text)
+                    ? null
+                    : AppStrings.invalidEmail,
+              ),
+              onChanged: (_) => onChanged(),
+            ),
+          ),
+        ),
+        const SizedBox(height: Insets.lg),
+        LabeledFormField(
+          label: AppStrings.phoneLabel,
+          isRequired: true,
+          helper: AppStrings.inviteSentToNumber,
+          child: TextField(
+            key: OnboardingKeys.teammatePhone(index),
+            controller: member.phone,
+            keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(AppLimits.tzPhoneDigits),
+            ],
+            decoration: InputDecoration(
+              hintText: AppStrings.phoneExample,
+              errorText: member.phone.text.isEmpty || isValidTanzanianPhone(member.phone.text)
+                  ? null
+                  : tanzanianPhoneHint,
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: Insets.lg, right: Insets.sm),
+                child: Text(
+                  AppStrings.dialCode,
+                  style: context.text.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              prefixIconConstraints: const BoxConstraints(minWidth: 0),
+            ),
+            onChanged: (_) => onChanged(),
+          ),
+        ),
+        const SizedBox(height: Insets.lg),
+        LabeledFormField(
+          label: AppStrings.roleLabel,
+          helper: AppStrings.roleHelper,
+          child: DropdownButtonFormField<String>(
+            initialValue: member.roleId,
+            isExpanded: true,
+            items: [
+              for (final role in roles)
+                DropdownMenuItem(
+                  value: role.id,
+                  child: Text(
+                    role.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              member.roleId = value;
+              onChanged();
+            },
+          ),
+        ),
+      ],
+    );
+
+    if (isMobile) return content;
+
     return Container(
       padding: const EdgeInsets.all(Insets.lg),
       decoration: BoxDecoration(
@@ -875,127 +1000,7 @@ class _TeammateRow extends StatelessWidget {
         borderRadius: Radii.card,
         border: Border.all(color: context.semantic.hairline),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  AppStrings.teammate(index),
-                  style: context.text.eyebrow.copyWith(
-                    color: context.colors.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              if (onRemove case final remove?)
-                IconButton(
-                  key: OnboardingKeys.removeTeammate(index),
-                  onPressed: remove,
-                  tooltip: AppStrings.removeTeammate,
-                  visualDensity: VisualDensity.compact,
-                  icon: Icon(
-                    Icons.close_rounded,
-                    size: 18,
-                    color: context.colors.onSurfaceVariant,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: Insets.md),
-          // Name and email sit side by side wherever the card is wide enough
-          // and stack where it is not — the same pairing the Staff forms use.
-          FieldPair(
-            left: LabeledFormField(
-              label: AppStrings.teammateName,
-              child: TextField(
-                key: OnboardingKeys.teammateName(index),
-                controller: member.name,
-                textCapitalization: TextCapitalization.words,
-                decoration:
-                    InputDecoration(hintText: AppStrings.teammateNameExample),
-                onChanged: (_) => onChanged(),
-              ),
-            ),
-            right: LabeledFormField(
-              label: AppStrings.emailLabel,
-              child: TextField(
-                key: OnboardingKeys.teammateEmail(index),
-                controller: member.email,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  hintText: AppStrings.teammateEmailExample,
-                  errorText:
-                      member.email.text.trim().isEmpty ||
-                          isValidEmailFormat(member.email.text)
-                      ? null
-                      : AppStrings.invalidEmail,
-                ),
-                onChanged: (_) => onChanged(),
-              ),
-            ),
-          ),
-          const SizedBox(height: Insets.lg),
-          LabeledFormField(
-            label: AppStrings.phoneLabel,
-            isRequired: true,
-            helper: AppStrings.inviteSentToNumber,
-            child: TextField(
-              key: OnboardingKeys.teammatePhone(index),
-              controller: member.phone,
-              keyboardType: TextInputType.phone,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(AppLimits.tzPhoneDigits),
-              ],
-              decoration: InputDecoration(
-                hintText: AppStrings.phoneExample,
-                errorText: member.phone.text.isEmpty || isValidTanzanianPhone(member.phone.text)
-                    ? null
-                    : tanzanianPhoneHint,
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.only(left: Insets.lg, right: Insets.sm),
-                  child: Text(
-                    AppStrings.dialCode,
-                    style: context.text.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: context.colors.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-                prefixIconConstraints: const BoxConstraints(minWidth: 0),
-              ),
-              onChanged: (_) => onChanged(),
-            ),
-          ),
-          const SizedBox(height: Insets.lg),
-          LabeledFormField(
-            label: AppStrings.roleLabel,
-            helper: AppStrings.roleHelper,
-            child: DropdownButtonFormField<String>(
-              initialValue: member.roleId,
-              isExpanded: true,
-              items: [
-                for (final role in roles)
-                  DropdownMenuItem(
-                    value: role.id,
-                    child: Text(
-                      role.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-              ],
-              onChanged: (value) {
-                if (value == null) return;
-                member.roleId = value;
-                onChanged();
-              },
-            ),
-          ),
-        ],
-      ),
+      child: content,
     );
   }
 }

@@ -11,12 +11,11 @@ import 'auth_aside.dart';
 ///
 /// Two layouts, one widget:
 ///
-/// * Below [Breakpoints.desktop] — a softly tinted full-bleed background with a
-///   centered card, top-anchored on a phone so the keyboard has somewhere to go.
-/// * At [Breakpoints.desktop] and above — a brand panel beside the card. A
-///   400px card alone on a 1440px display is a form that got lost on the way to
-///   a screen; the panel gives the width something to do and says whose till
-///   this is while someone is signing in to it.
+/// * Below [Breakpoints.desktop] — a softly tinted full-bleed
+///   background with the form filling the width, no card shadow or
+///   border. Just the clean fields arranged neatly.
+/// * At [Breakpoints.desktop] and above — a brand panel beside a
+///   centered card with shadow and border.
 ///
 /// One widget rather than five near-identical layouts, because the whole point
 /// of the sequence — splash, login, PIN, onboarding — is that it reads as one
@@ -82,54 +81,89 @@ class AuthScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final form = context.formFactor;
+    final isMobile = form.isMobile;
 
-    final card = Container(
-      padding: EdgeInsets.all(form.isMobile ? Insets.xl : Insets.xxl - 4),
-      decoration: BoxDecoration(
-        color: context.colors.surfaceContainerLowest,
-        borderRadius: Radii.panel,
-        border: Border.all(color: context.semantic.hairline),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(
-              alpha: context.theme.brightness == Brightness.dark ? 0.32 : 0.06,
+    final card = isMobile
+        ? Padding(
+            padding: EdgeInsets.all(Insets.xl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (showBrand) ...[
+                  const Center(child: BrandMark(size: 52)),
+                  const SizedBox(height: Insets.xl),
+                ],
+                if (title case final text?) ...[
+                  Text(
+                    text,
+                    textAlign: TextAlign.center,
+                    style: context.text.headlineSmall,
+                  ),
+                  const SizedBox(height: Insets.xs),
+                ],
+                if (subtitle case final text?) ...[
+                  Text(
+                    text,
+                    textAlign: TextAlign.center,
+                    style: context.text.bodySmall?.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: Insets.xl),
+                ] else if (title != null)
+                  const SizedBox(height: Insets.lg),
+                child,
+              ],
             ),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (showBrand) ...[
-            const Center(child: BrandMark(size: 52)),
-            const SizedBox(height: Insets.xl),
-          ],
-          if (title case final text?) ...[
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: context.text.headlineSmall,
+          )
+        : Container(
+            padding: EdgeInsets.all(Insets.xxl - 4),
+            decoration: BoxDecoration(
+              color: context.colors.surfaceContainerLowest,
+              borderRadius: Radii.panel,
+              border: Border.all(color: context.semantic.hairline),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(
+                    alpha: context.theme.brightness == Brightness.dark ? 0.32 : 0.06,
+                  ),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-            const SizedBox(height: Insets.xs),
-          ],
-          if (subtitle case final text?) ...[
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: context.text.bodySmall?.copyWith(
-                color: context.colors.onSurfaceVariant,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (showBrand) ...[
+                  const Center(child: BrandMark(size: 52)),
+                  const SizedBox(height: Insets.xl),
+                ],
+                if (title case final text?) ...[
+                  Text(
+                    text,
+                    textAlign: TextAlign.center,
+                    style: context.text.headlineSmall,
+                  ),
+                  const SizedBox(height: Insets.xs),
+                ],
+                if (subtitle case final text?) ...[
+                  Text(
+                    text,
+                    textAlign: TextAlign.center,
+                    style: context.text.bodySmall?.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: Insets.xl),
+                ] else if (title != null)
+                  const SizedBox(height: Insets.lg),
+                child,
+              ],
             ),
-            const SizedBox(height: Insets.xl),
-          ] else if (title != null)
-            const SizedBox(height: Insets.lg),
-          child,
-        ],
-      ),
-    );
+          );
 
     final column = Column(
       mainAxisSize: MainAxisSize.min,
@@ -143,12 +177,17 @@ class AuthScaffold extends StatelessWidget {
       ],
     );
 
-    final content = Center(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth),
-        child: column,
-      ),
-    );
+    final content = isMobile
+        ? ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: Breakpoints.maxContentWidth),
+            child: column,
+          )
+        : Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              child: column,
+            ),
+          );
 
     // The card pane, identical at every width — the split adds a panel beside
     // this, it does not reflow what is inside it.

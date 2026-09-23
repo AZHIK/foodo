@@ -108,6 +108,8 @@ class PinKeypad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = context.formFactor.isMobile;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         // Keys grow into a wide card but never shrink below the touch floor;
@@ -115,10 +117,12 @@ class PinKeypad extends StatelessWidget {
         final available = (constraints.maxWidth - _gap * 2) / 3;
         final size = available.clamp(keySize, 78.0);
 
-        Widget key(String digit) => _KeypadKey(
+        Widget key(String digit, {bool filled = true}) => _KeypadKey(
           size: size,
           enabled: enabled,
           onTap: () => onDigit(digit),
+          filled: filled,
+          isMobile: isMobile,
           child: Text(
             digit,
             style: context.text.headlineSmall?.copyWith(
@@ -166,8 +170,9 @@ class PinKeypad extends StatelessWidget {
                   size: size,
                   enabled: enabled,
                   onTap: onBackspace,
-                  tooltip: AppStrings.deleteKey,
                   filled: false,
+                  isMobile: isMobile,
+                  tooltip: AppStrings.deleteKey,
                   child: Icon(
                     Icons.backspace_outlined,
                     size: 20,
@@ -192,8 +197,9 @@ class _KeypadKey extends StatelessWidget {
     required this.size,
     required this.enabled,
     required this.onTap,
-    required this.child,
     this.filled = true,
+    this.isMobile = false,
+    required this.child,
     this.tooltip,
   });
 
@@ -202,16 +208,20 @@ class _KeypadKey extends StatelessWidget {
   final VoidCallback onTap;
   final Widget child;
   final bool filled;
+  final bool isMobile;
   final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
     final button = Material(
-      color: filled
-          ? context.colors.surfaceContainerHigh.withValues(
-              alpha: enabled ? 1 : 0.4,
-            )
-          : Colors.transparent,
+      // ignore: sort_child_properties_last
+      color: isMobile
+          ? Colors.transparent
+          : filled
+              ? context.colors.surfaceContainerHigh.withValues(
+                  alpha: enabled ? 1 : 0.4,
+                )
+              : Colors.transparent,
       shape: const CircleBorder(),
       clipBehavior: Clip.antiAlias,
       child: InkWell(

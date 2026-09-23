@@ -10,11 +10,13 @@ import 'database/encryption_key_service.dart';
 import 'l10n/l10n.dart';
 import 'providers/database_providers.dart';
 import 'providers/preferences_provider.dart';
+import 'providers/session_expiry_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/sync_trigger_provider.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 import 'utils/formatters.dart';
+import 'widgets/session_expiry_alert.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,6 +58,11 @@ class RestaurantPosApp extends ConsumerWidget {
     // is the one place it should be watched, per its own doc comment.
     ref.watch(syncTriggerProvider);
 
+    // Arms the refresh-rejection→sign-out bridge the same way: a rejected
+    // token refresh drops the session, fires the expiry alert and routes to
+    // OTP login from here on.
+    ref.watch(sessionExpiryWatcherProvider);
+
     // Money is formatted through static helpers, so the store's currency is
     // applied here — above everything that prints a price — rather than passed
     // down through several hundred call sites. Watching it also means changing
@@ -83,6 +90,9 @@ class RestaurantPosApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      // Shows the session-expired alert above whatever the router renders.
+      builder: (context, child) =>
+          SessionExpiryAlert(child: child ?? const SizedBox.shrink()),
     );
   }
 }
