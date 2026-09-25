@@ -1754,6 +1754,34 @@ abstract final class AppStrings {
   static String get allGroup => L10n.t('allGroup', 'All');
   static String get roleFilter => L10n.t('roleFilter', 'Role');
   static String inviteSentTo(String name) => 'Invite sent to $name';
+  static String inviteSentToStore(String name, String store) =>
+      'Invite sent to $name for $store';
+  static String get staffTypeLabel => L10n.t('staffTypeLabel', 'Staff type');
+  static String get staffTypeHelper => L10n.t(
+    'staffTypeHelper',
+    'Business staff work everywhere; store staff belong to one location',
+  );
+  static String get businessStaffOption => L10n.t('businessStaffOption', 'Business');
+  static String get businessStaffHelper => L10n.t(
+    'businessStaffHelper',
+    'Works across all locations',
+  );
+  static String get storeStaffOption => L10n.t('storeStaffOption', 'Store');
+  static String get storeStaffHelper => L10n.t(
+    'storeStaffHelper',
+    'Assigned to one location',
+  );
+  static String get inviteStoreLabel => L10n.t('inviteStoreLabel', 'Store');
+  static String get inviteStoreRequired => L10n.t('inviteStoreRequired', 'Pick the store they will work at');
+  static String get selectStoreHint => L10n.t('selectStoreHint', 'Select a store');
+  static String get inviteStoresSyncing => L10n.t(
+    'inviteStoresSyncing',
+    'Syncing locations…',
+  );
+  static String get inviteStoresEmpty => L10n.t(
+    'inviteStoresEmpty',
+    'No locations found — check Store Management',
+  );
   static String get staffNeedsInternet => L10n.t('staffNeedsInternet', 'Staff management requires an internet connection.');
   static String get inviteFailed => L10n.t('inviteFailed', 'Something went wrong sending the invite.');
   static String get inviteStaffTitle => L10n.t('inviteStaffTitle', 'Invite staff');

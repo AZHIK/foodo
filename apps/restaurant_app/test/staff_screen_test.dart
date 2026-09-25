@@ -21,6 +21,7 @@ import 'package:restaurant_pos/providers/session_provider.dart';
 import 'package:restaurant_pos/providers/staff_provider.dart';
 import 'package:restaurant_pos/router/app_router.dart';
 import 'package:restaurant_pos/widgets/data_page/summary_metric_card.dart';
+import 'package:restaurant_pos/widgets/selectable_option_card.dart';
 
 import 'test_helpers/fake_identity_backend.dart';
 
@@ -239,6 +240,119 @@ void main() {
       final added = members.firstWhere((m) => m.phone == '+255712300099');
       expect(added.status, StaffStatus.pendingInvite);
       expect(added.roles.single.roleId, _cashierRoleId);
+    });
+  });
+
+  group('Invite scope', () {
+    Future<void> fillIdentity(
+      WidgetTester tester, {
+      required String name,
+      required String phone,
+    }) async {
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'e.g. Tomas Alvarez'),
+        name,
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, '6XXXXXXXX or 7XXXXXXXX'),
+        phone,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.widgetWithText(DropdownButtonFormField<String>, 'Select a role'),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cashier').last);
+      await tester.pumpAndSettle();
+    }
+
+    Finder scopeCard(String label) => find.ancestor(
+      of: find.text(label),
+      matching: find.byType(SelectableOptionCard),
+    );
+
+    testWidgets('store invite asks for a store and hits the store endpoint', (
+      tester,
+    ) async {
+      final backend = _seededState();
+      final container = await pumpAt(
+        tester,
+        const Size(1440, 900),
+        '/staff',
+        state: backend,
+      );
+
+      // The shared harness seeds auth without a business pointer; the store
+      // list (and the dialog's default) needs one to load.
+      container.read(authProvider.notifier).state = container
+          .read(authProvider)
+          .copyWith(selectedBusinessId: _businessId);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Invite staff'));
+      await tester.pumpAndSettle();
+
+      // Both scopes offered; no store picker in business mode.
+      expect(scopeCard('Business'), findsOneWidget);
+      expect(scopeCard('Store'), findsOneWidget);
+      expect(find.text('Select a store'), findsNothing);
+
+      await fillIdentity(tester, name: 'Wren Amani', phone: '712300077');
+
+      await tester.tap(scopeCard('Store'));
+      await tester.pumpAndSettle();
+      // Pre-selected to the first store; the hint only shows with nothing
+      // picked, so the selected value is what the dropdown carries.
+      expect(find.text('Main Location'), findsOneWidget);
+
+      await tester.tap(
+        find.widgetWithText(
+          DropdownButtonFormField<String>,
+          'Main Location',
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Branch Two').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Send invite'));
+      await tester.pumpAndSettle();
+
+      final added = backend.staff.firstWhere(
+        (m) => m['phone'] == '+255712300077',
+      );
+      final storeRoles = ((added['store_roles'] as List?) ?? const [])
+          .cast<Map<String, dynamic>>();
+      expect(storeRoles, hasLength(1));
+      expect(storeRoles.single['store_id'], 'store-2');
+      expect(storeRoles.single['business_role_id'], _cashierRoleId);
+      // No business-level role leaked onto the member.
+      expect((added['roles'] as List), isEmpty);
+
+      // …and the roster shows them, store scope and all.
+      expect(find.text('Cashier · Branch Two'), findsWidgets);
+    });
+
+    testWidgets('business invite still hits the business endpoint', (
+      tester,
+    ) async {
+      final backend = _seededState();
+      await pumpAt(tester, const Size(1440, 900), '/staff', state: backend);
+
+      await tester.tap(find.text('Invite staff'));
+      await tester.pumpAndSettle();
+      await fillIdentity(tester, name: 'Ash Pendo', phone: '712300078');
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Send invite'));
+      await tester.pumpAndSettle();
+
+      final added = backend.staff.firstWhere(
+        (m) => m['phone'] == '+255712300078',
+      );
+      final roles = (added['roles'] as List).cast<Map<String, dynamic>>();
+      expect(roles.single['business_role_id'], _cashierRoleId);
+      expect(added['store_roles'], isNull);
     });
   });
 

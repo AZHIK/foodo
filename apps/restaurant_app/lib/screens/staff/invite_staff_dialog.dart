@@ -8,14 +8,22 @@ import '../../constants/app_strings.dart';
 import '../../models/business_role.dart';
 import '../../models/permission.dart';
 import '../../models/staff_member.dart';
+import '../../providers/permissions_provider.dart';
 import '../../providers/roles_provider.dart';
 import '../../providers/staff_provider.dart';
+import '../../providers/store_api_provider_real.dart';
+import '../../providers/store_locations_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/phone_validation.dart';
 import '../../widgets/labeled_form_field.dart';
 import '../../widgets/responsive_form_dialog.dart';
+import '../../widgets/section_label.dart';
+import '../../widgets/selectable_option_card.dart';
 import '../../widgets/staff/role_badge.dart';
+
+/// Business-wide vs single-store assignment for a new invite.
+enum StaffScope { business, store }
 
 /// Opens the invite form.
 Future<void> showInviteStaffDialog(BuildContext context) {
@@ -53,6 +61,9 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
   final _phone = TextEditingController();
 
   String? _roleId;
+  StaffScope _scope = StaffScope.business;
+  String? _storeId;
+  bool _seededStore = false;
   bool _submitting = false;
   String? _submitError;
 
@@ -67,7 +78,8 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
       !_submitting &&
       validateName(_name.text) == null &&
       isValidTanzanianPhone(_phone.text) &&
-      _roleId != null;
+      _roleId != null &&
+      (_scope == StaffScope.business || _storeId != null);
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || !_canSubmit) return;
@@ -78,16 +90,31 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
     });
 
     try {
+      final storeId = _scope == StaffScope.store ? _storeId : null;
       await ref.read(staffMembersProvider.notifier).assignRole(
             phone: '+255${_phone.text.trim()}',
             roleId: _roleId!,
+            storeId: storeId,
           );
 
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop();
+      final storeName = storeId == null
+          ? null
+          : ref
+                .read(storeLocationsProvider)
+                .where((s) => s.id == storeId)
+                .firstOrNull
+                ?.name;
       messenger.showSnackBar(
-        SnackBar(content: Text(AppStrings.inviteSentTo(_name.text.trim()))),
+        SnackBar(
+          content: Text(
+            storeName == null
+                ? AppStrings.inviteSentTo(_name.text.trim())
+                : AppStrings.inviteSentToStore(_name.text.trim(), storeName),
+          ),
+        ),
       );
     } on AuthException catch (e) {
       // Surfaces the backend's own message verbatim (e.g. its real 409
@@ -111,6 +138,21 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
   @override
   Widget build(BuildContext context) {
     final roles = ref.watch(rolesProvider).valueOrNull ?? const <BusinessRole>[];
+    final stores = ref.watch(storeLocationsProvider);
+    // Loading vs loaded-empty: an empty menu with no explanation looks
+    // broken, so the helper says which of the two it is.
+    final storesLoading = ref.watch(storesProvider).isLoading;
+    // Default to the terminal's own store, falling back to the first loaded
+    // one. Seeds only once real data exists — an empty first build (stores
+    // still syncing) must not lock in a null default. The cashier's explicit
+    // pick always wins after that.
+    if (!_seededStore) {
+      final current = ref.read(currentStoreIdProvider);
+      if (current != null || stores.isNotEmpty) {
+        _seededStore = true;
+        _storeId = current ?? stores.first.id;
+      }
+    }
 
     return Form(
       key: _formKey,
@@ -202,6 +244,67 @@ class _InviteStaffDialogState extends ConsumerState<InviteStaffDialog> {
             ),
             const SizedBox(height: Insets.lg),
 
+            SectionLabel(AppStrings.staffTypeLabel),
+            const SizedBox(height: Insets.xs),
+            Text(
+              AppStrings.staffTypeHelper,
+              style: context.text.bodySmall?.copyWith(
+                color: context.colors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: Insets.sm),
+            SelectableOptionGrid(
+              perRow: 2,
+              children: [
+                SelectableOptionCard(
+                  label: AppStrings.businessStaffOption,
+                  subtitle: AppStrings.businessStaffHelper,
+                  icon: Icons.business_outlined,
+                  selected: _scope == StaffScope.business,
+                  onTap: () => setState(() => _scope = StaffScope.business),
+                ),
+                SelectableOptionCard(
+                  label: AppStrings.storeStaffOption,
+                  subtitle: AppStrings.storeStaffHelper,
+                  icon: Icons.storefront_outlined,
+                  selected: _scope == StaffScope.store,
+                  onTap: () => setState(() => _scope = StaffScope.store),
+                ),
+              ],
+            ),
+            if (_scope == StaffScope.store) ...[
+              const SizedBox(height: Insets.lg),
+              LabeledFormField(
+                label: AppStrings.inviteStoreLabel,
+                isRequired: true,
+                helper: stores.isEmpty
+                    ? (storesLoading
+                          ? AppStrings.inviteStoresSyncing
+                          : AppStrings.inviteStoresEmpty)
+                    : null,
+                child: DropdownButtonFormField<String>(
+                  initialValue: _storeId,
+                  isExpanded: true,
+                  hint: Text(AppStrings.selectStoreHint),
+                  items: [
+                    for (final store in stores)
+                      DropdownMenuItem(
+                        value: store.id,
+                        child: Text(
+                          store.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) => setState(() => _storeId = value),
+                  validator: (value) =>
+                      value == null ? AppStrings.inviteStoreRequired : null,
+                ),
+              ),
+            ],
+            const SizedBox(height: Insets.lg),
+
             RolePickerField(
               roles: roles,
               value: _roleId,
@@ -231,10 +334,13 @@ class _AddRoleDialogState extends ConsumerState<AddRoleDialog> {
   @override
   Widget build(BuildContext context) {
     final roles = ref.watch(rolesProvider).valueOrNull ?? const <BusinessRole>[];
-    final heldRoleIds = {for (final r in widget.member.roles) r.roleId};
-    // A role they already hold can't be granted again — the backend treats
-    // that exact triple as a 409, so it's excluded here rather than left to
-    // fail server-side.
+    // Only business-held roles excluded: a store-held role is a different
+    // backend triple (user, store, role), so granting it business-wide is
+    // still a legal, distinct assignment.
+    final heldRoleIds = {
+      for (final r in widget.member.roles)
+        if (!r.isStoreScoped) r.roleId,
+    };
     final available = [
       for (final role in roles)
         if (!heldRoleIds.contains(role.id)) role,

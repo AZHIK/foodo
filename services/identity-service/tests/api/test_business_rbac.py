@@ -697,7 +697,14 @@ class TestListStaff:
         assert data[0]["phone"] == phone
         assert data[0]["full_name"] == "Business User"
         assert data[0]["status"] == "active"
-        assert data[0]["roles"] == [{"business_role_id": cashier_id, "name": "Cashier"}]
+        assert data[0]["roles"] == [
+            {
+                "business_role_id": cashier_id,
+                "name": "Cashier",
+                "store_id": None,
+                "store_name": None,
+            }
+        ]
 
     async def test_multi_role_staff_grouped_into_one_entry(
         self, client: AsyncClient, db_session: AsyncSession
@@ -740,6 +747,60 @@ class TestListStaff:
         assert len(data) == 1
         role_names = {r["name"] for r in data[0]["roles"]}
         assert role_names == {"Cashier", "Kitchen"}
+
+    async def test_store_only_staff_appears_with_store_fields(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        from app.models.business import UserStoreRole
+
+        owner = await _make_business_user(db_session)
+        biz = await _make_business(db_session, owner)
+        token = _owner_token(owner, biz.id)
+
+        cashier_id = (
+            await client.post(
+                f"/api/v1/businesses/{biz.id}/roles",
+                json={"name": "Cashier"},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        ).json()["id"]
+
+        store_id = (
+            await client.post(
+                f"/api/v1/businesses/{biz.id}/stores",
+                json={"name": "Branch", "location_type": "restaurant_branch"},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        ).json()["id"]
+
+        phone = f"+2557{uuid4().int % 100_000_000:08d}"
+        staffer = await _make_business_user(db_session, phone=phone)
+        db_session.add(
+            UserStoreRole(
+                user_id=staffer.id,
+                business_id=biz.id,
+                store_id=UUID(store_id),
+                business_role_id=UUID(cashier_id),
+            )
+        )
+        await db_session.commit()
+
+        resp = await client.get(
+            f"/api/v1/businesses/{biz.id}/staff",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["user_id"] == str(staffer.id)
+        assert data[0]["roles"] == [
+            {
+                "business_role_id": cashier_id,
+                "name": "Cashier",
+                "store_id": store_id,
+                "store_name": "Branch",
+            }
+        ]
 
     async def test_without_permission_returns_403(
         self, client: AsyncClient, db_session: AsyncSession

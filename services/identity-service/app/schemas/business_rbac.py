@@ -208,10 +208,17 @@ class UserBusinessPermissionRead(UserBusinessPermissionBase):
 
 
 class StaffRoleSummary(BaseModel):
-    """One role a staff member holds, as returned within a staff list entry."""
+    """One role a staff member holds, as returned within a staff list entry.
+
+    ``store_id``/``store_name`` are set only for store-scoped assignments
+    (``UserStoreRole``); business-wide assignments leave them null. Additive:
+    older clients ignore the new keys.
+    """
 
     business_role_id: UUID
     name: str
+    store_id: UUID | None = None
+    store_name: str | None = None
 
 
 class StaffMemberRead(BaseModel):

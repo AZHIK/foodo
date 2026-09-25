@@ -91,7 +91,11 @@ class _Header extends ConsumerWidget {
           icon: member.status.badgeIcon,
           dense: true,
         ),
-        RoleBadge(role: role, dense: true),
+        RoleBadge(
+          role: role,
+          scopeLabel: member.primaryRole?.storeName,
+          dense: true,
+        ),
       ],
       actions: [
         if (canAssign)
@@ -176,7 +180,11 @@ class _OverflowMenu extends ConsumerWidget {
     var failures = 0;
     for (final role in member.roles) {
       try {
-        await notifier.revokeRole(userId: member.id, roleId: role.roleId);
+        await notifier.revokeRole(
+          userId: member.id,
+          roleId: role.roleId,
+          storeId: role.storeId,
+        );
       } catch (_) {
         failures++;
       }
@@ -315,9 +323,11 @@ class _AccessPanel extends ConsumerWidget {
   ) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref
-          .read(staffMembersProvider.notifier)
-          .revokeRole(userId: member.id, roleId: assignment.roleId);
+      await ref.read(staffMembersProvider.notifier).revokeRole(
+        userId: member.id,
+        roleId: assignment.roleId,
+        storeId: assignment.storeId,
+      );
       messenger.showSnackBar(
         SnackBar(
           content: Text(
@@ -360,7 +370,7 @@ class _RoleRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              RoleBadge(role: role),
+              RoleBadge(role: role, scopeLabel: assignment.storeName),
               const SizedBox(height: Insets.sm),
               Text(
                 role?.description ?? AppStrings.roleGone,

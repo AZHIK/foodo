@@ -10,6 +10,7 @@ import '../models/table_query.dart';
 import 'database_providers.dart';
 import 'permissions_provider.dart';
 import 'roles_provider.dart';
+import 'store_api_provider_real.dart';
 import 'table_query_provider.dart';
 
 abstract final class StaffSort {
@@ -36,7 +37,13 @@ StaffMember _fromDto(StaffMemberDto dto) => StaffMember(
   email: dto.email ?? '',
   phone: dto.phone,
   roles: [
-    for (final r in dto.roles) StaffRoleAssignment(roleId: r.businessRoleId, roleName: r.name),
+    for (final r in dto.roles)
+      StaffRoleAssignment(
+        roleId: r.businessRoleId,
+        roleName: r.name,
+        storeId: r.storeId,
+        storeName: r.storeName,
+      ),
   ],
   status: _parseStatus(dto.status),
   // The backend doesn't return a joined/invited timestamp on this endpoint —
@@ -105,22 +112,53 @@ class StaffNotifier extends AsyncNotifier<List<StaffMember>> {
   /// is new, or adds an additional role if they're already staff here (the
   /// backend allows more than one simultaneous role per person; there is no
   /// single-role "replace").
-  Future<void> assignRole({required String phone, required String roleId}) async {
-    await ref.read(staffRbacApiProvider).assignStaff(
-      businessId: _businessId,
-      input: AssignStaffInput(businessRoleId: roleId, phone: phone),
-    );
+  ///
+  /// With [storeId], the assignment is store-scoped (`UserStoreRole` — the
+  /// person becomes store staff at that location) instead of
+  /// business-scoped (`UserBusinessRole`).
+  Future<void> assignRole({
+    required String phone,
+    required String roleId,
+    String? storeId,
+  }) async {
+    if (storeId == null) {
+      await ref.read(staffRbacApiProvider).assignStaff(
+        businessId: _businessId,
+        input: AssignStaffInput(businessRoleId: roleId, phone: phone),
+      );
+    } else {
+      await ref.read(storeApiServiceProvider).assignStaffToStore(
+        businessId: _businessId,
+        storeId: storeId,
+        businessRoleId: roleId,
+        phone: phone,
+      );
+    }
     await refresh();
   }
 
   /// Removes exactly one role assignment from a staff member — their other
-  /// roles, if any, are untouched.
-  Future<void> revokeRole({required String userId, required String roleId}) async {
-    await ref.read(staffRbacApiProvider).revokeStaffRole(
-      businessId: _businessId,
-      userId: userId,
-      roleId: roleId,
-    );
+  /// roles, if any, are untouched. With [storeId], revokes the store-scoped
+  /// assignment instead of the business-wide one.
+  Future<void> revokeRole({
+    required String userId,
+    required String roleId,
+    String? storeId,
+  }) async {
+    if (storeId == null) {
+      await ref.read(staffRbacApiProvider).revokeStaffRole(
+        businessId: _businessId,
+        userId: userId,
+        roleId: roleId,
+      );
+    } else {
+      await ref.read(storeApiServiceProvider).revokeStaffFromStore(
+        businessId: _businessId,
+        storeId: storeId,
+        userId: userId,
+        roleId: roleId,
+      );
+    }
     await refresh();
   }
 

@@ -294,7 +294,7 @@ List<DataColumnSpec<StaffMember>> staffColumns(
     flex: 3,
     // A staff member can hold more than one role — join every name for
     // sorting/search/export, and render every badge in the cell.
-    value: (member) => member.roles.map((r) => r.roleName).join(', '),
+    value: (member) => member.roles.map((r) => r.label).join(', '),
     cellBuilder: (context, member) => Align(
       alignment: Alignment.centerLeft,
       child: member.roles.isEmpty
@@ -304,7 +304,11 @@ List<DataColumnSpec<StaffMember>> staffColumns(
               runSpacing: 4,
               children: [
                 for (final assignment in member.roles)
-                  RoleBadge(role: rolesById[assignment.roleId], dense: true),
+                  RoleBadge(
+                    role: rolesById[assignment.roleId],
+                    scopeLabel: assignment.storeName,
+                    dense: true,
+                  ),
               ],
             ),
     ),

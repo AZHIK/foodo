@@ -20,6 +20,7 @@ from app.models.business import (
     Business,
     BusinessRole,
     BusinessRolePermission,
+    Store,
     UserBusinessRole,
     UserStoreRole,
 )
@@ -435,6 +436,39 @@ async def list_staff(
             )
             by_user[user.id] = entry
         entry.roles.append(StaffRoleSummary(business_role_id=role.id, name=role.name))
+
+    # Store-scoped assignments live in UserStoreRole, not UserBusinessRole —
+    # without this merge, anyone invited as store staff is invisible to the
+    # roster. Business roles come first so the primary role stays
+    # business-wide; store roles append with their store attached.
+    store_result = await db.exec(
+        select(UserStoreRole, User, BusinessRole, Store)
+        .join(User, UserStoreRole.user_id == User.id)  # type: ignore[arg-type]
+        .join(BusinessRole, UserStoreRole.business_role_id == BusinessRole.id)  # type: ignore[arg-type]
+        .join(Store, UserStoreRole.store_id == Store.id)  # type: ignore[arg-type]
+        .where(UserStoreRole.business_id == business_id)
+        .order_by(User.phone)
+    )
+    for _usr, user, role, store in store_result.all():
+        entry = by_user.get(user.id)
+        if entry is None:
+            entry = StaffMemberRead(
+                user_id=user.id,
+                phone=user.phone,
+                full_name=user.full_name,
+                email=user.email,
+                status=user.status,
+                roles=[],
+            )
+            by_user[user.id] = entry
+        entry.roles.append(
+            StaffRoleSummary(
+                business_role_id=role.id,
+                name=role.name,
+                store_id=store.id,
+                store_name=store.name,
+            )
+        )
 
     return list(by_user.values())
 

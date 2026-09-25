@@ -36,7 +36,12 @@ enum StaffStatus {
 /// reflects that directly rather than assuming one role per person.
 @immutable
 class StaffRoleAssignment {
-  const StaffRoleAssignment({required this.roleId, required this.roleName});
+  const StaffRoleAssignment({
+    required this.roleId,
+    required this.roleName,
+    this.storeId,
+    this.storeName,
+  });
 
   /// References [BusinessRole.id].
   final String roleId;
@@ -46,13 +51,28 @@ class StaffRoleAssignment {
   /// response already returns inline.
   final String roleName;
 
+  /// Set for store-scoped assignments: which location this role applies to.
+  /// Null means business-wide.
+  final String? storeId;
+  final String? storeName;
+
+  /// True for a role pinned to one location rather than the whole business.
+  bool get isStoreScoped => storeId != null;
+
+  /// "Cashier · Branch Two" for store roles, plain "Cashier" otherwise — the
+  /// form every list, badge and export uses so scope never silently drops.
+  String get label =>
+      storeName == null || storeName!.isEmpty ? roleName : '$roleName · $storeName';
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is StaffRoleAssignment && other.roleId == roleId);
+      (other is StaffRoleAssignment &&
+          other.roleId == roleId &&
+          other.storeId == storeId);
 
   @override
-  int get hashCode => roleId.hashCode;
+  int get hashCode => Object.hash(roleId, storeId);
 }
 
 /// A person with access to the business.

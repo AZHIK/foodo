@@ -49,6 +49,32 @@ String fakeScopedToken({
   });
 }
 
+/// The locations `GET .../stores` serves, shared with the store-staff assign
+/// handler so recorded assignments carry the real store name — like the
+/// backend's `Store` join does.
+List<Map<String, dynamic>> _fakeStores(String businessId) {
+  final now = DateTime.now().toUtc().toIso8601String();
+  Map<String, dynamic> store(String id, String name, bool primary, String type) => {
+    'id': id,
+    'business_id': businessId,
+    'name': name,
+    'token': 'tok-$id',
+    'location_type': type,
+    'status': 'active',
+    'country_code': 'TZ',
+    'city': null,
+    'address': null,
+    'timezone': 'Africa/Dar_es_Salaam',
+    'is_primary': primary,
+    'created_at': now,
+    'updated_at': now,
+  };
+  return [
+    store('store-1', 'Main Location', true, 'head_office'),
+    store('store-2', 'Branch Two', false, 'restaurant_branch'),
+  ];
+}
+
 class FakeIdentityBackendState {
   FakeIdentityBackendState();
 
@@ -208,10 +234,7 @@ class FakeIdentityAdapter implements HttpClientAdapter {
 
     final storesMatch = RegExp(r'/businesses/([^/]+)/stores$').firstMatch(path);
     if (method == 'GET' && storesMatch != null) {
-      return _json([
-        {'id': 'store-1', 'is_primary': true, 'name': 'Main Location'},
-        {'id': 'store-2', 'is_primary': false, 'name': 'Branch Two'},
-      ], 200);
+      return _json(_fakeStores(storesMatch.group(1)!), 200);
     }
 
     final rolesListMatch = RegExp(r'/businesses/([^/]+)/roles$').firstMatch(path);
@@ -280,7 +303,18 @@ class FakeIdentityAdapter implements HttpClientAdapter {
 
     final staffListMatch = RegExp(r'/businesses/([^/]+)/staff$').firstMatch(path);
     if (method == 'GET' && staffListMatch != null) {
-      return _json(state.staff, 200);
+      // Store-scoped assignments ride along on the business roster, like the
+      // real `list_staff` merge — the roster is one list, not two.
+      return _json([
+        for (final member in state.staff)
+          {
+            ...member,
+            'roles': [
+              ...(member['roles'] as List? ?? const []),
+              ...((member['store_roles'] as List?) ?? const []),
+            ],
+          },
+      ], 200);
     }
     if (method == 'POST' && staffListMatch != null) {
       final roleId = body['business_role_id'] as String;
@@ -309,6 +343,52 @@ class FakeIdentityAdapter implements HttpClientAdapter {
       }
       existingRoles.add({'business_role_id': roleId, 'name': role['name']});
       return _json({'detail': 'Staff role assigned'}, 201);
+    }
+
+    final storeStaffMatch =
+        RegExp(r'/businesses/([^/]+)/stores/([^/]+)/staff$').firstMatch(path);
+    if (method == 'POST' && storeStaffMatch != null) {
+      final storeId = storeStaffMatch.group(2)!;
+      final roleId = body['business_role_id'] as String;
+      final role = state.roles.where((r) => r['id'] == roleId).firstOrNull;
+      if (role == null) return _json({'detail': 'Business role not found'}, 404);
+
+      final phone = body['phone'] as String?;
+      var member = phone == null ? null : state._staffByPhone(phone);
+      if (member == null) {
+        member = {
+          'user_id': state._nextId('user'),
+          'phone': phone ?? '+255700000000',
+          'full_name': '',
+          'email': null,
+          'status': 'invited',
+          'roles': <Map<String, dynamic>>[],
+          'store_roles': <Map<String, dynamic>>[],
+        };
+        state.staff.add(member);
+      }
+      final storeRoles =
+          (member['store_roles'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      member['store_roles'] = storeRoles;
+      if (storeRoles.any(
+        (r) => r['business_role_id'] == roleId && r['store_id'] == storeId,
+      )) {
+        return _json(
+          {'detail': 'This user already has this role assignment at this store.'},
+          409,
+        );
+      }
+      final businessId = storeStaffMatch.group(1)!;
+      final storeName = _fakeStores(
+        businessId,
+      ).where((s) => s['id'] == storeId).firstOrNull?['name'] as String?;
+      storeRoles.add({
+        'business_role_id': roleId,
+        'name': role['name'],
+        'store_id': storeId,
+        'store_name': storeName,
+      });
+      return _json({'detail': 'Store staff role assigned'}, 201);
     }
 
     final revokeMatch =

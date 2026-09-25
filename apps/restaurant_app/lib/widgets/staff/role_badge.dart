@@ -14,10 +14,14 @@ import '../data_page/status_badge.dart';
 /// pill shape, spacing and icon pairing stay identical to every other badge in
 /// the app.
 class RoleBadge extends StatelessWidget {
-  const RoleBadge({super.key, required this.role, this.dense = false});
+  const RoleBadge({super.key, required this.role, this.dense = false, this.scopeLabel});
 
   final BusinessRole? role;
   final bool dense;
+
+  /// Store scope for store-held roles ("Branch Two" renders
+  /// "Cashier · Branch Two"). Null for business-wide roles.
+  final String? scopeLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -33,8 +37,9 @@ class RoleBadge extends StatelessWidget {
       );
     }
 
+    final scope = scopeLabel?.trim();
     return StatusBadge(
-      label: role.name,
+      label: scope == null || scope.isEmpty ? role.name : '${role.name} · $scope',
       tone: StatusTone.neutral,
       color: roleColor(context, role),
       icon: roleIcon(role),

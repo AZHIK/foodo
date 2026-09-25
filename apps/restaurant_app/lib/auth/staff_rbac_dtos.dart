@@ -103,12 +103,23 @@ class StaffRoleSummaryDto {
   final String businessRoleId;
   final String name;
 
-  StaffRoleSummaryDto({required this.businessRoleId, required this.name});
+  /// Set only for store-scoped assignments (`UserStoreRole` on the backend).
+  final String? storeId;
+  final String? storeName;
+
+  StaffRoleSummaryDto({
+    required this.businessRoleId,
+    required this.name,
+    this.storeId,
+    this.storeName,
+  });
 
   factory StaffRoleSummaryDto.fromJson(Map<String, dynamic> json) {
     return StaffRoleSummaryDto(
       businessRoleId: json['business_role_id'] as String,
       name: json['name'] as String,
+      storeId: json['store_id'] as String?,
+      storeName: json['store_name'] as String?,
     );
   }
 }
