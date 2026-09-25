@@ -25,19 +25,22 @@ async def get_onboarding_status(
     """Whether the caller still needs to complete onboarding.
 
     ``needs_onboarding`` is ``true`` only when the user has zero
-    business-role assignments.  Invited staff become ``false`` once the
-    owner has assigned them a role, even before they first log in.
+    business-role *and* zero store-role assignments. Invited staff become
+    ``false`` once the owner has assigned them a role, even before they
+    first log in — business staff via ``UserBusinessRole``, store staff
+    (cashiers, etc.) via ``UserStoreRole``.
 
     When onboarding is complete (``needs_onboarding=false``), the response
     also includes ``business_id`` and ``business_name`` from the user's
     single business role assignment (enforced by the one-business-per-user
-    constraint).
+    constraint), or from their store assignment when they hold no
+    business-level role.
 
     Also carries ``full_name``/``email`` so a phone-first (OTP-only) signup
     — which never goes through /auth/register — can tell whether the caller
     still needs to fill in their name via PATCH /users/me.
     """
-    from app.models.business import Business
+    from app.models.business import Business, UserStoreRole
 
     result = await db.exec(
         select(UserBusinessRole, Business.name)
@@ -51,7 +54,26 @@ async def get_onboarding_status(
         "email": user.email,
     }
     if first is None:
-        return base | {"needs_onboarding": True, "business_id": None, "business_name": None}
+        # No business-level role — store staff are assigned via
+        # UserStoreRole instead, so check that before reporting
+        # needs_onboarding (otherwise invited cashiers get routed to the
+        # business-creation onboarding screen on first login).
+        store_result = await db.exec(
+            select(UserStoreRole, Business.name)
+            .join(Business, UserStoreRole.business_id == Business.id)  # type: ignore[arg-type]
+            .where(UserStoreRole.user_id == user.id)
+            .order_by(UserStoreRole.id)
+            .limit(1)
+        )
+        store_first = store_result.one_or_none()
+        if store_first is None:
+            return base | {"needs_onboarding": True, "business_id": None, "business_name": None}
+        usr, business_name = store_first
+        return base | {
+            "needs_onboarding": False,
+            "business_id": str(usr.business_id),
+            "business_name": business_name,
+        }
     ubr, business_name = first
     return base | {
         "needs_onboarding": False,

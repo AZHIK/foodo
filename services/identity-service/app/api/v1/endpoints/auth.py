@@ -314,6 +314,14 @@ async def _issue_tokens(
             other_businesses=[],
         )
 
+    # The permission-resolution reads above autobegin a transaction on the
+    # session. `issue_login_session` owns its own `session.begin()` block, so
+    # the read transaction must be closed first — otherwise SQLAlchemy raises
+    # `InvalidRequestError: A transaction is already begun on this Session`
+    # (500 on POST /auth/otp/verify). Mirrors the switch-context endpoints,
+    # which already commit before issuing a session.
+    await session.commit()
+
     issued = await issue_login_session(
         session,
         user_id=user.id,

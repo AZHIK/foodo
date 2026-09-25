@@ -4,7 +4,10 @@
 /// 1. Request OTP for phone
 /// 2. Verify OTP code → get tokens
 /// 3. Check onboarding status
-/// 4. Either: create business (owner) or switch context (invited staff)
+/// 4. Either: create business (owner), switch context (invited business
+///    staff), or lock straight to the assigned store (invited store staff
+///    — their login token is already scoped, and context-switch rejects
+///    them)
 /// 5. If the business already has a store, lock the device to the primary
 ///    one — a business with none yet (owner still mid-onboarding) leaves
 ///    the device unprovisioned rather than failing the login
@@ -270,7 +273,23 @@ class AuthNotifier extends Notifier<AuthContext> {
         // User has a business already (invited staff).
         final businessId = onboardingStatus.businessId;
         if (businessId != null) {
-          await _switchContextAndLock(businessId, accessToken);
+          final claims = decodeAccessToken(accessToken);
+          if (claims.userCategory == 'business_store_staff') {
+            // Store staff (cashiers, etc.) skip the context switch:
+            // POST /auth/context/switch is business_staff-only (403 for
+            // store staff), and the login token already carries
+            // active_business_id + active_store_id + roles/permissions.
+            // Just lock the device to the assigned store and finish.
+            await _lockStoreStaffContext(
+              businessId: claims.activeBusinessId ?? businessId,
+              storeId: claims.activeStoreId,
+              businessName:
+                  onboardingStatus.businessName ?? 'Restaurant',
+              accessToken: accessToken,
+            );
+          } else {
+            await _switchContextAndLock(businessId, accessToken);
+          }
         }
       }
     } catch (e) {
@@ -280,6 +299,44 @@ class AuthNotifier extends Notifier<AuthContext> {
       );
       rethrow;
     }
+  }
+
+  /// Store-staff login finish: the login token is already scoped to the
+  /// assigned business + store, so there is no context switch — persist the
+  /// tokens, provision the device to the assigned store (when known), and
+  /// mark the flow complete. Mirrors the persistence tail of
+  /// [_switchContextAndLock] without its switch/list-stores calls.
+  Future<void> _lockStoreStaffContext({
+    required String businessId,
+    required String? storeId,
+    required String businessName,
+    required String accessToken,
+  }) async {
+    final userId = state.userId ?? decodeAccessToken(accessToken).sub;
+
+    if (storeId != null) {
+      await _profileRepo.provisionDevice(
+        businessId: businessId,
+        businessLocationId: storeId,
+        businessName: businessName,
+      );
+    }
+
+    await _tokenStorage.saveTokenSet(
+      TokenSet(
+        accessToken: accessToken,
+        refreshToken: state.refreshToken!,
+        expiresAt: DateTime.now().add(AppDurations.sessionLifetime),
+        userId: userId,
+      ),
+    );
+
+    state = state.copyWith(
+      state: AuthState.complete,
+      accessToken: accessToken,
+      selectedBusinessId: businessId,
+      selectedStoreId: storeId,
+    );
   }
 
   /// Records the caller's own name/email — the first thing a phone-first

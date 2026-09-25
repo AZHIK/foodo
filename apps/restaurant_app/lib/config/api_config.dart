@@ -6,7 +6,7 @@
 /// endpoints are needed, this is the one place to switch to `--dart-define`
 /// or a build-time config, without touching call sites.
 abstract final class ApiConfig {
-  static const identityServiceBaseUrl = 'http://localhost:8009/api/v1';
-  static const inventoryServiceBaseUrl = 'http://localhost:8100/api/v1';
-  static const posServiceBaseUrl = 'http://localhost:8200/api/v1';
+  static const identityServiceBaseUrl = 'http://192.168.100.68:8009/api/v1';
+  static const inventoryServiceBaseUrl = 'http://192.168.100.68:8100/api/v1';
+  static const posServiceBaseUrl = 'http://192.168.100.68:8200/api/v1';
 }

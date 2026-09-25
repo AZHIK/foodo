@@ -6,6 +6,7 @@ import '../models/order.dart';
 import '../models/store_settings.dart';
 import '../theme/app_theme.dart';
 import 'business_api_provider.dart';
+import 'database_providers.dart';
 import 'staff_provider.dart';
 
 /// App-wide theme mode.
@@ -61,14 +62,32 @@ final businessProfileProvider =
 
 /// Store identity shown in the nav header.
 ///
-/// Still its own provider so the header rebuilds only when the *name* changes,
-/// not on every edit to an address or a receipt footer.
+/// Prefers the live business profile, but that is permission-gated
+/// (`businesses.view`) — ordinary staff (e.g. Kitchen Staff) never have it,
+/// so for them this falls back to the device's locked business name, which
+/// login writes from the onboarding-status response. Display-only: the name
+/// is already on receipts and known to staff, so no permission is needed to
+/// show it.
 final storeNameProvider = Provider<String>(
   (ref) {
     final profile = ref.watch(businessProfileProvider);
-    return profile?.name ?? 'Restaurant';
+    final liveName = profile?.name.trim();
+    if (liveName != null && liveName.isNotEmpty) return liveName;
+    return ref.watch(_deviceBusinessNameProvider).valueOrNull ??
+        'Restaurant';
   },
 );
+
+/// This device's locked business name, read from local `DeviceConfig`.
+/// Written at login/provisioning time, so it is available offline and
+/// regardless of the caller's role permissions.
+final _deviceBusinessNameProvider = FutureProvider<String?>((ref) async {
+  final repo = ref.watch(localProfileRepositoryProvider);
+  final device = await repo.currentDevice();
+  final name = device?.businessName as String?;
+  final trimmed = name?.trim();
+  return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+});
 
 /// The thank-you line printed at the bottom of every receipt.
 ///
