@@ -15,6 +15,7 @@ import '../../providers/store_api_provider_real.dart';
 import '../../providers/store_locations_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
+import '../../utils/api_errors.dart';
 import '../../widgets/field_pair.dart';
 import '../../widgets/labeled_form_field.dart';
 import '../../widgets/responsive_form_dialog.dart';
@@ -177,8 +178,10 @@ class _LocationFormDialogState extends ConsumerState<LocationFormDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              e.response?.data?['detail']?.toString() ??
-                  AppStrings.locationSaveFallback,
+              errorDetail(
+                e.response?.data,
+                fallback: AppStrings.locationSaveFallback,
+              ),
             ),
           ),
         );

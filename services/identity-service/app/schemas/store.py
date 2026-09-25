@@ -36,7 +36,14 @@ class StoreCreate(StoreBase):
 
     location_type must be one of: head_office, restaurant_branch, kitchen,
     warehouse, farm, depot. Other values are rejected at the schema level.
+
+    ``business_id`` is optional here: the endpoint takes it from the path
+    (``POST /businesses/{business_id}/stores``) and ignores any body value,
+    so clients must not be forced to send it — requiring it 422s legitimate
+    calls that only carry the store fields.
     """
+
+    business_id: UUID | None = None
 
 
 class StoreUpdate(BaseModel):

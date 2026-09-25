@@ -458,6 +458,11 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
         "Delete stores",
         "Delete a store.",
     ),
+    PermissionSeed(
+        PermissionCode.STORES_SWITCH,
+        "Switch stores",
+        "Switch the terminal's operating store (business staff only).",
+    ),
     # Business Roles (per-business custom roles)
     PermissionSeed(
         PermissionCode.BUSINESS_ROLES_VIEW,

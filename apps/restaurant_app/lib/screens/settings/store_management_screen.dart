@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../models/permission.dart';
 import '../../models/store_location.dart';
 import '../../constants/app_strings.dart';
+import '../../providers/permissions_provider.dart';
 import '../../providers/store_api_provider_real.dart';
 import '../../providers/store_locations_provider.dart';
 import '../../router/app_router.dart';
+import 'store_switch_flow.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../widgets/data_page/data_column_spec.dart';
@@ -104,13 +107,31 @@ class StoreManagementScreen extends ConsumerWidget {
     );
   }
 
-  List<DataRowAction<StoreLocation>> _actions(WidgetRef ref) => [
-    DataRowAction(
-      label: AppStrings.editLocationAction,
-      icon: Icons.edit_outlined,
-      onSelected: (context, location) =>
-          showLocationFormDialog(context, existing: location),
-    ),
+  List<DataRowAction<StoreLocation>> _actions(WidgetRef ref) {
+    final currentId = ref.watch(currentStoreIdProvider);
+    final switchAllowed =
+        ref.watch(hasPermissionProvider(AppPermissions.storesSwitch)) &&
+        (ref.watch(currentClaimsProvider)?.isBusinessStaff ?? false);
+
+    return [
+      DataRowAction(
+        label: AppStrings.switchStoreAction,
+        icon: Icons.swap_horiz_rounded,
+        // The terminal's own store is already current; anyone without the
+        // switch permission (or store staff, who can never hold it
+        // usefully) gets no affordance at all.
+        isEnabled: (location) =>
+            switchAllowed &&
+            (currentId == null || location.id != currentId),
+        onSelected: (context, location) =>
+            runStoreSwitchFlow(context, ref, location),
+      ),
+      DataRowAction(
+        label: AppStrings.editLocationAction,
+        icon: Icons.edit_outlined,
+        onSelected: (context, location) =>
+            showLocationFormDialog(context, existing: location),
+      ),
     DataRowAction(
       label: AppStrings.toggleActiveAction,
       icon: Icons.toggle_on_outlined,
@@ -147,7 +168,8 @@ class StoreManagementScreen extends ConsumerWidget {
           ref.read(storeLocationsProvider.notifier).canDelete(location.id),
       onSelected: (context, location) => _confirmDelete(context, ref, location),
     ),
-  ];
+    ];
+  }
 
   Future<void> _confirmDelete(
     BuildContext context,
@@ -279,13 +301,17 @@ List<DataColumnSpec<StoreLocation>> locationColumns(
 
 /// The site's name, with the terminal's own site called out — the one fact
 /// about this table that changes what the other screens do.
-class _NameCell extends StatelessWidget {
+///
+/// Compared against the live store id, not [StoreLocation.isCurrent]: that
+/// flag is never set on backend-loaded rows, so it can never mark anything.
+class _NameCell extends ConsumerWidget {
   const _NameCell({required this.location});
 
   final StoreLocation location;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isCurrent = ref.watch(currentStoreIdProvider) == location.id;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -297,7 +323,7 @@ class _NameCell extends StatelessWidget {
           style: context.text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
         Text(
-          location.isCurrent
+          isCurrent
               ? AppStrings.thisStoreMarker
               : (location.phone ?? '').isEmpty
               ? AppStrings.emDash
@@ -305,10 +331,10 @@ class _NameCell extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: context.text.bodySmall?.copyWith(
-            color: location.isCurrent
+            color: isCurrent
                 ? context.colors.primary
                 : context.colors.onSurfaceVariant,
-            fontWeight: location.isCurrent ? FontWeight.w600 : null,
+            fontWeight: isCurrent ? FontWeight.w600 : null,
           ),
         ),
       ],

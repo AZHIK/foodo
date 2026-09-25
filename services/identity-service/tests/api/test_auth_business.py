@@ -605,6 +605,216 @@ class TestContextSwitch:
         assert resp.status_code == 403
 
 
+class TestStoreContextSwitch:
+    @staticmethod
+    async def _owner_with_stores(
+        db_session: AsyncSession,
+        phone: str,
+        *,
+        with_switch_perm: bool = True,
+        perm: str | None = None,
+    ):
+        from uuid import uuid4
+
+        from app.models.business import (
+            Business,
+            BusinessRole,
+            BusinessRolePermission,
+            BusinessType,
+            LocationType,
+            Store,
+            UserBusinessRole,
+        )
+
+        async with db_session.begin():
+            user = User(
+                phone=phone,
+                full_name="Store Switcher",
+                user_category=UserCategory.BUSINESS_STAFF,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            db_session.add(user)
+
+        async with db_session.begin():
+            biz = Business(
+                name="Switch Business",
+                business_type=BusinessType.RESTAURANT,
+                owner_user_id=user.id,
+                country_code="TZ",
+            )
+            db_session.add(biz)
+
+        async with db_session.begin():
+            role = BusinessRole(business_id=biz.id, name="Manager")
+            db_session.add(role)
+
+        async with db_session.begin():
+            db_session.add(
+                BusinessRolePermission(
+                    business_role_id=role.id,
+                    permission_code=(
+                        perm
+                        if perm is not None
+                        else ("stores.switch" if with_switch_perm else "pos.view")
+                    ),
+                )
+            )
+            db_session.add(
+                UserBusinessRole(
+                    user_id=user.id,
+                    business_id=biz.id,
+                    business_role_id=role.id,
+                )
+            )
+
+        async with db_session.begin():
+            store_a = Store(
+                business_id=biz.id,
+                name="Store A",
+                token=f"sw-a-{uuid4().hex[:12]}",
+                location_type=LocationType.RESTAURANT_BRANCH,
+            )
+            store_b = Store(
+                business_id=biz.id,
+                name="Store B",
+                token=f"sw-b-{uuid4().hex[:12]}",
+                location_type=LocationType.RESTAURANT_BRANCH,
+            )
+            db_session.add(store_a)
+            db_session.add(store_b)
+
+        return user, biz, store_a, store_b
+
+    async def _login(self, client: AsyncClient, phone: str) -> str:
+        resp = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone, "password": _TEST_PASSWORD},
+        )
+        assert resp.status_code == 200
+        return resp.json()["access_token"]
+
+    async def test_switch_store_success_returns_store_scoped_token(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        import jwt
+
+        phone = _valid_phone()
+        _, biz, _, store_b = await self._owner_with_stores(db_session, phone)
+        token = await self._login(client, phone)
+
+        resp = await client.post(
+            "/api/v1/auth/context/switch-store",
+            json={"store_id": str(store_b.id)},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "access_token" in data and "refresh_token" in data
+
+        claims = jwt.decode(data["access_token"], options={"verify_signature": False})
+        assert claims["active_store_id"] == str(store_b.id)
+        assert claims["active_business_id"] == str(biz.id)
+        assert "stores.switch" in claims["permissions"]
+
+    async def test_switch_store_without_permission_returns_403(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        _, _, _, store_b = await self._owner_with_stores(db_session, phone, with_switch_perm=False)
+        token = await self._login(client, phone)
+
+        resp = await client.post(
+            "/api/v1/auth/context/switch-store",
+            json={"store_id": str(store_b.id)},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+
+    async def test_switch_store_as_store_staff_returns_403(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        _, _, _, store_b = await self._owner_with_stores(db_session, _valid_phone())
+
+        async with db_session.begin():
+            staffer = User(
+                phone=phone,
+                full_name="Store Staffer",
+                user_category=UserCategory.BUSINESS_STORE_STAFF,
+                password_hash=hash_password(_TEST_PASSWORD),
+            )
+            db_session.add(staffer)
+
+        token = await self._login(client, phone)
+
+        resp = await client.post(
+            "/api/v1/auth/context/switch-store",
+            json={"store_id": str(store_b.id)},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+
+    async def test_switch_store_other_business_returns_403(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        await self._owner_with_stores(db_session, phone)
+        _, _, _, foreign_store = await self._owner_with_stores(db_session, _valid_phone())
+        token = await self._login(client, phone)
+
+        resp = await client.post(
+            "/api/v1/auth/context/switch-store",
+            json={"store_id": str(foreign_store.id)},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+
+    async def test_switch_store_missing_returns_404(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        from uuid import uuid4
+
+        phone = _valid_phone()
+        await self._owner_with_stores(db_session, phone)
+        token = await self._login(client, phone)
+
+        resp = await client.post(
+            "/api/v1/auth/context/switch-store",
+            json={"store_id": str(uuid4())},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 404
+
+
+class TestCreateStoreConflict:
+    async def test_duplicate_store_name_returns_409_not_500(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        phone = _valid_phone()
+        _, biz, store_a, _ = await TestStoreContextSwitch._owner_with_stores(
+            db_session, phone, perm="stores.create"
+        )
+        login = await client.post(
+            "/api/v1/auth/login/password",
+            json={"phone": phone, "password": _TEST_PASSWORD},
+        )
+        assert login.status_code == 200
+        token = login.json()["access_token"]
+
+        resp = await client.post(
+            f"/api/v1/businesses/{biz.id}/stores",
+            json={
+                "name": "Store A",
+                "location_type": "restaurant_branch",
+                "status": "active",
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 409
+        assert "already exists" in resp.json()["detail"]
+        assert store_a.name == "Store A"
+
+
 class TestRateLimits:
     """Tests for rate-limiting on auth endpoints."""
 

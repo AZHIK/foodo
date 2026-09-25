@@ -16,6 +16,15 @@ class JwtClaims {
   final String sub; // user UUID
   final int exp; // expiry as epoch seconds
   final String? activeBusinessId;
+
+  /// Store scope, set by POST /auth/context/switch-store. Business-staff
+  /// tokens from login/business-switch carry none — the terminal's store
+  /// then lives in AuthContext.selectedStoreId/DeviceConfig instead.
+  final String? activeStoreId;
+
+  /// `business_staff` vs `business_store_staff` — the switch UI is for the
+  /// former only (the backend rejects the latter outright).
+  final String? userCategory;
   final List<String> permissions;
   final List<String> roles;
 
@@ -23,9 +32,13 @@ class JwtClaims {
     required this.sub,
     required this.exp,
     this.activeBusinessId,
+    this.activeStoreId,
+    this.userCategory,
     this.permissions = const [],
     this.roles = const [],
   });
+
+  bool get isBusinessStaff => userCategory == 'business_staff';
 
   /// True if the token carries [code], or the wildcard `*` (owner tokens).
   bool can(String code) => permissions.contains('*') || permissions.contains(code);
@@ -59,6 +72,8 @@ JwtClaims decodeAccessToken(String token) {
       sub: json['sub'] as String? ?? '',
       exp: json['exp'] as int? ?? 0,
       activeBusinessId: json['active_business_id'] as String?,
+      activeStoreId: json['active_store_id'] as String?,
+      userCategory: json['user_category'] as String?,
       permissions: (json['permissions'] as List<dynamic>?)?.cast<String>() ?? const [],
       roles: (json['roles'] as List<dynamic>?)?.cast<String>() ?? const [],
     );

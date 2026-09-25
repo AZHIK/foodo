@@ -150,6 +150,12 @@ def create_access_token(
         payload["permissions"] = permissions or []
     elif user_category == "business_staff":
         payload["active_business_id"] = active_business_id
+        # Set by POST /auth/context/switch-store only: pins an otherwise
+        # business-wide token to one operating store, so downstream services
+        # can verify store scope from claims. Absent on login/business-switch
+        # tokens, where the terminal's store lives client-side instead.
+        if active_store_id is not None:
+            payload["active_store_id"] = active_store_id
         payload["roles"] = roles or []
         payload["permissions"] = permissions or []
         payload["other_businesses"] = other_businesses or []

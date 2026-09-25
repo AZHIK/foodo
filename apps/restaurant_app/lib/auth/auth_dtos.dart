@@ -122,6 +122,15 @@ class ContextSwitchInput {
   Map<String, dynamic> toJson() => {'business_id': businessId};
 }
 
+/// Request body for POST /auth/context/switch-store.
+class StoreSwitchInput {
+  final String storeId;
+
+  StoreSwitchInput({required this.storeId});
+
+  Map<String, dynamic> toJson() => {'store_id': storeId};
+}
+
 /// Request body for POST /auth/refresh.
 class TokenRefreshInput {
   final String refreshToken;

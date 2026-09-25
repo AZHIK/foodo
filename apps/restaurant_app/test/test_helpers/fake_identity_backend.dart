@@ -181,10 +181,36 @@ class FakeIdentityAdapter implements HttpClientAdapter {
       }, 200);
     }
 
+    if (method == 'POST' && path.endsWith('/auth/context/switch-store')) {
+      return _json({
+        'access_token': fakeScopedToken(businessId: state.businessId),
+        'refresh_token': 'fake-refresh-token-3',
+        'token_type': 'bearer',
+      }, 200);
+    }
+
+    final storeSettingsMatch =
+        RegExp(r'/businesses/([^/]+)/stores/([^/]+)/settings$').firstMatch(path);
+    if (method == 'GET' && storeSettingsMatch != null) {
+      final storeId = storeSettingsMatch.group(2)!;
+      return _json({
+        'id': 'setting-$storeId',
+        'store_id': storeId,
+        'active': true,
+        'preferred_currency': 'USD',
+        'offer_retail': true,
+        'offer_wholesale': false,
+        'display_prices_inclusive_of_tax': true,
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }, 200);
+    }
+
     final storesMatch = RegExp(r'/businesses/([^/]+)/stores$').firstMatch(path);
     if (method == 'GET' && storesMatch != null) {
       return _json([
         {'id': 'store-1', 'is_primary': true, 'name': 'Main Location'},
+        {'id': 'store-2', 'is_primary': false, 'name': 'Branch Two'},
       ], 200);
     }
 

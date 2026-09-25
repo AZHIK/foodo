@@ -39,6 +39,7 @@ from app.core.exceptions import (
     OtpDeliveryError,
     TokenReuseDetectedError,
 )
+from app.core.permission_codes import PermissionCode
 from app.core.rate_limit import RateLimitDependency, body_field_source
 from app.core.security import create_access_token, hash_password, verify_password
 from app.deps.auth import get_current_claims
@@ -46,6 +47,7 @@ from app.models.auth import AuthEventType, AuthRiskLevel, RefreshToken, Verifica
 from app.models.business import (
     BusinessRole,
     BusinessRolePermission,
+    Store,
     UserBusinessPermission,
     UserBusinessRole,
     UserStoreRole,
@@ -60,6 +62,7 @@ from app.schemas.auth import (
     RefreshRequest,
     RequestOTPRequest,
     SwitchBusinessContextRequest,
+    SwitchStoreContextRequest,
     TokenResponse,
     VerifyOTPRequest,
 )
@@ -215,6 +218,62 @@ async def _resolve_business_staff_context(
         denies=denies,
     )
     return business_id, role_names, [str(p) for p in effective]
+
+
+async def _business_role_permissions(
+    db: AsyncSession, user_id: UUID, business_id: UUID
+) -> tuple[list[str], list[str]]:
+    """Role names + effective permission codes for a user at one business.
+
+    Shared by the business/store context-switch endpoints so both resolve
+    the identical permission set for the same (user, business) pair.
+    """
+    result = await db.exec(
+        select(UserBusinessRole).where(
+            UserBusinessRole.user_id == user_id,
+            UserBusinessRole.business_id == business_id,
+        )
+    )
+    roles = result.all()
+
+    role_names = []
+    role_permission_codes: list[str] = []
+    for ubr in roles:
+        role = await db.get(BusinessRole, ubr.business_role_id)
+        if role:
+            role_names.append(role.name)
+            perm_result = await db.exec(
+                select(BusinessRolePermission).where(
+                    BusinessRolePermission.business_role_id == role.id,
+                )
+            )
+            for rp in perm_result.all():
+                role_permission_codes.append(rp.permission_code)
+
+    grant_result = await db.exec(
+        select(UserBusinessPermission).where(
+            UserBusinessPermission.user_id == user_id,
+            UserBusinessPermission.business_id == business_id,
+            UserBusinessPermission.type == "grant",
+        )
+    )
+    deny_result = await db.exec(
+        select(UserBusinessPermission).where(
+            UserBusinessPermission.user_id == user_id,
+            UserBusinessPermission.business_id == business_id,
+            UserBusinessPermission.type == "deny",
+        )
+    )
+    grants = [p.permission_code for p in grant_result.all()]
+    denies = [p.permission_code for p in deny_result.all()]
+
+    effective = resolve_effective_permissions(
+        business_role_permissions=role_permission_codes,
+        location_role_permissions=[],
+        grants=grants,
+        denies=denies,
+    )
+    return role_names, [str(p) for p in effective]
 
 
 async def _issue_tokens(
@@ -956,48 +1015,7 @@ async def switch_business_context(
             detail="User does not have any roles at the requested business",
         )
 
-    role_names = []
-    role_permission_codes: list[str] = []
-
-    from app.models.business import BusinessRole, BusinessRolePermission
-
-    for ubr in roles:
-        role = await db.get(BusinessRole, ubr.business_role_id)
-        if role:
-            role_names.append(role.name)
-            perm_result = await db.exec(
-                select(BusinessRolePermission).where(
-                    BusinessRolePermission.business_role_id == role.id,
-                )
-            )
-            for rp in perm_result.all():
-                role_permission_codes.append(rp.permission_code)
-
-    from app.models.business import UserBusinessPermission
-
-    grant_result = await db.exec(
-        select(UserBusinessPermission).where(
-            UserBusinessPermission.user_id == user_id,
-            UserBusinessPermission.business_id == body.business_id,
-            UserBusinessPermission.type == "grant",
-        )
-    )
-    deny_result = await db.exec(
-        select(UserBusinessPermission).where(
-            UserBusinessPermission.user_id == user_id,
-            UserBusinessPermission.business_id == body.business_id,
-            UserBusinessPermission.type == "deny",
-        )
-    )
-    grants = [p.permission_code for p in grant_result.all()]
-    denies = [p.permission_code for p in deny_result.all()]
-
-    effective = resolve_effective_permissions(
-        business_role_permissions=role_permission_codes,
-        location_role_permissions=[],
-        grants=grants,
-        denies=denies,
-    )
+    role_names, effective = await _business_role_permissions(db, user_id, body.business_id)
 
     result_user = await db.exec(select(User).where(User.id == user_id))
     user = result_user.one()
@@ -1019,6 +1037,87 @@ async def switch_business_context(
         roles=role_names,
         permissions=[str(p) for p in effective],
         other_businesses=other_businesses,
+    )
+
+    device_info = request.headers.get("user-agent")
+    ip_address = request.client.host if request.client else None
+    await db.commit()
+    issued = await issue_login_session(
+        db,
+        user_id=user.id,
+        device_info=device_info,
+        ip_address=ip_address,
+    )
+
+    return TokenResponse(access_token=access_token, refresh_token=issued.raw_token)
+
+
+@router.post("/context/switch-store", response_model=TokenResponse)
+async def switch_store_context(
+    body: SwitchStoreContextRequest,
+    request: Request,
+    claims: dict[str, Any] = Depends(get_current_claims),
+    db: AsyncSession = Depends(get_async_session),
+) -> TokenResponse:
+    """Switch the terminal's operating store within the active business.
+
+    Business-staff only, gated on the ``stores.switch`` permission: a
+    store-scoped token is already pinned to exactly one store, and moving the
+    till is a management action, not a cashier one. Reissues tokens with
+    ``active_store_id`` set to the requested store, so downstream services
+    can verify store scope from claims instead of trusting a client-sent id.
+    """
+    if claims.get("user_category") != "business_staff":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This endpoint is for business-staff accounts only.",
+        )
+
+    if PermissionCode.STORES_SWITCH.value not in (claims.get("permissions") or []):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Switching stores requires the stores.switch permission.",
+        )
+
+    user_id = UUID(claims["sub"])
+    active_business_id = claims.get("active_business_id")
+
+    store = await db.get(Store, body.store_id)
+    if store is None or store.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Store not found",
+        )
+    if active_business_id is None or str(store.business_id) != active_business_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Store does not belong to the active business",
+        )
+
+    membership = await db.exec(
+        select(UserBusinessRole).where(
+            UserBusinessRole.user_id == user_id,
+            UserBusinessRole.business_id == store.business_id,
+        )
+    )
+    if not membership.all():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User does not have any roles at the store's business",
+        )
+
+    role_names, effective = await _business_role_permissions(db, user_id, store.business_id)
+
+    result_user = await db.exec(select(User).where(User.id == user_id))
+    user = result_user.one()
+
+    access_token = create_access_token(
+        subject=str(user.id),
+        user_category=UserCategory.BUSINESS_STAFF.value,
+        active_business_id=str(store.business_id),
+        active_store_id=str(store.id),
+        roles=role_names,
+        permissions=[str(p) for p in effective],
     )
 
     device_info = request.headers.get("user-agent")

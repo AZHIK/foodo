@@ -11,6 +11,7 @@ import '../../providers/store_locations_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
+import '../../utils/api_errors.dart';
 import '../../widgets/data_page/data_page_scaffold.dart';
 import '../settings/store_settings_screen.dart' show SettingSwitchTile;
 
@@ -214,7 +215,10 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
       }
     } on DioException catch (e) {
       setState(() {
-        _errorMessage = e.response?.data?['detail']?.toString() ?? 'Failed to save settings';
+        _errorMessage = errorDetail(
+          e.response?.data,
+          fallback: 'Failed to save settings',
+        );
       });
     } catch (e) {
       setState(() {

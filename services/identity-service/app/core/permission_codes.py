@@ -131,6 +131,10 @@ class PermissionCode(StrEnum):
     STORES_CREATE = "stores.create"
     STORES_UPDATE = "stores.update"
     STORES_DELETE = "stores.delete"
+    # Switching the terminal's operating store. Business-staff only — enforced
+    # by POST /api/v1/auth/context/switch-store, which rejects store-staff
+    # tokens outright on top of this permission check.
+    STORES_SWITCH = "stores.switch"
 
     # --- Business Roles (per-business custom roles) ---
     BUSINESS_ROLES_VIEW = "business_roles.view"

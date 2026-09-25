@@ -474,6 +474,91 @@ class AuthNotifier extends Notifier<AuthContext> {
     }
   }
 
+  /// Switches the terminal's operating store within the current business.
+  ///
+  /// Returns true when the backend reissued store-scoped tokens (online):
+  /// tokens are persisted, the role label and permission cache follow the
+  /// new token, and `selectedStoreId` moves — everything downstream of
+  /// `currentStoreIdProvider` re-reads for the new store. Returns false
+  /// when the exchange never reached the backend (offline): the device
+  /// still re-points locally and the caller raises the pending-token banner
+  /// with a retry. A backend answer (403/404/…) is rethrown — those are
+  /// real rejections, not connectivity.
+  ///
+  /// Deliberately leaves `state.state` alone: flipping to
+  /// `switchingContext` mid-session would trip the router's auth guards.
+  /// The caller owns the loading UI for the switch.
+  Future<bool> switchStore({required String storeId}) async {
+    final businessId = state.selectedBusinessId;
+    final userId = state.userId;
+    if (businessId == null || userId == null) {
+      throw StateError('No business context to switch store within');
+    }
+
+    var tokenRefreshed = false;
+    var accessToken = state.accessToken;
+    var refreshToken = state.refreshToken;
+
+    if (accessToken != null) {
+      try {
+        final switched = await _api.switchStore(
+          storeId: storeId,
+          bearerToken: accessToken,
+        );
+        accessToken = switched.accessToken;
+        refreshToken = switched.refreshToken;
+        await _tokenStorage.saveTokenSet(
+          TokenSet(
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+            expiresAt: DateTime.now().add(AppDurations.sessionLifetime),
+            userId: userId,
+          ),
+        );
+        tokenRefreshed = true;
+      } on AuthException catch (e) {
+        // No HTTP status means the request never reached the backend
+        // (offline/DNS) — fall through to the local re-point below.
+        // A status is the backend answering: surface it.
+        if (e.statusCode != null) rethrow;
+      }
+    }
+
+    final device = await _profileRepo.currentDevice();
+    final storedName = device?.businessName as String?;
+    final businessName = (storedName == null || storedName.trim().isEmpty)
+        ? (state.onboardingStatus?.businessName ?? 'Restaurant')
+        : storedName;
+
+    await _profileRepo.provisionDevice(
+      businessId: businessId,
+      businessLocationId: storeId,
+      businessName: businessName,
+    );
+
+    if (tokenRefreshed) {
+      final claims = decodeAccessToken(accessToken!);
+      await _profileRepo.updateRoleLabel(
+        userId,
+        claims.roles.isNotEmpty ? claims.roles.join(', ') : null,
+      );
+      await _cachePermissions(
+        userId: userId,
+        businessId: businessId,
+        businessLocationId: storeId,
+        businessName: businessName,
+        claims: claims,
+      );
+    }
+
+    state = state.copyWith(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      selectedStoreId: storeId,
+    );
+    return tokenRefreshed;
+  }
+
   /// Save PIN to local profile.
   ///
   /// Invited staff already have a business context by this point (their

@@ -58,6 +58,7 @@ _SUPER_ADMIN_VALUES = (
     PermissionCode.STORES_CREATE,
     PermissionCode.STORES_UPDATE,
     PermissionCode.STORES_DELETE,
+    PermissionCode.STORES_SWITCH,
     # Role Templates
     PermissionCode.ROLE_TEMPLATES_VIEW,
     PermissionCode.ROLE_TEMPLATES_CREATE,

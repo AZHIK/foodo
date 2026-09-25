@@ -125,6 +125,12 @@ abstract final class AppPermissions {
   static const settingsDevices = 'settings.devices';
   static const settingsBilling = 'settings.billing';
 
+  static const storesView = 'stores.view';
+  static const storesCreate = 'stores.create';
+  static const storesUpdate = 'stores.update';
+  static const storesDelete = 'stores.delete';
+  static const storesSwitch = 'stores.switch';
+
   static const groups = <PermissionGroup>[
     PermissionGroup(
       id: 'pos',
@@ -408,6 +414,38 @@ abstract final class AppPermissions {
           id: rolesManagePermissions,
           label: 'Manage role permissions',
           description: "Change what a role's toggles grant",
+        ),
+      ],
+    ),
+    PermissionGroup(
+      id: 'stores',
+      label: 'Stores',
+      icon: Icons.storefront_outlined,
+      permissions: [
+        Permission(
+          id: storesView,
+          label: 'View stores',
+          description: 'See every location in the business',
+        ),
+        Permission(
+          id: storesCreate,
+          label: 'Add stores',
+          description: 'Register a new location',
+        ),
+        Permission(
+          id: storesUpdate,
+          label: 'Edit stores',
+          description: "Change a location's details",
+        ),
+        Permission(
+          id: storesDelete,
+          label: 'Delete stores',
+          description: 'Remove a location with no history',
+        ),
+        Permission(
+          id: storesSwitch,
+          label: 'Switch stores',
+          description: 'Move this terminal to another location',
         ),
       ],
     ),

@@ -17,6 +17,7 @@ abstract final class IdentityApiPaths {
   static const refresh = '/auth/refresh';
   static const logout = '/auth/logout';
   static const switchContext = '/auth/context/switch';
+  static const switchStore = '/auth/context/switch-store';
   static const businesses = '/businesses';
 
   static String business(String businessId) => '/businesses/$businessId';

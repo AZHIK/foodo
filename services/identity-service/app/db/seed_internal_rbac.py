@@ -76,6 +76,7 @@ _SUPER_ADMIN_PERMISSIONS: tuple[PermissionCode, ...] = (
     PermissionCode.STORES_CREATE,
     PermissionCode.STORES_UPDATE,
     PermissionCode.STORES_DELETE,
+    PermissionCode.STORES_SWITCH,
     # Role Templates
     PermissionCode.ROLE_TEMPLATES_VIEW,
     PermissionCode.ROLE_TEMPLATES_CREATE,

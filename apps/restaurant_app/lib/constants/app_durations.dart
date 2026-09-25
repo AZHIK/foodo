@@ -56,6 +56,11 @@ abstract final class AppDurations {
   static const receiveTimeout = Duration(seconds: 30);
   static const sendTimeout = Duration(seconds: 30);
 
+  /// Upper bound for the whole store-switch execution. Every step inside is
+  /// individually bounded, so breaching this means something stopped
+  /// resolving — the flow must say so rather than spin forever.
+  static const storeSwitchTimeout = Duration(minutes: 2);
+
   // -------------------------------------------------------------------------
   // Auth / session
   // -------------------------------------------------------------------------

@@ -2050,6 +2050,47 @@ abstract final class AppStrings {
   static String get activeValue => L10n.t('activeValue', 'Active');
   static String get inactiveValue => L10n.t('inactiveValue', 'Inactive');
   static String get thisStoreMarker => L10n.t('thisStoreMarker', 'This store');
+  static String get switchStoreAction => L10n.t('switchStoreAction', 'Switch to this store');
+  static String switchToStoreTitle(String name) => 'Switch to $name?';
+  static String get switchPreflightCart => L10n.t(
+    'switchPreflightCart',
+    'The open ticket stays behind — it belongs to this store.',
+  );
+  static String switchPreflightPending(int count) =>
+      '$count sale${count == 1 ? '' : 's'} not yet synced from this store.';
+  static String get switchPreflightClean => L10n.t(
+    'switchPreflightClean',
+    'Everything from this store is synced. The new store loads fresh.',
+  );
+  static String get switchDiscardTitle => L10n.t('switchDiscardTitle', 'Discard the open ticket?');
+  static String get switchDiscardBody => L10n.t(
+    'switchDiscardBody',
+    'A ticket cannot move between stores. Switching throws it away.',
+  );
+  static String get discardAndSwitch => L10n.t('discardAndSwitch', 'Discard & switch');
+  static String get stayHere => L10n.t('stayHere', 'Stay here');
+  static String get switchUnsyncedTitle => L10n.t('switchUnsyncedTitle', 'Sales not yet synced');
+  static String switchUnsyncedBody(int count) =>
+      '$count sale${count == 1 ? '' : 's'} from this store ${count == 1 ? 'has' : 'have'} not reached the server. '
+      'Switch anyway and they stay queued for this store, or stay and sync first.';
+  static String get switchAnyway => L10n.t('switchAnyway', 'Switch anyway');
+  static String get stayAndSync => L10n.t('stayAndSync', 'Stay & sync');
+  static String switchingTo(String name) => 'Switching to $name…';
+  static String switchedTo(String name) => 'Now trading as $name';
+  static String switchFailed(String detail) => 'Could not switch store: $detail';
+  static String get switchTimedOut => L10n.t(
+    'switchTimedOut',
+    'Taking too long — check the connection and try again.',
+  );
+  static String get tokenPendingBanner => L10n.t(
+    'tokenPendingBanner',
+    'Offline switch — store token not refreshed yet. Showing cached data.',
+  );
+  static String get tokenRetryAction => L10n.t('tokenRetryAction', 'Retry');
+  static String get storeTokenRefreshed => L10n.t(
+    'storeTokenRefreshed',
+    'Store token refreshed — this terminal is fully online.',
+  );
 
   // -------------------------------------------------------------------------
   // App preferences

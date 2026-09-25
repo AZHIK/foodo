@@ -140,6 +140,28 @@ class IdentityServiceApi {
     }
   }
 
+  /// POST /auth/context/switch-store - Scope token to a store (business
+  /// staff with `stores.switch`; requires bearer token). The backend
+  /// reissues tokens with `active_store_id` set — the online proof of which
+  /// store this terminal is now scoped to.
+  Future<TokenResponse> switchStore({
+    required String storeId,
+    required String bearerToken,
+  }) async {
+    try {
+      final response = await _dio.post(
+        IdentityApiPaths.switchStore,
+        data: StoreSwitchInput(storeId: storeId).toJson(),
+        options: Options(
+          headers: {'Authorization': 'Bearer $bearerToken'},
+        ),
+      );
+      return TokenResponse.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw AuthException.fromDio('Store switch failed', e);
+    }
+  }
+
   /// POST /api/v1/businesses - Create a new business (requires bearer token).
   Future<BusinessCreateOutput> createBusiness({
     required BusinessCreateInput input,

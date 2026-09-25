@@ -105,6 +105,7 @@ def test_exact_permissions_for_every_template(session: Session) -> None:
             PermissionCode.INVENTORY_ITEMS_DEACTIVATE.value,
             PermissionCode.USER_BUSINESS_ROLES_VIEW.value,
             PermissionCode.USER_BUSINESS_ROLES_ASSIGN.value,
+            PermissionCode.STORES_SWITCH.value,
         },
         "Cashier": {
             PermissionCode.POS_WRITE.value,

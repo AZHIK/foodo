@@ -173,6 +173,12 @@ class SwitchBusinessContextRequest(BaseModel):
     business_id: UUID
 
 
+class SwitchStoreContextRequest(BaseModel):
+    """Request to switch the terminal's operating store within the active business."""
+
+    store_id: UUID
+
+
 class RefreshRequest(BaseModel):
     """Request to rotate a refresh token."""
 

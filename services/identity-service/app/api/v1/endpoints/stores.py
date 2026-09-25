@@ -19,6 +19,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -134,6 +135,20 @@ async def create_store_endpoint(
                 detail=str(exc),
             ) from None
 
+        duplicate = (
+            await db.exec(
+                select(Store)
+                .where(Store.business_id == business_id)
+                .where(Store.name == body.name)
+                .where(Store.is_deleted == False)  # noqa: E712
+            )
+        ).first()
+        if duplicate is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A store named '{body.name}' already exists in this business.",
+            )
+
         store = Store(
             business_id=business.id,
             name=body.name,
@@ -147,7 +162,15 @@ async def create_store_endpoint(
             is_primary=body.is_primary,
         )
         db.add(store)
-        await db.flush()
+        try:
+            await db.flush()
+        except IntegrityError:
+            # Race with a concurrent create (or a soft-deleted row holding
+            # the name, which the live-row check above skips): same answer.
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A store named '{body.name}' already exists in this business.",
+            ) from None
         db.add(StoreSetting(store_id=store.id, active=True))
 
     await db.refresh(store)
@@ -236,11 +259,14 @@ async def update_store_settings(
 ) -> StoreSetting:
     _require_context_match(business_id, caller_business_id)
     _require_store_scope_match(store_id, claims)
-    await _get_store_or_404(db, business_id, store_id)
 
     values = body.model_dump(exclude_unset=True)
 
+    # Every read lives inside the transaction (same shape as update_store):
+    # a `db.get`/`db.exec` before `db.begin()` autobegins and the explicit
+    # begin then fails with "transaction is already begun".
     async with db.begin():
+        await _get_store_or_404(db, business_id, store_id)
         setting = (
             await db.exec(select(StoreSetting).where(StoreSetting.store_id == store_id))
         ).one_or_none()
@@ -377,9 +403,7 @@ async def list_store_staff(
                     user_status=user.status.value,
                     roles=[],
                 )
-            staff_map[usr.user_id].roles.append(
-                {"role_id": str(role.id), "role_name": role.name}
-            )
+            staff_map[usr.user_id].roles.append({"role_id": str(role.id), "role_name": role.name})
 
     return [StaffMemberRead(user=staff) for staff in staff_map.values()]
 

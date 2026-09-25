@@ -50,6 +50,7 @@ _BUSINESS_ADMIN_PERMS: tuple[PermissionCode, ...] = (
     PermissionCode.STORES_CREATE,
     PermissionCode.STORES_UPDATE,
     PermissionCode.STORES_DELETE,
+    PermissionCode.STORES_SWITCH,
     PermissionCode.USER_STORE_ROLES_VIEW,
     PermissionCode.USER_STORE_ROLES_ASSIGN,
     PermissionCode.USER_STORE_ROLES_REVOKE,
@@ -127,6 +128,7 @@ _MANAGER: tuple[PermissionCode, ...] = (
     PermissionCode.REPORTS_EXPORT,
     PermissionCode.USER_BUSINESS_ROLES_VIEW,
     PermissionCode.USER_BUSINESS_ROLES_ASSIGN,
+    PermissionCode.STORES_SWITCH,
 )
 
 _CASHIER: tuple[PermissionCode, ...] = (
