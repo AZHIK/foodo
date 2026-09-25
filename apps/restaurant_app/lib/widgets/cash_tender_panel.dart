@@ -9,7 +9,6 @@ import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/breakpoints.dart';
 import '../utils/formatters.dart';
-import 'selectable_option_card.dart';
 
 /// Cash entry: what was handed over, and what to give back.
 ///
@@ -123,15 +122,11 @@ class _CashTenderPanelState extends ConsumerState<CashTenderPanel> {
 /// One-tap top-ups. Configured amounts plus "Exact", which is the single most
 /// common cash outcome and otherwise takes four keystrokes.
 ///
-/// Always three to a row, at every breakpoint and on every screen that takes
-/// cash: a fixed grid means the note a cashier reaches for is in the same
-/// place on the phone in their hand as on the terminal at the counter. The
-/// labels scale down inside their column rather than the columns resizing to
-/// fit the labels, so the arrangement holds at 360px.
+/// A [Wrap] of self-sized chips: each button hugs its label so the full
+/// amount ("+TSh 10,000") always shows, never truncated with "...". Chips
+/// flow onto the next line when they outgrow the row.
 class _QuickAmounts extends ConsumerWidget {
   const _QuickAmounts({required this.amounts});
-
-  static const perRow = 3;
 
   final List<double> amounts;
 
@@ -139,8 +134,9 @@ class _QuickAmounts extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cart = ref.read(cartProvider.notifier);
 
-    return SelectableOptionGrid(
-      perRow: perRow,
+    return Wrap(
+      spacing: Insets.sm,
+      runSpacing: Insets.sm,
       children: [
         for (final amount in amounts)
           _QuickChip(
@@ -181,37 +177,26 @@ class _QuickChip extends StatelessWidget {
       ),
       child: InkWell(
         onTap: onTap,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            // Type size comes from the column, not from the label: every chip
-            // in a row is handed the same width, so they all land on the same
-            // size and read as one set. Scaling each label to fit itself
-            // instead would leave "+$5.00" a size larger than "+$50.00".
-            final style =
-                (constraints.maxWidth < 96
-                        ? context.text.labelMedium
-                        : context.text.labelLarge)
-                    ?.copyWith(
-                      color: emphasis
-                          ? colors.onPrimaryContainer
-                          : colors.onSurface,
-                    );
-
-            return Container(
-              // 44px minimum: these are tapped with a thumb on a busy counter,
-              // at every breakpoint, not just on mobile.
-              constraints: const BoxConstraints(minHeight: 44),
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: Insets.sm),
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: style,
-              ),
-            );
-          },
+        child: Container(
+          // 44px minimum: these are tapped with a thumb on a busy counter,
+          // at every breakpoint, not just on mobile.
+          constraints: const BoxConstraints(minHeight: 44),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(
+            horizontal: Insets.lg,
+            vertical: Insets.sm,
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            softWrap: false,
+            textAlign: TextAlign.center,
+            style: context.text.labelLarge?.copyWith(
+              color: emphasis
+                  ? colors.onPrimaryContainer
+                  : colors.onSurface,
+            ),
+          ),
         ),
       ),
     );

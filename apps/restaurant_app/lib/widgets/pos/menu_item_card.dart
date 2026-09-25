@@ -133,13 +133,19 @@ class _Artwork extends StatelessWidget {
         // scaling it off the box keeps the tile looking deliberate at
         // every column count.
         final glyph = (constraints.maxHeight * 0.48).clamp(20.0, 44.0);
+        final hasImage = item.image?.bytes != null ||
+            (item.imageUrl != null && item.linkedInventoryItemId != null);
 
         return Container(
-          color: colors.surfaceContainerHigh,
+          decoration: BoxDecoration(
+            color: hasImage ? colors.surfaceContainerHigh : colors.surfaceContainerHighest,
+            borderRadius: Radii.card,
+          ),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Center(
+              Align(
+                alignment: Alignment.center,
                 child: ItemPhoto(
                   emoji: item.emoji,
                   emojiSize: glyph,

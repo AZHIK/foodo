@@ -15,6 +15,7 @@ import '../../widgets/data_page/export_actions.dart';
 import '../../widgets/data_page/reusable_data_table.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/dialogs/supplier_form_dialog.dart';
+import '../../utils/dialog_helper.dart';
 
 /// Live search text for the suppliers table.
 final supplierSearchProvider = StateProvider<String>((ref) => '');
@@ -157,7 +158,7 @@ class SuppliersScreen extends ConsumerWidget {
     WidgetRef ref,
     Supplier supplier,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.deleteSupplierTitle(supplier.name)),

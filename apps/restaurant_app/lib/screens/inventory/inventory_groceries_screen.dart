@@ -26,6 +26,7 @@ import 'inventory_filter_panel.dart';
 import 'stock_adjust_dialog.dart';
 import 'stock_transfer_dialog.dart';
 import 'waste_log_dialog.dart';
+import '../../utils/dialog_helper.dart';
 
 /// Maps the stockroom's vocabulary onto the shared badge tones.
 extension StockStatusTone on StockStatus {
@@ -241,7 +242,7 @@ class InventoryGroceriesScreen extends ConsumerWidget {
     WidgetRef ref,
     InventoryItem item,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.deleteItemTitle(item.name)),

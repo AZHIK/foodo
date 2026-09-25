@@ -17,6 +17,7 @@ import '../../widgets/data_page/reusable_data_table.dart';
 import '../../widgets/data_page/status_badge.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
 import 'role_form_dialog.dart';
+import '../../utils/dialog_helper.dart';
 
 /// Roles and what each one can do.
 ///
@@ -155,7 +156,7 @@ class RolesScreen extends ConsumerWidget {
     WidgetRef ref,
     BusinessRole role,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.deleteRoleTitle(role.name)),

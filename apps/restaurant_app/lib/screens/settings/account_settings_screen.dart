@@ -21,6 +21,7 @@ import '../../widgets/image_upload_field.dart';
 import '../../widgets/labeled_form_field.dart';
 import '../../widgets/staff/role_badge.dart';
 import 'store_settings_screen.dart' show SettingSwitchTile;
+import '../../utils/dialog_helper.dart';
 
 abstract final class AccountSettingsKeys {
   static const fullName = Key('account.fullName');
@@ -503,7 +504,7 @@ class _DangerZone extends ConsumerWidget {
   Future<void> _confirm(BuildContext context, WidgetRef ref) async {
     final name = member?.name ?? AppStrings.yourAccountFallback;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.deactivateTitle),

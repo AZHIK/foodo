@@ -16,6 +16,7 @@ import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/responsive_form_dialog.dart';
 import 'record_production_dialog.dart';
 import 'stock_dialog_shared.dart';
+import '../../utils/dialog_helper.dart';
 
 /// The kitchen's production ledger: every recorded run, newest first.
 ///
@@ -57,7 +58,7 @@ class ProductionHistoryScreen extends ConsumerWidget {
   /// the dialog's job is measuring and confirming, and overloading it with
   /// catalog picking would tangle two unrelated states.
   Future<void> _startRun(BuildContext context, WidgetRef ref) async {
-    final recipe = await showDialog<RecipeDto>(
+    final recipe = await showAppDialog<RecipeDto>(
       context: context,
       builder: (_) => const _RecipePickerDialog(),
     );

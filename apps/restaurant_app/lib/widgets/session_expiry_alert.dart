@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../constants/app_strings.dart';
 import '../providers/session_provider.dart';
+import '../utils/dialog_helper.dart';
 
 /// Fires the "session expired" alert the moment a dead session is dropped.
 ///
@@ -30,9 +31,8 @@ class _SessionExpiryAlertState extends ConsumerState<SessionExpiryAlert> {
     ref.listen<bool>(sessionExpiredAlertProvider, (previous, next) {
       if (next && !_dialogOpen) {
         _dialogOpen = true;
-        showDialog<void>(
+        showAppDialog<bool>(
           context: context,
-          barrierDismissible: false,
           builder: (dialogContext) => AlertDialog(
             title: Text(AppStrings.sessionExpiredTitle),
             content: Text(AppStrings.sessionExpiredBody),

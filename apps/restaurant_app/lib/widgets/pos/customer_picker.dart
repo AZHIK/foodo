@@ -13,6 +13,7 @@ import '../../screens/customers/customer_form_dialog.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
+import '../../utils/dialog_helper.dart';
 
 /// The Customer section of the checkout dialog: shows "Walk-in" when
 /// nothing is selected, or the selected customer with a way to change or
@@ -113,7 +114,7 @@ Future<void> showCustomerPickerDialog(BuildContext context, WidgetRef ref) async
   final available = MediaQuery.sizeOf(context).width - 80;
   final width = math.max(240.0, math.min(480.0, available));
 
-  final selectedId = await showDialog<String?>(
+  final selectedId = await showAppDialog<String?>(
     context: context,
     builder: (dialogContext) => _CustomerPickerDialog(width: width, autofocus: form.isDesktop),
   );

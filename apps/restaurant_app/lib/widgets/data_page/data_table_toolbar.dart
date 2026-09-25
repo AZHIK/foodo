@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../constants/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
+import '../../utils/dialog_helper.dart';
 
 /// One entry in the Sort menu.
 @immutable
@@ -86,7 +87,7 @@ class _DataTableToolbarState extends State<DataTableToolbar> {
       return;
     }
 
-    await showDialog<void>(
+    await showAppDialog<void>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.15),
       builder: (dialogContext) => _FilterPopover(

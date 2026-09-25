@@ -13,6 +13,7 @@ import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/data_page/status_badge.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
+import '../../utils/dialog_helper.dart';
 
 /// Reorder tracking and management screen.
 class ReordersScreen extends ConsumerWidget {
@@ -125,7 +126,7 @@ class _ReorderTile extends ConsumerWidget {
   final Reorder reorder;
 
   Future<void> _receive(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.receiveReorderTitle),
@@ -163,7 +164,7 @@ class _ReorderTile extends ConsumerWidget {
   }
 
   Future<void> _cancel(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.cancelReorderTitle),

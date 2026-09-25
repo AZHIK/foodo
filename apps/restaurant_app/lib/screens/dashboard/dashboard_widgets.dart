@@ -82,33 +82,36 @@ List<Widget> buildDashboardKpiCards(
        ),
        deepGradient: true,
      ),
-    ColorfulMetricCard(
-      label: AppStrings.ordersToday,
-      value: '${metrics.orders.current.round()}',
-      icon: Icons.receipt_long_outlined,
-      family: palette.orders,
-      change: metrics.orders.change,
-      caption: AppStrings.yesterdayCount(
-        '${metrics.orders.previous.round()}',
-      ),
-    ),
-    ColorfulMetricCard(
-      label: AppStrings.avgOrderValue,
-      value: Fmt.money(metrics.averageOrderValue.current),
-      icon: Icons.local_offer_outlined,
-      family: palette.value,
-      change: metrics.averageOrderValue.change,
-      caption: AppStrings.perTicket,
-    ),
-    ColorfulMetricCard(
-      label: AppStrings.staffOnShift,
-      value: '${metrics.staffOnShift}',
-      icon: Icons.groups_outlined,
-      family: palette.staff,
-      // No period-on-period comparison exists for a headcount, so the card
-      // carries a ratio instead of a fabricated percentage.
-      caption: AppStrings.ofActive('${metrics.staffTotal}'),
-    ),
+     ColorfulMetricCard(
+       label: AppStrings.ordersToday,
+       value: '${metrics.orders.current.round()}',
+       icon: Icons.receipt_long_outlined,
+       family: palette.orders,
+       change: metrics.orders.change,
+       caption: AppStrings.yesterdayCount(
+         '${metrics.orders.previous.round()}',
+       ),
+       deepGradient: true,
+     ),
+     ColorfulMetricCard(
+       label: AppStrings.avgOrderValue,
+       value: Fmt.money(metrics.averageOrderValue.current),
+       icon: Icons.local_offer_outlined,
+       family: palette.value,
+       change: metrics.averageOrderValue.change,
+       caption: AppStrings.perTicket,
+       deepGradient: true,
+     ),
+     ColorfulMetricCard(
+       label: AppStrings.staffOnShift,
+       value: '${metrics.staffOnShift}',
+       icon: Icons.groups_outlined,
+       family: palette.staff,
+       // No period-on-period comparison exists for a headcount, so the card
+       // carries a ratio instead of a fabricated percentage.
+       caption: AppStrings.ofActive('${metrics.staffTotal}'),
+       deepGradient: true,
+     ),
     ColorfulMetricCard(
       label: AppStrings.netProfitToday,
       value: Fmt.moneyCompact(metrics.netProfit.current),

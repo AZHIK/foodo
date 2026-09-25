@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -75,24 +76,32 @@ class RestaurantPosApp extends ConsumerWidget {
     // Flutter Localizations), so without this only newly-built widgets
     // would pick up the new language. The GoRouter instance is preserved
     // across rebuilds, so the current location is kept.
-    return MaterialApp.router(
-      key: ValueKey('app-${language.code}'),
-      title: '',
-      debugShowCheckedModeBanner: false,
-      routerConfig: router,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: themeMode,
-      locale: Locale(language.code),
-      supportedLocales: L10n.supportedLocales,
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      // Shows the session-expired alert above whatever the router renders.
-      builder: (context, child) =>
-          SessionExpiryAlert(child: child ?? const SizedBox.shrink()),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: MaterialApp.router(
+        key: ValueKey('app-${language.code}'),
+        title: '',
+        debugShowCheckedModeBanner: false,
+        routerConfig: router,
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: themeMode,
+        locale: Locale(language.code),
+        supportedLocales: L10n.supportedLocales,
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        // Shows the session-expired alert above whatever the router renders.
+        builder: (context, child) =>
+            SessionExpiryAlert(child: child ?? const SizedBox.shrink()),
+      ),
     );
   }
 }

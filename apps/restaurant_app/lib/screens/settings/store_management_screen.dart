@@ -15,6 +15,7 @@ import '../../widgets/data_page/reusable_data_table.dart';
 import '../../widgets/data_page/status_badge.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
 import 'location_form_dialog.dart';
+import '../../utils/dialog_helper.dart';
 
 /// Every site the business trades from.
 ///
@@ -153,7 +154,7 @@ class StoreManagementScreen extends ConsumerWidget {
     WidgetRef ref,
     StoreLocation location,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.deleteLocationTitle(location.name)),

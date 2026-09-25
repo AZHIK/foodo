@@ -15,6 +15,7 @@ import '../../widgets/labeled_form_field.dart';
 import '../../widgets/responsive_form_dialog.dart';
 import 'recipe_form_dialog.dart';
 import 'stock_dialog_shared.dart';
+import '../../utils/dialog_helper.dart';
 
 /// The kitchen's Production Module: Recipes (blueprints), Runs (the plan),
 /// Output (results + publish).
@@ -249,7 +250,7 @@ class _ProductionModuleScreenState extends ConsumerState<ProductionModuleScreen>
   }
 
   Future<void> _planRun(BuildContext context, WidgetRef ref) async {
-    final recipe = await showDialog<RecipeDto>(
+    final recipe = await showAppDialog<RecipeDto>(
       context: context,
       builder: (_) => const _RunRecipePicker(),
     );
@@ -780,7 +781,7 @@ class _RunCard extends ConsumerWidget {
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.deleteRunTitle),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/dialog_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -203,9 +204,14 @@ class _ResponsiveScaffoldState extends ConsumerState<ResponsiveScaffold> {
           FormFactor.mobile => Scaffold(
             key: _scaffoldKey,
             body: body,
-            bottomNavigationBar: _BottomNav(
-              currentIndex: index,
-              onSelected: _onDestinationSelected,
+            bottomNavigationBar: Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).padding.bottom,
+              ),
+              child: _BottomNav(
+                currentIndex: index,
+                onSelected: _onDestinationSelected,
+              ),
             ),
           ),
 

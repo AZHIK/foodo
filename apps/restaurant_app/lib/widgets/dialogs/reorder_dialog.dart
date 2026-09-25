@@ -19,6 +19,7 @@ import '../labeled_form_field.dart';
 import '../responsive_form_dialog.dart';
 import '../section_label.dart';
 import 'supplier_form_dialog.dart' show showSupplierFormDialog;
+import '../../utils/dialog_helper.dart';
 
 /// Opens the reorder creation dialog for an inventory item.
 Future<void> showReorderDialog(
@@ -309,7 +310,7 @@ Future<String?> _showSupplierPickerDialog(BuildContext context, WidgetRef ref) {
   final available = MediaQuery.sizeOf(context).width - 80;
   final width = math.max(240.0, math.min(480.0, available));
 
-  return showDialog<String>(
+  return showAppDialog<String>(
     context: context,
     builder: (dialogContext) => _SupplierPickerDialog(width: width, autofocus: form.isDesktop),
   );

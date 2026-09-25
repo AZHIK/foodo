@@ -23,6 +23,7 @@ import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/staff/role_badge.dart';
 import 'invite_staff_dialog.dart';
 import 'staff_filter_panel.dart';
+import '../../utils/dialog_helper.dart';
 
 /// The team list — the third page built entirely from the shared data-page
 /// layer, and the proof that the shell generalises past Inventory and Sales.
@@ -205,7 +206,7 @@ class StaffScreen extends ConsumerWidget {
     WidgetRef ref,
     StaffMember member,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.removeMemberTitle(member.name)),

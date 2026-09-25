@@ -16,9 +16,12 @@ library;
 
 import 'dart:typed_data';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../theme/app_theme.dart';
+import '../theme/breakpoints.dart';
 import '../providers/item_photo_provider.dart';
 
 class ItemPhoto extends ConsumerWidget {
@@ -48,23 +51,52 @@ class ItemPhoto extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final local = bytes;
     if (local != null) {
       return Image.memory(local, fit: BoxFit.cover);
     }
     final remoteId = catalogItemId;
     if (imageUrl == null || remoteId == null) {
-      return Text(emoji, style: TextStyle(fontSize: emojiSize));
+      return _Placeholder(emojiSize: emojiSize, colors: colors);
     }
     final remote = ref.watch(itemPhotoBytesProvider(remoteId));
     return remote.when(
       data: (remoteBytes) => remoteBytes == null
-          ? Text(emoji, style: TextStyle(fontSize: emojiSize))
+          ? _Placeholder(emojiSize: emojiSize, colors: colors)
           : Image.memory(remoteBytes, fit: BoxFit.cover),
       // Loading and error both degrade to the placeholder: a photo is
       // decorative, never worth a spinner or an error glyph in a list row.
-      loading: () => Text(emoji, style: TextStyle(fontSize: emojiSize)),
-      error: (_, _) => Text(emoji, style: TextStyle(fontSize: emojiSize)),
+      loading: () => _Placeholder(emojiSize: emojiSize, colors: colors),
+      error: (_, _) => _Placeholder(emojiSize: emojiSize, colors: colors),
+    );
+  }
+}
+
+class _Placeholder extends StatelessWidget {
+  const _Placeholder({required this.emojiSize, required this.colors});
+
+  final double emojiSize;
+  final ColorScheme colors;
+
+  @override
+  Widget build(BuildContext context) {
+    final bright = Theme.of(context).brightness;
+    return Container(
+      decoration: BoxDecoration(
+        color: bright == Brightness.light
+            ? Colors.grey.shade100
+            : Colors.grey.shade800,
+        borderRadius: BorderRadius.circular(Radii.sm),
+      ),
+      alignment: Alignment.center,
+      child: Icon(
+        CupertinoIcons.photo,
+        size: emojiSize,
+        color: bright == Brightness.light
+            ? Colors.grey.shade500
+            : Colors.grey.shade400,
+      ),
     );
   }
 }

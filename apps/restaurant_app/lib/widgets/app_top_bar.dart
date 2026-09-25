@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
 
 import '../providers/notifications_provider.dart';
 import '../constants/app_strings.dart';
@@ -31,125 +32,147 @@ class AppTopBar extends ConsumerWidget {
     // on every toggle. L10n.code is kept in sync by AppLanguageNotifier.
     final language = ref.watch(appLanguageProvider);
     final isSw = language == AppLanguage.swahili;
+    final surfaceBrightness = ThemeData.estimateBrightnessForColor(
+      colors.surface,
+    );
+    final statusBarIconBrightness = surfaceBrightness == Brightness.dark
+        ? Brightness.light
+        : Brightness.dark;
 
-    return Material(
-      color: colors.surface,
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: context.semantic.hairline)),
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: colors.surface,
+        statusBarBrightness: surfaceBrightness,
+        statusBarIconBrightness: statusBarIconBrightness,
+      ),
+      child: Material(
+        color: colors.surface,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.md),
-          child: Row(
-            children: [
-              // Spacer for alignment with nav rail/drawer on larger screens
-              const SizedBox.shrink(),
-              // Desktop gets an explicit refresh action for the visible tab;
-              // phones and tablets pull down at the top of any list instead.
-              if (context.isDesktop) const _RefreshButton(),
-              if (context.isDesktop) const SizedBox(width: Insets.md),
-              const Spacer(),
-              // Actions on the right
-              _IconButton(
-                icon: Icons.chat_outlined,
-                tooltip: AppStrings.chatWithAssistant,
-                onPressed: () => ChatDialog.show(context),
+          padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: context.semantic.hairline),
               ),
-              const SizedBox(width: Insets.md),
-              _NotificationButton(
-                onPressed: () => context.goNamed(AppRoute.notificationsName),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Insets.lg,
+                vertical: Insets.md,
               ),
-              const SizedBox(width: Insets.md),
-              _IconButton(
-                icon: Icons.help_outline_rounded,
-                tooltip: AppStrings.help,
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(AppStrings.helpComingSoon)),
-                  );
-                },
-              ),
-              const SizedBox(width: Insets.md),
-              _IconButton(
-                icon: isSw ? Icons.terrain_rounded : Icons.language_rounded,
-                tooltip: isSw ? 'Kiingereza' : 'English',
-                onPressed: () {
-                  final next = isSw
-                      ? AppLanguage.english
-                      : AppLanguage.swahili;
-                  ref.read(appLanguageProvider.notifier).set(next);
-                },
-              ),
-              const SizedBox(width: Insets.md),
-              PopupMenuButton<String>(
-                key: AppTopBarKeys.accountMenu,
-                tooltip: AppStrings.accountAndOptions,
-                onSelected: (value) async {
-                  if (value == 'end_shift') {
-                    // Offline session only: lock the till, keep tokens so a
-                    // PIN unlock resumes online access without a new OTP.
-                    ref.read(sessionProvider.notifier).endShift();
-                  } else if (value == 'logout') {
-                    // Online + offline: revoke backend session, clear stored
-                    // tokens, drop local session. Guard routes to picker/login.
-                    await ref.read(sessionProvider.notifier).logout();
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    key: AppTopBarKeys.endShift,
-                    value: 'end_shift',
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.lock_outline_rounded, size: 18),
-                        const SizedBox(width: Insets.sm),
-                        Text(AppStrings.endShift),
-                      ],
-                    ),
+              child: Row(
+                children: [
+                  // Spacer for alignment with nav rail/drawer on larger screens
+                  const SizedBox.shrink(),
+                  // Desktop gets an explicit refresh action for the visible tab;
+                  // phones and tablets pull down at the top of any list instead.
+                  if (context.isDesktop) const _RefreshButton(),
+                  if (context.isDesktop) const SizedBox(width: Insets.md),
+                  const Spacer(),
+                  // Actions on the right
+                  _IconButton(
+                    icon: Icons.chat_outlined,
+                    tooltip: AppStrings.chatWithAssistant,
+                    onPressed: () => ChatDialog.show(context),
                   ),
-                  const PopupMenuDivider(),
-                  PopupMenuItem(
-                    key: AppTopBarKeys.logout,
-                    value: 'logout',
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.logout_rounded,
-                          size: 18,
-                          color: colors.error,
-                        ),
-                        const SizedBox(width: Insets.sm),
-                        Text(
-                          AppStrings.logout,
-                          style: TextStyle(color: colors.error),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(width: Insets.md),
+                  _NotificationButton(
+                    onPressed: () =>
+                        context.goNamed(AppRoute.notificationsName),
                   ),
-                ],
-                child: SizedBox(
-                  height: 40,
-                  width: 40,
-                  child: Material(
-                    color: colors.primaryContainer,
-                    clipBehavior: Clip.antiAlias,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Text(
-                        staff.characters.first.toUpperCase(),
-                        style: context.text.titleSmall?.copyWith(
-                          color: colors.onPrimaryContainer,
+                  const SizedBox(width: Insets.md),
+                  _IconButton(
+                    icon: Icons.help_outline_rounded,
+                    tooltip: AppStrings.help,
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(AppStrings.helpComingSoon)),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: Insets.md),
+                  _IconButton(
+                    icon: isSw ? Icons.terrain_rounded : Icons.language_rounded,
+                    tooltip: isSw ? 'Kiingereza' : 'English',
+                    onPressed: () {
+                      final next = isSw
+                          ? AppLanguage.english
+                          : AppLanguage.swahili;
+                      ref.read(appLanguageProvider.notifier).set(next);
+                    },
+                  ),
+                  const SizedBox(width: Insets.md),
+                  PopupMenuButton<String>(
+                    key: AppTopBarKeys.accountMenu,
+                    tooltip: AppStrings.accountAndOptions,
+                    onSelected: (value) async {
+                      if (value == 'end_shift') {
+                        // Offline session only: lock the till, keep tokens so a
+                        // PIN unlock resumes online access without a new OTP.
+                        ref.read(sessionProvider.notifier).endShift();
+                      } else if (value == 'logout') {
+                        // Online + offline: revoke backend session, clear stored
+                        // tokens, drop local session. Guard routes to picker/login.
+                        await ref.read(sessionProvider.notifier).logout();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        key: AppTopBarKeys.endShift,
+                        value: 'end_shift',
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.lock_outline_rounded, size: 18),
+                            const SizedBox(width: Insets.sm),
+                            Text(AppStrings.endShift),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      PopupMenuItem(
+                        key: AppTopBarKeys.logout,
+                        value: 'logout',
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.logout_rounded,
+                              size: 18,
+                              color: colors.error,
+                            ),
+                            const SizedBox(width: Insets.sm),
+                            Text(
+                              AppStrings.logout,
+                              style: TextStyle(color: colors.error),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    child: SizedBox(
+                      height: 40,
+                      width: 40,
+                      child: Material(
+                        color: colors.primaryContainer,
+                        clipBehavior: Clip.antiAlias,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            staff.characters.first.toUpperCase(),
+                            style: context.text.titleSmall?.copyWith(
+                              color: colors.onPrimaryContainer,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

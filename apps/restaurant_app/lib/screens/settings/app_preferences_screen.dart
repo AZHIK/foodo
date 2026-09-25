@@ -16,6 +16,7 @@ import '../../widgets/labeled_form_field.dart';
 import '../../widgets/saved_tick.dart';
 import '../../widgets/selectable_option_card.dart';
 import 'store_settings_screen.dart' show SettingSwitchTile;
+import '../../utils/dialog_helper.dart';
 
 abstract final class AppPreferencesKeys {
   static const themeLight = Key('appPrefs.theme.light');
@@ -391,7 +392,7 @@ class _AccountPanel extends ConsumerWidget {
     WidgetRef ref,
     String? name,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.logOutTitle),

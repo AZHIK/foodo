@@ -20,6 +20,7 @@ import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/detail_page/detail_page_scaffold.dart';
 import '../../widgets/staff/role_badge.dart';
 import 'invite_staff_dialog.dart';
+import '../../utils/dialog_helper.dart';
 
 /// One staff member: who they are, what they can do, and what they have done.
 ///
@@ -148,7 +149,7 @@ class _OverflowMenu extends ConsumerWidget {
   }
 
   Future<void> _confirmRemove(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.removeMemberTitle(member.name)),

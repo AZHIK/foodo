@@ -21,6 +21,7 @@ import '../payment_summary_panel.dart';
 import '../section_label.dart';
 import '../selectable_option_card.dart';
 import 'customer_picker.dart';
+import '../../utils/dialog_helper.dart';
 
 /// Takes payment for the open order: pick a tender, count the cash, write the
 /// sale, reset the ticket.
@@ -31,7 +32,7 @@ import 'customer_picker.dart';
 Future<void> chargeOpenOrder(BuildContext context, WidgetRef ref) async {
   if (ref.read(cartProvider).isEmpty) return;
 
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (_) => const ChargeDialog(),
   );
@@ -157,10 +158,11 @@ class ChargeDialog extends ConsumerWidget {
 
     return AlertDialog(
       title: Text(AppStrings.takePayment),
-      // Tighter than the default 40px inset on larger screens, so the
-      // dialog itself can be bigger on screen.
+      // 16px inset on phones so the dialog fills the width edge-to-edge;
+      // the default AlertDialog inset (40px each side) would squeeze a
+      // 360px phone down to ~232px of content.
       insetPadding: form.isMobile
-          ? null
+          ? const EdgeInsets.symmetric(horizontal: 16, vertical: 24)
           : const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       contentPadding: const EdgeInsets.fromLTRB(
         Insets.xl,

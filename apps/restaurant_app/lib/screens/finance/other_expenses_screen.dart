@@ -17,6 +17,7 @@ import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/finance/finance_tab_bar.dart';
 import 'other_expense_filter_panel.dart';
 import '../../widgets/dialogs/other_expense_form_dialog.dart';
+import '../../utils/dialog_helper.dart';
 
 class OtherExpensesScreen extends ConsumerWidget {
   const OtherExpensesScreen({super.key});
@@ -146,7 +147,7 @@ class OtherExpensesScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref, OtherExpense expense) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(AppStrings.deleteExpenseTitle(expense.description)),

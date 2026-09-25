@@ -14,6 +14,7 @@ import '../../widgets/dialogs/item_form_dialog.dart';
 import '../../widgets/labeled_form_field.dart';
 import '../../widgets/responsive_form_dialog.dart';
 import 'stock_dialog_shared.dart';
+import '../../utils/dialog_helper.dart';
 
 /// Opens the recipe form: pass [recipe] to edit, [sellable] to pre-select
 /// a menu item, or neither for a blank add (user picks inside the form).
@@ -240,7 +241,7 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
   Future<void> _delete() async {
     final recipe = widget.recipe;
     if (recipe == null) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.deleteRecipeTitle),

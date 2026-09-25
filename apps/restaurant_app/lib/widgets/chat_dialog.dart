@@ -7,12 +7,13 @@ import '../models/chat_message.dart';
 import '../providers/chat_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/breakpoints.dart';
+import '../utils/dialog_helper.dart';
 
 class ChatDialog extends ConsumerStatefulWidget {
   const ChatDialog({super.key});
 
   static Future<void> show(BuildContext context) {
-    return showDialog<void>(
+    return showAppDialog<void>(
       context: context,
       builder: (_) => const ChatDialog(),
     );

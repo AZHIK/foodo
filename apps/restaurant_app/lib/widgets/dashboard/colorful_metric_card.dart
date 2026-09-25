@@ -202,9 +202,9 @@ class _MobileCard extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  colors.primary,
-                  colors.primary.withValues(alpha: 0.7),
-                  colors.primary.withValues(alpha: 0.4),
+                  family.accent,
+                  family.accent.withValues(alpha: 0.65),
+                  family.accent.withValues(alpha: 0.3),
                 ],
               )
             : null,
@@ -212,7 +212,7 @@ class _MobileCard extends StatelessWidget {
         borderRadius: const BorderRadius.all(Radius.circular(16)),
         border: Border.all(
           color: deepGradient
-              ? colors.primary.withValues(alpha: 0.3)
+              ? family.accent.withValues(alpha: 0.3)
               : context.semantic.hairline,
         ),
       ),
@@ -228,7 +228,7 @@ class _MobileCard extends StatelessWidget {
                 width: 38,
                 decoration: BoxDecoration(
                   color: deepGradient
-                      ? Colors.white.withValues(alpha: 0.15)
+                      ? family.onTint.withValues(alpha: 0.2)
                       : family.tint,
                   borderRadius: BorderRadius.circular(12),
                 ),

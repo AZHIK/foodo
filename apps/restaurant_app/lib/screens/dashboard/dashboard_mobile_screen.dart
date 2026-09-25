@@ -34,6 +34,7 @@ class DashboardMobileScreen extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
+        top: false,
         child: RefreshIndicator(
           color: colors.primary,
           onRefresh: () => refreshDashboard(ref),
@@ -43,9 +44,9 @@ class DashboardMobileScreen extends ConsumerWidget {
             ),
             slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
+                padding: EdgeInsets.fromLTRB(
                   Insets.lg,
-                  Insets.md,
+                  MediaQuery.of(context).padding.top + Insets.md,
                   Insets.lg,
                   Insets.xxl,
                 ),

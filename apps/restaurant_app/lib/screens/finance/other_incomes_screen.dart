@@ -18,6 +18,7 @@ import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/finance/finance_tab_bar.dart';
 import 'other_income_filter_panel.dart';
 import '../../widgets/dialogs/other_income_form_dialog.dart';
+import '../../utils/dialog_helper.dart';
 
 class OtherIncomesScreen extends ConsumerWidget {
   const OtherIncomesScreen({super.key});
@@ -148,7 +149,7 @@ class OtherIncomesScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref, OtherIncome income) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(AppStrings.deleteIncomeTitle(income.description)),

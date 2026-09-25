@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../constants/app_strings.dart';
 import '../../theme/breakpoints.dart';
+import '../../utils/dialog_helper.dart';
 
 /// Confirms a refund and collects the reason in one step.
 ///
@@ -14,7 +15,7 @@ Future<String?> showRefundConfirmDialog(
   required String title,
   required String message,
 }) {
-  return showDialog<String>(
+  return showAppDialog<String>(
     context: context,
     builder: (_) => _RefundConfirmDialog(title: title, message: message),
   );

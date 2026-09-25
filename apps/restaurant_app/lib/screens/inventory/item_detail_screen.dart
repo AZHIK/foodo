@@ -31,6 +31,7 @@ import 'record_production_dialog.dart';
 import 'stock_adjust_dialog.dart';
 import 'stock_transfer_dialog.dart';
 import 'waste_log_dialog.dart';
+import '../../utils/dialog_helper.dart';
 
 /// Read-only view of one stock line: what it is, what it is worth, and every
 /// movement that got it to its current count.
@@ -236,7 +237,7 @@ class _OverflowMenu extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.deleteItemTitle(item.name)),
