@@ -11,6 +11,8 @@ import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/dialogs/assign_courier_dialog.dart';
 import '../../widgets/dialogs/refund_confirm_dialog.dart';
+import '../../widgets/receipt/coupon_dialog.dart';
+import '../../widgets/receipt/receipt_dialog.dart';
 import '../../widgets/sales/fulfillment_status_badge.dart';
 import '../../widgets/sales/order_status_badge.dart';
 
@@ -487,11 +489,14 @@ class _Actions extends ConsumerWidget {
       runSpacing: Insets.md,
       children: [
         OutlinedButton.icon(
-          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppStrings.receiptSent(order.id))),
-          ),
+          onPressed: () => showReceiptPreviewDialog(context, ref, order),
           icon: const Icon(Icons.print_outlined, size: 18),
           label: Text(AppStrings.printReceipt),
+        ),
+        OutlinedButton.icon(
+          onPressed: () => showCouponPreviewDialog(context, ref, order),
+          icon: const Icon(Icons.confirmation_number_outlined, size: 18),
+          label: Text(AppStrings.printCoupon),
         ),
         if (isDelivery)
           OutlinedButton.icon(

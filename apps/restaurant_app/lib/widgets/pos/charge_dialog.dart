@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../models/order.dart';
 import '../../constants/app_strings.dart';
 import '../../models/permission.dart';
+import '../../models/store_settings.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_session_provider.dart';
 import '../../providers/orders_provider.dart';
@@ -18,6 +19,7 @@ import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
 import '../cash_tender_panel.dart';
 import '../payment_summary_panel.dart';
+import '../receipt/coupon_dialog.dart';
 import '../section_label.dart';
 import '../selectable_option_card.dart';
 import 'customer_picker.dart';
@@ -31,6 +33,12 @@ import '../../utils/dialog_helper.dart';
 /// only exists once.
 Future<void> chargeOpenOrder(BuildContext context, WidgetRef ref) async {
   if (ref.read(cartProvider).isEmpty) return;
+
+  // Each sale starts from the owner's Store Settings default; the dialog
+  // below may then override it for this sale only.
+  ref.read(checkoutPrintChoiceProvider.notifier).state = ref.read(
+    checkoutPrintModeProvider,
+  );
 
   final confirmed = await showAppDialog<bool>(
     context: context,
@@ -65,14 +73,31 @@ Future<void> chargeOpenOrder(BuildContext context, WidgetRef ref) async {
 
   final change = order.payment.changeFor(order.totals);
 
-  // Store Settings decides whether a receipt follows a settled payment. There
+  // Store Settings decides whether anything prints after a settled payment,
+  // and the dialog's per-sale choice decides what: receipt or coupon. There
   // is no printer driver behind this yet, so what it controls is whether the
   // confirmation says one is on its way — the branch is the wiring, and the
   // driver drops in where the message is built.
   final autoPrint = ref.read(autoPrintReceiptProvider);
+  final printChoice = ref.read(checkoutPrintChoiceProvider);
   final receiptNumber = '${ref.read(receiptPrefixProvider)}${order.receiptSuffix}';
+  final printPart = !autoPrint
+      ? ''
+      : switch (printChoice) {
+          CheckoutPrintMode.receipt =>
+            AppStrings.chargeReceiptPart(receiptNumber),
+          CheckoutPrintMode.coupon => AppStrings.chargeCouponPart(order.id),
+        };
 
   ref.read(cartProvider.notifier).clear();
+
+  // A coupon is a handoff, not a confirmation: pop its paper preview so the
+  // staff can tear it off for the customer right away. A receipt stays a
+  // snackbar — its full preview lives on the order detail screen.
+  if (autoPrint && printChoice == CheckoutPrintMode.coupon) {
+    await showCouponPreviewDialog(context, ref, order);
+    return;
+  }
 
   final messenger = ScaffoldMessenger.of(context);
   messenger.hideCurrentSnackBar();
@@ -86,7 +111,7 @@ Future<void> chargeOpenOrder(BuildContext context, WidgetRef ref) async {
           change != null && change > 0
               ? AppStrings.chargeChangePart(Fmt.money(change))
               : '',
-          autoPrint ? AppStrings.chargeReceiptPart(receiptNumber) : '',
+          printPart,
         ),
       ),
       action: SnackBarAction(
@@ -266,6 +291,8 @@ class _NarrowPane extends ConsumerWidget {
           const SizedBox(height: Insets.lg),
           _TerminalNotice(method: payment.method),
         ],
+        const SizedBox(height: Insets.lg),
+        const _PrintChoiceSection(perRow: 2),
       ],
     );
   }
@@ -321,6 +348,8 @@ class _WideForm extends ConsumerWidget {
               SectionLabel(AppStrings.chargePaymentMethod),
               const SizedBox(height: Insets.sm),
               _TenderGrid(perRow: wide ? 3 : 2),
+              const SizedBox(height: Insets.lg),
+              _PrintChoiceSection(perRow: wide ? 2 : 2),
       ],
     );
   }
@@ -378,6 +407,62 @@ class _TenderGrid extends ConsumerWidget {
             onTap: () =>
                 ref.read(cartProvider.notifier).selectPaymentMethod(type),
           ),
+      ],
+    );
+  }
+}
+
+/// What prints once this sale is charged: receipt or coupon.
+///
+/// Pre-selected from Store Settings ([checkoutPrintModeProvider]) when the
+/// dialog opens, switchable per sale. The choice lives in
+/// [checkoutPrintChoiceProvider] so it survives rebuilds while the dialog is
+/// open, and never writes back to the store default.
+class _PrintChoiceSection extends ConsumerWidget {
+  const _PrintChoiceSection({required this.perRow});
+
+  final int perRow;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final choice = ref.watch(checkoutPrintChoiceProvider);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionLabel(AppStrings.printAfterCharge),
+        const SizedBox(height: Insets.xs),
+        Text(
+          AppStrings.printAfterChargeHelper,
+          style: context.text.bodySmall?.copyWith(
+            color: context.colors.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: Insets.sm),
+        SelectableOptionGrid(
+          perRow: perRow,
+          children: [
+            SelectableOptionCard(
+              label: AppStrings.chargeReceiptOption,
+              subtitle: AppStrings.chargeReceiptOptionHelper,
+              icon: CheckoutPrintMode.receipt.icon,
+              selected: choice == CheckoutPrintMode.receipt,
+              onTap: () => ref
+                  .read(checkoutPrintChoiceProvider.notifier)
+                  .state = CheckoutPrintMode.receipt,
+            ),
+            SelectableOptionCard(
+              label: AppStrings.chargeCouponOption,
+              subtitle: AppStrings.chargeCouponOptionHelper,
+              icon: CheckoutPrintMode.coupon.icon,
+              selected: choice == CheckoutPrintMode.coupon,
+              onTap: () => ref
+                  .read(checkoutPrintChoiceProvider.notifier)
+                  .state = CheckoutPrintMode.coupon,
+            ),
+          ],
+        ),
       ],
     );
   }

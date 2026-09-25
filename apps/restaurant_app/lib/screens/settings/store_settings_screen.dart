@@ -15,6 +15,8 @@ import '../../utils/formatters.dart';
 import '../../widgets/detail_page/detail_page_scaffold.dart';
 import '../../widgets/field_pair.dart';
 import '../../widgets/labeled_form_field.dart';
+import '../../widgets/receipt/coupon_dialog.dart';
+import '../../widgets/receipt/receipt_dialog.dart';
 
 /// Widget keys for the store settings form.
 abstract final class StoreSettingsKeys {
@@ -25,6 +27,9 @@ abstract final class StoreSettingsKeys {
   static const orderType = Key('storeSettings.orderType');
   static const receiptPrefix = Key('storeSettings.receiptPrefix');
   static const autoPrint = Key('storeSettings.autoPrint');
+  static const printMode = Key('storeSettings.printMode');
+  static const previewReceipt = Key('storeSettings.previewReceipt');
+  static const previewCoupon = Key('storeSettings.previewCoupon');
   static const save = Key('storeSettings.save');
 
   static Key day(int index) => Key('storeSettings.day.$index');
@@ -167,6 +172,12 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                 _edit((d) => d.copyWith(defaultOrderType: value)),
             onAutoPrintChanged: (value) =>
                 _edit((d) => d.copyWith(autoPrintReceipt: value)),
+            onPrintModeChanged: (value) =>
+                _edit((d) => d.copyWith(checkoutPrintMode: value)),
+            onPreviewReceipt: () =>
+                showSampleReceiptPreviewDialog(context, ref),
+            onPreviewCoupon: () =>
+                showSampleCouponPreviewDialog(context, ref),
           ),
           _HoursPanel(
             settings: _draft,
@@ -346,12 +357,18 @@ class _OrderPanel extends StatelessWidget {
     required this.draft,
     required this.onOrderTypeChanged,
     required this.onAutoPrintChanged,
+    required this.onPrintModeChanged,
+    required this.onPreviewReceipt,
+    required this.onPreviewCoupon,
   });
 
   final TextEditingController receiptPrefix;
   final StoreSettings draft;
   final ValueChanged<OrderType> onOrderTypeChanged;
   final ValueChanged<bool> onAutoPrintChanged;
+  final ValueChanged<CheckoutPrintMode> onPrintModeChanged;
+  final VoidCallback onPreviewReceipt;
+  final VoidCallback onPreviewCoupon;
 
   @override
   Widget build(BuildContext context) {
@@ -419,6 +436,66 @@ class _OrderPanel extends StatelessWidget {
                 : AppStrings.autoPrintOff,
             value: draft.autoPrintReceipt,
             onChanged: onAutoPrintChanged,
+          ),
+          const SizedBox(height: Insets.lg),
+          LabeledFormField(
+            label: AppStrings.defaultPrintModeField,
+            helper: AppStrings.defaultPrintModeHelper,
+            child: DropdownButtonFormField<CheckoutPrintMode>(
+              key: StoreSettingsKeys.printMode,
+              initialValue: draft.checkoutPrintMode,
+              isExpanded: true,
+              items: [
+                for (final mode in CheckoutPrintMode.values)
+                  DropdownMenuItem(
+                    value: mode,
+                    child: Row(
+                      children: [
+                        Icon(mode.icon, size: 17),
+                        const SizedBox(width: Insets.sm),
+                        Flexible(
+                          child: Text(
+                            mode.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+              onChanged: (value) {
+                if (value != null) onPrintModeChanged(value);
+              },
+            ),
+          ),
+          const SizedBox(height: Insets.lg),
+          OutlinedButton.icon(
+            key: StoreSettingsKeys.previewReceipt,
+            onPressed: onPreviewReceipt,
+            icon: const Icon(Icons.receipt_long_outlined, size: 18),
+            label: Text(AppStrings.previewReceiptAction),
+          ),
+          const SizedBox(height: Insets.xs),
+          Text(
+            AppStrings.previewReceiptBlurb,
+            style: context.text.bodySmall?.copyWith(
+              color: context.colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: Insets.md),
+          OutlinedButton.icon(
+            key: StoreSettingsKeys.previewCoupon,
+            onPressed: onPreviewCoupon,
+            icon: const Icon(Icons.confirmation_number_outlined, size: 18),
+            label: Text(AppStrings.previewCouponAction),
+          ),
+          const SizedBox(height: Insets.xs),
+          Text(
+            AppStrings.previewCouponBlurb,
+            style: context.text.bodySmall?.copyWith(
+              color: context.colors.onSurfaceVariant,
+            ),
           ),
         ],
       ),

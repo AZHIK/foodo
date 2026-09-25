@@ -154,6 +154,22 @@ final autoPrintReceiptProvider = Provider<bool>(
   (ref) => ref.watch(storeSettingsProvider.select((s) => s.autoPrintReceipt)),
 );
 
+/// Default of what the till prints after a charge (receipt vs coupon),
+/// chosen by the owner in Store Settings.
+final checkoutPrintModeProvider = Provider<CheckoutPrintMode>(
+  (ref) => ref.watch(storeSettingsProvider.select((s) => s.checkoutPrintMode)),
+);
+
+/// Per-sale print choice in the take-payment dialog: charge + receipt or
+/// charge + coupon.
+///
+/// Seeded from [checkoutPrintModeProvider] every time the dialog opens (see
+/// `chargeOpenOrder`), then freely switchable by the cashier for that sale
+/// only — it never writes back to Store Settings.
+final checkoutPrintChoiceProvider = StateProvider<CheckoutPrintMode>(
+  (ref) => ref.watch(checkoutPrintModeProvider),
+);
+
 /// Note and coin values offered as one-tap top-ups when taking cash.
 ///
 /// Store configuration rather than constants in the widget, and *amounts*

@@ -85,6 +85,28 @@ const kWeekdayNames = AppStrings.weekdayNames;
 
 const kWeekdayShortNames = AppStrings.weekdayShortNames;
 
+/// What the till prints after a charge settles: the itemised receipt or a
+/// short coupon (e.g. a kitchen/claim ticket). The store owner picks the
+/// default in Store Settings; the cashier can still switch it per sale in the
+/// take-payment dialog.
+enum CheckoutPrintMode {
+  receipt('receipt', 'Receipt', Icons.receipt_long_rounded),
+  coupon('coupon', 'Coupon', Icons.confirmation_number_outlined);
+
+  const CheckoutPrintMode(this.storageKey, this.labelDefault, this.icon);
+  final String storageKey;
+  final String labelDefault;
+  final IconData icon;
+
+  String get label => labelDefault;
+
+  static CheckoutPrintMode fromStorageKey(String? key) =>
+      values.firstWhere(
+        (mode) => mode.storageKey == key,
+        orElse: () => CheckoutPrintMode.receipt,
+      );
+}
+
 /// How this terminal *behaves* — as distinct from [BusinessProfile], which is
 /// who the business *is*.
 ///
@@ -103,6 +125,7 @@ class StoreSettings {
     this.defaultOrderType = OrderType.dineIn,
     this.receiptPrefix = 'INV-',
     this.autoPrintReceipt = true,
+    this.checkoutPrintMode = CheckoutPrintMode.receipt,
     // Always seven entries, Monday first. Not asserted: the constructor is
     // const, and a const evaluation cannot read a list's length.
     this.hours = defaultHours,
@@ -127,6 +150,11 @@ class StoreSettings {
   final String receiptPrefix;
 
   final bool autoPrintReceipt;
+
+  /// Default of what prints after a charge: receipt or coupon. The
+  /// take-payment dialog pre-selects this, and the cashier may override it
+  /// per sale.
+  final CheckoutPrintMode checkoutPrintMode;
 
   /// Monday-first, always seven entries.
   final List<DayHours> hours;
@@ -174,6 +202,7 @@ class StoreSettings {
     OrderType? defaultOrderType,
     String? receiptPrefix,
     bool? autoPrintReceipt,
+    CheckoutPrintMode? checkoutPrintMode,
     List<DayHours>? hours,
   }) {
     return StoreSettings(
@@ -184,6 +213,7 @@ class StoreSettings {
       defaultOrderType: defaultOrderType ?? this.defaultOrderType,
       receiptPrefix: receiptPrefix ?? this.receiptPrefix,
       autoPrintReceipt: autoPrintReceipt ?? this.autoPrintReceipt,
+      checkoutPrintMode: checkoutPrintMode ?? this.checkoutPrintMode,
       hours: hours ?? this.hours,
     );
   }
@@ -206,6 +236,7 @@ class StoreSettings {
       other.defaultOrderType == defaultOrderType &&
       other.receiptPrefix == receiptPrefix &&
       other.autoPrintReceipt == autoPrintReceipt &&
+      other.checkoutPrintMode == checkoutPrintMode &&
       _sameHours(other.hours, hours);
 
   @override
@@ -217,6 +248,7 @@ class StoreSettings {
     defaultOrderType,
     receiptPrefix,
     autoPrintReceipt,
+    checkoutPrintMode,
     Object.hashAll(hours),
   );
 

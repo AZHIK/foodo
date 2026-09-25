@@ -202,6 +202,55 @@ abstract final class AppStrings {
   static String chargeChangePart(String change) => ' · $change change';
   static String chargeReceiptPart(String receipt) =>
       ' · receipt $receipt printing';
+  static String chargeCouponPart(String coupon) =>
+      ' · coupon $coupon printing';
+  static String get printAfterCharge => L10n.t('printAfterCharge', 'Print after charge');
+  static String get printAfterChargeHelper => L10n.t(
+    'printAfterChargeHelper',
+    'Choose what prints once this sale is charged',
+  );
+  static String get chargeReceiptOption => L10n.t('chargeReceiptOption', 'Receipt');
+  static String get chargeReceiptOptionHelper => L10n.t(
+    'chargeReceiptOptionHelper',
+    'Itemised receipt for the customer',
+  );
+  static String get chargeCouponOption => L10n.t('chargeCouponOption', 'Coupon');
+  static String get chargeCouponOptionHelper => L10n.t(
+    'chargeCouponOptionHelper',
+    'Short claim coupon for the order',
+  );
+  static String get defaultPrintModeField => L10n.t(
+    'defaultPrintModeField',
+    'Default print after charge',
+  );
+  static String get defaultPrintModeHelper => L10n.t(
+    'defaultPrintModeHelper',
+    'Pre-selected in the take-payment dialog',
+  );
+  static String get receiptPreviewTitle => L10n.t('receiptPreviewTitle', 'Receipt preview');
+  static String get receiptPreviewSubtitle => L10n.t(
+    'receiptPreviewSubtitle',
+    '80mm thermal paper',
+  );
+  static String get previewReceiptAction => L10n.t('previewReceiptAction', 'Preview receipt');
+  static String get previewReceiptBlurb => L10n.t(
+    'previewReceiptBlurb',
+    'See the 80mm format with sample data',
+  );
+  static String get couponPreviewTitle => L10n.t('couponPreviewTitle', 'Coupon preview');
+  static String couponSent(String id) => 'Coupon for $id sent to printer';
+  static String get previewCouponAction => L10n.t('previewCouponAction', 'Preview coupon');
+  static String get previewCouponBlurb => L10n.t(
+    'previewCouponBlurb',
+    'See the claim coupon with sample data',
+  );
+  static String get printCoupon => L10n.t('printCoupon', 'Print coupon');
+  static String get receiptPrintAction => L10n.t('receiptPrintAction', 'Print');
+  static String get receiptScanHint => L10n.t('receiptScanHint', 'Scan to verify receipt');
+  static String get receiptWelcomeNote => L10n.t(
+    'receiptWelcomeNote',
+    'Thank you, welcome again!',
+  );
   static String get cashReceived => L10n.t('cashReceived', 'Cash received');
   static String get chargeAmountDue => L10n.t('chargeAmountDue', 'Amount due');
   static String get cashTendered => L10n.t('cashTendered', 'Cash tendered');

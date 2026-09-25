@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../models/order.dart';
 import '../../constants/app_strings.dart';
 import '../../providers/orders_provider.dart';
-import '../../providers/settings_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/formatters.dart';
@@ -17,6 +16,7 @@ import '../../widgets/data_page/reusable_data_table.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/dialogs/assign_courier_dialog.dart';
 import '../../widgets/dialogs/refund_confirm_dialog.dart';
+import '../../widgets/receipt/receipt_dialog.dart';
 import '../../widgets/sales/fulfillment_status_badge.dart';
 import '../../widgets/sales/order_status_badge.dart';
 import 'sales_date_range_selector.dart';
@@ -162,16 +162,7 @@ class SalesScreen extends ConsumerWidget {
       // Numbered under the store's configured prefix rather than by ticket id,
       // so a reprint carries the same number the original paper did.
       onSelected: (context, order) =>
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                AppStrings.receiptSentWithNumber(
-                  ref.read(receiptPrefixProvider),
-                  order.receiptSuffix,
-                ),
-              ),
-            ),
-          ),
+          showReceiptPreviewDialog(context, ref, order),
     ),
   ];
 
