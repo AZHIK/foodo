@@ -6,7 +6,7 @@
 /// writes go straight to the API with no offline outbox — Inventory
 /// Service's writes have always worked this way (see
 /// `InventoryNotifier`'s doc comment in `inventory_provider.dart`), and
-/// Suppliers/Reorders follow that same convention rather than the
+/// Suppliers follow that same convention rather than the
 /// Finance/Customers outbox pattern used elsewhere in this app.
 library;
 

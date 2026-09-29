@@ -100,12 +100,6 @@ abstract final class InventoryApiPaths {
       '/businesses/$businessId/suppliers';
   static String supplier(String businessId, String supplierId) =>
       '/businesses/$businessId/suppliers/$supplierId';
-  static String reorders(String businessId) =>
-      '/businesses/$businessId/reorders';
-  static String reorderReceive(String businessId, String reorderId) =>
-      '/businesses/$businessId/reorders/$reorderId/receive';
-  static String reorderCancel(String businessId, String reorderId) =>
-      '/businesses/$businessId/reorders/$reorderId/cancel';
   static String purchaseOrders(String businessId) =>
       '/businesses/$businessId/purchases/orders';
   static String purchaseOrder(String businessId, String orderId) =>

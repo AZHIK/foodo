@@ -78,6 +78,7 @@ class InventoryItem {
     this.itemType = 'both',
     this.reorderQuantity = 0,
     this.allowNegativeStock = false,
+    this.preferredSupplierId,
   });
 
   final String id;
@@ -156,6 +157,12 @@ class InventoryItem {
   /// sold before its delivery is logged, rather than blocking the sale.
   final bool allowNegativeStock;
 
+  /// The backend `Supplier` row's UUID (`item.supplier_id`) — the item's
+  /// preferred/original supplier. Null when none is assigned. This is the
+  /// durable link the order cart pre-assigns from; the legacy free-text
+  /// [supplier] field above is decorative-only and unrelated.
+  final String? preferredSupplierId;
+
   /// Whether this item belongs in the Groceries (raw-material) view — every
   /// item except a pure `sellable` one.
   bool get isGroceryItem => itemType != 'sellable';
@@ -200,11 +207,13 @@ class InventoryItem {
     String? itemType,
     double? reorderQuantity,
     bool? allowNegativeStock,
+    String? preferredSupplierId,
     // `image: null` cannot mean "remove it" when null already means "leave it
     // alone", so clearing needs its own flag.
     bool clearImage = false,
     bool clearCatalogItemId = false,
     bool clearSellingPrice = false,
+    bool clearPreferredSupplierId = false,
   }) {
     return InventoryItem(
       id: id,
@@ -233,6 +242,9 @@ class InventoryItem {
       itemType: itemType ?? this.itemType,
       reorderQuantity: reorderQuantity ?? this.reorderQuantity,
       allowNegativeStock: allowNegativeStock ?? this.allowNegativeStock,
+      preferredSupplierId: clearPreferredSupplierId
+          ? null
+          : (preferredSupplierId ?? this.preferredSupplierId),
     );
   }
 

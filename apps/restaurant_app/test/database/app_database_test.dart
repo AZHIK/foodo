@@ -36,8 +36,8 @@ void main() {
       expect(database != null, true);
     });
 
-    test('schema version is 11', () async {
-      expect(database.schemaVersion, 11);
+    test('schema version is 13', () async {
+      expect(database.schemaVersion, 13);
     });
 
     test('LocalUserProfiles table exists and can be queried', () async {
@@ -459,7 +459,7 @@ void main() {
       expect(cached.first.isDeleted, false);
     });
 
-    test('CachedSuppliers and CachedReorders tables exist', () async {
+    test('CachedSuppliers table exists', () async {
       final now = DateTime.now();
 
       await database.into(database.cachedSuppliers).insertOnConflictUpdate(
@@ -472,30 +472,10 @@ void main() {
               lastSyncedAt: now,
             ),
           );
-      await database.into(database.cachedReorders).insertOnConflictUpdate(
-            CachedReordersCompanion.insert(
-              id: 'reorder-uuid-1',
-              businessId: 'biz-123',
-              storeId: 'store-1',
-              itemId: 'item-1',
-              supplierId: 'sup-uuid-1',
-              quantity: Decimal.parse('20.000'),
-              unit: 'kg',
-              unitCost: Decimal.parse('2.5000'),
-              status: 'pending',
-              orderedAt: now,
-              createdAt: now,
-              lastSyncedAt: now,
-            ),
-          );
 
       final suppliers = await database.select(database.cachedSuppliers).get();
-      final reorders = await database.select(database.cachedReorders).get();
       expect(suppliers.length, 1);
-      expect(reorders.length, 1);
-      expect(reorders.first.supplierId, suppliers.first.id);
       expect(suppliers.first.isDeleted, false);
-      expect(reorders.first.status, 'pending');
     });
 
     test('PendingSales.customerId and CachedSales.customerId are nullable', () async {

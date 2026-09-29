@@ -32,6 +32,10 @@ class CatalogItemDto {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  /// The backend `Supplier` row's UUID (`item.supplier_id` on the wire) —
+  /// the item's preferred/original supplier. Null when none is assigned.
+  final String? supplierId;
+
   /// Service-relative URL of the item's product photo (e.g.
   /// `/businesses/{businessId}/items/{id}/image`), resolved against
   /// Inventory Service's base URL. Null when the item has no photo.
@@ -44,6 +48,7 @@ class CatalogItemDto {
     required this.name,
     this.unitId,
     this.category,
+    this.supplierId,
     required this.reorderThreshold,
     required this.reorderQuantity,
     this.sellingPrice,

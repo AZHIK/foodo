@@ -23,7 +23,7 @@ import '../../widgets/data_page/status_badge.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/detail_page/detail_page_scaffold.dart';
 import '../../widgets/dialogs/item_form_dialog.dart';
-import '../../widgets/dialogs/reorder_dialog.dart';
+import '../../widgets/inventory/add_to_order_cart.dart';
 import '../../widgets/item_photo.dart';
 import 'inventory_groceries_screen.dart' show StockStatusTone;
 import 'recipe_form_dialog.dart';
@@ -439,13 +439,13 @@ class _QuickActions extends ConsumerWidget {
           label: Text(AppStrings.adjustStock),
         ),
         // A sellable-only item can never be purchase-received (see
-        // `stock_movement_service.py`'s `_COMPATIBILITY_RULES`) — reordering
+        // `stock_movement_service.py`'s `_COMPATIBILITY_RULES`) — ordering
         // it would always fail at receive time, so the action isn't offered.
         if (item.itemType != 'sellable')
           OutlinedButton.icon(
-            onPressed: () => showReorderDialog(context, item),
-            icon: const Icon(Icons.shopping_cart_outlined, size: 18),
-            label: Text(AppStrings.createReorder),
+            onPressed: () => addItemToOrderCart(context, ref, item),
+            icon: const Icon(Icons.add_shopping_cart, size: 18),
+            label: Text(AppStrings.addToOrderCart),
           ),
         OutlinedButton.icon(
           onPressed: item.stock == 0

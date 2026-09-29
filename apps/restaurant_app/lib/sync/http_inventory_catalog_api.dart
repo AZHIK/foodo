@@ -91,6 +91,7 @@ class HttpInventoryCatalogApi extends InventoryCatalogApi {
         name: item['name'] as String,
         unitId: item['unit_id'] as String?,
         category: item['category_id'] as String?,
+        supplierId: item['supplier_id'] as String?,
         reorderThreshold: Decimal.parse(item['reorder_threshold'].toString()),
         reorderQuantity: Decimal.parse(item['reorder_quantity'].toString()),
         sellingPrice: item['selling_price'] != null

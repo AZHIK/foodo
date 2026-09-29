@@ -2959,6 +2959,18 @@ class $CachedItemsTable extends CachedItems
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _supplierIdMeta = const VerificationMeta(
+    'supplierId',
+  );
+  @override
+  late final GeneratedColumn<String> supplierId = GeneratedColumn<String>(
+    'supplier_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2980,6 +2992,7 @@ class $CachedItemsTable extends CachedItems
     lastSeenAt,
     lastSyncedAt,
     imageUrl,
+    supplierId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3121,6 +3134,12 @@ class $CachedItemsTable extends CachedItems
         imageUrl.isAcceptableOrUnknown(data['image_url']!, _imageUrlMeta),
       );
     }
+    if (data.containsKey('supplier_id')) {
+      context.handle(
+        _supplierIdMeta,
+        supplierId.isAcceptableOrUnknown(data['supplier_id']!, _supplierIdMeta),
+      );
+    }
     return context;
   }
 
@@ -3214,6 +3233,10 @@ class $CachedItemsTable extends CachedItems
         DriftSqlType.string,
         data['${effectivePrefix}image_url'],
       ),
+      supplierId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}supplier_id'],
+      )!,
     );
   }
 
@@ -3310,6 +3333,15 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
   /// its placeholder. Synced from the catalog pull like every other column —
   /// a photo removed server-side clears this on the next pull.
   final String? imageUrl;
+
+  /// The backend `Supplier` row's UUID (`item.supplier_id` on the wire) — the
+  /// item's preferred/original supplier, see `CachedSuppliers`. Empty string
+  /// means "none assigned" (NOT NULL with a `''` default rather than
+  /// nullable, for the same SQLite add-a-NOT-NULL-column-with-a-default
+  /// reason as [unitId] above). Synced from the catalog pull; cleared
+  /// server-side clears here on the next pull. The order cart pre-assigns
+  /// this supplier to a new line, still changeable per line or in bulk.
+  final String supplierId;
   const CachedItem({
     required this.id,
     required this.businessId,
@@ -3330,6 +3362,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
     required this.lastSeenAt,
     required this.lastSyncedAt,
     this.imageUrl,
+    required this.supplierId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3373,6 +3406,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
     if (!nullToAbsent || imageUrl != null) {
       map['image_url'] = Variable<String>(imageUrl);
     }
+    map['supplier_id'] = Variable<String>(supplierId);
     return map;
   }
 
@@ -3405,6 +3439,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
       imageUrl: imageUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(imageUrl),
+      supplierId: Value(supplierId),
     );
   }
 
@@ -3435,6 +3470,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
       lastSeenAt: serializer.fromJson<DateTime>(json['lastSeenAt']),
       lastSyncedAt: serializer.fromJson<DateTime>(json['lastSyncedAt']),
       imageUrl: serializer.fromJson<String?>(json['imageUrl']),
+      supplierId: serializer.fromJson<String>(json['supplierId']),
     );
   }
   @override
@@ -3460,6 +3496,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
       'lastSeenAt': serializer.toJson<DateTime>(lastSeenAt),
       'lastSyncedAt': serializer.toJson<DateTime>(lastSyncedAt),
       'imageUrl': serializer.toJson<String?>(imageUrl),
+      'supplierId': serializer.toJson<String>(supplierId),
     };
   }
 
@@ -3483,6 +3520,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
     DateTime? lastSeenAt,
     DateTime? lastSyncedAt,
     Value<String?> imageUrl = const Value.absent(),
+    String? supplierId,
   }) => CachedItem(
     id: id ?? this.id,
     businessId: businessId ?? this.businessId,
@@ -3503,6 +3541,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
     lastSeenAt: lastSeenAt ?? this.lastSeenAt,
     lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
     imageUrl: imageUrl.present ? imageUrl.value : this.imageUrl,
+    supplierId: supplierId ?? this.supplierId,
   );
   CachedItem copyWithCompanion(CachedItemsCompanion data) {
     return CachedItem(
@@ -3547,6 +3586,9 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
           ? data.lastSyncedAt.value
           : this.lastSyncedAt,
       imageUrl: data.imageUrl.present ? data.imageUrl.value : this.imageUrl,
+      supplierId: data.supplierId.present
+          ? data.supplierId.value
+          : this.supplierId,
     );
   }
 
@@ -3571,7 +3613,8 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
           ..write('updatedAtServer: $updatedAtServer, ')
           ..write('lastSeenAt: $lastSeenAt, ')
           ..write('lastSyncedAt: $lastSyncedAt, ')
-          ..write('imageUrl: $imageUrl')
+          ..write('imageUrl: $imageUrl, ')
+          ..write('supplierId: $supplierId')
           ..write(')'))
         .toString();
   }
@@ -3597,6 +3640,7 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
     lastSeenAt,
     lastSyncedAt,
     imageUrl,
+    supplierId,
   );
   @override
   bool operator ==(Object other) =>
@@ -3620,7 +3664,8 @@ class CachedItem extends DataClass implements Insertable<CachedItem> {
           other.updatedAtServer == this.updatedAtServer &&
           other.lastSeenAt == this.lastSeenAt &&
           other.lastSyncedAt == this.lastSyncedAt &&
-          other.imageUrl == this.imageUrl);
+          other.imageUrl == this.imageUrl &&
+          other.supplierId == this.supplierId);
 }
 
 class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
@@ -3643,6 +3688,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
   final Value<DateTime> lastSeenAt;
   final Value<DateTime> lastSyncedAt;
   final Value<String?> imageUrl;
+  final Value<String> supplierId;
   final Value<int> rowid;
   const CachedItemsCompanion({
     this.id = const Value.absent(),
@@ -3664,6 +3710,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
     this.lastSeenAt = const Value.absent(),
     this.lastSyncedAt = const Value.absent(),
     this.imageUrl = const Value.absent(),
+    this.supplierId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CachedItemsCompanion.insert({
@@ -3686,6 +3733,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
     required DateTime lastSeenAt,
     required DateTime lastSyncedAt,
     this.imageUrl = const Value.absent(),
+    this.supplierId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        businessId = Value(businessId),
@@ -3719,6 +3767,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
     Expression<DateTime>? lastSeenAt,
     Expression<DateTime>? lastSyncedAt,
     Expression<String>? imageUrl,
+    Expression<String>? supplierId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3743,6 +3792,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
       if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
       if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
       if (imageUrl != null) 'image_url': imageUrl,
+      if (supplierId != null) 'supplier_id': supplierId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3767,6 +3817,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
     Value<DateTime>? lastSeenAt,
     Value<DateTime>? lastSyncedAt,
     Value<String?>? imageUrl,
+    Value<String>? supplierId,
     Value<int>? rowid,
   }) {
     return CachedItemsCompanion(
@@ -3789,6 +3840,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
       lastSeenAt: lastSeenAt ?? this.lastSeenAt,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
       imageUrl: imageUrl ?? this.imageUrl,
+      supplierId: supplierId ?? this.supplierId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3865,6 +3917,9 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
     if (imageUrl.present) {
       map['image_url'] = Variable<String>(imageUrl.value);
     }
+    if (supplierId.present) {
+      map['supplier_id'] = Variable<String>(supplierId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3893,6 +3948,7 @@ class CachedItemsCompanion extends UpdateCompanion<CachedItem> {
           ..write('lastSeenAt: $lastSeenAt, ')
           ..write('lastSyncedAt: $lastSyncedAt, ')
           ..write('imageUrl: $imageUrl, ')
+          ..write('supplierId: $supplierId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -14690,1078 +14746,6 @@ class CachedSuppliersCompanion extends UpdateCompanion<CachedSupplier> {
   }
 }
 
-class $CachedReordersTable extends CachedReorders
-    with TableInfo<$CachedReordersTable, CachedReorder> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $CachedReordersTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
-    'id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _businessIdMeta = const VerificationMeta(
-    'businessId',
-  );
-  @override
-  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
-    'business_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _storeIdMeta = const VerificationMeta(
-    'storeId',
-  );
-  @override
-  late final GeneratedColumn<String> storeId = GeneratedColumn<String>(
-    'store_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
-  @override
-  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
-    'item_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _supplierIdMeta = const VerificationMeta(
-    'supplierId',
-  );
-  @override
-  late final GeneratedColumn<String> supplierId = GeneratedColumn<String>(
-    'supplier_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  @override
-  late final GeneratedColumnWithTypeConverter<Decimal, String> quantity =
-      GeneratedColumn<String>(
-        'quantity',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      ).withConverter<Decimal>($CachedReordersTable.$converterquantity);
-  static const VerificationMeta _unitMeta = const VerificationMeta('unit');
-  @override
-  late final GeneratedColumn<String> unit = GeneratedColumn<String>(
-    'unit',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  @override
-  late final GeneratedColumnWithTypeConverter<Decimal, String> unitCost =
-      GeneratedColumn<String>(
-        'unit_cost',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      ).withConverter<Decimal>($CachedReordersTable.$converterunitCost);
-  static const VerificationMeta _statusMeta = const VerificationMeta('status');
-  @override
-  late final GeneratedColumn<String> status = GeneratedColumn<String>(
-    'status',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
-  @override
-  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
-    'notes',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _orderedAtMeta = const VerificationMeta(
-    'orderedAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> orderedAt = GeneratedColumn<DateTime>(
-    'ordered_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _orderedByMeta = const VerificationMeta(
-    'orderedBy',
-  );
-  @override
-  late final GeneratedColumn<String> orderedBy = GeneratedColumn<String>(
-    'ordered_by',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _expectedAtMeta = const VerificationMeta(
-    'expectedAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> expectedAt = GeneratedColumn<DateTime>(
-    'expected_at',
-    aliasedName,
-    true,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _receivedAtMeta = const VerificationMeta(
-    'receivedAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> receivedAt = GeneratedColumn<DateTime>(
-    'received_at',
-    aliasedName,
-    true,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _receivedByMeta = const VerificationMeta(
-    'receivedBy',
-  );
-  @override
-  late final GeneratedColumn<String> receivedBy = GeneratedColumn<String>(
-    'received_by',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _cancelledAtMeta = const VerificationMeta(
-    'cancelledAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> cancelledAt = GeneratedColumn<DateTime>(
-    'cancelled_at',
-    aliasedName,
-    true,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _cancelledByMeta = const VerificationMeta(
-    'cancelledBy',
-  );
-  @override
-  late final GeneratedColumn<String> cancelledBy = GeneratedColumn<String>(
-    'cancelled_by',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _createdAtMeta = const VerificationMeta(
-    'createdAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-    'created_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _lastSyncedAtMeta = const VerificationMeta(
-    'lastSyncedAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
-    'last_synced_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: true,
-  );
-  @override
-  List<GeneratedColumn> get $columns => [
-    id,
-    businessId,
-    storeId,
-    itemId,
-    supplierId,
-    quantity,
-    unit,
-    unitCost,
-    status,
-    notes,
-    orderedAt,
-    orderedBy,
-    expectedAt,
-    receivedAt,
-    receivedBy,
-    cancelledAt,
-    cancelledBy,
-    createdAt,
-    lastSyncedAt,
-  ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'cached_reorders';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<CachedReorder> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
-    }
-    if (data.containsKey('business_id')) {
-      context.handle(
-        _businessIdMeta,
-        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_businessIdMeta);
-    }
-    if (data.containsKey('store_id')) {
-      context.handle(
-        _storeIdMeta,
-        storeId.isAcceptableOrUnknown(data['store_id']!, _storeIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_storeIdMeta);
-    }
-    if (data.containsKey('item_id')) {
-      context.handle(
-        _itemIdMeta,
-        itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_itemIdMeta);
-    }
-    if (data.containsKey('supplier_id')) {
-      context.handle(
-        _supplierIdMeta,
-        supplierId.isAcceptableOrUnknown(data['supplier_id']!, _supplierIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_supplierIdMeta);
-    }
-    if (data.containsKey('unit')) {
-      context.handle(
-        _unitMeta,
-        unit.isAcceptableOrUnknown(data['unit']!, _unitMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_unitMeta);
-    }
-    if (data.containsKey('status')) {
-      context.handle(
-        _statusMeta,
-        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_statusMeta);
-    }
-    if (data.containsKey('notes')) {
-      context.handle(
-        _notesMeta,
-        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
-      );
-    }
-    if (data.containsKey('ordered_at')) {
-      context.handle(
-        _orderedAtMeta,
-        orderedAt.isAcceptableOrUnknown(data['ordered_at']!, _orderedAtMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_orderedAtMeta);
-    }
-    if (data.containsKey('ordered_by')) {
-      context.handle(
-        _orderedByMeta,
-        orderedBy.isAcceptableOrUnknown(data['ordered_by']!, _orderedByMeta),
-      );
-    }
-    if (data.containsKey('expected_at')) {
-      context.handle(
-        _expectedAtMeta,
-        expectedAt.isAcceptableOrUnknown(data['expected_at']!, _expectedAtMeta),
-      );
-    }
-    if (data.containsKey('received_at')) {
-      context.handle(
-        _receivedAtMeta,
-        receivedAt.isAcceptableOrUnknown(data['received_at']!, _receivedAtMeta),
-      );
-    }
-    if (data.containsKey('received_by')) {
-      context.handle(
-        _receivedByMeta,
-        receivedBy.isAcceptableOrUnknown(data['received_by']!, _receivedByMeta),
-      );
-    }
-    if (data.containsKey('cancelled_at')) {
-      context.handle(
-        _cancelledAtMeta,
-        cancelledAt.isAcceptableOrUnknown(
-          data['cancelled_at']!,
-          _cancelledAtMeta,
-        ),
-      );
-    }
-    if (data.containsKey('cancelled_by')) {
-      context.handle(
-        _cancelledByMeta,
-        cancelledBy.isAcceptableOrUnknown(
-          data['cancelled_by']!,
-          _cancelledByMeta,
-        ),
-      );
-    }
-    if (data.containsKey('created_at')) {
-      context.handle(
-        _createdAtMeta,
-        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_createdAtMeta);
-    }
-    if (data.containsKey('last_synced_at')) {
-      context.handle(
-        _lastSyncedAtMeta,
-        lastSyncedAt.isAcceptableOrUnknown(
-          data['last_synced_at']!,
-          _lastSyncedAtMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_lastSyncedAtMeta);
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  CachedReorder map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return CachedReorder(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}id'],
-      )!,
-      businessId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}business_id'],
-      )!,
-      storeId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}store_id'],
-      )!,
-      itemId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}item_id'],
-      )!,
-      supplierId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}supplier_id'],
-      )!,
-      quantity: $CachedReordersTable.$converterquantity.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}quantity'],
-        )!,
-      ),
-      unit: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}unit'],
-      )!,
-      unitCost: $CachedReordersTable.$converterunitCost.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}unit_cost'],
-        )!,
-      ),
-      status: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}status'],
-      )!,
-      notes: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}notes'],
-      ),
-      orderedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}ordered_at'],
-      )!,
-      orderedBy: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}ordered_by'],
-      ),
-      expectedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}expected_at'],
-      ),
-      receivedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}received_at'],
-      ),
-      receivedBy: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}received_by'],
-      ),
-      cancelledAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}cancelled_at'],
-      ),
-      cancelledBy: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}cancelled_by'],
-      ),
-      createdAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}created_at'],
-      )!,
-      lastSyncedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}last_synced_at'],
-      )!,
-    );
-  }
-
-  @override
-  $CachedReordersTable createAlias(String alias) {
-    return $CachedReordersTable(attachedDatabase, alias);
-  }
-
-  static TypeConverter<Decimal, String> $converterquantity =
-      const DecimalConverter();
-  static TypeConverter<Decimal, String> $converterunitCost =
-      const DecimalConverter();
-}
-
-class CachedReorder extends DataClass implements Insertable<CachedReorder> {
-  /// Reorder UUID (primary key), server-assigned.
-  final String id;
-  final String businessId;
-  final String storeId;
-  final String itemId;
-  final String supplierId;
-  final Decimal quantity;
-  final String unit;
-  final Decimal unitCost;
-
-  /// `pending` | `received` | `cancelled`.
-  final String status;
-  final String? notes;
-  final DateTime orderedAt;
-  final String? orderedBy;
-  final DateTime? expectedAt;
-  final DateTime? receivedAt;
-  final String? receivedBy;
-  final DateTime? cancelledAt;
-  final String? cancelledBy;
-
-  /// Backend creation timestamp.
-  final DateTime createdAt;
-
-  /// Local timestamp of the most recent pull that included this row.
-  final DateTime lastSyncedAt;
-  const CachedReorder({
-    required this.id,
-    required this.businessId,
-    required this.storeId,
-    required this.itemId,
-    required this.supplierId,
-    required this.quantity,
-    required this.unit,
-    required this.unitCost,
-    required this.status,
-    this.notes,
-    required this.orderedAt,
-    this.orderedBy,
-    this.expectedAt,
-    this.receivedAt,
-    this.receivedBy,
-    this.cancelledAt,
-    this.cancelledBy,
-    required this.createdAt,
-    required this.lastSyncedAt,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['business_id'] = Variable<String>(businessId);
-    map['store_id'] = Variable<String>(storeId);
-    map['item_id'] = Variable<String>(itemId);
-    map['supplier_id'] = Variable<String>(supplierId);
-    {
-      map['quantity'] = Variable<String>(
-        $CachedReordersTable.$converterquantity.toSql(quantity),
-      );
-    }
-    map['unit'] = Variable<String>(unit);
-    {
-      map['unit_cost'] = Variable<String>(
-        $CachedReordersTable.$converterunitCost.toSql(unitCost),
-      );
-    }
-    map['status'] = Variable<String>(status);
-    if (!nullToAbsent || notes != null) {
-      map['notes'] = Variable<String>(notes);
-    }
-    map['ordered_at'] = Variable<DateTime>(orderedAt);
-    if (!nullToAbsent || orderedBy != null) {
-      map['ordered_by'] = Variable<String>(orderedBy);
-    }
-    if (!nullToAbsent || expectedAt != null) {
-      map['expected_at'] = Variable<DateTime>(expectedAt);
-    }
-    if (!nullToAbsent || receivedAt != null) {
-      map['received_at'] = Variable<DateTime>(receivedAt);
-    }
-    if (!nullToAbsent || receivedBy != null) {
-      map['received_by'] = Variable<String>(receivedBy);
-    }
-    if (!nullToAbsent || cancelledAt != null) {
-      map['cancelled_at'] = Variable<DateTime>(cancelledAt);
-    }
-    if (!nullToAbsent || cancelledBy != null) {
-      map['cancelled_by'] = Variable<String>(cancelledBy);
-    }
-    map['created_at'] = Variable<DateTime>(createdAt);
-    map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
-    return map;
-  }
-
-  CachedReordersCompanion toCompanion(bool nullToAbsent) {
-    return CachedReordersCompanion(
-      id: Value(id),
-      businessId: Value(businessId),
-      storeId: Value(storeId),
-      itemId: Value(itemId),
-      supplierId: Value(supplierId),
-      quantity: Value(quantity),
-      unit: Value(unit),
-      unitCost: Value(unitCost),
-      status: Value(status),
-      notes: notes == null && nullToAbsent
-          ? const Value.absent()
-          : Value(notes),
-      orderedAt: Value(orderedAt),
-      orderedBy: orderedBy == null && nullToAbsent
-          ? const Value.absent()
-          : Value(orderedBy),
-      expectedAt: expectedAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(expectedAt),
-      receivedAt: receivedAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(receivedAt),
-      receivedBy: receivedBy == null && nullToAbsent
-          ? const Value.absent()
-          : Value(receivedBy),
-      cancelledAt: cancelledAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(cancelledAt),
-      cancelledBy: cancelledBy == null && nullToAbsent
-          ? const Value.absent()
-          : Value(cancelledBy),
-      createdAt: Value(createdAt),
-      lastSyncedAt: Value(lastSyncedAt),
-    );
-  }
-
-  factory CachedReorder.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return CachedReorder(
-      id: serializer.fromJson<String>(json['id']),
-      businessId: serializer.fromJson<String>(json['businessId']),
-      storeId: serializer.fromJson<String>(json['storeId']),
-      itemId: serializer.fromJson<String>(json['itemId']),
-      supplierId: serializer.fromJson<String>(json['supplierId']),
-      quantity: serializer.fromJson<Decimal>(json['quantity']),
-      unit: serializer.fromJson<String>(json['unit']),
-      unitCost: serializer.fromJson<Decimal>(json['unitCost']),
-      status: serializer.fromJson<String>(json['status']),
-      notes: serializer.fromJson<String?>(json['notes']),
-      orderedAt: serializer.fromJson<DateTime>(json['orderedAt']),
-      orderedBy: serializer.fromJson<String?>(json['orderedBy']),
-      expectedAt: serializer.fromJson<DateTime?>(json['expectedAt']),
-      receivedAt: serializer.fromJson<DateTime?>(json['receivedAt']),
-      receivedBy: serializer.fromJson<String?>(json['receivedBy']),
-      cancelledAt: serializer.fromJson<DateTime?>(json['cancelledAt']),
-      cancelledBy: serializer.fromJson<String?>(json['cancelledBy']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      lastSyncedAt: serializer.fromJson<DateTime>(json['lastSyncedAt']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'businessId': serializer.toJson<String>(businessId),
-      'storeId': serializer.toJson<String>(storeId),
-      'itemId': serializer.toJson<String>(itemId),
-      'supplierId': serializer.toJson<String>(supplierId),
-      'quantity': serializer.toJson<Decimal>(quantity),
-      'unit': serializer.toJson<String>(unit),
-      'unitCost': serializer.toJson<Decimal>(unitCost),
-      'status': serializer.toJson<String>(status),
-      'notes': serializer.toJson<String?>(notes),
-      'orderedAt': serializer.toJson<DateTime>(orderedAt),
-      'orderedBy': serializer.toJson<String?>(orderedBy),
-      'expectedAt': serializer.toJson<DateTime?>(expectedAt),
-      'receivedAt': serializer.toJson<DateTime?>(receivedAt),
-      'receivedBy': serializer.toJson<String?>(receivedBy),
-      'cancelledAt': serializer.toJson<DateTime?>(cancelledAt),
-      'cancelledBy': serializer.toJson<String?>(cancelledBy),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'lastSyncedAt': serializer.toJson<DateTime>(lastSyncedAt),
-    };
-  }
-
-  CachedReorder copyWith({
-    String? id,
-    String? businessId,
-    String? storeId,
-    String? itemId,
-    String? supplierId,
-    Decimal? quantity,
-    String? unit,
-    Decimal? unitCost,
-    String? status,
-    Value<String?> notes = const Value.absent(),
-    DateTime? orderedAt,
-    Value<String?> orderedBy = const Value.absent(),
-    Value<DateTime?> expectedAt = const Value.absent(),
-    Value<DateTime?> receivedAt = const Value.absent(),
-    Value<String?> receivedBy = const Value.absent(),
-    Value<DateTime?> cancelledAt = const Value.absent(),
-    Value<String?> cancelledBy = const Value.absent(),
-    DateTime? createdAt,
-    DateTime? lastSyncedAt,
-  }) => CachedReorder(
-    id: id ?? this.id,
-    businessId: businessId ?? this.businessId,
-    storeId: storeId ?? this.storeId,
-    itemId: itemId ?? this.itemId,
-    supplierId: supplierId ?? this.supplierId,
-    quantity: quantity ?? this.quantity,
-    unit: unit ?? this.unit,
-    unitCost: unitCost ?? this.unitCost,
-    status: status ?? this.status,
-    notes: notes.present ? notes.value : this.notes,
-    orderedAt: orderedAt ?? this.orderedAt,
-    orderedBy: orderedBy.present ? orderedBy.value : this.orderedBy,
-    expectedAt: expectedAt.present ? expectedAt.value : this.expectedAt,
-    receivedAt: receivedAt.present ? receivedAt.value : this.receivedAt,
-    receivedBy: receivedBy.present ? receivedBy.value : this.receivedBy,
-    cancelledAt: cancelledAt.present ? cancelledAt.value : this.cancelledAt,
-    cancelledBy: cancelledBy.present ? cancelledBy.value : this.cancelledBy,
-    createdAt: createdAt ?? this.createdAt,
-    lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
-  );
-  CachedReorder copyWithCompanion(CachedReordersCompanion data) {
-    return CachedReorder(
-      id: data.id.present ? data.id.value : this.id,
-      businessId: data.businessId.present
-          ? data.businessId.value
-          : this.businessId,
-      storeId: data.storeId.present ? data.storeId.value : this.storeId,
-      itemId: data.itemId.present ? data.itemId.value : this.itemId,
-      supplierId: data.supplierId.present
-          ? data.supplierId.value
-          : this.supplierId,
-      quantity: data.quantity.present ? data.quantity.value : this.quantity,
-      unit: data.unit.present ? data.unit.value : this.unit,
-      unitCost: data.unitCost.present ? data.unitCost.value : this.unitCost,
-      status: data.status.present ? data.status.value : this.status,
-      notes: data.notes.present ? data.notes.value : this.notes,
-      orderedAt: data.orderedAt.present ? data.orderedAt.value : this.orderedAt,
-      orderedBy: data.orderedBy.present ? data.orderedBy.value : this.orderedBy,
-      expectedAt: data.expectedAt.present
-          ? data.expectedAt.value
-          : this.expectedAt,
-      receivedAt: data.receivedAt.present
-          ? data.receivedAt.value
-          : this.receivedAt,
-      receivedBy: data.receivedBy.present
-          ? data.receivedBy.value
-          : this.receivedBy,
-      cancelledAt: data.cancelledAt.present
-          ? data.cancelledAt.value
-          : this.cancelledAt,
-      cancelledBy: data.cancelledBy.present
-          ? data.cancelledBy.value
-          : this.cancelledBy,
-      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      lastSyncedAt: data.lastSyncedAt.present
-          ? data.lastSyncedAt.value
-          : this.lastSyncedAt,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('CachedReorder(')
-          ..write('id: $id, ')
-          ..write('businessId: $businessId, ')
-          ..write('storeId: $storeId, ')
-          ..write('itemId: $itemId, ')
-          ..write('supplierId: $supplierId, ')
-          ..write('quantity: $quantity, ')
-          ..write('unit: $unit, ')
-          ..write('unitCost: $unitCost, ')
-          ..write('status: $status, ')
-          ..write('notes: $notes, ')
-          ..write('orderedAt: $orderedAt, ')
-          ..write('orderedBy: $orderedBy, ')
-          ..write('expectedAt: $expectedAt, ')
-          ..write('receivedAt: $receivedAt, ')
-          ..write('receivedBy: $receivedBy, ')
-          ..write('cancelledAt: $cancelledAt, ')
-          ..write('cancelledBy: $cancelledBy, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('lastSyncedAt: $lastSyncedAt')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(
-    id,
-    businessId,
-    storeId,
-    itemId,
-    supplierId,
-    quantity,
-    unit,
-    unitCost,
-    status,
-    notes,
-    orderedAt,
-    orderedBy,
-    expectedAt,
-    receivedAt,
-    receivedBy,
-    cancelledAt,
-    cancelledBy,
-    createdAt,
-    lastSyncedAt,
-  );
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is CachedReorder &&
-          other.id == this.id &&
-          other.businessId == this.businessId &&
-          other.storeId == this.storeId &&
-          other.itemId == this.itemId &&
-          other.supplierId == this.supplierId &&
-          other.quantity == this.quantity &&
-          other.unit == this.unit &&
-          other.unitCost == this.unitCost &&
-          other.status == this.status &&
-          other.notes == this.notes &&
-          other.orderedAt == this.orderedAt &&
-          other.orderedBy == this.orderedBy &&
-          other.expectedAt == this.expectedAt &&
-          other.receivedAt == this.receivedAt &&
-          other.receivedBy == this.receivedBy &&
-          other.cancelledAt == this.cancelledAt &&
-          other.cancelledBy == this.cancelledBy &&
-          other.createdAt == this.createdAt &&
-          other.lastSyncedAt == this.lastSyncedAt);
-}
-
-class CachedReordersCompanion extends UpdateCompanion<CachedReorder> {
-  final Value<String> id;
-  final Value<String> businessId;
-  final Value<String> storeId;
-  final Value<String> itemId;
-  final Value<String> supplierId;
-  final Value<Decimal> quantity;
-  final Value<String> unit;
-  final Value<Decimal> unitCost;
-  final Value<String> status;
-  final Value<String?> notes;
-  final Value<DateTime> orderedAt;
-  final Value<String?> orderedBy;
-  final Value<DateTime?> expectedAt;
-  final Value<DateTime?> receivedAt;
-  final Value<String?> receivedBy;
-  final Value<DateTime?> cancelledAt;
-  final Value<String?> cancelledBy;
-  final Value<DateTime> createdAt;
-  final Value<DateTime> lastSyncedAt;
-  final Value<int> rowid;
-  const CachedReordersCompanion({
-    this.id = const Value.absent(),
-    this.businessId = const Value.absent(),
-    this.storeId = const Value.absent(),
-    this.itemId = const Value.absent(),
-    this.supplierId = const Value.absent(),
-    this.quantity = const Value.absent(),
-    this.unit = const Value.absent(),
-    this.unitCost = const Value.absent(),
-    this.status = const Value.absent(),
-    this.notes = const Value.absent(),
-    this.orderedAt = const Value.absent(),
-    this.orderedBy = const Value.absent(),
-    this.expectedAt = const Value.absent(),
-    this.receivedAt = const Value.absent(),
-    this.receivedBy = const Value.absent(),
-    this.cancelledAt = const Value.absent(),
-    this.cancelledBy = const Value.absent(),
-    this.createdAt = const Value.absent(),
-    this.lastSyncedAt = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  CachedReordersCompanion.insert({
-    required String id,
-    required String businessId,
-    required String storeId,
-    required String itemId,
-    required String supplierId,
-    required Decimal quantity,
-    required String unit,
-    required Decimal unitCost,
-    required String status,
-    this.notes = const Value.absent(),
-    required DateTime orderedAt,
-    this.orderedBy = const Value.absent(),
-    this.expectedAt = const Value.absent(),
-    this.receivedAt = const Value.absent(),
-    this.receivedBy = const Value.absent(),
-    this.cancelledAt = const Value.absent(),
-    this.cancelledBy = const Value.absent(),
-    required DateTime createdAt,
-    required DateTime lastSyncedAt,
-    this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       businessId = Value(businessId),
-       storeId = Value(storeId),
-       itemId = Value(itemId),
-       supplierId = Value(supplierId),
-       quantity = Value(quantity),
-       unit = Value(unit),
-       unitCost = Value(unitCost),
-       status = Value(status),
-       orderedAt = Value(orderedAt),
-       createdAt = Value(createdAt),
-       lastSyncedAt = Value(lastSyncedAt);
-  static Insertable<CachedReorder> custom({
-    Expression<String>? id,
-    Expression<String>? businessId,
-    Expression<String>? storeId,
-    Expression<String>? itemId,
-    Expression<String>? supplierId,
-    Expression<String>? quantity,
-    Expression<String>? unit,
-    Expression<String>? unitCost,
-    Expression<String>? status,
-    Expression<String>? notes,
-    Expression<DateTime>? orderedAt,
-    Expression<String>? orderedBy,
-    Expression<DateTime>? expectedAt,
-    Expression<DateTime>? receivedAt,
-    Expression<String>? receivedBy,
-    Expression<DateTime>? cancelledAt,
-    Expression<String>? cancelledBy,
-    Expression<DateTime>? createdAt,
-    Expression<DateTime>? lastSyncedAt,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (businessId != null) 'business_id': businessId,
-      if (storeId != null) 'store_id': storeId,
-      if (itemId != null) 'item_id': itemId,
-      if (supplierId != null) 'supplier_id': supplierId,
-      if (quantity != null) 'quantity': quantity,
-      if (unit != null) 'unit': unit,
-      if (unitCost != null) 'unit_cost': unitCost,
-      if (status != null) 'status': status,
-      if (notes != null) 'notes': notes,
-      if (orderedAt != null) 'ordered_at': orderedAt,
-      if (orderedBy != null) 'ordered_by': orderedBy,
-      if (expectedAt != null) 'expected_at': expectedAt,
-      if (receivedAt != null) 'received_at': receivedAt,
-      if (receivedBy != null) 'received_by': receivedBy,
-      if (cancelledAt != null) 'cancelled_at': cancelledAt,
-      if (cancelledBy != null) 'cancelled_by': cancelledBy,
-      if (createdAt != null) 'created_at': createdAt,
-      if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  CachedReordersCompanion copyWith({
-    Value<String>? id,
-    Value<String>? businessId,
-    Value<String>? storeId,
-    Value<String>? itemId,
-    Value<String>? supplierId,
-    Value<Decimal>? quantity,
-    Value<String>? unit,
-    Value<Decimal>? unitCost,
-    Value<String>? status,
-    Value<String?>? notes,
-    Value<DateTime>? orderedAt,
-    Value<String?>? orderedBy,
-    Value<DateTime?>? expectedAt,
-    Value<DateTime?>? receivedAt,
-    Value<String?>? receivedBy,
-    Value<DateTime?>? cancelledAt,
-    Value<String?>? cancelledBy,
-    Value<DateTime>? createdAt,
-    Value<DateTime>? lastSyncedAt,
-    Value<int>? rowid,
-  }) {
-    return CachedReordersCompanion(
-      id: id ?? this.id,
-      businessId: businessId ?? this.businessId,
-      storeId: storeId ?? this.storeId,
-      itemId: itemId ?? this.itemId,
-      supplierId: supplierId ?? this.supplierId,
-      quantity: quantity ?? this.quantity,
-      unit: unit ?? this.unit,
-      unitCost: unitCost ?? this.unitCost,
-      status: status ?? this.status,
-      notes: notes ?? this.notes,
-      orderedAt: orderedAt ?? this.orderedAt,
-      orderedBy: orderedBy ?? this.orderedBy,
-      expectedAt: expectedAt ?? this.expectedAt,
-      receivedAt: receivedAt ?? this.receivedAt,
-      receivedBy: receivedBy ?? this.receivedBy,
-      cancelledAt: cancelledAt ?? this.cancelledAt,
-      cancelledBy: cancelledBy ?? this.cancelledBy,
-      createdAt: createdAt ?? this.createdAt,
-      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<String>(id.value);
-    }
-    if (businessId.present) {
-      map['business_id'] = Variable<String>(businessId.value);
-    }
-    if (storeId.present) {
-      map['store_id'] = Variable<String>(storeId.value);
-    }
-    if (itemId.present) {
-      map['item_id'] = Variable<String>(itemId.value);
-    }
-    if (supplierId.present) {
-      map['supplier_id'] = Variable<String>(supplierId.value);
-    }
-    if (quantity.present) {
-      map['quantity'] = Variable<String>(
-        $CachedReordersTable.$converterquantity.toSql(quantity.value),
-      );
-    }
-    if (unit.present) {
-      map['unit'] = Variable<String>(unit.value);
-    }
-    if (unitCost.present) {
-      map['unit_cost'] = Variable<String>(
-        $CachedReordersTable.$converterunitCost.toSql(unitCost.value),
-      );
-    }
-    if (status.present) {
-      map['status'] = Variable<String>(status.value);
-    }
-    if (notes.present) {
-      map['notes'] = Variable<String>(notes.value);
-    }
-    if (orderedAt.present) {
-      map['ordered_at'] = Variable<DateTime>(orderedAt.value);
-    }
-    if (orderedBy.present) {
-      map['ordered_by'] = Variable<String>(orderedBy.value);
-    }
-    if (expectedAt.present) {
-      map['expected_at'] = Variable<DateTime>(expectedAt.value);
-    }
-    if (receivedAt.present) {
-      map['received_at'] = Variable<DateTime>(receivedAt.value);
-    }
-    if (receivedBy.present) {
-      map['received_by'] = Variable<String>(receivedBy.value);
-    }
-    if (cancelledAt.present) {
-      map['cancelled_at'] = Variable<DateTime>(cancelledAt.value);
-    }
-    if (cancelledBy.present) {
-      map['cancelled_by'] = Variable<String>(cancelledBy.value);
-    }
-    if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
-    }
-    if (lastSyncedAt.present) {
-      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('CachedReordersCompanion(')
-          ..write('id: $id, ')
-          ..write('businessId: $businessId, ')
-          ..write('storeId: $storeId, ')
-          ..write('itemId: $itemId, ')
-          ..write('supplierId: $supplierId, ')
-          ..write('quantity: $quantity, ')
-          ..write('unit: $unit, ')
-          ..write('unitCost: $unitCost, ')
-          ..write('status: $status, ')
-          ..write('notes: $notes, ')
-          ..write('orderedAt: $orderedAt, ')
-          ..write('orderedBy: $orderedBy, ')
-          ..write('expectedAt: $expectedAt, ')
-          ..write('receivedAt: $receivedAt, ')
-          ..write('receivedBy: $receivedBy, ')
-          ..write('cancelledAt: $cancelledAt, ')
-          ..write('cancelledBy: $cancelledBy, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('lastSyncedAt: $lastSyncedAt, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
 class $CachedCategoriesTable extends CachedCategories
     with TableInfo<$CachedCategoriesTable, CachedCategory> {
   @override
@@ -17504,7 +16488,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CachedSuppliersTable cachedSuppliers = $CachedSuppliersTable(
     this,
   );
-  late final $CachedReordersTable cachedReorders = $CachedReordersTable(this);
   late final $CachedCategoriesTable cachedCategories = $CachedCategoriesTable(
     this,
   );
@@ -17533,7 +16516,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     customerEntries,
     cachedCustomers,
     cachedSuppliers,
-    cachedReorders,
     cachedCategories,
     cachedUnits,
     localAuditLog,
@@ -19323,6 +18305,7 @@ typedef $$CachedItemsTableCreateCompanionBuilder =
       required DateTime lastSeenAt,
       required DateTime lastSyncedAt,
       Value<String?> imageUrl,
+      Value<String> supplierId,
       Value<int> rowid,
     });
 typedef $$CachedItemsTableUpdateCompanionBuilder =
@@ -19346,6 +18329,7 @@ typedef $$CachedItemsTableUpdateCompanionBuilder =
       Value<DateTime> lastSeenAt,
       Value<DateTime> lastSyncedAt,
       Value<String?> imageUrl,
+      Value<String> supplierId,
       Value<int> rowid,
     });
 
@@ -19456,6 +18440,11 @@ class $$CachedItemsTableFilterComposer
     column: $table.imageUrl,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get supplierId => $composableBuilder(
+    column: $table.supplierId,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$CachedItemsTableOrderingComposer
@@ -19561,6 +18550,11 @@ class $$CachedItemsTableOrderingComposer
     column: $table.imageUrl,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get supplierId => $composableBuilder(
+    column: $table.supplierId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CachedItemsTableAnnotationComposer
@@ -19653,6 +18647,11 @@ class $$CachedItemsTableAnnotationComposer
 
   GeneratedColumn<String> get imageUrl =>
       $composableBuilder(column: $table.imageUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get supplierId => $composableBuilder(
+    column: $table.supplierId,
+    builder: (column) => column,
+  );
 }
 
 class $$CachedItemsTableTableManager
@@ -19705,6 +18704,7 @@ class $$CachedItemsTableTableManager
                 Value<DateTime> lastSeenAt = const Value.absent(),
                 Value<DateTime> lastSyncedAt = const Value.absent(),
                 Value<String?> imageUrl = const Value.absent(),
+                Value<String> supplierId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedItemsCompanion(
                 id: id,
@@ -19726,6 +18726,7 @@ class $$CachedItemsTableTableManager
                 lastSeenAt: lastSeenAt,
                 lastSyncedAt: lastSyncedAt,
                 imageUrl: imageUrl,
+                supplierId: supplierId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -19749,6 +18750,7 @@ class $$CachedItemsTableTableManager
                 required DateTime lastSeenAt,
                 required DateTime lastSyncedAt,
                 Value<String?> imageUrl = const Value.absent(),
+                Value<String> supplierId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedItemsCompanion.insert(
                 id: id,
@@ -19770,6 +18772,7 @@ class $$CachedItemsTableTableManager
                 lastSeenAt: lastSeenAt,
                 lastSyncedAt: lastSyncedAt,
                 imageUrl: imageUrl,
+                supplierId: supplierId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -25277,492 +24280,6 @@ typedef $$CachedSuppliersTableProcessedTableManager =
       CachedSupplier,
       PrefetchHooks Function()
     >;
-typedef $$CachedReordersTableCreateCompanionBuilder =
-    CachedReordersCompanion Function({
-      required String id,
-      required String businessId,
-      required String storeId,
-      required String itemId,
-      required String supplierId,
-      required Decimal quantity,
-      required String unit,
-      required Decimal unitCost,
-      required String status,
-      Value<String?> notes,
-      required DateTime orderedAt,
-      Value<String?> orderedBy,
-      Value<DateTime?> expectedAt,
-      Value<DateTime?> receivedAt,
-      Value<String?> receivedBy,
-      Value<DateTime?> cancelledAt,
-      Value<String?> cancelledBy,
-      required DateTime createdAt,
-      required DateTime lastSyncedAt,
-      Value<int> rowid,
-    });
-typedef $$CachedReordersTableUpdateCompanionBuilder =
-    CachedReordersCompanion Function({
-      Value<String> id,
-      Value<String> businessId,
-      Value<String> storeId,
-      Value<String> itemId,
-      Value<String> supplierId,
-      Value<Decimal> quantity,
-      Value<String> unit,
-      Value<Decimal> unitCost,
-      Value<String> status,
-      Value<String?> notes,
-      Value<DateTime> orderedAt,
-      Value<String?> orderedBy,
-      Value<DateTime?> expectedAt,
-      Value<DateTime?> receivedAt,
-      Value<String?> receivedBy,
-      Value<DateTime?> cancelledAt,
-      Value<String?> cancelledBy,
-      Value<DateTime> createdAt,
-      Value<DateTime> lastSyncedAt,
-      Value<int> rowid,
-    });
-
-class $$CachedReordersTableFilterComposer
-    extends Composer<_$AppDatabase, $CachedReordersTable> {
-  $$CachedReordersTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get businessId => $composableBuilder(
-    column: $table.businessId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get storeId => $composableBuilder(
-    column: $table.storeId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get itemId => $composableBuilder(
-    column: $table.itemId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get supplierId => $composableBuilder(
-    column: $table.supplierId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<Decimal, Decimal, String> get quantity =>
-      $composableBuilder(
-        column: $table.quantity,
-        builder: (column) => ColumnWithTypeConverterFilters(column),
-      );
-
-  ColumnFilters<String> get unit => $composableBuilder(
-    column: $table.unit,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<Decimal, Decimal, String> get unitCost =>
-      $composableBuilder(
-        column: $table.unitCost,
-        builder: (column) => ColumnWithTypeConverterFilters(column),
-      );
-
-  ColumnFilters<String> get status => $composableBuilder(
-    column: $table.status,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get notes => $composableBuilder(
-    column: $table.notes,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get orderedAt => $composableBuilder(
-    column: $table.orderedAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get orderedBy => $composableBuilder(
-    column: $table.orderedBy,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get expectedAt => $composableBuilder(
-    column: $table.expectedAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get receivedAt => $composableBuilder(
-    column: $table.receivedAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get receivedBy => $composableBuilder(
-    column: $table.receivedBy,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get cancelledAt => $composableBuilder(
-    column: $table.cancelledAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get cancelledBy => $composableBuilder(
-    column: $table.cancelledBy,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
-    column: $table.lastSyncedAt,
-    builder: (column) => ColumnFilters(column),
-  );
-}
-
-class $$CachedReordersTableOrderingComposer
-    extends Composer<_$AppDatabase, $CachedReordersTable> {
-  $$CachedReordersTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get businessId => $composableBuilder(
-    column: $table.businessId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get storeId => $composableBuilder(
-    column: $table.storeId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get itemId => $composableBuilder(
-    column: $table.itemId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get supplierId => $composableBuilder(
-    column: $table.supplierId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get quantity => $composableBuilder(
-    column: $table.quantity,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get unit => $composableBuilder(
-    column: $table.unit,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get unitCost => $composableBuilder(
-    column: $table.unitCost,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get status => $composableBuilder(
-    column: $table.status,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get notes => $composableBuilder(
-    column: $table.notes,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get orderedAt => $composableBuilder(
-    column: $table.orderedAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get orderedBy => $composableBuilder(
-    column: $table.orderedBy,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get expectedAt => $composableBuilder(
-    column: $table.expectedAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get receivedAt => $composableBuilder(
-    column: $table.receivedAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get receivedBy => $composableBuilder(
-    column: $table.receivedBy,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get cancelledAt => $composableBuilder(
-    column: $table.cancelledAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get cancelledBy => $composableBuilder(
-    column: $table.cancelledBy,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
-    column: $table.lastSyncedAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-}
-
-class $$CachedReordersTableAnnotationComposer
-    extends Composer<_$AppDatabase, $CachedReordersTable> {
-  $$CachedReordersTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get businessId => $composableBuilder(
-    column: $table.businessId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get storeId =>
-      $composableBuilder(column: $table.storeId, builder: (column) => column);
-
-  GeneratedColumn<String> get itemId =>
-      $composableBuilder(column: $table.itemId, builder: (column) => column);
-
-  GeneratedColumn<String> get supplierId => $composableBuilder(
-    column: $table.supplierId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumnWithTypeConverter<Decimal, String> get quantity =>
-      $composableBuilder(column: $table.quantity, builder: (column) => column);
-
-  GeneratedColumn<String> get unit =>
-      $composableBuilder(column: $table.unit, builder: (column) => column);
-
-  GeneratedColumnWithTypeConverter<Decimal, String> get unitCost =>
-      $composableBuilder(column: $table.unitCost, builder: (column) => column);
-
-  GeneratedColumn<String> get status =>
-      $composableBuilder(column: $table.status, builder: (column) => column);
-
-  GeneratedColumn<String> get notes =>
-      $composableBuilder(column: $table.notes, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get orderedAt =>
-      $composableBuilder(column: $table.orderedAt, builder: (column) => column);
-
-  GeneratedColumn<String> get orderedBy =>
-      $composableBuilder(column: $table.orderedBy, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get expectedAt => $composableBuilder(
-    column: $table.expectedAt,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<DateTime> get receivedAt => $composableBuilder(
-    column: $table.receivedAt,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get receivedBy => $composableBuilder(
-    column: $table.receivedBy,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<DateTime> get cancelledAt => $composableBuilder(
-    column: $table.cancelledAt,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get cancelledBy => $composableBuilder(
-    column: $table.cancelledBy,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
-    column: $table.lastSyncedAt,
-    builder: (column) => column,
-  );
-}
-
-class $$CachedReordersTableTableManager
-    extends
-        RootTableManager<
-          _$AppDatabase,
-          $CachedReordersTable,
-          CachedReorder,
-          $$CachedReordersTableFilterComposer,
-          $$CachedReordersTableOrderingComposer,
-          $$CachedReordersTableAnnotationComposer,
-          $$CachedReordersTableCreateCompanionBuilder,
-          $$CachedReordersTableUpdateCompanionBuilder,
-          (
-            CachedReorder,
-            BaseReferences<_$AppDatabase, $CachedReordersTable, CachedReorder>,
-          ),
-          CachedReorder,
-          PrefetchHooks Function()
-        > {
-  $$CachedReordersTableTableManager(
-    _$AppDatabase db,
-    $CachedReordersTable table,
-  ) : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$CachedReordersTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$CachedReordersTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$CachedReordersTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<String> id = const Value.absent(),
-                Value<String> businessId = const Value.absent(),
-                Value<String> storeId = const Value.absent(),
-                Value<String> itemId = const Value.absent(),
-                Value<String> supplierId = const Value.absent(),
-                Value<Decimal> quantity = const Value.absent(),
-                Value<String> unit = const Value.absent(),
-                Value<Decimal> unitCost = const Value.absent(),
-                Value<String> status = const Value.absent(),
-                Value<String?> notes = const Value.absent(),
-                Value<DateTime> orderedAt = const Value.absent(),
-                Value<String?> orderedBy = const Value.absent(),
-                Value<DateTime?> expectedAt = const Value.absent(),
-                Value<DateTime?> receivedAt = const Value.absent(),
-                Value<String?> receivedBy = const Value.absent(),
-                Value<DateTime?> cancelledAt = const Value.absent(),
-                Value<String?> cancelledBy = const Value.absent(),
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime> lastSyncedAt = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => CachedReordersCompanion(
-                id: id,
-                businessId: businessId,
-                storeId: storeId,
-                itemId: itemId,
-                supplierId: supplierId,
-                quantity: quantity,
-                unit: unit,
-                unitCost: unitCost,
-                status: status,
-                notes: notes,
-                orderedAt: orderedAt,
-                orderedBy: orderedBy,
-                expectedAt: expectedAt,
-                receivedAt: receivedAt,
-                receivedBy: receivedBy,
-                cancelledAt: cancelledAt,
-                cancelledBy: cancelledBy,
-                createdAt: createdAt,
-                lastSyncedAt: lastSyncedAt,
-                rowid: rowid,
-              ),
-          createCompanionCallback:
-              ({
-                required String id,
-                required String businessId,
-                required String storeId,
-                required String itemId,
-                required String supplierId,
-                required Decimal quantity,
-                required String unit,
-                required Decimal unitCost,
-                required String status,
-                Value<String?> notes = const Value.absent(),
-                required DateTime orderedAt,
-                Value<String?> orderedBy = const Value.absent(),
-                Value<DateTime?> expectedAt = const Value.absent(),
-                Value<DateTime?> receivedAt = const Value.absent(),
-                Value<String?> receivedBy = const Value.absent(),
-                Value<DateTime?> cancelledAt = const Value.absent(),
-                Value<String?> cancelledBy = const Value.absent(),
-                required DateTime createdAt,
-                required DateTime lastSyncedAt,
-                Value<int> rowid = const Value.absent(),
-              }) => CachedReordersCompanion.insert(
-                id: id,
-                businessId: businessId,
-                storeId: storeId,
-                itemId: itemId,
-                supplierId: supplierId,
-                quantity: quantity,
-                unit: unit,
-                unitCost: unitCost,
-                status: status,
-                notes: notes,
-                orderedAt: orderedAt,
-                orderedBy: orderedBy,
-                expectedAt: expectedAt,
-                receivedAt: receivedAt,
-                receivedBy: receivedBy,
-                cancelledAt: cancelledAt,
-                cancelledBy: cancelledBy,
-                createdAt: createdAt,
-                lastSyncedAt: lastSyncedAt,
-                rowid: rowid,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ),
-      );
-}
-
-typedef $$CachedReordersTableProcessedTableManager =
-    ProcessedTableManager<
-      _$AppDatabase,
-      $CachedReordersTable,
-      CachedReorder,
-      $$CachedReordersTableFilterComposer,
-      $$CachedReordersTableOrderingComposer,
-      $$CachedReordersTableAnnotationComposer,
-      $$CachedReordersTableCreateCompanionBuilder,
-      $$CachedReordersTableUpdateCompanionBuilder,
-      (
-        CachedReorder,
-        BaseReferences<_$AppDatabase, $CachedReordersTable, CachedReorder>,
-      ),
-      CachedReorder,
-      PrefetchHooks Function()
-    >;
 typedef $$CachedCategoriesTableCreateCompanionBuilder =
     CachedCategoriesCompanion Function({
       required String id,
@@ -26638,8 +25155,6 @@ class $AppDatabaseManager {
       $$CachedCustomersTableTableManager(_db, _db.cachedCustomers);
   $$CachedSuppliersTableTableManager get cachedSuppliers =>
       $$CachedSuppliersTableTableManager(_db, _db.cachedSuppliers);
-  $$CachedReordersTableTableManager get cachedReorders =>
-      $$CachedReordersTableTableManager(_db, _db.cachedReorders);
   $$CachedCategoriesTableTableManager get cachedCategories =>
       $$CachedCategoriesTableTableManager(_db, _db.cachedCategories);
   $$CachedUnitsTableTableManager get cachedUnits =>

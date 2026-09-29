@@ -27,6 +27,7 @@ import '../../models/requisition.dart';
 import '../../providers/connectivity_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/requisition_cart_provider.dart';
+import '../../providers/suppliers_provider.dart';
 import '../../constants/app_strings.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
@@ -219,13 +220,21 @@ class _CartDialogBody extends ConsumerWidget {
                 for (final item in items)
                   ActionChip(
                     label: Text('+ ${item.name}'),
-                    onPressed: () =>
-                        ref.read(requisitionCartProvider.notifier).addItem(
-                              itemId: item.id,
-                              itemName: item.name,
-                              unit: item.unit,
-                              qty: 1,
-                            ),
+                    onPressed: () {
+                      final preferred = findPreferredSupplier(
+                          ref.read(suppliersListProvider),
+                          item.preferredSupplierId);
+                      ref.read(requisitionCartProvider.notifier).addItem(
+                            itemId: item.id,
+                            itemName: item.name,
+                            unit: item.unit,
+                            qty: 1,
+                            supplierId: preferred?.id,
+                            supplierName: preferred?.name,
+                            assignmentSource:
+                                preferred == null ? null : 'preferred',
+                          );
+                    },
                   ),
               ],
             ),

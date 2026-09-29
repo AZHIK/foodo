@@ -149,6 +149,40 @@ void main() {
       );
       expect(received.status.isOpen, isFalse);
     });
+
+    test('maps the requisition-split lifecycle, never unknown', () {
+      // Cart-created POs start at payload_ready — this is the regression
+      // guard for orders showing "Unknown" in the purchases list.
+      final expected = {
+        'payload_ready': PurchaseOrderStatus.payloadReady,
+        'sent': PurchaseOrderStatus.sent,
+        'confirmed': PurchaseOrderStatus.confirmed,
+        'partially_fulfilled': PurchaseOrderStatus.partiallyFulfilled,
+        'fulfilled': PurchaseOrderStatus.fulfilled,
+      };
+      expected.forEach((wire, status) {
+        final order = PurchaseOrder.fromDto(
+          PurchaseOrderDto.fromJson(_orderJson('o-$wire', wire)),
+        );
+        expect(order.status, status, reason: wire);
+        expect(order.status.label, isNot('Unknown'), reason: wire);
+      });
+
+      // Truly unrecognized values still fall back to unknown (closed).
+      final strange = PurchaseOrder.fromDto(
+        PurchaseOrderDto.fromJson(_orderJson('o-x', 'flying_carpet')),
+      );
+      expect(strange.status, PurchaseOrderStatus.unknown);
+      expect(strange.status.isOpen, isFalse);
+    });
+
+    test('open flag covers in-flight requisition states only', () {
+      expect(PurchaseOrderStatus.payloadReady.isOpen, isTrue);
+      expect(PurchaseOrderStatus.sent.isOpen, isTrue);
+      expect(PurchaseOrderStatus.confirmed.isOpen, isTrue);
+      expect(PurchaseOrderStatus.partiallyFulfilled.isOpen, isTrue);
+      expect(PurchaseOrderStatus.fulfilled.isOpen, isFalse);
+    });
   });
 
   group('PurchasesNotifier', () {

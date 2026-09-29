@@ -293,6 +293,118 @@ void main() {
     });
   });
 
+  group('preferred-supplier prefill', () {
+    test('addItem with supplier params pre-assigns the line', () {
+      final container = _cartContainer(FakeRequisitionApi());
+      final notifier = container.read(requisitionCartProvider.notifier);
+      notifier.addItem(
+        itemId: 'flour',
+        itemName: 'Flour',
+        unit: 'kg',
+        qty: 2,
+        supplierId: 'sup-a',
+        supplierName: 'Supplier A',
+        assignmentSource: 'preferred',
+      );
+      final line =
+          container.read(requisitionCartProvider).lines.single;
+      expect(line.supplierId, 'sup-a');
+      expect(line.supplierName, 'Supplier A');
+      expect(line.assignmentSource, 'preferred');
+      expect(container.read(requisitionCartProvider).unassignedCount, 0);
+    });
+
+    test('re-add fills a still-unassigned line but never overwrites', () {
+      final container = _cartContainer(FakeRequisitionApi());
+      final notifier = container.read(requisitionCartProvider.notifier);
+      // No supplier on first add (directory not loaded yet, say).
+      notifier.addItem(
+          itemId: 'flour', itemName: 'Flour', unit: 'kg', qty: 2);
+      // Second add resolves the preferred supplier → fills it in.
+      notifier.addItem(
+        itemId: 'flour',
+        itemName: 'Flour',
+        unit: 'kg',
+        qty: 1,
+        supplierId: 'sup-a',
+        supplierName: 'Supplier A',
+        assignmentSource: 'preferred',
+      );
+      var line = container.read(requisitionCartProvider).lines.single;
+      expect(line.qty, 3);
+      expect(line.supplierId, 'sup-a');
+
+      // A manual change wins over any later prefill.
+      notifier.assignSupplierToLine(
+          itemId: 'flour',
+          supplierId: 'sup-b',
+          supplierName: 'Supplier B');
+      notifier.addItem(
+        itemId: 'flour',
+        itemName: 'Flour',
+        unit: 'kg',
+        qty: 1,
+        supplierId: 'sup-a',
+        supplierName: 'Supplier A',
+        assignmentSource: 'preferred',
+      );
+      line = container.read(requisitionCartProvider).lines.single;
+      expect(line.qty, 4);
+      expect(line.supplierId, 'sup-b');
+      expect(line.assignmentSource, 'manual_per_item');
+    });
+
+    test('prefilled line stays changeable per line and in bulk', () {
+      final container = _cartContainer(FakeRequisitionApi());
+      final notifier = container.read(requisitionCartProvider.notifier);
+      notifier.addItem(
+        itemId: 'flour',
+        itemName: 'Flour',
+        unit: 'kg',
+        qty: 2,
+        supplierId: 'sup-a',
+        supplierName: 'Supplier A',
+        assignmentSource: 'preferred',
+      );
+      // Per-line change.
+      notifier.assignSupplierToLine(
+          itemId: 'flour',
+          supplierId: 'sup-b',
+          supplierName: 'Supplier B');
+      expect(
+          container
+              .read(requisitionCartProvider)
+              .lines
+              .single
+              .supplierId,
+          'sup-b');
+      // One supplier for all (explicit override).
+      notifier.bulkAssign(
+        supplierId: 'sup-a',
+        supplierName: 'Supplier A',
+        scope: BulkScope.all,
+        overwriteAll: true,
+      );
+      expect(
+          container
+              .read(requisitionCartProvider)
+              .lines
+              .single
+              .supplierId,
+          'sup-a');
+    });
+
+    test('findPreferredSupplier matches the directory only', () {
+      final directory = [_supplier('sup-a', 'Supplier A')];
+      expect(
+          findPreferredSupplier(directory, 'sup-a')?.name, 'Supplier A');
+      expect(findPreferredSupplier(directory, 'sup-unknown'), isNull);
+      expect(findPreferredSupplier(directory, null), isNull);
+      expect(findPreferredSupplier(directory, ''), isNull);
+      expect(findPreferredSupplier(const [], 'sup-a'), isNull);
+    });
+  });
+
   group('SubmittedRequisition.fromJson', () {
     test('parses groups, badges, totals and TBC flags', () {
       final order = SubmittedRequisition.fromJson(

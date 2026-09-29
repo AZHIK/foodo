@@ -101,5 +101,9 @@ InventoryItem inventoryItemFromCachedRow({
     reorderQuantity: _toDouble(catalogRow.reorderQuantity),
     allowNegativeStock: catalogRow.allowNegativeStock,
     imageUrl: catalogRow.imageUrl,
+    // `''` is the "none assigned" sentinel (see `CachedItems.supplierId`) —
+    // the model carries a real null instead.
+    preferredSupplierId:
+        catalogRow.supplierId.isEmpty ? null : catalogRow.supplierId,
   );
 }

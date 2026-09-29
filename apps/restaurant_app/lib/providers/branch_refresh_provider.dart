@@ -11,7 +11,7 @@ import 'orders_provider.dart';
 import 'other_expenses_provider.dart';
 import 'other_incomes_provider.dart';
 import 'production_provider.dart';
-import 'reorder_provider.dart';
+import 'purchases_provider.dart';
 import 'reports_provider.dart';
 import 'roles_provider.dart';
 import 'staff_provider.dart';
@@ -29,7 +29,7 @@ abstract final class ShellBranch {
   static const pos = 1;
   static const sales = 2;
   static const customers = 3;
-  static const reorders = 4;
+  static const purchasing = 4;
   static const production = 5;
   static const suppliers = 6;
   static const couriers = 7;
@@ -100,8 +100,8 @@ Future<void> _refreshBranchUnchecked(WidgetRef ref, int branchIndex) async {
       await ref.read(ordersProvider.notifier).checkForNewOrders();
     case ShellBranch.customers:
       await ref.read(customersProvider.notifier).refresh();
-    case ShellBranch.reorders:
-      await ref.read(reordersProvider.notifier).refresh();
+    case ShellBranch.purchasing:
+      await ref.read(purchasesProvider.notifier).refresh();
     case ShellBranch.production:
       await Future.wait([
         ref.read(recipesCatalogProvider.notifier).refresh(),

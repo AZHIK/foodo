@@ -19,7 +19,7 @@ import '../../widgets/data_page/reusable_data_table.dart';
 import '../../widgets/data_page/status_badge.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/dialogs/item_form_dialog.dart';
-import '../../widgets/dialogs/reorder_dialog.dart';
+import '../../widgets/inventory/add_to_order_cart.dart';
 import '../../widgets/inventory/inventory_tab_bar.dart';
 import '../../widgets/inventory/item_type_badge.dart';
 import '../../widgets/item_photo.dart';
@@ -213,10 +213,11 @@ class InventoryGroceriesScreen extends ConsumerWidget {
       onSelected: (context, item) => showStockAdjustDialog(context, item),
     ),
     DataRowAction(
-      label: AppStrings.createReorder,
-      icon: Icons.shopping_cart_outlined,
+      label: AppStrings.addToOrderCart,
+      icon: Icons.add_shopping_cart,
+      // Untracked lines have no count to base a quantity on.
       isEnabled: (item) => item.trackStock,
-      onSelected: (context, item) => showReorderDialog(context, item),
+      onSelected: (context, item) => addItemToOrderCart(context, ref, item),
     ),
     DataRowAction(
       label: AppStrings.logWaste,

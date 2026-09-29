@@ -16,6 +16,7 @@ import 'package:uuid/uuid.dart';
 
 import '../constants/app_strings.dart';
 import '../models/requisition.dart';
+import '../models/supplier.dart';
 import '../services/requisition_api_service.dart';
 import 'inventory_api_provider.dart';
 import 'permissions_provider.dart';
@@ -81,24 +82,50 @@ class RequisitionCartNotifier extends Notifier<RequisitionCartState> {
 
   /// Adds an item; the same item twice merges quantities (split across
   /// suppliers happens via per-line supplier override, not duplicate rows).
+  ///
+  /// Pass the item's preferred supplier ([supplierId]/[supplierName]) to
+  /// pre-assign the new line — the user can still change it per line or via
+  /// bulk-assign. A re-add never overwrites an existing assignment, but it
+  /// does fill in a still-unassigned line (e.g. the directory finished
+  /// loading between the two taps).
   void addItem({
     required String itemId,
     required String itemName,
     required String unit,
     required double qty,
+    String? supplierId,
+    String? supplierName,
+    String? assignmentSource,
   }) {
     final existing = state.lines.indexWhere((l) => l.itemId == itemId);
     if (existing >= 0) {
       final line = state.lines[existing];
+      final fillSupplier =
+          line.supplierId == null && supplierId != null;
       _setLines([
         for (var i = 0; i < state.lines.length; i++)
-          if (i == existing) line.copyWith(qty: line.qty + qty) else state.lines[i],
+          if (i == existing)
+            line.copyWith(
+              qty: line.qty + qty,
+              supplierId: fillSupplier ? supplierId : null,
+              supplierName: fillSupplier ? supplierName : null,
+              assignmentSource: fillSupplier ? assignmentSource : null,
+            )
+          else
+            state.lines[i],
       ]);
     } else {
       _setLines([
         ...state.lines,
         RequisitionCartLine(
-            itemId: itemId, itemName: itemName, unit: unit, qty: qty),
+          itemId: itemId,
+          itemName: itemName,
+          unit: unit,
+          qty: qty,
+          supplierId: supplierId,
+          supplierName: supplierName,
+          assignmentSource: assignmentSource,
+        ),
       ]);
     }
   }
@@ -236,6 +263,25 @@ class RequisitionCartNotifier extends Notifier<RequisitionCartState> {
 final requisitionCartProvider =
     NotifierProvider<RequisitionCartNotifier, RequisitionCartState>(
         RequisitionCartNotifier.new);
+
+/// Finds an item's preferred supplier ([InventoryItem.preferredSupplierId],
+/// synced from the backend's `item.supplier_id`) in [directory]. Returns
+/// null when the item has none, or it isn't in the directory
+/// (deleted/renamed server-side, or the directory hasn't loaded) — the cart
+/// line then stays unassigned for manual or bulk assignment.
+///
+/// Real records only: callers pass [suppliersListProvider], which holds the
+/// synced directory once a business context exists. Demo-mode mock rows can
+/// never match — mock items carry no preferred id — so no mock data can leak
+/// into a submitted order.
+Supplier? findPreferredSupplier(
+    List<Supplier> directory, String? preferredSupplierId) {
+  if (preferredSupplierId == null || preferredSupplierId.isEmpty) return null;
+  for (final supplier in directory) {
+    if (supplier.id == preferredSupplierId) return supplier;
+  }
+  return null;
+}
 
 /// Per-supplier action state for the submitted order screen. Each card's
 /// loading/action state is independent — one supplier's slow interaction

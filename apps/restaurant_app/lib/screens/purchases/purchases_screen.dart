@@ -298,7 +298,7 @@ class _PurchasesDataPage extends ConsumerWidget {
         case 'cancel':
           await notifier.cancel(row.order.id);
           messenger.showSnackBar(
-            SnackBar(content: Text(AppStrings.reorderCancelledMessage)),
+            SnackBar(content: Text(AppStrings.orderCancelledMessage)),
           );
       }
     } catch (e) {

@@ -21,7 +21,7 @@ import '../../providers/orders_provider.dart';
 import '../../providers/other_expenses_provider.dart';
 import '../../providers/other_incomes_provider.dart';
 import '../../providers/permissions_provider.dart';
-import '../../providers/reorder_provider.dart';
+import '../../providers/purchases_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/store_api_provider_real.dart';
 import '../../providers/store_settings_hydration.dart';
@@ -248,7 +248,7 @@ Future<void> _doSwitchWork(
     ..invalidate(inventoryItemsProvider)
     ..invalidate(otherExpensesProvider)
     ..invalidate(otherIncomesProvider)
-    ..invalidate(reordersProvider);
+    ..invalidate(purchasesProvider);
 }
 
 /// Adopts the new store's backend settings (currency, tax display). Skipped

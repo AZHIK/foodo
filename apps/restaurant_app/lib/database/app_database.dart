@@ -95,14 +95,17 @@
 /// attribution end to end. Both new sale columns are nullable, so no
 /// SQLite default is needed here (unlike v6's `paymentMethod`).
 ///
-/// v8 connects the Reorders module to a real backend (Inventory Service's
-/// `suppliers`/`reorders`, migration `e4f5a6b7c8d9`): adds two pull-only
-/// cache tables, `CachedSuppliers` (business-scoped) and `CachedReorders`
-/// (store-scoped). Unlike every prior sync-connected module, neither gets
-/// an outbox table — Inventory Service writes have always gone direct to
-/// the API with no offline queue (see `InventoryNotifier`'s doc comment in
-/// `inventory_provider.dart`), and Suppliers/Reorders follow that same
-/// convention rather than Finance/Customers' outbox pattern.
+/// v8 connects the Suppliers module to a real backend (Inventory Service's
+/// `suppliers`, migration `e4f5a6b7c8d9`): adds the pull-only cache table
+/// `CachedSuppliers` (business-scoped). Unlike every prior sync-connected
+/// module, it gets no outbox table — Inventory Service writes have always
+/// gone direct to the API with no offline queue (see `InventoryNotifier`'s
+/// doc comment in `inventory_provider.dart`), and Suppliers follow that
+/// same convention rather than Finance/Customers' outbox pattern.
+///
+/// (A `CachedReorders` table briefly shared this version while the
+/// single-line reorders flow existed; it was removed with that flow — the
+/// purchases module's multi-line POs are online-only and cache nothing.)
 ///
 /// v9 connects the product-category picker to a real backend (Inventory
 /// Service's `category` table, migration
@@ -130,6 +133,13 @@
 /// v12 adds `LocalUserProfiles.isDeactivated` (default false, so existing
 /// rows stay active): logout deactivates the row instead of leaving it
 /// offered on the Profile Picker, and the next login reactivates it.
+///
+/// v13 syncs the item's preferred supplier (`item.supplier_id` on the wire,
+/// settable on create/update and nullable server-side): adds
+/// `CachedItems.supplierId` (NOT NULL with a `''` "none" default, same
+/// SQLite add-column constraint as v10's `unitId`). The order cart
+/// pre-assigns this supplier to a new line — still changeable per line or
+/// via bulk-assign.
 library;
 
 import 'package:decimal/decimal.dart';
@@ -153,7 +163,6 @@ import 'tables/cached_other_incomes.dart';
 import 'tables/customer_entries.dart';
 import 'tables/cached_customers.dart';
 import 'tables/cached_suppliers.dart';
-import 'tables/cached_reorders.dart';
 import 'tables/cached_categories.dart';
 import 'tables/cached_units.dart';
 import 'tables/local_audit_log.dart';
@@ -180,7 +189,6 @@ part 'app_database.g.dart';
   CustomerEntries,
   CachedCustomers,
   CachedSuppliers,
-  CachedReorders,
   CachedCategories,
   CachedUnits,
   LocalAuditLog,
@@ -190,7 +198,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.connection);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -278,7 +286,6 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 8) {
         await m.createTable(cachedSuppliers);
-        await m.createTable(cachedReorders);
       }
       if (from < 9) {
         await m.createTable(cachedCategories);
@@ -295,6 +302,9 @@ class AppDatabase extends _$AppDatabase {
           localUserProfiles,
           localUserProfiles.isDeactivated,
         );
+      }
+      if (from < 13) {
+        await m.addColumn(cachedItems, cachedItems.supplierId);
       }
     },
     beforeOpen: (details) async {

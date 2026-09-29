@@ -1,5 +1,5 @@
 /// Suppliers cached from Inventory Service, for the Suppliers screen and
-/// the reorder dialog's supplier picker.
+/// the order cart's supplier picker.
 ///
 /// `CachedSuppliers` mirrors the backend's `SupplierRead` schema (from
 /// `services/inventory-service/app/schemas/suppliers.py`) — a pull-only read
@@ -11,7 +11,7 @@
 /// Rows CAN be soft-deleted server-side (`isDeleted`); the pull always
 /// requests `include_deleted=true` so a delete made on one device removes
 /// the supplier from every other device's list on next sync — a past
-/// `Reorder`'s `supplierId` still resolves via this table even after that.
+/// purchase's `supplierId` still resolves via this table even after that.
 library;
 
 import 'package:drift/drift.dart';

@@ -20,7 +20,7 @@ import '../../widgets/data_page/reusable_data_table.dart';
 import '../../widgets/data_page/status_badge.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/dialogs/item_form_dialog.dart';
-import '../../widgets/dialogs/reorder_dialog.dart';
+import '../../widgets/inventory/add_to_order_cart.dart';
 import '../../widgets/inventory/inventory_tab_bar.dart';
 import '../../widgets/inventory/item_type_badge.dart';
 import '../../widgets/item_photo.dart';
@@ -178,14 +178,14 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
       onSelected: (context, item) => showStockAdjustDialog(context, item),
     ),
     DataRowAction(
-      label: AppStrings.createReorder,
-      icon: Icons.shopping_cart_outlined,
+      label: AppStrings.addToOrderCart,
+      icon: Icons.add_shopping_cart,
       // A sellable-only item can never be purchase-received (see
       // `services/inventory-service/app/services/stock_movement_service.py`'s
-      // `_COMPATIBILITY_RULES`) — reordering it would always fail at
+      // `_COMPATIBILITY_RULES`) — ordering it would always fail at
       // receive time, so it's disabled here rather than offered.
       isEnabled: (item) => item.trackStock && item.itemType != 'sellable',
-      onSelected: (context, item) => showReorderDialog(context, item),
+      onSelected: (context, item) => addItemToOrderCart(context, ref, item),
     ),
     DataRowAction(
       label: AppStrings.logWaste,

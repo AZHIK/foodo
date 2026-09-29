@@ -63,6 +63,7 @@ class CatalogSyncService {
                 unitOfMeasure: const Value('unit'),
                 unitId: Value(item.unitId ?? ''),
                 category: Value(item.category),
+                supplierId: Value(item.supplierId ?? ''),
                 reorderThreshold: Value(item.reorderThreshold),
                 reorderQuantity: Value(item.reorderQuantity),
                 sellingPrice: Value(item.sellingPrice),

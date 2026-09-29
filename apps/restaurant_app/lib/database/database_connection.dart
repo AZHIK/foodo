@@ -28,8 +28,12 @@ LazyDatabase driftDatabaseConnection(String encryptionKey) =>
       return NativeDatabase.createInBackground(
         file,
         setup: (rawDb) {
-          // TEMPORARILY DISABLED FOR TESTING: Enable SQLCipher encryption with the provided key.
-          // rawDb.execute("PRAGMA key = '$encryptionKey';");
+          // At-rest SQLCipher encryption (sqlite3mc build): the same key
+          // must open the file on every launch. NOTE: devices/CI with a
+          // pre-existing PLAINTEXT app.db (created while this was disabled)
+          // will fail to open ("file is not a database") — reset local data
+          // once (delete app.db); unsynced rows are re-pulled on next sync.
+          rawDb.execute("PRAGMA key = '$encryptionKey';");
           // Enforce foreign key constraints.
           rawDb.execute('PRAGMA foreign_keys = ON');
         },

@@ -110,7 +110,6 @@ abstract final class AppStrings {
   static String get navPos => L10n.t('navPos', 'POS');
   static String get navSales => L10n.t('navSales', 'Sales');
   static String get navCustomers => L10n.t('navCustomers', 'Customers');
-  static String get navReorders => L10n.t('navReorders', 'Reorders');
   static String get navProduction => L10n.t('navProduction', 'Production');
   static String get navSuppliers => L10n.t('navSuppliers', 'Suppliers');
   static String get navCouriers => L10n.t('navCouriers', 'Couriers');
@@ -648,54 +647,17 @@ abstract final class AppStrings {
   static String get closeAction => L10n.t('closeAction', 'Close');
 
   // -------------------------------------------------------------------------
-  // Inventory: reorders
+  // Shared labels used by the inventory and purchasing screens
   // -------------------------------------------------------------------------
 
-  static String get reordersTitle => L10n.t('reordersTitle', 'Reorders');
-  static String get pendingMetric => L10n.t('pendingMetric', 'Pending');
-  static String get awaitingDelivery =>
-      L10n.t('awaitingDelivery', 'Awaiting delivery');
   static String get receivedMetric => L10n.t('receivedMetric', 'Received');
   static String get stockAdded => L10n.t('stockAdded', 'Stock added');
-  static String get onOrderMetric => L10n.t('onOrderMetric', 'On order');
   static String get totalValueMetric =>
       L10n.t('totalValueMetric', 'Total value');
-  static String pendingCount(int count) => 'Pending ($count)';
-  static String receivedCount(int count) => 'Received ($count)';
-  static String cancelledCount(int count) => 'Cancelled ($count)';
-  static String get noReordersYet => L10n.t('noReordersYet', 'No reorders yet');
-  static String get receiveReorderTitle =>
-      L10n.t('receiveReorderTitle', 'Receive this reorder?');
-  static String get receiveReorderBody =>
-      L10n.t('receiveReorderBody', 'This cannot be undone.');
-  static String receiveReorderAdds(String quantity, String unit) =>
-      'This adds $quantity $unit to stock. $receiveReorderBody';
   static String get receiveAction => L10n.t('receiveAction', 'Receive');
-  static String get reorderReceivedMessage =>
-      L10n.t('reorderReceivedMessage', 'Reorder received — stock updated');
-  static String receiveFailed(Object e) => 'Could not receive: $e';
-  static String get cancelReorderTitle =>
-      L10n.t('cancelReorderTitle', 'Cancel this reorder?');
-  static String get cannotBeUndone =>
-      L10n.t('cannotBeUndone', 'This cannot be undone.');
-  static String get keepIt => L10n.t('keepIt', 'Keep it');
-  static String get cancelReorderAction =>
-      L10n.t('cancelReorderAction', 'Cancel reorder');
-  static String get reorderCancelledMessage =>
-      L10n.t('reorderCancelledMessage', 'Reorder cancelled');
-  static String cancelFailed(Object e) => 'Could not cancel: $e';
   static String get unknownSupplier =>
       L10n.t('unknownSupplier', 'Unknown supplier');
-  static String reorderTileSubtitle(
-    String quantity,
-    String unit,
-    String? supplier,
-  ) => '$quantity $unit from ${supplier ?? unknownSupplier}';
-  static String get unitCostColumn => L10n.t('unitCostColumn', 'Unit Cost');
   static String get totalColumn => L10n.t('totalColumn', 'Total');
-  static String get expectedLabel => L10n.t('expectedLabel', 'Expected');
-  static String get receivedLabel => L10n.t('receivedLabel', 'Received');
-  static String get cancelledLabel => L10n.t('cancelledLabel', 'Cancelled');
   static String notesLine(String notes) => 'Notes: $notes';
 
   // -------------------------------------------------------------------------
@@ -707,7 +669,6 @@ abstract final class AppStrings {
   static String get navPurchasing => L10n.t('navPurchasing', 'Purchasing');
   static String get purchasingTitle => L10n.t('purchasingTitle', 'Purchasing');
   static String get newPurchaseTab => L10n.t('newPurchaseTab', 'New purchase');
-  static String get reordersTab => L10n.t('reordersTab', 'Reorders');
   static String get purchasesSubtitle => L10n.t(
     'purchasesSubtitle',
     'Multi-line orders, receipts and supplier bills',
@@ -776,6 +737,8 @@ abstract final class AppStrings {
       L10n.t('orderSubmittedMessage', 'Order submitted for approval');
   static String get orderApprovedMessage =>
       L10n.t('orderApprovedMessage', 'Order approved — ready to receive');
+  static String get orderCancelledMessage =>
+      L10n.t('orderCancelledMessage', 'Order cancelled');
   static String transitionFailed(String action, Object e) =>
       'Could not $action: $e';
   static String get receiveTitle => L10n.t('receiveTitle', 'Receive goods');
@@ -1054,7 +1017,10 @@ abstract final class AppStrings {
   static String get viewDetail => L10n.t('viewDetail', 'View detail');
   static String get editItem => L10n.t('editItem', 'Edit item');
   static String get adjustStock => L10n.t('adjustStock', 'Adjust stock');
-  static String get createReorder => L10n.t('createReorder', 'Create reorder');
+  static String get addToOrderCart =>
+      L10n.t('addToOrderCart', 'Add to order cart');
+  static String addedToOrderCart(String name) => 'Added $name to the order cart';
+  static String get viewCartAction => L10n.t('viewCartAction', 'View cart');
   static String get logWaste => L10n.t('logWaste', 'Log waste');
   static String get transferStock => L10n.t('transferStock', 'Transfer stock');
   static String get deleteAction => L10n.t('deleteAction', 'Delete');
@@ -1523,7 +1489,7 @@ abstract final class AppStrings {
   static String deleteSupplierTitle(String name) => 'Delete $name?';
   static String get deleteSupplierBody => L10n.t(
     'deleteSupplierBody',
-    'This supplier record will be removed. Past reorders keep their '
+    'This supplier record will be removed. Past purchases keep their '
         'attribution. This cannot be undone.',
   );
   static String supplierDeleted(String name) => '$name deleted';
@@ -1634,47 +1600,6 @@ abstract final class AppStrings {
   static String itemSaved(String name, bool isEdit) =>
       isEdit ? '$name updated' : '$name added to inventory';
 
-  // -------------------------------------------------------------------------
-  // Reorder dialog
-  // -------------------------------------------------------------------------
-
-  static String get selectSupplierFirst =>
-      L10n.t('selectSupplierFirst', 'Select a supplier');
-  static String reorderCreated(String quantity, String unit, String name) =>
-      'Reorder created: $quantity $unit of $name';
-  static String createReorderFor(String name) => 'Create reorder for $name';
-  static String get reorderDetails =>
-      L10n.t('reorderDetails', 'Reorder details');
-  static String get supplierPickLabel =>
-      L10n.t('supplierPickLabel', 'Supplier');
-  static String get selectSupplierButton =>
-      L10n.t('selectSupplierButton', 'Select supplier');
-  static String get changeSupplier => L10n.t('changeSupplier', 'Change');
-  static String get quantityToOrder =>
-      L10n.t('quantityToOrder', 'Quantity to order');
-  static String get enterQuantity => L10n.t('enterQuantity', 'Enter quantity');
-  static String get enterPositive =>
-      L10n.t('enterPositive', 'Enter a positive number');
-  static String get enterNonNegative =>
-      L10n.t('enterNonNegative', 'Enter a non-negative number');
-  static String get expectedDaysLabel =>
-      L10n.t('expectedDaysLabel', 'Expected delivery (days)');
-  static String get deliveryHint => L10n.t('deliveryHint', '7');
-  static String get daysSuffix => L10n.t('daysSuffix', 'days');
-  static String get wholeNumber =>
-      L10n.t('wholeNumber', 'Enter a whole number');
-  static String get notesOptional =>
-      L10n.t('notesOptional', 'Notes (optional)');
-  static String get supplierNotesExample => L10n.t(
-    'supplierNotesExample',
-    'Special requests or notes for supplier...',
-  );
-  static String get selectSupplierTitle =>
-      L10n.t('selectSupplierTitle', 'Select a supplier');
-  static String get searchSuppliers =>
-      L10n.t('searchSuppliers', 'Search suppliers');
-  static String get noMatchingSuppliers =>
-      L10n.t('noMatchingSuppliers', 'No matching suppliers');
   static String get addNewSupplier =>
       L10n.t('addNewSupplier', 'Add new supplier');
 
@@ -2090,15 +2015,6 @@ abstract final class AppStrings {
       L10n.t('courierAvailable', 'Available for deliveries');
   static String get courierUnavailable =>
       L10n.t('courierUnavailable', 'Not available');
-  static String get reorderPending => L10n.t('reorderPending', 'Pending');
-  static String get reorderPendingBlurb =>
-      L10n.t('reorderPendingBlurb', 'Awaiting delivery');
-  static String get reorderReceived => L10n.t('reorderReceived', 'Received');
-  static String get reorderReceivedBlurb =>
-      L10n.t('reorderReceivedBlurb', 'Stock added');
-  static String get reorderCancelled => L10n.t('reorderCancelled', 'Cancelled');
-  static String get reorderCancelledBlurb =>
-      L10n.t('reorderCancelledBlurb', 'Order cancelled');
   static String get headOfficeType => L10n.t('headOfficeType', 'Head Office');
   static String get restaurantBranchType =>
       L10n.t('restaurantBranchType', 'Restaurant Branch');

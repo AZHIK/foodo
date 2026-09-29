@@ -1,9 +1,14 @@
 /// UI models for the purchases module (multi-line POs, GRNs, payables).
 ///
-/// Thin wrappers over `PurchaseApiService` DTOs for the presentation layer —
-/// same role `models/reorder.dart` plays over `ReorderDto`. Status strings
-/// come straight from the backend enum (`draft`, `submitted`, `approved`,
-/// `partially_received`, `received`, `cancelled`).
+/// Thin wrappers over `PurchaseApiService` DTOs for the presentation layer.
+/// Status strings come straight from the backend enum — both the classic
+/// GRN lifecycle (`draft`, `submitted`, `approved`, `partially_received`,
+/// `received`, `cancelled`) and the requisition-split lifecycle
+/// (`payload_ready`, `sent`, `confirmed`, `partially_fulfilled`,
+/// `fulfilled`; see `PurchaseOrderStatus` in
+/// `services/inventory-service/app/models/purchases.py`). Cart-created POs
+/// start at `payload_ready`, which is why they must map here and not fall
+/// into [PurchaseOrderStatus.unknown].
 library;
 
 import 'package:flutter/foundation.dart';
@@ -18,6 +23,11 @@ enum PurchaseOrderStatus {
   partiallyReceived,
   received,
   cancelled,
+  payloadReady,
+  sent,
+  confirmed,
+  partiallyFulfilled,
+  fulfilled,
   unknown;
 
   static PurchaseOrderStatus fromBackend(String value) => switch (value) {
@@ -27,9 +37,19 @@ enum PurchaseOrderStatus {
         'partially_received' => partiallyReceived,
         'received' => received,
         'cancelled' => cancelled,
+        'payload_ready' => payloadReady,
+        'sent' => sent,
+        'confirmed' => confirmed,
+        'partially_fulfilled' => partiallyFulfilled,
+        'fulfilled' => fulfilled,
         _ => unknown,
       };
 
+  /// Labels follow the submitted-order badge language
+  /// (`RequisitionSupplierGroup.badge`): `payload_ready` reads "Not sent",
+  /// `fulfilled` reads "Confirmed" (terminal, goods arrived).
+  /// `partiallyFulfilled` deliberately reads "Partially fulfilled" rather
+  /// than the badge's "Partial", to parallel "Partially received".
   String get label => switch (this) {
         draft => L10n.t('poStatusDraft', 'Draft'),
         submitted => L10n.t('poStatusSubmitted', 'Submitted'),
@@ -37,13 +57,27 @@ enum PurchaseOrderStatus {
         partiallyReceived => L10n.t('poStatusPartial', 'Partially received'),
         received => L10n.t('poStatusReceived', 'Received'),
         cancelled => L10n.t('poStatusCancelled', 'Cancelled'),
+        payloadReady => L10n.t('poStatusPayloadReady', 'Not sent'),
+        sent => L10n.t('poStatusSent', 'Sent'),
+        confirmed => L10n.t('poStatusConfirmed', 'Confirmed'),
+        partiallyFulfilled =>
+          L10n.t('poStatusPartialFulfilled', 'Partially fulfilled'),
+        fulfilled => L10n.t('poStatusFulfilled', 'Confirmed'),
         unknown => L10n.t('unknown', 'Unknown'),
       };
 
-  /// Still changeable — not yet fully received or cancelled.
+  /// Still changeable — not terminally received/fulfilled or cancelled.
   bool get isOpen => switch (this) {
-        draft || submitted || approved || partiallyReceived => true,
-        received || cancelled || unknown => false,
+        draft ||
+        submitted ||
+        approved ||
+        partiallyReceived ||
+        payloadReady ||
+        sent ||
+        confirmed ||
+        partiallyFulfilled =>
+          true,
+        received || fulfilled || cancelled || unknown => false,
       };
 }
 

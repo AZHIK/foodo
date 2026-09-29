@@ -191,6 +191,12 @@ class _DetailBody extends ConsumerWidget {
       PurchaseOrderStatus.partiallyReceived => StatusTone.warning,
       PurchaseOrderStatus.received => StatusTone.positive,
       PurchaseOrderStatus.cancelled => StatusTone.neutral,
+      // Requisition-split lifecycle: action still needed until fulfilled.
+      PurchaseOrderStatus.payloadReady => StatusTone.warning,
+      PurchaseOrderStatus.sent => StatusTone.warning,
+      PurchaseOrderStatus.confirmed => StatusTone.warning,
+      PurchaseOrderStatus.partiallyFulfilled => StatusTone.warning,
+      PurchaseOrderStatus.fulfilled => StatusTone.positive,
       PurchaseOrderStatus.unknown => StatusTone.neutral,
     };
     final notifier = ref.read(purchasesProvider.notifier);
@@ -276,12 +282,13 @@ class _DetailBody extends ConsumerWidget {
               ),
             if (order.status.isOpen &&
                 order.status != PurchaseOrderStatus.partiallyReceived &&
+                order.status != PurchaseOrderStatus.partiallyFulfilled &&
                 order.status != PurchaseOrderStatus.received &&
                 canCreate)
               TextButton(
                 onPressed: () => onAction(
                   () => notifier.cancel(order.id),
-                  AppStrings.reorderCancelledMessage,
+                  AppStrings.orderCancelledMessage,
                   (e) => AppStrings.transitionFailed('cancel', e),
                 ),
                 child: Text(AppStrings.cancel),

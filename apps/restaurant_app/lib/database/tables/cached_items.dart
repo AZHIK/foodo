@@ -95,6 +95,15 @@ class CachedItems extends Table {
   /// a photo removed server-side clears this on the next pull.
   TextColumn get imageUrl => text().nullable()();
 
+  /// The backend `Supplier` row's UUID (`item.supplier_id` on the wire) — the
+  /// item's preferred/original supplier, see `CachedSuppliers`. Empty string
+  /// means "none assigned" (NOT NULL with a `''` default rather than
+  /// nullable, for the same SQLite add-a-NOT-NULL-column-with-a-default
+  /// reason as [unitId] above). Synced from the catalog pull; cleared
+  /// server-side clears here on the next pull. The order cart pre-assigns
+  /// this supplier to a new line, still changeable per line or in bulk.
+  TextColumn get supplierId => text().withDefault(const Constant(''))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

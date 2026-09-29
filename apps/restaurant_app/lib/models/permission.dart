@@ -92,10 +92,6 @@ abstract final class AppPermissions {
   static const customersCreate = 'customers.create';
   static const customersUpdate = 'customers.update';
   static const customersDelete = 'customers.delete';
-  static const reordersView = 'reorders.view';
-  static const reordersCreate = 'reorders.create';
-  static const reordersReceive = 'reorders.receive';
-  static const reordersCancel = 'reorders.cancel';
   static const procurementView = 'procurement.view';
   static const procurementCreate = 'procurement.create';
   static const procurementApprove = 'procurement.approve';
@@ -283,26 +279,6 @@ abstract final class AppPermissions {
           description: 'Remove a customer record',
         ),
         Permission(
-          id: reordersView,
-          label: 'View reorders',
-          description: 'Browse purchase orders placed with suppliers to restock inventory',
-        ),
-        Permission(
-          id: reordersCreate,
-          label: 'Create reorders',
-          description: 'Place a new purchase order for a raw-material or dual-use item',
-        ),
-        Permission(
-          id: reordersReceive,
-          label: 'Receive reorders',
-          description: 'Mark a pending reorder received, adding the ordered quantity to stock',
-        ),
-        Permission(
-          id: reordersCancel,
-          label: 'Cancel reorders',
-          description: 'Cancel a pending reorder before it is received',
-        ),
-        Permission(
           id: procurementView,
           label: 'View purchases',
           description: 'Browse multi-line purchase orders, receipts and invoices',
@@ -330,7 +306,7 @@ abstract final class AppPermissions {
         Permission(
           id: suppliersCreate,
           label: 'Add suppliers',
-          description: 'Create a new supplier record, including from the reorder flow',
+          description: 'Create a new supplier record, including from the order cart',
         ),
         Permission(
           id: suppliersUpdate,

@@ -10,9 +10,9 @@ import '../responsive_form_dialog.dart';
 import '../section_label.dart';
 
 /// Opens the add/edit supplier form dialog. Returns the saved supplier, or
-/// null if the dialog was dismissed without saving — the reorder dialog's
-/// supplier picker uses the returned supplier to immediately select
-/// whoever was just added, mirroring `showCustomerFormDialog`.
+/// null if the dialog was dismissed without saving — supplier pickers use
+/// the returned supplier to immediately select whoever was just added,
+/// mirroring `showCustomerFormDialog`.
 Future<Supplier?> showSupplierFormDialog(
   BuildContext context, {
   Supplier? existingSupplier,
