@@ -50,6 +50,10 @@ class PermissionCode(StrEnum):
     REPORTS_EXPORT = "reports.export"
     PROCUREMENT_CREATE = "procurement.create"
     PROCUREMENT_APPROVE = "procurement.approve"
+    # ── Purchases (enforced here — see
+    # app/api/v1/endpoints/purchases.py) ───────────────────────────────────
+    PROCUREMENT_VIEW = "procurement.view"
+    PROCUREMENT_RECEIVE = "procurement.receive"
     PROCUREMENT_AUTO_ORDER_ENABLE = "procurement.auto_order.enable"
     AI_FORECAST_VIEW = "ai.forecast.view"
     AI_RECOMMENDATION_APPROVE = "ai.recommendation.approve"

@@ -96,6 +96,10 @@ abstract final class AppPermissions {
   static const reordersCreate = 'reorders.create';
   static const reordersReceive = 'reorders.receive';
   static const reordersCancel = 'reorders.cancel';
+  static const procurementView = 'procurement.view';
+  static const procurementCreate = 'procurement.create';
+  static const procurementApprove = 'procurement.approve';
+  static const procurementReceive = 'procurement.receive';
   static const suppliersView = 'suppliers.view';
   static const suppliersCreate = 'suppliers.create';
   static const suppliersUpdate = 'suppliers.update';
@@ -297,6 +301,26 @@ abstract final class AppPermissions {
           id: reordersCancel,
           label: 'Cancel reorders',
           description: 'Cancel a pending reorder before it is received',
+        ),
+        Permission(
+          id: procurementView,
+          label: 'View purchases',
+          description: 'Browse multi-line purchase orders, receipts and invoices',
+        ),
+        Permission(
+          id: procurementCreate,
+          label: 'Create purchases',
+          description: 'Draft, submit and cancel multi-line purchase orders',
+        ),
+        Permission(
+          id: procurementApprove,
+          label: 'Approve purchases',
+          description: 'Approve purchase orders and record invoices and payments',
+        ),
+        Permission(
+          id: procurementReceive,
+          label: 'Receive purchases',
+          description: 'Record goods receipts and purchase returns against orders',
         ),
         Permission(
           id: suppliersView,

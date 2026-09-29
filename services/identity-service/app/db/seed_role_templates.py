@@ -63,6 +63,8 @@ _INVENTORY_ADJUST: tuple[PermissionCode, ...] = (PermissionCode.INVENTORY_ADJUST
 _PROCUREMENT: tuple[PermissionCode, ...] = (
     PermissionCode.PROCUREMENT_CREATE,
     PermissionCode.PROCUREMENT_APPROVE,
+    PermissionCode.PROCUREMENT_VIEW,
+    PermissionCode.PROCUREMENT_RECEIVE,
 )
 
 _PROCUREMENT_AUTO: tuple[PermissionCode, ...] = (PermissionCode.PROCUREMENT_AUTO_ORDER_ENABLE,)

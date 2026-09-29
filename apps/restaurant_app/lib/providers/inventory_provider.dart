@@ -108,6 +108,17 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
     final unitAbbreviationById = {
       for (final unit in units) unit.id: unit.abbreviation,
     };
+    // Backend items may carry no category (`category_id` null). Resolve the
+    // taxonomy's own `uncategorized` row to its id once per load rather than
+    // leaking the code string into `categoryId`, where the item form's
+    // category dropdown (matched by id) would find no item and crash.
+    String? uncategorizedId;
+    final categories = await (db.select(
+      db.cachedCategories,
+    )..where((row) => row.isActive.equals(true))).get();
+    for (final category in categories) {
+      if (category.code == 'uncategorized') uncategorizedId = category.id;
+    }
 
     return items
         .map(
@@ -115,6 +126,7 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
             catalogRow: item,
             stockRow: stockByItemId[item.id],
             unitAbbreviationById: unitAbbreviationById,
+            uncategorizedId: uncategorizedId,
           ),
         )
         .toList();
@@ -144,7 +156,10 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
   /// photo-less item behind; the form stays open with everything intact for
   /// a retry. When [deleteRemoteImage] is true the server-side photo is
   /// removed instead.
-  Future<void> upsert(InventoryItem item, {bool deleteRemoteImage = false}) async {
+  Future<void> upsert(
+    InventoryItem item, {
+    bool deleteRemoteImage = false,
+  }) async {
     final storeId = ref.read(currentStoreIdProvider);
     if (storeId == null) {
       final current = state.valueOrNull ?? const <InventoryItem>[];
@@ -225,13 +240,11 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
         // Record the URL immediately so the photo shows without waiting
         // for the pull below — the pull rewrites the same value.
         final db = ref.read(appDatabaseProvider);
-        await (db.update(db.cachedItems)..where((row) => row.id.equals(remoteId)))
+        await (db.update(db.cachedItems)
+              ..where((row) => row.id.equals(remoteId)))
             .write(CachedItemsCompanion(imageUrl: Value(withPhoto.imageUrl)));
       } else if (deleteRemoteImage) {
-        await _api.deleteItemImage(
-          businessId: _businessId,
-          itemId: remoteId,
-        );
+        await _api.deleteItemImage(businessId: _businessId, itemId: remoteId);
       }
     } on InventoryApiException catch (e) {
       if (isCreate) {
@@ -261,20 +274,17 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
   /// item the user was told was not saved.
   Future<void> _rollbackCreatedItem(String remoteId) async {
     try {
-      await _api.deactivateItem(
-        businessId: _businessId,
-        itemId: remoteId,
-      );
+      await _api.deactivateItem(businessId: _businessId, itemId: remoteId);
     } on InventoryApiException {
       // Best effort only — e.g. missing `inventory.items.deactivate`.
     }
     final db = ref.read(appDatabaseProvider);
-    await (db.delete(db.cachedItems)..where((row) => row.id.equals(remoteId)))
-        .go();
+    await (db.delete(
+      db.cachedItems,
+    )..where((row) => row.id.equals(remoteId))).go();
     await (db.delete(
       db.cachedStockLevels,
-    )..where((row) => row.itemId.equals(remoteId)))
-        .go();
+    )..where((row) => row.itemId.equals(remoteId))).go();
     final current = state.valueOrNull ?? const <InventoryItem>[];
     state = AsyncData(
       current.where((i) => i.catalogItemId != remoteId).toList(),
@@ -503,7 +513,10 @@ final menuCatalogItemsProvider = Provider<List<InventoryItem>>(
 
 final inventoryQueryProvider = NotifierProvider<TableQueryNotifier, TableQuery>(
   () => TableQueryNotifier(
-    const TableQuery(sortField: InventorySort.name, pageSize: AppLimits.tablePageSizeDense),
+    const TableQuery(
+      sortField: InventorySort.name,
+      pageSize: AppLimits.tablePageSizeDense,
+    ),
   ),
 );
 
@@ -724,7 +737,10 @@ abstract final class MenuItemSort {
 
 final menuItemsQueryProvider = NotifierProvider<TableQueryNotifier, TableQuery>(
   () => TableQueryNotifier(
-    const TableQuery(sortField: MenuItemSort.name, pageSize: AppLimits.tablePageSizeDense),
+    const TableQuery(
+      sortField: MenuItemSort.name,
+      pageSize: AppLimits.tablePageSizeDense,
+    ),
   ),
 );
 

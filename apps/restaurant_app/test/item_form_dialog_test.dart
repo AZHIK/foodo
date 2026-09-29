@@ -10,6 +10,7 @@ import 'package:restaurant_pos/providers/database_providers.dart';
 import 'package:restaurant_pos/providers/inventory_provider.dart';
 import 'package:restaurant_pos/providers/item_form_provider.dart';
 import 'package:restaurant_pos/router/app_router.dart';
+import 'package:restaurant_pos/theme/app_theme.dart';
 import 'package:restaurant_pos/widgets/dialogs/item_form_dialog.dart';
 import 'package:restaurant_pos/widgets/image_upload_field.dart';
 import 'package:restaurant_pos/widgets/responsive_form_dialog.dart';
@@ -274,7 +275,9 @@ void main() {
       expect(updated.unitCost, 99.00);
       // Same id in place, not a duplicate row.
       expect(
-        container.read(inventoryItemsListProvider).where((i) => i.id == target.id),
+        container
+            .read(inventoryItemsListProvider)
+            .where((i) => i.id == target.id),
         hasLength(1),
       );
       expect(find.byType(ResponsiveFormDialog), findsNothing);
@@ -411,46 +414,47 @@ void main() {
       );
     });
 
-    testWidgets('choosing Grocery pre-sets raw_material and leads with stock fields', (
-      tester,
-    ) async {
-      final container = await pumpInventory(tester, const Size(1440, 900));
-      await tester.tap(find.text('Add item'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(ItemFormKeys.chooseGrocery));
-      await tester.pumpAndSettle();
+    testWidgets(
+      'choosing Grocery pre-sets raw_material and leads with stock fields',
+      (tester) async {
+        final container = await pumpInventory(tester, const Size(1440, 900));
+        await tester.tap(find.text('Add item'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(ItemFormKeys.chooseGrocery));
+        await tester.pumpAndSettle();
 
-      // Stock-relevant fields are enabled and prominent.
-      expect(find.byKey(ItemFormKeys.reorderQuantity), findsOneWidget);
-      expect(find.byKey(ItemFormKeys.allowNegativeStock), findsOneWidget);
-      expect(find.byKey(ItemFormKeys.unit), findsOneWidget);
-      // Selling price is present but disabled — de-emphasised, not hidden.
-      expect(
-        tester
-            .widget<TextField>(
-              find.descendant(
-                of: find.byKey(ItemFormKeys.sellingPrice),
-                matching: find.byType(TextField),
-              ),
-            )
-            .enabled,
-        isFalse,
-      );
+        // Stock-relevant fields are enabled and prominent.
+        expect(find.byKey(ItemFormKeys.reorderQuantity), findsOneWidget);
+        expect(find.byKey(ItemFormKeys.allowNegativeStock), findsOneWidget);
+        expect(find.byKey(ItemFormKeys.unit), findsOneWidget);
+        // Selling price is present but disabled — de-emphasised, not hidden.
+        expect(
+          tester
+              .widget<TextField>(
+                find.descendant(
+                  of: find.byKey(ItemFormKeys.sellingPrice),
+                  matching: find.byType(TextField),
+                ),
+              )
+              .enabled,
+          isFalse,
+        );
 
-      await tester.enterText(find.byKey(ItemFormKeys.name), 'Smoked Paprika');
-      await pickCategory(tester, 'Dry goods');
-      await tester.enterText(find.byKey(ItemFormKeys.unitCost), '4.50');
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(ItemFormKeys.submit));
-      await tester.pumpAndSettle();
+        await tester.enterText(find.byKey(ItemFormKeys.name), 'Smoked Paprika');
+        await pickCategory(tester, 'Dry goods');
+        await tester.enterText(find.byKey(ItemFormKeys.unitCost), '4.50');
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(ItemFormKeys.submit));
+        await tester.pumpAndSettle();
 
-      final saved = container
-          .read(inventoryItemsListProvider)
-          .firstWhere((i) => i.name == 'Smoked Paprika');
-      expect(saved.itemType, 'raw_material');
-      expect(saved.isGroceryItem, isTrue);
-      expect(saved.isMenuCatalogItem, isFalse);
-    });
+        final saved = container
+            .read(inventoryItemsListProvider)
+            .firstWhere((i) => i.name == 'Smoked Paprika');
+        expect(saved.itemType, 'raw_material');
+        expect(saved.isGroceryItem, isTrue);
+        expect(saved.isMenuCatalogItem, isFalse);
+      },
+    );
 
     testWidgets('choosing Menu item pre-sets sellable and leads with price', (
       tester,
@@ -532,6 +536,54 @@ void main() {
       // The concrete proof a 'both' item is not forced into one view.
       expect(saved.isGroceryItem, isTrue);
       expect(saved.isMenuCatalogItem, isTrue);
+    });
+
+    testWidgets('editing an item with an unknown category does not crash', (
+      tester,
+    ) async {
+      // Synced items with no backend category used to carry the
+      // `uncategorized` code, which matches no dropdown entry by id and
+      // crashed the form on open. The field must fall back to its hint.
+      const item = InventoryItem(
+        id: 'item-unknown-cat',
+        sku: 'SKU-X',
+        name: 'Mystery Flour',
+        categoryId: 'uncategorized',
+        emoji: '🌾',
+        stock: 10,
+        reorderLevel: 2,
+        unitCost: 2.5,
+        itemType: 'raw_material',
+      );
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final container = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(database),
+          inventoryItemsListProvider.overrideWithValue([item]),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const Scaffold(
+              body: ItemFormDialog(itemId: 'item-unknown-cat'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(ItemFormKeys.category), findsOneWidget);
+      // Unknown id → no initial value, so the hint shows instead of a crash.
+      final field = tester.widget<DropdownButtonFormField<String>>(
+        find.byKey(ItemFormKeys.category),
+      );
+      expect(field.initialValue, isNull);
     });
 
     testWidgets('"Change" returns to the chooser without losing other fields', (

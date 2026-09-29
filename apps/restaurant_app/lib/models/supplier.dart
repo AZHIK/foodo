@@ -13,6 +13,9 @@ class Supplier {
     required this.id,
     required this.name,
     this.phone,
+    this.whatsappNumber,
+    this.contactPerson,
+    this.isActive = true,
     this.email,
     this.addressLine1,
     this.notes,
@@ -22,15 +25,32 @@ class Supplier {
   final String id;
   final String name;
   final String? phone;
+
+  /// Explicit WhatsApp number for the wa.me deep link. Null until the
+  /// cached-supplier table gains the column (TODO) — use [sendNumber].
+  final String? whatsappNumber;
+  final String? contactPerson;
+  final bool isActive;
   final String? email;
   final String? addressLine1;
   final String? notes;
   final DateTime createdAt;
 
+  /// Number the order screen sends to: explicit WhatsApp number first,
+  /// legacy [phone] fallback (matches the backend's resolution rule).
+  String? get sendNumber {
+    final raw = (whatsappNumber ?? phone ?? '').trim();
+    return raw.isEmpty ? null : raw;
+  }
+
   Supplier copyWith({
     String? name,
     String? phone,
     bool clearPhone = false,
+    String? whatsappNumber,
+    bool clearWhatsappNumber = false,
+    String? contactPerson,
+    bool? isActive,
     String? email,
     bool clearEmail = false,
     String? addressLine1,
@@ -42,6 +62,11 @@ class Supplier {
       id: id,
       name: name ?? this.name,
       phone: clearPhone ? null : (phone ?? this.phone),
+      whatsappNumber: clearWhatsappNumber
+          ? null
+          : (whatsappNumber ?? this.whatsappNumber),
+      contactPerson: contactPerson ?? this.contactPerson,
+      isActive: isActive ?? this.isActive,
       email: clearEmail ? null : (email ?? this.email),
       addressLine1: clearAddressLine1 ? null : (addressLine1 ?? this.addressLine1),
       notes: clearNotes ? null : (notes ?? this.notes),

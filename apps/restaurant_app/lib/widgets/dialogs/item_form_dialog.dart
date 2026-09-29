@@ -198,7 +198,8 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
   /// True only while adding a new item that has not been through the
   /// Grocery/Menu item/Both entry choice yet — an existing item always has a
   /// real [ItemFormState.itemType], so editing never shows the chooser.
-  bool _chooserMode(ItemFormState state) => !state.isEdit && state.itemType.isEmpty;
+  bool _chooserMode(ItemFormState state) =>
+      !state.isEdit && state.itemType.isEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -212,7 +213,9 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
       // form opens.
       autovalidateMode: AutovalidateMode.onUserInteraction,
       child: ResponsiveFormDialog(
-        title: state.isEdit ? AppStrings.editItemTitle : AppStrings.addItemTitle,
+        title: state.isEdit
+            ? AppStrings.editItemTitle
+            : AppStrings.addItemTitle,
         width: ItemFormDialog.dialogWidth,
         actions: [
           OutlinedButton(
@@ -297,13 +300,19 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
   /// offering a way back to the chooser without losing anything else typed.
   Widget _typeSummaryBar(BuildContext context, ItemFormState state) {
     final (label, icon) = switch (state.itemType) {
-      'raw_material' => (AppStrings.groceryOption, Icons.shopping_basket_outlined),
+      'raw_material' => (
+        AppStrings.groceryOption,
+        Icons.shopping_basket_outlined,
+      ),
       'sellable' => (AppStrings.menuItemOption, Icons.restaurant_menu_rounded),
       _ => (AppStrings.bothType, Icons.swap_horiz_rounded),
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: Insets.lg,
+        vertical: Insets.sm,
+      ),
       decoration: BoxDecoration(
         color: context.colors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(Radii.md),
@@ -313,9 +322,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
         children: [
           Icon(icon, size: 16, color: context.colors.onSurfaceVariant),
           const SizedBox(width: Insets.sm),
-          Expanded(
-            child: Text(label, style: context.text.labelLarge),
-          ),
+          Expanded(child: Text(label, style: context.text.labelLarge)),
           TextButton(
             key: ItemFormKeys.changeType,
             onPressed: () => ref.read(_provider.notifier).resetType(),
@@ -369,6 +376,16 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
 
   Widget _fields(ItemFormState state) {
     final notifier = ref.read(_provider.notifier);
+    final categories = ref.watch(categoriesListProvider);
+    // The stored id can predate the cached taxonomy (synced items with no
+    // backend category, a category deleted server-side) — passing a value
+    // with no matching menu entry crashes DropdownButtonFormField, so fall
+    // back to the "pick one" hint and let the validator ask explicitly.
+    final initialCategory =
+        state.categoryId.isNotEmpty &&
+            categories.any((c) => c.id == state.categoryId)
+        ? state.categoryId
+        : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -387,9 +404,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
             controller: _name,
             textCapitalization: TextCapitalization.words,
             textInputAction: TextInputAction.next,
-            decoration: InputDecoration(
-              hintText: AppStrings.itemNameExample,
-            ),
+            decoration: InputDecoration(hintText: AppStrings.itemNameExample),
             onChanged: notifier.setName,
             validator: ItemFormState.validateName,
           ),
@@ -401,13 +416,13 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
             isRequired: true,
             child: DropdownButtonFormField<String>(
               key: ItemFormKeys.category,
-              initialValue: state.categoryId.isEmpty ? null : state.categoryId,
+              initialValue: initialCategory,
               // Without this the menu sizes to its widest entry and pushes past
               // the field instead of ellipsising inside it.
               isExpanded: true,
               hint: Text(AppStrings.selectOption),
               items: [
-                for (final category in ref.watch(categoriesListProvider))
+                for (final category in categories)
                   DropdownMenuItem(
                     value: category.id,
                     child: Text(
@@ -429,8 +444,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
               controller: _sku,
               textCapitalization: TextCapitalization.characters,
               textInputAction: TextInputAction.next,
-              decoration:
-                  InputDecoration(hintText: AppStrings.skuExample),
+              decoration: InputDecoration(hintText: AppStrings.skuExample),
               onChanged: notifier.setSku,
             ),
           ),
@@ -594,7 +608,9 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
                       controller: _stock,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(hintText: AppStrings.quantityHint),
+                      decoration: InputDecoration(
+                        hintText: AppStrings.quantityHint,
+                      ),
                       onChanged: notifier.setStock,
                       validator: ItemFormState.validateStock,
                     ),
@@ -605,22 +621,29 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
               // while the real taxonomy is still syncing (or offline with
               // an empty cache) — mirrors the old MockInventory.units
               // fallback shape without hardcoding a fake unit list.
-              child: Builder(builder: (_) {
-                final abbreviations = [
-                  for (final unit in ref.watch(unitsListProvider)) unit.abbreviation,
-                ];
-                final options = abbreviations.isEmpty ? [state.unit] : abbreviations;
-                return DropdownButtonFormField<String>(
-                  key: ItemFormKeys.unit,
-                  initialValue: options.contains(state.unit) ? state.unit : options.first,
-                  isExpanded: true,
-                  items: [
-                    for (final unit in options)
-                      DropdownMenuItem(value: unit, child: Text(unit)),
-                  ],
-                  onChanged: (value) => notifier.setUnit(value ?? state.unit),
-                );
-              }),
+              child: Builder(
+                builder: (_) {
+                  final abbreviations = [
+                    for (final unit in ref.watch(unitsListProvider))
+                      unit.abbreviation,
+                  ];
+                  final options = abbreviations.isEmpty
+                      ? [state.unit]
+                      : abbreviations;
+                  return DropdownButtonFormField<String>(
+                    key: ItemFormKeys.unit,
+                    initialValue: options.contains(state.unit)
+                        ? state.unit
+                        : options.first,
+                    isExpanded: true,
+                    items: [
+                      for (final unit in options)
+                        DropdownMenuItem(value: unit, child: Text(unit)),
+                    ],
+                    onChanged: (value) => notifier.setUnit(value ?? state.unit),
+                  );
+                },
+              ),
             ),
           ),
         ],

@@ -21,6 +21,7 @@ import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/dialogs/item_form_dialog.dart';
 import '../../widgets/dialogs/reorder_dialog.dart';
 import '../../widgets/inventory/inventory_tab_bar.dart';
+import '../../widgets/inventory/item_type_badge.dart';
 import '../../widgets/item_photo.dart';
 import 'inventory_filter_panel.dart';
 import 'stock_adjust_dialog.dart';
@@ -320,6 +321,15 @@ final groceryColumns = <DataColumnSpec<InventoryItem>>[
     flex: 5,
     value: (item) => item.name,
     cellBuilder: (context, item) => _ItemCell(item: item),
+  ),
+  DataColumnSpec(
+    label: AppStrings.typeColumn,
+    field: 'itemType',
+    sortable: false,
+    width: 150,
+    minTableWidth: 860,
+    value: (item) => itemTypeLabel(item),
+    cellBuilder: (context, item) => ItemTypeBadge(item: item),
   ),
   DataColumnSpec(
     label: AppStrings.categoryColumn,

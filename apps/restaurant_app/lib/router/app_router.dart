@@ -21,7 +21,10 @@ import '../screens/inventory/inventory_menu_items_screen_gated.dart';
 import '../screens/insights/ai_insights_screen.dart';
 import '../screens/inventory/item_detail_screen.dart';
 import '../screens/inventory/production_module_screen_gated.dart';
-import '../screens/inventory/reorders_screen_gated.dart';
+import '../screens/purchases/purchase_detail_screen_gated.dart';
+import '../screens/purchasing/purchasing_screen.dart';
+import '../screens/purchasing/requisition_export_screen.dart';
+import '../screens/purchasing/requisition_order_screen.dart';
 import '../screens/reports/reports_screen_gated.dart';
 import '../screens/suppliers/suppliers_screen_gated.dart';
 import '../screens/placeholder/module_placeholder_screen.dart';
@@ -198,8 +201,29 @@ abstract final class AppRoute {
   static const notificationsPath = '/notifications';
   static const notificationsName = 'notifications';
 
-  static const reordersPath = '/reorders';
-  static const reordersName = 'reorders';
+  /// Purchasing module (multi-line purchase orders).
+  static const purchasingPath = '/purchasing';
+  static const purchasingName = 'purchasing';
+
+  /// Legacy deep-link target — reorders were removed, so old
+  /// bookmarks/deep links land on purchasing instead.
+  static const legacyReordersPath = '/reorders';
+
+  static String purchaseDetail(String orderId) => '$purchasingPath/$orderId';
+  static const purchaseDetailPath = ':orderId';
+  static const purchaseDetailName = 'purchaseDetail';
+
+  /// Unified requisition order (Option 2 UX: grouped supplier cards, no PO
+  /// numbers) + its secondary export view (real PO numbers, printable).
+  static String requisitionDetail(String requisitionId) =>
+      '$purchasingPath/requisition/$requisitionId';
+  static const requisitionDetailPath = 'requisition/:requisitionId';
+  static const requisitionDetailName = 'requisitionDetail';
+
+  static String requisitionExport(String requisitionId) =>
+      '$purchasingPath/requisition/$requisitionId/export';
+  static const requisitionExportPath = 'export';
+  static const requisitionExportName = 'requisitionExport';
 
   static const productionPath = '/production';
   static const productionName = 'production';
@@ -226,8 +250,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   final customersNavigatorKey = GlobalKey<NavigatorState>(
     debugLabel: 'customers',
   );
-  final reordersNavigatorKey = GlobalKey<NavigatorState>(
-    debugLabel: 'reorders',
+  final purchasingNavigatorKey = GlobalKey<NavigatorState>(
+    debugLabel: 'purchasing',
   );
   final productionNavigatorKey = GlobalKey<NavigatorState>(
     debugLabel: 'production',
@@ -309,6 +333,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: AppRoute.notificationsName,
         builder: (context, state) => const NotificationsScreen(),
       ),
+      // Legacy single-item reorders lived here before they were removed —
+      // send old bookmarks/deep links to the purchasing module.
+      GoRoute(
+        path: AppRoute.legacyReordersPath,
+        redirect: (_, _) => AppRoute.purchasingPath,
+      ),
       // An IndexedStack shell: each branch keeps its own Navigator, so the
       // POS cart and the Sales scroll position both survive tab switches.
       StatefulShellRoute.indexedStack(
@@ -374,12 +404,43 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
           StatefulShellBranch(
-            navigatorKey: reordersNavigatorKey,
+            navigatorKey: purchasingNavigatorKey,
             routes: [
               GoRoute(
-                path: AppRoute.reordersPath,
-                name: AppRoute.reordersName,
-                builder: (context, state) => const ReordersScreenGated(),
+                path: AppRoute.purchasingPath,
+                name: AppRoute.purchasingName,
+                builder: (context, state) => const PurchasingScreen(),
+                routes: [
+                  // Declared before `:orderId` so the literal `requisition`
+                  // segment matches first — same ordering rule as
+                  // `/staff/roles` versus `:staffId`.
+                  GoRoute(
+                    path: AppRoute.requisitionDetailPath,
+                    name: AppRoute.requisitionDetailName,
+                    builder: (context, state) => RequisitionOrderScreen(
+                      requisitionId:
+                          state.pathParameters['requisitionId']!,
+                    ),
+                    routes: [
+                      GoRoute(
+                        path: AppRoute.requisitionExportPath,
+                        name: AppRoute.requisitionExportName,
+                        builder: (context, state) =>
+                            RequisitionExportScreen(
+                          requisitionId:
+                              state.pathParameters['requisitionId']!,
+                        ),
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: AppRoute.purchaseDetailPath,
+                    name: AppRoute.purchaseDetailName,
+                    builder: (context, state) => PurchaseDetailScreenGated(
+                      orderId: state.pathParameters['orderId']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

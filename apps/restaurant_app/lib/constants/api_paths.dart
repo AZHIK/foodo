@@ -106,6 +106,32 @@ abstract final class InventoryApiPaths {
       '/businesses/$businessId/reorders/$reorderId/receive';
   static String reorderCancel(String businessId, String reorderId) =>
       '/businesses/$businessId/reorders/$reorderId/cancel';
+  static String purchaseOrders(String businessId) =>
+      '/businesses/$businessId/purchases/orders';
+  static String purchaseOrder(String businessId, String orderId) =>
+      '/businesses/$businessId/purchases/orders/$orderId';
+  static String purchaseOrderAction(String businessId, String orderId, String action) =>
+      '/businesses/$businessId/purchases/orders/$orderId/$action';
+  static String purchaseReturns(String businessId) =>
+      '/businesses/$businessId/purchases/returns';
+  static String purchaseInvoices(String businessId) =>
+      '/businesses/$businessId/purchases/invoices';
+  static String purchaseInvoicePayments(String businessId, String invoiceId) =>
+      '/businesses/$businessId/purchases/invoices/$invoiceId/payments';
+  static String supplierStatement(String businessId, String supplierId) =>
+      '/businesses/$businessId/purchases/suppliers/$supplierId/statement';
+
+  /// Unified multi-supplier requisition cart → per-supplier PO split.
+  static String requisitions(String businessId) =>
+      '/businesses/$businessId/requisitions';
+  static String requisition(String businessId, String requisitionId) =>
+      '/businesses/$businessId/requisitions/$requisitionId';
+  static String requisitionBulkAssign(String businessId, String requisitionId) =>
+      '/businesses/$businessId/requisitions/$requisitionId/bulk-assign';
+  static String requisitionPayloads(String businessId, String requisitionId) =>
+      '/businesses/$businessId/requisitions/$requisitionId/regenerate-payloads';
+  static String supplierItems(String businessId) =>
+      '/businesses/$businessId/supplier-items';
 
   /// Global taxonomy endpoints (no business scope).
   static const categories = '/categories';

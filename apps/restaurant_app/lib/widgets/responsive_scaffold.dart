@@ -72,10 +72,10 @@ List<NavDestinationSpec> get _destinations => <NavDestinationSpec>[
     requiredPermission: AppPermissions.customersView,
   ),
   NavDestinationSpec(
-    label: AppStrings.navReorders,
-    icon: Icons.shopping_cart_outlined,
-    selectedIcon: Icons.shopping_cart_rounded,
-    requiredPermission: AppPermissions.reordersView,
+    label: AppStrings.navPurchasing,
+    icon: Icons.shopping_bag_outlined,
+    selectedIcon: Icons.shopping_bag_rounded,
+    requiredPermission: AppPermissions.procurementView,
   ),
   NavDestinationSpec(
     label: AppStrings.navProduction,

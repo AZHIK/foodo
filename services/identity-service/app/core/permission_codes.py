@@ -72,6 +72,10 @@ class PermissionCode(StrEnum):
     PRODUCTION_VIEW = "production.view"
     PROCUREMENT_CREATE = "procurement.create"
     PROCUREMENT_APPROVE = "procurement.approve"
+    # ── Purchases (enforced by Inventory Service's purchases endpoints —
+    # see services/inventory-service/app/api/v1/endpoints/purchases.py) ────
+    PROCUREMENT_VIEW = "procurement.view"
+    PROCUREMENT_RECEIVE = "procurement.receive"
     PROCUREMENT_AUTO_ORDER_ENABLE = "procurement.auto_order.enable"
     AI_FORECAST_VIEW = "ai.forecast.view"
     AI_RECOMMENDATION_APPROVE = "ai.recommendation.approve"

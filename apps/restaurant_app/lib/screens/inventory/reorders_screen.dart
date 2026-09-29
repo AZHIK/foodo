@@ -21,6 +21,23 @@ class ReordersScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(AppStrings.reordersTitle),
+        elevation: 0,
+      ),
+      body: const ReordersTabView(),
+    );
+  }
+}
+
+/// The reorder list without page chrome — reused as a tab inside the
+/// merged Purchasing module (`PurchasingScreen` owns the Scaffold there).
+class ReordersTabView extends ConsumerWidget {
+  const ReordersTabView({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final reorders = ref.watch(reordersListProvider);
     final pending = reorders.where((r) => r.status == ReorderStatus.pending).toList();
     final received = reorders.where((r) => r.status == ReorderStatus.received).toList();
@@ -31,14 +48,9 @@ class ReordersScreen extends ConsumerWidget {
       totalOnOrder += r.total;
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppStrings.reordersTitle),
-        elevation: 0,
-      ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.read(reordersProvider.notifier).refresh(),
-        child: ListView(
+    return RefreshIndicator(
+      onRefresh: () => ref.read(reordersProvider.notifier).refresh(),
+      child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(Insets.lg),
         children: [
@@ -115,7 +127,6 @@ class ReordersScreen extends ConsumerWidget {
               ),
             ),
         ],
-        ),
       ),
     );
   }

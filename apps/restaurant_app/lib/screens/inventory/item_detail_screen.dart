@@ -499,7 +499,9 @@ class _QuickActions extends ConsumerWidget {
   /// Whether the record-production action applies: the line is backed by a
   /// backend item with a defined recipe, and the session may record runs.
   /// Demo-mode rows (no `catalogItemId`) and recipe-less items get nothing.
+  /// Pure groceries never produce — only `sellable`/`both` may own a recipe.
   bool _canProduce(WidgetRef ref) {
+    if (!item.isMenuCatalogItem) return false;
     final catalogId = item.catalogItemId;
     if (catalogId == null) return false;
     if (!ref.watch(hasPermissionProvider(AppPermissions.productionCreate))) {
@@ -515,8 +517,12 @@ class _QuickActions extends ConsumerWidget {
   /// The recipe management action for this line, if any applies: "Edit
   /// recipe" where one is defined (needs `recipes.update`), "Add recipe"
   /// where none is (needs `recipes.create`). Demo-mode rows get nothing —
-  /// recipes genuinely need the backend's atomic catalog.
+  /// recipes genuinely need the backend's atomic catalog. Pure groceries
+  /// (`raw_material`) never get one either — the backend rejects recipes
+  /// for them (only `sellable`/`both` may own a recipe), so the button is
+  /// menu-items only.
   Widget? _recipeAction(BuildContext context, WidgetRef ref) {
+    if (!item.isMenuCatalogItem) return null;
     final catalogId = item.catalogItemId;
     if (catalogId == null) return null;
     final recipe = ref

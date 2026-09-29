@@ -13,6 +13,9 @@ class SupplierBase(BaseModel):
 
     name: str
     phone: str | None = None
+    whatsapp_number: str | None = None
+    contact_person: str | None = None
+    is_active: bool = True
     email: str | None = None
     address_line1: str | None = None
     notes: str | None = None
@@ -32,6 +35,9 @@ class SupplierUpdate(BaseModel):
 
     name: str | None = None
     phone: str | None = None
+    whatsapp_number: str | None = None
+    contact_person: str | None = None
+    is_active: bool | None = None
     email: str | None = None
     address_line1: str | None = None
     notes: str | None = None

@@ -10,6 +10,9 @@ class SupplierDto {
   final String businessId;
   final String name;
   final String? phone;
+  final String? whatsappNumber;
+  final String? contactPerson;
+  final bool isActive;
   final String? email;
   final String? addressLine1;
   final String? notes;
@@ -22,6 +25,9 @@ class SupplierDto {
     required this.businessId,
     required this.name,
     this.phone,
+    this.whatsappNumber,
+    this.contactPerson,
+    this.isActive = true,
     this.email,
     this.addressLine1,
     this.notes,

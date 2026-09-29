@@ -13,7 +13,9 @@ from app.api.v1.endpoints import categories as categories_endpoints
 from app.api.v1.endpoints import item_images as item_images_endpoints
 from app.api.v1.endpoints import items as items_endpoints
 from app.api.v1.endpoints import production as production_endpoints
+from app.api.v1.endpoints import purchases as purchases_endpoints
 from app.api.v1.endpoints import recipes as recipes_endpoints
+from app.api.v1.endpoints import requisitions as requisitions_endpoints
 from app.api.v1.endpoints import runs as runs_endpoints
 from app.api.v1.endpoints import reorders as reorders_endpoints
 from app.api.v1.endpoints import suppliers as suppliers_endpoints
@@ -60,6 +62,10 @@ app.include_router(ops_items_router, prefix="/api/v1")
 app.include_router(business_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
 app.include_router(suppliers_endpoints.router, prefix="/api/v1")
+app.include_router(purchases_endpoints.router, prefix="/api/v1")
+app.include_router(requisitions_endpoints.router, prefix="/api/v1")
+app.include_router(requisitions_endpoints.catalogue_router, prefix="/api/v1")
+app.include_router(requisitions_endpoints.po_actions_router, prefix="/api/v1")
 app.include_router(reorders_endpoints.router, prefix="/api/v1")
 app.include_router(recipes_endpoints.router, prefix="/api/v1")
 app.include_router(production_endpoints.produce_router, prefix="/api/v1")

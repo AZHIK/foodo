@@ -45,7 +45,8 @@ String _displaySku(String itemId) {
       : compact.toUpperCase();
 }
 
-double _toDouble(Decimal? value) => value == null ? 0 : double.parse(value.toString());
+double _toDouble(Decimal? value) =>
+    value == null ? 0 : double.parse(value.toString());
 
 /// Maps one joined catalog+stock row to the UI model. [stockRow] is null
 /// when a stock-level sync hasn't run yet (or hasn't seen this item) — the
@@ -57,23 +58,33 @@ double _toDouble(Decimal? value) => value == null ? 0 : double.parse(value.toStr
 /// unit taxonomy is now backend-seeded data (`CachedUnits`), not a fixed
 /// enum this mapper can hardcode. The caller (`InventoryNotifier._loadFromCache`)
 /// resolves it once per cache load rather than per row.
+///
+/// [uncategorizedId] is the backend id of the `uncategorized` category row,
+/// used when the item has no category. It must be a real id — never the
+/// `uncategorized` code itself, which matches nothing in the category
+/// dropdown and crashes it (Flutter asserts exactly one item per value).
+/// Empty string when unknown: the form then shows its "pick one" hint.
 InventoryItem inventoryItemFromCachedRow({
   required CachedItem catalogRow,
   CachedStockLevel? stockRow,
   Map<String, String> unitAbbreviationById = const {},
+  String? uncategorizedId,
 }) {
-  final sellingPrice = catalogRow.sellingPrice == null ? null : _toDouble(catalogRow.sellingPrice);
+  final sellingPrice = catalogRow.sellingPrice == null
+      ? null
+      : _toDouble(catalogRow.sellingPrice);
   return InventoryItem(
     id: catalogRow.id,
     catalogItemId: catalogRow.id,
     sku: _displaySku(catalogRow.id),
     name: catalogRow.name,
-    categoryId: catalogRow.category ?? 'uncategorized',
+    categoryId: catalogRow.category ?? uncategorizedId ?? '',
     emoji: '📦',
     stock: stockRow != null ? _toDouble(stockRow.currentQuantity) : 0,
     reorderLevel: _toDouble(catalogRow.reorderThreshold),
     unitCost: _toDouble(catalogRow.unitCost),
-    unit: unitAbbreviationById[catalogRow.unitId] ?? _unresolvedUnitAbbreviation,
+    unit:
+        unitAbbreviationById[catalogRow.unitId] ?? _unresolvedUnitAbbreviation,
     isArchived: !catalogRow.isActive,
     sellingPrice: sellingPrice,
     // Raw materials never sell through the till, even if a price leaked in.

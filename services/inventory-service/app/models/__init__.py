@@ -20,13 +20,43 @@ from app.models.inventory import (
     StockLevel,
     StockMovement,
 )
+from app.models.purchases import (
+    GoodsReceipt,
+    GoodsReceiptLine,
+    InvoiceStatus,
+    PurchaseOrder,
+    PurchaseOrderLine,
+    PurchaseOrderStatus,
+    PurchaseReturn,
+    SupplierInvoice,
+    SupplierPayment,
+)
 from app.models.reorders import Reorder, ReorderStatus
+from app.models.requisition import (
+    AssignmentSource,
+    MessageChannel,
+    MessageDirection,
+    MessageStatus,
+    Requisition,
+    RequisitionLine,
+    SupplierItem,
+    SupplierMessage,
+)
 from app.models.suppliers import Supplier
 from app.models.units import Unit
 
 __all__ = [
     "ActorType",
     "Category",
+    "GoodsReceipt",
+    "GoodsReceiptLine",
+    "InvoiceStatus",
+    "PurchaseOrder",
+    "PurchaseOrderLine",
+    "PurchaseOrderStatus",
+    "PurchaseReturn",
+    "SupplierInvoice",
+    "SupplierPayment",
     "Item",
     "ItemType",
     "MovementType",
@@ -37,6 +67,14 @@ __all__ = [
     "RecipeComponent",
     "Reorder",
     "ReorderStatus",
+    "AssignmentSource",
+    "MessageChannel",
+    "MessageDirection",
+    "MessageStatus",
+    "Requisition",
+    "RequisitionLine",
+    "SupplierItem",
+    "SupplierMessage",
     "StockLevel",
     "StockMovement",
     "Supplier",

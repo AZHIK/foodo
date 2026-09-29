@@ -40,6 +40,16 @@ class Supplier(SQLModel, table=True):
     )
     name: str = Field(nullable=False, max_length=255)
     phone: str | None = Field(default=None, max_length=64)
+    # E.164 WhatsApp number used for the wa.me deep link. Nullable — when
+    # absent the PO is still created but payload/deep_link generation is
+    # skipped and the UI shows "Add WhatsApp number to send." Falls back to
+    # ``phone`` when unset (legacy data).
+    whatsapp_number: str | None = Field(default=None, max_length=64)
+    contact_person: str | None = Field(default=None, max_length=255)
+    # Active flag for the supplier directory. Independent of the ``is_deleted``
+    # soft-delete below: ``is_active=False`` means "temporarily not ordering",
+    # ``is_deleted=True`` means retired (history preserved).
+    is_active: bool = Field(default=True, nullable=False, index=True)
     email: str | None = Field(default=None, max_length=255)
     address_line1: str | None = Field(default=None, max_length=255)
     notes: str | None = Field(default=None, max_length=1000)

@@ -1,0 +1,489 @@
+"""Purchases domain models — multi-line purchase orders, GRNs, returns, payables.
+
+═══════════════════════════════════════════════════════════════════════════
+STORE-SCOPED HEADERS (like ``Reorder``, unlike ``Supplier``)
+═══════════════════════════════════════════════════════════════════════════
+
+Receiving credits a specific ``StockLevel`` row keyed by
+``(item_id, store_id)`` — so ``PurchaseOrder``, ``GoodsReceipt`` and
+``PurchaseReturn`` all carry ``store_id`` from creation, the same reasoning
+``StockMovement`` itself is store-scoped.
+
+═══════════════════════════════════════════════════════════════════════════
+REAL FOREIGN KEYS, NOT CROSS-SERVICE REFERENCES
+═══════════════════════════════════════════════════════════════════════════
+
+``item_id``/``supplier_id``/``purchase_order_id`` reference rows in THIS
+service's own database, so real FK constraints apply (``RESTRICT`` on
+records, ``CASCADE`` on owned lines). ``business_id``/``store_id`` remain
+plain indexed UUIDs (Identity Service references — see
+``app/models/inventory.py``). Do NOT add FK constraints to those columns.
+
+═══════════════════════════════════════════════════════════════════════════
+NO SOFT-DELETE — STATE TRANSITIONS INSTEAD (mirrors ``Reorder``/``Sale``)
+═══════════════════════════════════════════════════════════════════════════
+
+Orders, receipts, returns, invoices and payments are append-only purchase
+records: ``status`` moves forward and never moves back, recorded via a
+timestamp + actor pair per transition rather than a mutable row that gets
+deleted. GRN/receipt/return/payment rows are never updated or deleted by
+application code.
+
+═══════════════════════════════════════════════════════════════════════════
+ONLINE-ONLY
+═══════════════════════════════════════════════════════════════════════════
+
+All writes go through the API in a single transaction (GRN receipt loops
+``record_movement(..., commit=False)`` then commits once). There is no
+offline outbox for purchases — the Flutter client gates writes on
+connectivity and calls the API directly, mirroring the existing
+supplier/reorder no-outbox convention.
+"""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from decimal import Decimal
+from enum import Enum as PyEnum
+from uuid import UUID, uuid4
+
+from sqlalchemy import Column, DateTime, Numeric, UniqueConstraint, func
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlmodel import Field, ForeignKey, SQLModel
+
+
+class PurchaseOrderStatus(str, PyEnum):
+    DRAFT = "draft"
+    SUBMITTED = "submitted"
+    APPROVED = "approved"
+    PARTIALLY_RECEIVED = "partially_received"
+    RECEIVED = "received"
+    CANCELLED = "cancelled"
+    # ── Requisition-split lifecycle (additive; existing GRN flow untouched).
+    # Requisition POs are created at PAYLOAD_READY (message prepared, nothing
+    # sent). Staff then advance manually via the UI: SENT (wa.me opened +
+    # "Mark as Sent"), CONFIRMED (supplier replied), PARTIALLY_FULFILLED /
+    # FULFILLED (goods arriving). Kept distinct from submitted/approved/
+    # received so the classic single-supplier flow keeps working unchanged.
+    PAYLOAD_READY = "payload_ready"
+    SENT = "sent"
+    CONFIRMED = "confirmed"
+    PARTIALLY_FULFILLED = "partially_fulfilled"
+    FULFILLED = "fulfilled"
+
+
+class InvoiceStatus(str, PyEnum):
+    UNBILLED = "unbilled"  # PO-level: no supplier invoice captured yet
+    UNPAID = "unpaid"
+    PARTIAL = "partial"
+    PAID = "paid"
+
+
+def _enum_db_values(enum_class: type[PyEnum]) -> list[str]:
+    """See ``app/models/inventory.py`` — same rationale, kept local to avoid
+    importing a private helper across model files."""
+
+    return [member.value for member in enum_class]
+
+
+class PurchaseOrder(SQLModel, table=True):
+    """Multi-line purchase order header with one supplier per order."""
+
+    __table_args__ = (
+        UniqueConstraint(
+            "business_id",
+            "po_number",
+            name="uq_purchaseorder_business_po_number",
+        ),
+    )
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        nullable=False,
+        sa_type=PG_UUID,
+    )
+    business_id: UUID = Field(nullable=False, index=True, sa_type=PG_UUID)
+    store_id: UUID = Field(nullable=False, index=True, sa_type=PG_UUID)
+    supplier_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("supplier.id", ondelete="RESTRICT"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    po_number: str = Field(nullable=False, max_length=32)
+    # ── Requisition-split linkage (additive, nullable so legacy POs keep
+    # working). Set when the PO was produced by a requisition submit.
+    requisition_id: UUID | None = Field(
+        default=None,
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("requisition.id", ondelete="RESTRICT"),
+            nullable=True,
+            index=True,
+        ),
+    )
+    # Idempotency key echoed from the requisition submit (business-scoped
+    # uniqueness enforced at the requisition level, stored here for audit).
+    idempotency_key: str | None = Field(default=None, max_length=128, index=True)
+    status: PurchaseOrderStatus = Field(
+        default=PurchaseOrderStatus.DRAFT,
+        sa_column=Column(
+            SAEnum(
+                PurchaseOrderStatus,
+                values_callable=_enum_db_values,
+                name="purchaseorderstatus",
+            ),
+            nullable=False,
+            index=True,
+        ),
+    )
+    invoice_status: InvoiceStatus = Field(
+        default=InvoiceStatus.UNBILLED,
+        sa_column=Column(
+            SAEnum(
+                InvoiceStatus,
+                values_callable=_enum_db_values,
+                name="invoicestatus",
+            ),
+            nullable=False,
+            index=True,
+        ),
+    )
+    # Snapshot of sum(lines.quantity_ordered * lines.unit_cost) at last
+    # line write — recomputed server-side, never client-supplied.
+    total_amount: Decimal = Field(
+        default=Decimal("0.00"),
+        sa_type=Numeric(precision=12, scale=2),
+    )
+    notes: str | None = Field(default=None, max_length=1000)
+    ordered_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_type=DateTime(timezone=True),
+        nullable=False,
+    )
+    ordered_by: UUID | None = Field(default=None, sa_type=PG_UUID)
+    approved_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    approved_by: UUID | None = Field(default=None, sa_type=PG_UUID)
+    expected_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    received_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    received_by: UUID | None = Field(default=None, sa_type=PG_UUID)
+    cancelled_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    cancelled_by: UUID | None = Field(default=None, sa_type=PG_UUID)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_type=DateTime(timezone=True),
+        sa_column_kwargs={"server_default": func.now()},
+        nullable=False,
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_type=DateTime(timezone=True),
+        sa_column_kwargs={"server_default": func.now(), "onupdate": func.now()},
+        nullable=False,
+    )
+
+
+class PurchaseOrderLine(SQLModel, table=True):
+    """One item line of a ``PurchaseOrder``.
+
+    ``unit`` is denormalized from the item at creation (same reasoning as
+    ``Reorder.unit``). ``quantity_received`` is a counter maintained by GRN
+    receipts — never client-supplied on receive.
+    """
+
+    __table_args__ = (
+        UniqueConstraint(
+            "purchase_order_id",
+            "item_id",
+            name="uq_purchaseorderline_order_item",
+        ),
+    )
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        nullable=False,
+        sa_type=PG_UUID,
+    )
+    purchase_order_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("purchaseorder.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    item_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("item.id", ondelete="RESTRICT"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    quantity_ordered: Decimal = Field(
+        nullable=False,
+        sa_type=Numeric(precision=12, scale=3),
+    )
+    quantity_received: Decimal = Field(
+        default=Decimal("0.000"),
+        sa_type=Numeric(precision=12, scale=3),
+    )
+    unit: str = Field(nullable=False, max_length=16)
+    unit_cost: Decimal = Field(
+        nullable=False,
+        sa_type=Numeric(precision=12, scale=4),
+    )
+    # True when no SupplierItem price existed at requisition-split time —
+    # the line's price is TBC with the supplier (shown in UI + payload).
+    price_unconfirmed: bool = Field(default=False, nullable=False)
+    notes: str | None = Field(default=None, max_length=500)
+
+
+class GoodsReceipt(SQLModel, table=True):
+    """One goods-received event against a ``PurchaseOrder`` (partial GRNs).
+
+    A receipt is a RECORD: never updated or deleted by application code.
+    Each ``GoodsReceiptLine`` produces one ``PURCHASE_RECEIVED`` movement in
+    the same transaction (``reference_type="goods_receipt"``).
+    """
+
+    __table_args__ = (
+        UniqueConstraint(
+            "business_id",
+            "grn_number",
+            name="uq_goodsreceipt_business_grn_number",
+        ),
+    )
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        nullable=False,
+        sa_type=PG_UUID,
+    )
+    business_id: UUID = Field(nullable=False, index=True, sa_type=PG_UUID)
+    store_id: UUID = Field(nullable=False, index=True, sa_type=PG_UUID)
+    purchase_order_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("purchaseorder.id", ondelete="RESTRICT"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    grn_number: str = Field(nullable=False, max_length=32)
+    notes: str | None = Field(default=None, max_length=1000)
+    received_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_type=DateTime(timezone=True),
+        nullable=False,
+    )
+    received_by: UUID | None = Field(default=None, sa_type=PG_UUID)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_type=DateTime(timezone=True),
+        sa_column_kwargs={"server_default": func.now()},
+        nullable=False,
+    )
+
+
+class GoodsReceiptLine(SQLModel, table=True):
+    """One received quantity within a ``GoodsReceipt``."""
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        nullable=False,
+        sa_type=PG_UUID,
+    )
+    goods_receipt_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("goodsreceipt.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    purchase_order_line_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("purchaseorderline.id", ondelete="RESTRICT"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    item_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("item.id", ondelete="RESTRICT"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    quantity_received: Decimal = Field(
+        nullable=False,
+        sa_type=Numeric(precision=12, scale=3),
+    )
+
+
+class PurchaseReturn(SQLModel, table=True):
+    """Stock returned to a supplier (damaged/expired/wrong item).
+
+    A return is a RECORD: never updated or deleted. It decrements stock via
+    a negative-quantity movement in the same transaction
+    (``reference_type="purchase_return"``). Returned quantity may never
+    exceed received-minus-previously-returned for the line's item.
+    """
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        nullable=False,
+        sa_type=PG_UUID,
+    )
+    business_id: UUID = Field(nullable=False, index=True, sa_type=PG_UUID)
+    store_id: UUID = Field(nullable=False, index=True, sa_type=PG_UUID)
+    purchase_order_id: UUID | None = Field(
+        default=None,
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("purchaseorder.id", ondelete="RESTRICT"),
+            nullable=True,
+            index=True,
+        ),
+    )
+    goods_receipt_id: UUID | None = Field(
+        default=None,
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("goodsreceipt.id", ondelete="RESTRICT"),
+            nullable=True,
+            index=True,
+        ),
+    )
+    item_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("item.id", ondelete="RESTRICT"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    quantity: Decimal = Field(
+        nullable=False,
+        sa_type=Numeric(precision=12, scale=3),
+    )
+    reason: str | None = Field(default=None, max_length=500)
+    created_by: UUID | None = Field(default=None, sa_type=PG_UUID)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_type=DateTime(timezone=True),
+        sa_column_kwargs={"server_default": func.now()},
+        nullable=False,
+    )
+
+
+class SupplierInvoice(SQLModel, table=True):
+    """Supplier's bill for a purchase order — minimal payables ledger.
+
+    ``amount_paid`` is a counter maintained by ``SupplierPayment`` writes.
+    ``status`` is derived from ``amount_paid`` vs ``amount_total``.
+    """
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        nullable=False,
+        sa_type=PG_UUID,
+    )
+    business_id: UUID = Field(nullable=False, index=True, sa_type=PG_UUID)
+    supplier_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("supplier.id", ondelete="RESTRICT"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    purchase_order_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("purchaseorder.id", ondelete="RESTRICT"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    # The supplier's own reference printed on their bill.
+    invoice_number: str = Field(nullable=False, max_length=64)
+    amount_total: Decimal = Field(
+        nullable=False,
+        sa_type=Numeric(precision=12, scale=2),
+    )
+    amount_paid: Decimal = Field(
+        default=Decimal("0.00"),
+        sa_type=Numeric(precision=12, scale=2),
+    )
+    status: InvoiceStatus = Field(
+        default=InvoiceStatus.UNPAID,
+        sa_column=Column(
+            SAEnum(
+                InvoiceStatus,
+                values_callable=_enum_db_values,
+                name="invoicestatus",
+                create_type=False,
+            ),
+            nullable=False,
+            index=True,
+        ),
+    )
+    due_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    created_by: UUID | None = Field(default=None, sa_type=PG_UUID)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_type=DateTime(timezone=True),
+        sa_column_kwargs={"server_default": func.now()},
+        nullable=False,
+    )
+
+
+class SupplierPayment(SQLModel, table=True):
+    """One payment against a ``SupplierInvoice`` — RECORD, never updated."""
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        nullable=False,
+        sa_type=PG_UUID,
+    )
+    business_id: UUID = Field(nullable=False, index=True, sa_type=PG_UUID)
+    invoice_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("supplierinvoice.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
+    )
+    amount: Decimal = Field(
+        nullable=False,
+        sa_type=Numeric(precision=12, scale=2),
+    )
+    method: str | None = Field(default=None, max_length=32)
+    reference: str | None = Field(default=None, max_length=128)
+    paid_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_type=DateTime(timezone=True),
+        nullable=False,
+    )
+    paid_by: UUID | None = Field(default=None, sa_type=PG_UUID)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_type=DateTime(timezone=True),
+        sa_column_kwargs={"server_default": func.now()},
+        nullable=False,
+    )

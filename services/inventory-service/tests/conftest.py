@@ -56,6 +56,17 @@ APP_TABLES = (
     "processedevent",
     "reorder",
     "supplier",
+    "purchaseorder",
+    "purchaseorderline",
+    "goodsreceipt",
+    "goodsreceiptline",
+    "purchasereturn",
+    "supplierinvoice",
+    "supplierpayment",
+    "requisition",
+    "requisitionline",
+    "supplieritem",
+    "suppliermessage",
 )
 
 
@@ -184,7 +195,11 @@ async def _clean_tables() -> AsyncGenerator[None, None]:
             text(
                 "TRUNCATE TABLE item, recipe, recipecomponent, productionevent, "
                 "productioneventcomponent, stocklevel, "
-                "stockmovement, processedevent, reorder, supplier "
+                "stockmovement, processedevent, reorder, supplier, "
+                "purchaseorder, purchaseorderline, goodsreceipt, "
+                "goodsreceiptline, purchasereturn, supplierinvoice, "
+                "supplierpayment, requisition, requisitionline, "
+                "supplieritem, suppliermessage "
                 "RESTART IDENTITY CASCADE"
             )
         )

@@ -12,6 +12,7 @@ import '../auth/token_storage.dart';
 import '../config/api_config.dart';
 import '../constants/app_durations.dart';
 import '../services/inventory_api_service.dart';
+import '../services/purchase_api_service.dart';
 import '../services/reorder_api_service.dart';
 import '../services/supplier_api_service.dart';
 import '../sync/catalog_sync_service.dart';
@@ -125,6 +126,12 @@ final supplierApiServiceProvider = Provider<SupplierApiService>(
 /// The one real client for reorder create/receive/cancel.
 final reorderApiServiceProvider = Provider<ReorderApiService>(
   (ref) => ReorderApiService(dio: ref.watch(inventoryServiceDioProvider)),
+);
+
+/// The one real client for the purchases module (multi-line POs, GRNs,
+/// returns, invoices, payments). Online-only: no cache, no outbox.
+final purchaseApiServiceProvider = Provider<PurchaseApiService>(
+  (ref) => PurchaseApiService(dio: ref.watch(inventoryServiceDioProvider)),
 );
 
 /// The one real client for the read-side category taxonomy pull. Unlike

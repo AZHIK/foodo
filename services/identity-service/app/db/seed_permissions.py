@@ -139,6 +139,16 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
         "Approve supplier purchase requests and purchase orders.",
     ),
     PermissionSeed(
+        PermissionCode.PROCUREMENT_VIEW,
+        "View purchases",
+        "List purchase orders, goods receipts, invoices and supplier statements.",
+    ),
+    PermissionSeed(
+        PermissionCode.PROCUREMENT_RECEIVE,
+        "Receive purchases",
+        "Record goods receipts and purchase returns against purchase orders.",
+    ),
+    PermissionSeed(
         PermissionCode.PROCUREMENT_AUTO_ORDER_ENABLE,
         "Enable automated ordering",
         "Allow automated procurement actions to be enabled.",
