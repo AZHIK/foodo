@@ -31,7 +31,13 @@ class NotificationsScreen extends ConsumerWidget {
               child: Text(AppStrings.markAllRead),
             ),
           IconButton(
-            onPressed: () => context.pop(),
+            // This screen is a top-level route reached via `go` (which
+            // replaces the location rather than pushing), so there is
+            // usually nothing to pop — fall back to the dashboard then.
+            // Same guard as `staff_detail_screen.dart`.
+            onPressed: () => context.canPop()
+                ? context.pop()
+                : context.goNamed(AppRoute.dashboardName),
             icon: const Icon(Icons.close_rounded),
           ),
         ],
