@@ -993,12 +993,7 @@ abstract final class AppStrings {
       L10n.t('allSuppliersExport', 'All suppliers');
   static String get availableAtTill =>
       L10n.t('availableAtTill', 'Available at the till');
-  static String get noDemoSales => L10n.t('noDemoSales', 'No demo sales yet');
-  static String demoTopSeller(Object units) =>
-      '$units sold · last 7 days, demo data';
   static String get emDash => L10n.t('emDash', '—');
-  static String get last7DaysDemo =>
-      L10n.t('last7DaysDemo', 'Last 7 days, demo data');
   static String get groceryItemsMetric =>
       L10n.t('groceryItemsMetric', 'Grocery items');
   static String get searchItemsSkuSupplier =>
@@ -2349,15 +2344,6 @@ abstract final class AppStrings {
   static String staffClockedIn(String name) =>
       L10n.tp('staffClockedIn', '{name} clocked in', {'name': name});
   static String get staffFallbackRole => L10n.t('staffFallbackRole', 'Staff');
-
-  static String menuCategoryName(String id) => switch (id) {
-    'starters' => L10n.t('menuCatStarters', 'Starters'),
-    'mains' => L10n.t('menuCatMains', 'Mains'),
-    'sides' => L10n.t('menuCatSides', 'Sides'),
-    'drinks' => L10n.t('menuCatDrinks', 'Drinks'),
-    'desserts' => L10n.t('menuCatDesserts', 'Desserts'),
-    _ => id,
-  };
 
   static String get promptReorderWeekend => L10n.t(
     'promptReorderWeekend',

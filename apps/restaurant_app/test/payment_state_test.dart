@@ -1,13 +1,33 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:restaurant_pos/data/mock_menu.dart';
+import 'package:restaurant_pos/models/menu_item.dart';
 import 'package:restaurant_pos/models/order.dart';
 import 'package:restaurant_pos/models/order_totals.dart';
 import 'package:restaurant_pos/providers/cart_provider.dart';
 import 'package:restaurant_pos/providers/orders_provider.dart';
 
 import 'test_helpers/test_container.dart';
+
+/// Local menu fixtures for the cart — two priced items so the subtotal is
+/// not just one price echoed back. Plain test data, not shared fixtures.
+const _flatWhite = MenuItem(
+  id: 'test-flat-white',
+  name: 'Flat White',
+  description: 'Test fixture',
+  price: 4.50,
+  categoryId: 'drinks',
+  emoji: '☕',
+);
+
+const _croissant = MenuItem(
+  id: 'test-croissant',
+  name: 'Butter Croissant',
+  description: 'Test fixture',
+  price: 3.25,
+  categoryId: 'mains',
+  emoji: '🥐',
+);
 
 /// The checkout flow's shared state: one totals calculation, one payment
 /// record, read by the payment screen, the receipt and sale detail alike.
@@ -24,8 +44,8 @@ void main() {
     final container = makeContainer();
     final cart = container.read(cartProvider.notifier);
     // Two items so the subtotal is not just one price echoed back.
-    cart.add(MockMenu.items.firstWhere((i) => i.isAvailable), quantity: 2);
-    cart.add(MockMenu.items.lastWhere((i) => i.isAvailable));
+    cart.add(_flatWhite, quantity: 2);
+    cart.add(_croissant);
     return container;
   }
 
@@ -178,8 +198,8 @@ void main() {
       cart.selectPaymentMethod(PaymentType.cash);
       cart.setAmountTendered(200);
 
-      // `OrdersNotifier.build()` resolves asynchronously even in demo mode
-      // (no store context) — waiting for it first avoids racing `placeOrder`
+      // `OrdersNotifier.build()` resolves asynchronously even with no store
+      // context — waiting for it first avoids racing `placeOrder`
       // against the notifier's own initial state resolution.
       await container.read(ordersProvider.future);
 

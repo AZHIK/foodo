@@ -98,7 +98,7 @@ abstract final class AppDurations {
   static const onShiftWindow = Duration(hours: 12);
   static const backgroundSyncInterval = Duration(minutes: 15);
   static const syncPollDelay = Duration(seconds: 2);
-  static const mockChatReplyDelay = Duration(milliseconds: 500);
+  static const assistantReplyDelay = Duration(milliseconds: 500);
   static const accountSaveDebounce = Duration(milliseconds: 600);
 
   // -------------------------------------------------------------------------

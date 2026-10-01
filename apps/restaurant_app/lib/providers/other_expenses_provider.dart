@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
-import '../data/mock_finance.dart';
+import '../data/finance_categories.dart';
 import '../constants/app_limits.dart';
 import '../database/app_database.dart';
 import '../models/finance_attachment.dart';
@@ -50,14 +50,13 @@ class FinanceOfflineMutationException implements Exception {
 /// context exists.
 ///
 /// Same stale-while-revalidate contract as `OrdersNotifier`/`InventoryNotifier`:
-/// `build()` never blocks on the network, a background refresh keeps the
-/// cache current, and with no store context at all this falls back to
-/// [MockFinance] so demo mode stays populated.
+/// `build()` never blocks on the network and a background refresh keeps the
+/// cache current.
 class OtherExpensesNotifier extends AsyncNotifier<List<OtherExpense>> {
   @override
   Future<List<OtherExpense>> build() async {
     final storeId = ref.watch(currentStoreIdProvider);
-    if (storeId == null) return List.of(MockFinance.expenses);
+    if (storeId == null) return const [];
 
     var disposed = false;
     ref.onDispose(() => disposed = true);
@@ -104,18 +103,18 @@ class OtherExpensesNotifier extends AsyncNotifier<List<OtherExpense>> {
     return rows;
   }
 
-  /// Re-runs sync and waits for it — for a manual refresh action. A no-op
-  /// with no store context (demo mode has nothing to pull).
+  /// Re-runs sync and waits for it — for a manual refresh action. Requires
+  /// a store context.
   Future<void> refresh() async {
     final storeId = ref.read(currentStoreIdProvider);
-    if (storeId == null) return;
+    if (storeId == null) throw StateError('No active store context');
     state = const AsyncLoading<List<OtherExpense>>().copyWithPrevious(state);
     await ref.read(financeSyncServiceProvider).syncNow();
     await ref.read(financeLedgerSyncServiceProvider).syncExpenses(storeId: storeId);
     state = AsyncData(await _loadFromCache(storeId));
   }
 
-  /// Creates a new expense entry.
+  /// Creates a new expense entry. Requires a store context.
   Future<OtherExpense> create({
     required DateTime date,
     required String categoryId,
@@ -127,23 +126,8 @@ class OtherExpensesNotifier extends AsyncNotifier<List<OtherExpense>> {
     FinanceAttachment? receipt,
   }) async {
     final storeId = ref.read(currentStoreIdProvider);
+    if (storeId == null) throw StateError('No active store context');
     final current = state.valueOrNull ?? const <OtherExpense>[];
-
-    if (storeId == null) {
-      final expense = OtherExpense(
-        id: _nextMockId(current),
-        date: date,
-        categoryId: categoryId,
-        description: description,
-        amount: amount,
-        paymentType: paymentType,
-        payee: payee,
-        note: note,
-        receipt: receipt,
-      );
-      state = AsyncData([expense, ...current]);
-      return expense;
-    }
 
     final localReceiptPath = await _persistReceiptLocally(receipt);
     final clientId = await ref.read(financeEntryWriterProvider).writeExpense(
@@ -180,7 +164,6 @@ class OtherExpensesNotifier extends AsyncNotifier<List<OtherExpense>> {
   /// Edits [existing]. A still-unsynced outbox row is updated in place and
   /// re-queued; an already-synced row is PATCHed directly, which requires
   /// connectivity (throws [FinanceOfflineMutationException] otherwise).
-  /// Demo mode edits in-memory only.
   ///
   /// Named `edit` rather than `update` — `AsyncNotifier` already declares a
   /// built-in `update(...)` helper method, which this would otherwise
@@ -198,6 +181,7 @@ class OtherExpensesNotifier extends AsyncNotifier<List<OtherExpense>> {
     bool clearReceipt = false,
   }) async {
     final storeId = ref.read(currentStoreIdProvider);
+    if (storeId == null) throw StateError('No active store context');
     final updated = existing.copyWith(
       date: date,
       categoryId: categoryId,
@@ -209,11 +193,6 @@ class OtherExpensesNotifier extends AsyncNotifier<List<OtherExpense>> {
       receipt: receipt,
       clearReceipt: clearReceipt,
     );
-
-    if (storeId == null) {
-      _replaceInState(updated);
-      return updated;
-    }
 
     final db = ref.read(appDatabaseProvider);
     final outboxRow = await (db.select(db.expenseEntries)
@@ -271,12 +250,8 @@ class OtherExpensesNotifier extends AsyncNotifier<List<OtherExpense>> {
   /// split and the offline-mutation refusal.
   Future<void> delete(String id) async {
     final storeId = ref.read(currentStoreIdProvider);
+    if (storeId == null) throw StateError('No active store context');
     final current = state.valueOrNull ?? const <OtherExpense>[];
-
-    if (storeId == null) {
-      state = AsyncData(current.where((e) => e.id != id).toList());
-      return;
-    }
 
     final db = ref.read(appDatabaseProvider);
     final outboxRow = await (db.select(db.expenseEntries)
@@ -325,15 +300,6 @@ class OtherExpensesNotifier extends AsyncNotifier<List<OtherExpense>> {
   }
 
   String get _actorUserId => ref.read(sessionStaffProvider)?.id ?? '';
-
-  String _nextMockId(List<OtherExpense> current) {
-    var highest = 0;
-    for (final e in current) {
-      final n = int.tryParse(e.id.split('-').last);
-      if (n != null && n > highest) highest = n;
-    }
-    return 'exp-${(highest + 1).toString().padLeft(2, '0')}';
-  }
 
   /// Persists picked receipt bytes to app-local storage so they survive a
   /// restart before `FinanceSyncService` uploads them. Returns null if
@@ -419,13 +385,13 @@ final filteredOtherExpensesProvider = Provider<List<OtherExpense>>((ref) {
   final rows = expenses.where((e) {
     if (!filters.matches(e)) return false;
     if (search.isEmpty) return true;
-    return e.description.toLowerCase().contains(search) || e.payee.toLowerCase().contains(search) || MockFinance.expenseCategoryLabel(e.categoryId).toLowerCase().contains(search) || e.paymentType.label.toLowerCase().contains(search);
+    return e.description.toLowerCase().contains(search) || e.payee.toLowerCase().contains(search) || FinanceCategories.expenseLabel(e.categoryId).toLowerCase().contains(search) || e.paymentType.label.toLowerCase().contains(search);
   }).toList();
   final direction = query.ascending ? 1 : -1;
   rows.sort((a, b) {
     final cmp = switch (query.sortField) {
       OtherExpenseSort.date => a.date.compareTo(b.date),
-      OtherExpenseSort.category => MockFinance.expenseCategoryLabel(a.categoryId).compareTo(MockFinance.expenseCategoryLabel(b.categoryId)),
+      OtherExpenseSort.category => FinanceCategories.expenseLabel(a.categoryId).compareTo(FinanceCategories.expenseLabel(b.categoryId)),
       OtherExpenseSort.description => a.description.toLowerCase().compareTo(b.description.toLowerCase()),
       OtherExpenseSort.amount => a.amount.compareTo(b.amount),
       OtherExpenseSort.payee => a.payee.toLowerCase().compareTo(b.payee.toLowerCase()),
@@ -458,5 +424,5 @@ final otherExpensesSummaryProvider = Provider<OtherExpensesSummary>((ref) {
     byCategory[e.categoryId] = (byCategory[e.categoryId] ?? 0) + e.amount;
   }
   final largest = byCategory.isEmpty ? null : byCategory.entries.reduce((a, b) => a.value > b.value ? a : b);
-  return OtherExpensesSummary(total: total, entryCount: expenses.length, largestCategoryLabel: largest == null ? '—' : MockFinance.expenseCategoryLabel(largest.key), largestCategoryAmount: largest?.value ?? 0);
+  return OtherExpensesSummary(total: total, entryCount: expenses.length, largestCategoryLabel: largest == null ? '—' : FinanceCategories.expenseLabel(largest.key), largestCategoryAmount: largest?.value ?? 0);
 });

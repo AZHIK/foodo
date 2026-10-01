@@ -4,7 +4,6 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/mock_customers.dart';
 import '../database/app_database.dart';
 import '../models/customer.dart';
 import '../models/table_query.dart';
@@ -46,7 +45,7 @@ class CustomersNotifier extends AsyncNotifier<List<Customer>> {
   @override
   Future<List<Customer>> build() async {
     final businessId = ref.watch(currentBusinessIdProvider);
-    if (businessId == null) return List.of(MockCustomers.list);
+    if (businessId == null) return const [];
 
     var disposed = false;
     ref.onDispose(() => disposed = true);
@@ -94,7 +93,7 @@ class CustomersNotifier extends AsyncNotifier<List<Customer>> {
   }
 
   /// Re-runs sync and waits for it — for a manual refresh action. A no-op
-  /// with no business context (demo mode has nothing to pull).
+  /// with no business context (no ledger to pull).
   Future<void> refresh() async {
     final businessId = ref.read(currentBusinessIdProvider);
     if (businessId == null) return;
@@ -104,7 +103,8 @@ class CustomersNotifier extends AsyncNotifier<List<Customer>> {
     state = AsyncData(await _loadFromCache(businessId));
   }
 
-  /// Creates a new customer.
+  /// Creates a new customer. Requires an active business context — without
+  /// one there is no ledger to write to.
   Future<Customer> create({
     required String name,
     required String phone,
@@ -112,22 +112,8 @@ class CustomersNotifier extends AsyncNotifier<List<Customer>> {
     String? addressLine1,
   }) async {
     final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) throw StateError('No active business context');
     final current = state.valueOrNull ?? const <Customer>[];
-
-    if (businessId == null) {
-      final customer = Customer(
-        id: MockCustomers.nextId(current),
-        name: name,
-        phone: phone,
-        email: email,
-        addressLine1: addressLine1,
-        createdAt: DateTime.now(),
-        totalOrders: 0,
-        totalSpent: 0,
-      );
-      state = AsyncData([customer, ...current]);
-      return customer;
-    }
 
     final joinedAt = DateTime.now();
     final customerId = await ref.read(customerEntryWriterProvider).writeCustomer(
@@ -159,7 +145,6 @@ class CustomersNotifier extends AsyncNotifier<List<Customer>> {
   /// Edits [existing]. A still-unsynced outbox row is updated in place and
   /// re-queued; an already-synced row is PATCHed directly, which requires
   /// connectivity (throws [CustomerOfflineMutationException] otherwise).
-  /// Demo mode edits in-memory only.
   ///
   /// Named `edit` rather than `update` — `AsyncNotifier` already declares a
   /// built-in `update(...)` helper method, which this would otherwise
@@ -172,6 +157,7 @@ class CustomersNotifier extends AsyncNotifier<List<Customer>> {
     String? addressLine1,
   }) async {
     final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) throw StateError('No active business context');
     final updated = existing.copyWith(
       name: name,
       phone: phone,
@@ -180,11 +166,6 @@ class CustomersNotifier extends AsyncNotifier<List<Customer>> {
       addressLine1: addressLine1,
       clearAddressLine1: addressLine1 == null,
     );
-
-    if (businessId == null) {
-      _replaceInState(updated);
-      return updated;
-    }
 
     final db = ref.read(appDatabaseProvider);
     final outboxRow = await (db.select(db.customerEntries)
@@ -228,12 +209,8 @@ class CustomersNotifier extends AsyncNotifier<List<Customer>> {
   /// and the offline-mutation refusal.
   Future<void> delete(String id) async {
     final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) throw StateError('No active business context');
     final current = state.valueOrNull ?? const <Customer>[];
-
-    if (businessId == null) {
-      state = AsyncData(current.where((c) => c.id != id).toList());
-      return;
-    }
 
     final db = ref.read(appDatabaseProvider);
     final outboxRow = await (db.select(db.customerEntries)

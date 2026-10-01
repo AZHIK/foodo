@@ -15,7 +15,6 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/mock_suppliers.dart';
 import '../models/supplier.dart';
 import '../sync/purchasing_mapper.dart';
 import 'database_providers.dart';
@@ -26,7 +25,7 @@ class SuppliersNotifier extends AsyncNotifier<List<Supplier>> {
   @override
   Future<List<Supplier>> build() async {
     final businessId = ref.watch(currentBusinessIdProvider);
-    if (businessId == null) return List.of(MockSuppliers.list);
+    if (businessId == null) return const [];
 
     var disposed = false;
     ref.onDispose(() => disposed = true);
@@ -59,11 +58,11 @@ class SuppliersNotifier extends AsyncNotifier<List<Supplier>> {
     return suppliers;
   }
 
-  /// Re-runs sync and waits for it — for a manual refresh action. A no-op
-  /// with no business context (demo mode has nothing to pull).
+  /// Re-runs sync and waits for it — for a manual refresh action. Requires
+  /// an active business context.
   Future<void> refresh() async {
     final businessId = ref.read(currentBusinessIdProvider);
-    if (businessId == null) return;
+    if (businessId == null) throw StateError('No active business context');
     state = const AsyncLoading<List<Supplier>>().copyWithPrevious(state);
     await ref.read(purchasingSyncServiceProvider).syncSuppliers();
     state = AsyncData(await _loadFromCache(businessId));
@@ -77,21 +76,7 @@ class SuppliersNotifier extends AsyncNotifier<List<Supplier>> {
     String? notes,
   }) async {
     final businessId = ref.read(currentBusinessIdProvider);
-    final current = state.valueOrNull ?? const <Supplier>[];
-
-    if (businessId == null) {
-      final supplier = Supplier(
-        id: MockSuppliers.nextId(current),
-        name: name,
-        phone: phone,
-        email: email,
-        addressLine1: addressLine1,
-        notes: notes,
-        createdAt: DateTime.now(),
-      );
-      state = AsyncData([supplier, ...current]);
-      return supplier;
-    }
+    if (businessId == null) throw StateError('No active business context');
 
     final dto = await ref.read(supplierApiServiceProvider).createSupplier(
           businessId: businessId,
@@ -122,6 +107,7 @@ class SuppliersNotifier extends AsyncNotifier<List<Supplier>> {
     String? notes,
   }) async {
     final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) throw StateError('No active business context');
     final updated = existing.copyWith(
       name: name,
       phone: phone,
@@ -133,11 +119,6 @@ class SuppliersNotifier extends AsyncNotifier<List<Supplier>> {
       notes: notes,
       clearNotes: notes == null,
     );
-
-    if (businessId == null) {
-      _replaceInState(updated);
-      return updated;
-    }
 
     await ref.read(supplierApiServiceProvider).updateSupplier(
           businessId: businessId,
@@ -154,25 +135,13 @@ class SuppliersNotifier extends AsyncNotifier<List<Supplier>> {
 
   Future<void> delete(String id) async {
     final businessId = ref.read(currentBusinessIdProvider);
-    final current = state.valueOrNull ?? const <Supplier>[];
-
-    if (businessId == null) {
-      state = AsyncData(current.where((s) => s.id != id).toList());
-      return;
-    }
+    if (businessId == null) throw StateError('No active business context');
 
     await ref.read(supplierApiServiceProvider).deleteSupplier(
           businessId: businessId,
           supplierId: id,
         );
     await refresh();
-  }
-
-  void _replaceInState(Supplier supplier) {
-    final current = state.valueOrNull ?? const <Supplier>[];
-    state = AsyncData([
-      for (final s in current) if (s.id == supplier.id) supplier else s,
-    ]);
   }
 }
 

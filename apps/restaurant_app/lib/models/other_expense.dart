@@ -29,7 +29,7 @@ class OtherExpense {
   final FinanceAttachment? receipt;
 
   /// Server-assigned `OtherExpense.id` once this entry has synced. Null for
-  /// a demo-mode row or one still in the outbox.
+  /// a local-only row or one still in the outbox.
   final String? serverId;
 
   /// `pending` | `syncing` | `failed` | `synced`. Demo-mode rows (and every

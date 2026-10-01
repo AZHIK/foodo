@@ -1,13 +1,12 @@
-/// Fake implementation of PosSyncApi for testing and manual testing.
+/// Test double for [PosSyncApi].
 ///
-/// `FakeSyncApi` simulates various backend behaviors: all-success,
-/// all-failure, selective success per ID, and network errors.
-/// Used during development, testing, and for manual feature verification
-/// before the real backend integration.
+/// Simulates various backend behaviors: all-success, all-failure,
+/// selective success per ID, and network errors. Unit tests only —
+/// production code always uses the real HTTP client.
 library;
 
-import 'pos_sync_api.dart';
-import 'sync_dtos.dart';
+import 'package:restaurant_pos/sync/pos_sync_api.dart';
+import 'package:restaurant_pos/sync/sync_dtos.dart';
 
 /// Fake POS sync API for testing behavior.
 class FakeSyncApi extends PosSyncApi {

@@ -2,8 +2,8 @@
 /// from POS Service.
 ///
 /// The read-side counterpart to `finance_sync_api.dart`, mirroring how
-/// `pos_catalog_api.dart` pairs with `pos_sync_api.dart`. `FakeFinanceCatalogApi`
-/// provides test/demo behavior; `HttpFinanceCatalogApi` calls the real
+/// `pos_catalog_api.dart` pairs with `pos_sync_api.dart`.
+/// `HttpFinanceCatalogApi` calls the real
 /// `GET /other-expenses` and `GET /other-incomes` endpoints.
 library;
 

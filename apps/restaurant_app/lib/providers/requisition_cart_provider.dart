@@ -271,9 +271,8 @@ final requisitionCartProvider =
 /// line then stays unassigned for manual or bulk assignment.
 ///
 /// Real records only: callers pass [suppliersListProvider], which holds the
-/// synced directory once a business context exists. Demo-mode mock rows can
-/// never match — mock items carry no preferred id — so no mock data can leak
-/// into a submitted order.
+/// synced directory once a business context exists. A line stays unassigned
+/// unless the directory actually contains the preferred supplier.
 Supplier? findPreferredSupplier(
     List<Supplier> directory, String? preferredSupplierId) {
   if (preferredSupplierId == null || preferredSupplierId.isEmpty) return null;

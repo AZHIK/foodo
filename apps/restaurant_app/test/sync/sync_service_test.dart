@@ -7,7 +7,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:restaurant_pos/database/app_database.dart';
-import 'package:restaurant_pos/sync/fake_sync_api.dart';
+import '../test_helpers/fake_sync_api.dart';
 import 'package:restaurant_pos/sync/sync_dtos.dart';
 import 'package:restaurant_pos/sync/sync_service.dart';
 

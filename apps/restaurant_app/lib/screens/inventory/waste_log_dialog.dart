@@ -93,7 +93,7 @@ class _WasteLogDialogState extends ConsumerState<WasteLogDialog> {
     final parts = <String>[
       _reason.label,
       if (note.isNotEmpty) note,
-      // Recorded as text because the mock ledger stores no binaries — enough
+      // Recorded as text because the ledger stores no binaries — enough
       // for the history to show evidence was attached.
       if (_photoName != null) AppStrings.wastePhotoEvidence(_photoName!),
     ];

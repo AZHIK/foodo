@@ -41,10 +41,9 @@ MenuItem _toMenuItem(InventoryItem item) {
 /// not archived, mapped onto the POS's `MenuItem` shape.
 ///
 /// Derived from [inventoryItemsListProvider] rather than owning its own list:
-/// the local database (synced from Inventory Service, or the shared demo
-/// catalog when there's no store context yet) is the single source of truth,
-/// so a stock edit on the Inventory screen shows up here without a separate
-/// sync.
+/// the local database (synced from Inventory Service) is the single source
+/// of truth, so a stock edit on the Inventory screen shows up here without
+/// a separate sync.
 final menuItemsProvider = Provider<List<MenuItem>>((ref) {
   final items = ref.watch(inventoryItemsListProvider);
   return items
@@ -60,9 +59,8 @@ final menuItemsProvider = Provider<List<MenuItem>>((ref) {
 /// Labels (and icons) resolve against the synced category taxonomy via
 /// [categoryByIdFrom] — the same lookup the Inventory screens use — because
 /// backend ids are UUIDs, not human words. Anything the taxonomy doesn't
-/// know yet (demo-mode string ids like `dry_goods`, or `uncategorized`)
-/// falls back to [_humanizeCategoryLabel], which is only sensible for
-/// non-UUID ids.
+/// know yet (e.g. `uncategorized`) falls back to [_humanizeCategoryLabel],
+/// which is only sensible for non-UUID ids.
 final menuCategoriesProvider = Provider<List<MenuCategory>>((ref) {
   final categoryIds = <String>{
     for (final item in ref.watch(menuItemsProvider)) item.categoryId,

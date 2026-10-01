@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
-import '../data/mock_finance.dart';
+import '../data/finance_categories.dart';
 import '../constants/app_limits.dart';
 import '../database/app_database.dart';
 import '../models/finance_attachment.dart';
@@ -39,7 +39,7 @@ class OtherIncomesNotifier extends AsyncNotifier<List<OtherIncome>> {
   @override
   Future<List<OtherIncome>> build() async {
     final storeId = ref.watch(currentStoreIdProvider);
-    if (storeId == null) return List.of(MockFinance.incomes);
+    if (storeId == null) return const [];
 
     var disposed = false;
     ref.onDispose(() => disposed = true);
@@ -87,7 +87,7 @@ class OtherIncomesNotifier extends AsyncNotifier<List<OtherIncome>> {
 
   Future<void> refresh() async {
     final storeId = ref.read(currentStoreIdProvider);
-    if (storeId == null) return;
+    if (storeId == null) throw StateError('No active store context');
     state = const AsyncLoading<List<OtherIncome>>().copyWithPrevious(state);
     await ref.read(financeSyncServiceProvider).syncNow();
     await ref.read(financeLedgerSyncServiceProvider).syncIncomes(storeId: storeId);
@@ -105,23 +105,8 @@ class OtherIncomesNotifier extends AsyncNotifier<List<OtherIncome>> {
     FinanceAttachment? receipt,
   }) async {
     final storeId = ref.read(currentStoreIdProvider);
+    if (storeId == null) throw StateError('No active store context');
     final current = state.valueOrNull ?? const <OtherIncome>[];
-
-    if (storeId == null) {
-      final income = OtherIncome(
-        id: _nextMockId(current),
-        date: date,
-        categoryId: categoryId,
-        description: description,
-        amount: amount,
-        paymentType: paymentType,
-        source: source,
-        note: note,
-        receipt: receipt,
-      );
-      state = AsyncData([income, ...current]);
-      return income;
-    }
 
     final localReceiptPath = await _persistReceiptLocally(receipt);
     final clientId = await ref.read(financeEntryWriterProvider).writeIncome(
@@ -170,6 +155,7 @@ class OtherIncomesNotifier extends AsyncNotifier<List<OtherIncome>> {
     bool clearReceipt = false,
   }) async {
     final storeId = ref.read(currentStoreIdProvider);
+    if (storeId == null) throw StateError('No active store context');
     final updated = existing.copyWith(
       date: date,
       categoryId: categoryId,
@@ -181,11 +167,6 @@ class OtherIncomesNotifier extends AsyncNotifier<List<OtherIncome>> {
       receipt: receipt,
       clearReceipt: clearReceipt,
     );
-
-    if (storeId == null) {
-      _replaceInState(updated);
-      return updated;
-    }
 
     final db = ref.read(appDatabaseProvider);
     final outboxRow = await (db.select(db.otherIncomeEntries)
@@ -241,12 +222,8 @@ class OtherIncomesNotifier extends AsyncNotifier<List<OtherIncome>> {
 
   Future<void> delete(String id) async {
     final storeId = ref.read(currentStoreIdProvider);
+    if (storeId == null) throw StateError('No active store context');
     final current = state.valueOrNull ?? const <OtherIncome>[];
-
-    if (storeId == null) {
-      state = AsyncData(current.where((i) => i.id != id).toList());
-      return;
-    }
 
     final db = ref.read(appDatabaseProvider);
     final outboxRow = await (db.select(db.otherIncomeEntries)
@@ -295,15 +272,6 @@ class OtherIncomesNotifier extends AsyncNotifier<List<OtherIncome>> {
   }
 
   String get _actorUserId => ref.read(sessionStaffProvider)?.id ?? '';
-
-  String _nextMockId(List<OtherIncome> current) {
-    var highest = 0;
-    for (final income in current) {
-      final n = int.tryParse(income.id.split('-').last);
-      if (n != null && n > highest) highest = n;
-    }
-    return 'inc-${(highest + 1).toString().padLeft(2, '0')}';
-  }
 
   Future<String?> _persistReceiptLocally(FinanceAttachment? receipt) async {
     final bytes = receipt?.bytes;
@@ -441,7 +409,7 @@ final filteredOtherIncomesProvider = Provider<List<OtherIncome>>((ref) {
     if (search.isEmpty) return true;
     return income.description.toLowerCase().contains(search) ||
         income.source.toLowerCase().contains(search) ||
-        MockFinance.incomeCategoryLabel(income.categoryId)
+        FinanceCategories.incomeLabel(income.categoryId)
             .toLowerCase()
             .contains(search) ||
         income.paymentType.label.toLowerCase().contains(search);
@@ -451,8 +419,8 @@ final filteredOtherIncomesProvider = Provider<List<OtherIncome>>((ref) {
   rows.sort((a, b) {
     final cmp = switch (query.sortField) {
       OtherIncomeSort.date => a.date.compareTo(b.date),
-      OtherIncomeSort.category => MockFinance.incomeCategoryLabel(a.categoryId)
-          .compareTo(MockFinance.incomeCategoryLabel(b.categoryId)),
+      OtherIncomeSort.category => FinanceCategories.incomeLabel(a.categoryId)
+          .compareTo(FinanceCategories.incomeLabel(b.categoryId)),
       OtherIncomeSort.description =>
           a.description.toLowerCase().compareTo(b.description.toLowerCase()),
       OtherIncomeSort.amount => a.amount.compareTo(b.amount),

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/staff_rbac_dtos.dart';
 import '../constants/app_limits.dart';
-import '../data/mock_activity.dart';
 import '../models/activity_entry.dart';
 import '../models/staff_member.dart';
 import '../models/table_query.dart';
@@ -395,22 +394,15 @@ final staffSummaryProvider = Provider<StaffSummary>((ref) {
 // ---------------------------------------------------------------------------
 // Activity & performance
 //
-// Neither the staff nor role endpoints carry an activity log or POS sales
-// figures — those belong to services not wired up in this pass (this task
-// is identity-service RBAC only; POS/Inventory integration is the next
-// pass per the plan). Both stay synthetic for now, generated from the real
-// member/role data rather than separate mock records, so they at least
-// react correctly to real role changes; they are not "real" data and this
-// block is the one deliberate exception to "no mock data reachable".
+// There is no staff activity-log endpoint yet, so per-member activity stays
+// empty and till performance stays unavailable (`StaffPerformance.none`,
+// which the detail screen omits) rather than showing invented numbers.
 // ---------------------------------------------------------------------------
 
-/// A staff member's audit log, newest first.
+/// A staff member's audit log, newest first. Empty until a real activity
+/// source is wired up.
 final staffActivityProvider = Provider.family<List<ActivityEntry>, String>((ref, staffId) {
-  final member = ref.watch(staffByIdProvider(staffId));
-  if (member == null) return const [];
-
-  final role = ref.watch(roleByIdProvider(member.roleId));
-  return MockActivity.forStaff(member, role);
+  return const [];
 });
 
 /// Till numbers for a member's detail screen.
@@ -440,25 +432,5 @@ class StaffPerformance {
 }
 
 final staffPerformanceProvider = Provider.family<StaffPerformance, String>((ref, staffId) {
-  final member = ref.watch(staffByIdProvider(staffId));
-  if (member == null || member.isPending) return StaffPerformance.none;
-
-  final hasPosRole = member.roles.any((assignment) {
-    final role = ref.watch(roleByIdProvider(assignment.roleId));
-    return role?.hasPosAccess ?? false;
-  });
-  if (!hasPosRole) return StaffPerformance.none;
-
-  // Derived from the id so the numbers are stable across rebuilds and
-  // differ per person, without a second random data source to keep in step.
-  final seed = member.id.hashCode & 0x7fffffff;
-  final today = member.status == StaffStatus.active ? 4 + seed % 19 : 0;
-  final week = today * 5 + seed % 23;
-
-  return StaffPerformance(
-    applies: true,
-    ordersToday: today,
-    ordersThisWeek: week,
-    salesHandled: week * (18.4 + (seed % 900) / 100),
-  );
+  return StaffPerformance.none;
 });

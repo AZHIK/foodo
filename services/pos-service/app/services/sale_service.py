@@ -13,7 +13,18 @@ from app.core.config import get_settings
 from app.core.events import publish_event
 from app.core.exceptions import DomainError
 from app.models.customers import Customer
-from app.models.pos import PaymentMethod, Sale, SaleLineItem, SaleStatus
+from app.models.pos import (
+    DeliveryStatus,
+    OrderType,
+    PaymentMethod,
+    Sale,
+    SaleLineItem,
+    SaleStatus,
+)
+from app.services.courier_service import (
+    CourierValidationError,
+    validate_courier_for_sale,
+)
 from app.schemas.line_items import SaleLineItemInput
 from app.schemas.sales import (
     SaleSyncBatchRequest,
@@ -133,6 +144,14 @@ async def sync_sale_batch(
                         reason=str(exc),
                     )
                 )
+            except CourierValidationError as exc:
+                results.append(
+                    SyncResult(
+                        client_sale_id=sale_input.client_sale_id,
+                        status="failed",
+                        reason=str(exc),
+                    )
+                )
             except IntegrityError:
                 results.append(
                     SyncResult(
@@ -160,12 +179,51 @@ async def _create_sale_internal(
             session, business_id, sale_input.customer_id,
         )
 
+    # ── Delivery validation (service-level mirror of the Pydantic
+    # validators — batch tests may mutate inputs past Pydantic, so the
+    # rules are enforced here too, where per-sale failure is first-class).
+    order_type = OrderType(sale_input.order_type)
+    delivery_fee = sale_input.delivery_fee.quantize(Decimal("0.01"))
+    if order_type == OrderType.DELIVERY:
+        if not sale_input.delivery_address_line1:
+            raise SaleValidationError(
+                "delivery_address_line1 is required when order_type is delivery"
+            )
+        if sale_input.courier_id is not None:
+            try:
+                await validate_courier_for_sale(
+                    session, business_id, sale_input.courier_id,
+                )
+            except CourierValidationError as exc:
+                raise SaleValidationError(str(exc)) from exc
+    else:
+        if sale_input.courier_id is not None:
+            raise SaleValidationError(
+                "courier_id is only allowed when order_type is delivery"
+            )
+        if sale_input.delivery_address_line1 is not None:
+            raise SaleValidationError(
+                "delivery_address_line1 is only allowed when order_type is delivery"
+            )
+        if sale_input.delivery_recipient_phone is not None:
+            raise SaleValidationError(
+                "delivery_recipient_phone is only allowed when order_type is delivery"
+            )
+        if sale_input.delivery_note is not None:
+            raise SaleValidationError(
+                "delivery_note is only allowed when order_type is delivery"
+            )
+        if delivery_fee != Decimal("0.00"):
+            raise SaleValidationError(
+                "delivery_fee is only allowed when order_type is delivery"
+            )
+
     subtotal = sum(
         li.quantity * li.unit_price for li in sale_input.line_items
     )
     settings = get_settings()
     tax_amount = subtotal * settings.default_tax_rate
-    total = subtotal - sale_input.discount_amount + tax_amount
+    total = subtotal - sale_input.discount_amount + tax_amount + delivery_fee
 
     subtotal = subtotal.quantize(Decimal("0.01"))
     tax_amount = tax_amount.quantize(Decimal("0.01"))
@@ -183,6 +241,7 @@ async def _create_sale_internal(
         subtotal=subtotal,
         discount_amount=sale_input.discount_amount.quantize(Decimal("0.01")),
         tax_amount=tax_amount,
+        delivery_fee=delivery_fee,
         total=total,
         payment_method=PaymentMethod(sale_input.payment_method),
         actor_id=actor_id,
@@ -190,6 +249,14 @@ async def _create_sale_internal(
         occurred_at=sale_input.occurred_at,
         device_sequence=sale_input.device_sequence,
         is_time_suspect=is_time_suspect,
+        order_type=order_type,
+        courier_id=sale_input.courier_id,
+        delivery_address_line1=sale_input.delivery_address_line1,
+        delivery_recipient_phone=sale_input.delivery_recipient_phone,
+        delivery_note=sale_input.delivery_note,
+        delivery_status=(
+            DeliveryStatus.PENDING if order_type == OrderType.DELIVERY else None
+        ),
     )
 
     if status == SaleStatus.VOIDED:
@@ -232,12 +299,109 @@ async def _publish_sale_events(
                 "business_id": str(sale.business_id),
                 "store_id": str(sale.store_id),
                 "sale_id": str(sale.id),
+                "order_type": sale.order_type.value,
+                "courier_id": str(sale.courier_id) if sale.courier_id else None,
+                "delivery_status": (
+                    sale.delivery_status.value if sale.delivery_status else None
+                ),
+                "delivery_fee": str(sale.delivery_fee),
                 "line_items": [
                     {"item_id": str(li.item_id), "quantity": str(li.quantity)}
                     for li in sale_input.line_items
                 ],
             },
         )
+
+
+# ── Delivery-status transitions ──────────────────────────────────────
+
+_DELIVERY_TRANSITIONS: dict[DeliveryStatus | None, set[DeliveryStatus]] = {
+    None: set(),
+    DeliveryStatus.PENDING: {DeliveryStatus.ASSIGNED, DeliveryStatus.FAILED},
+    DeliveryStatus.ASSIGNED: {
+        DeliveryStatus.OUT_FOR_DELIVERY,
+        DeliveryStatus.FAILED,
+    },
+    DeliveryStatus.OUT_FOR_DELIVERY: {
+        DeliveryStatus.DELIVERED,
+        DeliveryStatus.FAILED,
+    },
+    DeliveryStatus.DELIVERED: set(),
+    DeliveryStatus.FAILED: set(),
+}
+
+
+async def update_delivery_status(
+    session: AsyncSession,
+    business_id: UUID,
+    sale_id: UUID,
+    actor_id: UUID | None,
+    new_status: DeliveryStatus,
+    courier_id: UUID | None = None,
+    publish: Callable[..., Awaitable[None]] = publish_event,
+) -> Sale:
+    """Advance a delivery sale's fulfilment state.
+
+    Guards: sale must exist for the business, be a delivery sale
+    (``order_type == delivery``), and follow the linear transition map —
+    terminal states (delivered/failed) reject further moves. An optional
+    ``courier_id`` reassigns the courier (validated active + same
+    business); moving to ``assigned`` without any courier (existing or
+    supplied) is rejected.
+    """
+    sale = (
+        await session.exec(
+            select(Sale).where(Sale.id == sale_id, Sale.business_id == business_id)
+        )
+    ).first()
+    if sale is None:
+        raise SaleValidationError(
+            f"Sale {sale_id} not found for business {business_id}"
+        )
+    if sale.order_type != OrderType.DELIVERY:
+        raise SaleValidationError(
+            f"Sale {sale_id} is not a delivery sale "
+            f"(order_type is '{sale.order_type.value}')"
+        )
+
+    allowed = _DELIVERY_TRANSITIONS.get(sale.delivery_status, set())
+    if new_status not in allowed:
+        current = sale.delivery_status.value if sale.delivery_status else "none"
+        raise SaleValidationError(
+            f"Cannot move delivery status from '{current}' to '{new_status.value}'"
+        )
+
+    if courier_id is not None:
+        try:
+            await validate_courier_for_sale(session, business_id, courier_id)
+        except CourierValidationError as exc:
+            raise SaleValidationError(str(exc)) from exc
+        sale.courier_id = courier_id
+
+    if new_status == DeliveryStatus.ASSIGNED and sale.courier_id is None:
+        raise SaleValidationError(
+            "A courier must be assigned before moving to 'assigned'"
+        )
+
+    sale.delivery_status = new_status
+    session.add(sale)
+    await session.flush()
+
+    await publish(
+        "delivery.status_changed",
+        {
+            "event_id": f"delivery:{sale.id}:{new_status.value}",
+            "business_id": str(sale.business_id),
+            "store_id": str(sale.store_id),
+            "sale_id": str(sale.id),
+            "courier_id": str(sale.courier_id) if sale.courier_id else None,
+            "delivery_status": new_status.value,
+            "actor_id": str(actor_id) if actor_id else None,
+        },
+    )
+
+    await session.commit()
+    return sale
 
 
 async def void_or_refund_sale(

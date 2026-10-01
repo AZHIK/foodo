@@ -1,12 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/mock_couriers.dart';
 import '../models/courier.dart';
 
 /// The source of truth for all couriers.
+///
+/// Starts empty and fills from the courier directory (or local additions) —
+/// never from bundled sample data.
 class CouriersNotifier extends Notifier<List<Courier>> {
   @override
-  List<Courier> build() => MockCouriers.list;
+  List<Courier> build() => const [];
 
   void upsert(Courier courier) {
     final index = state.indexWhere((c) => c.id == courier.id);
@@ -20,8 +22,6 @@ class CouriersNotifier extends Notifier<List<Courier>> {
   }
 
   void delete(String id) => state = state.where((c) => c.id != id).toList();
-
-  String nextId() => MockCouriers.nextId(state);
 }
 
 final couriersProvider =

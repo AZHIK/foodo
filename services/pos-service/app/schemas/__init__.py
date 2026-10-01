@@ -1,8 +1,15 @@
 """Pydantic schemas for FoodLink POS Service."""
 
+from app.schemas.couriers import (
+    CourierCreate,
+    CourierListResponse,
+    CourierRead,
+    CourierUpdate,
+)
 from app.schemas.health import HealthResponse
 from app.schemas.line_items import SaleLineItemInput, SaleLineItemRead
 from app.schemas.sales import (
+    DeliveryStatusUpdate,
     PaymentMethodSummary,
     SaleListFilters,
     SaleListItem,
@@ -17,6 +24,11 @@ from app.schemas.sales import (
 from app.schemas.void_refund import VoidRefundRequest
 
 __all__ = [
+    "CourierCreate",
+    "CourierListResponse",
+    "CourierRead",
+    "CourierUpdate",
+    "DeliveryStatusUpdate",
     "HealthResponse",
     "PaymentMethodSummary",
     "SaleLineItemInput",

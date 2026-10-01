@@ -16,7 +16,14 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.permission_codes import PermissionCode
 from app.db.session import get_db
 from app.deps.auth import get_current_claims, require_business_permission
-from app.models.pos import PaymentMethod, Sale, SaleLineItem, SaleStatus
+from app.models.pos import (
+    DeliveryStatus,
+    OrderType,
+    PaymentMethod,
+    Sale,
+    SaleLineItem,
+    SaleStatus,
+)
 from app.schemas.line_items import SaleLineItemRead
 from app.schemas.sales import (
     PaymentMethodSummary,
@@ -88,6 +95,9 @@ async def list_sales(
     status: str | None = Query(default=None, description="Filter by status: completed, voided, refunded"),
     payment_method: str | None = Query(default=None, description="Filter by payment method: cash, mobile_money, card, other"),
     store_id: UUID | None = Query(default=None, description="Filter by store"),
+    order_type: str | None = Query(default=None, description="Filter by order type: dine_in, takeaway, delivery"),
+    courier_id: UUID | None = Query(default=None, description="Filter by assigned courier"),
+    delivery_status: str | None = Query(default=None, description="Filter by delivery status: pending, assigned, out_for_delivery, delivered, failed"),
 ) -> SaleListResponse:
     """Paginated sale list, filterable by date range (occurred_at), status, payment method, and location.
 
@@ -105,6 +115,12 @@ async def list_sales(
         stmt = stmt.where(Sale.payment_method == PaymentMethod(payment_method))
     if store_id is not None:
         stmt = stmt.where(Sale.store_id == store_id)
+    if order_type is not None:
+        stmt = stmt.where(Sale.order_type == OrderType(order_type))
+    if courier_id is not None:
+        stmt = stmt.where(Sale.courier_id == courier_id)
+    if delivery_status is not None:
+        stmt = stmt.where(Sale.delivery_status == DeliveryStatus(delivery_status))
 
     count_stmt = select(sa_func.count()).select_from(stmt.subquery())
     total = (await session.exec(count_stmt)).one()
@@ -265,10 +281,14 @@ def _sale_to_list_item(sale: Sale) -> SaleListItem:
         subtotal=sale.subtotal,
         discount_amount=sale.discount_amount,
         tax_amount=sale.tax_amount,
+        delivery_fee=sale.delivery_fee,
         total=sale.total,
         payment_method=sale.payment_method.value,
         actor_id=sale.actor_id,
         customer_id=sale.customer_id,
+        order_type=sale.order_type.value,
+        courier_id=sale.courier_id,
+        delivery_status=sale.delivery_status.value if sale.delivery_status else None,
         occurred_at=sale.occurred_at,
         synced_at=sale.synced_at,
         device_sequence=sale.device_sequence,
@@ -290,10 +310,17 @@ def _sale_to_read(sale: Sale, line_items: list[SaleLineItem]) -> SaleRead:
         subtotal=sale.subtotal,
         discount_amount=sale.discount_amount,
         tax_amount=sale.tax_amount,
+        delivery_fee=sale.delivery_fee,
         total=sale.total,
         payment_method=sale.payment_method.value,
         actor_id=sale.actor_id,
         customer_id=sale.customer_id,
+        order_type=sale.order_type.value,
+        courier_id=sale.courier_id,
+        delivery_address_line1=sale.delivery_address_line1,
+        delivery_recipient_phone=sale.delivery_recipient_phone,
+        delivery_note=sale.delivery_note,
+        delivery_status=sale.delivery_status.value if sale.delivery_status else None,
         occurred_at=sale.occurred_at,
         synced_at=sale.synced_at,
         device_sequence=sale.device_sequence,

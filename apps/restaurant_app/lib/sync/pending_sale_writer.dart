@@ -23,8 +23,8 @@ class PendingSaleWriter {
   /// resolves to an active, cached catalog item for [storeId].
   ///
   /// Returns true if written, false if skipped. A line fails to resolve when
-  /// there's no store context at all (demo/mock mode — `MenuItem.id` is a
-  /// mock id with no backend counterpart) or an item was archived between
+  /// there's no store context at all (nothing is cached to resolve against)
+  /// or an item was archived between
   /// being rung up and the order completing; either way, skipping the whole
   /// sale is correct — a partially-resolved sale would understate what was
   /// actually sold.

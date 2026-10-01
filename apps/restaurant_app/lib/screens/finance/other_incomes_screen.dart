@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/mock_finance.dart';
+import '../../data/finance_categories.dart';
 import '../../constants/app_strings.dart';
 import '../../models/other_income.dart';
 import '../../models/permission.dart';
@@ -182,7 +182,7 @@ class OtherIncomesScreen extends ConsumerWidget {
 
   static String _exportSubtitle(OtherIncomeFilters filters, String search) {
     final parts = <String>[
-      if (filters.categoryIds.isNotEmpty) filters.categoryIds.map((id) => MockFinance.incomeCategoryLabel(id)).join(', '),
+      if (filters.categoryIds.isNotEmpty) filters.categoryIds.map((id) => FinanceCategories.incomeLabel(id)).join(', '),
       if (filters.payments.isNotEmpty) filters.payments.map((p) => p.label).join(', '),
       if (filters.dateRange != null)
         AppStrings.financeExportBetween(
@@ -200,7 +200,7 @@ class OtherIncomesScreen extends ConsumerWidget {
 final otherIncomeColumns = <DataColumnSpec<OtherIncome>>[
   DataColumnSpec(label: AppStrings.dateSort, field: OtherIncomeSort.date, flex: 2, value: (i) => Fmt.dayMonth(i.date)),
   DataColumnSpec(label: AppStrings.descriptionSort, field: OtherIncomeSort.description, role: ColumnRole.primary, flex: 5, value: (i) => i.description, cellBuilder: (c, i) => _DescriptionCell(income: i)),
-  DataColumnSpec(label: AppStrings.categorySort, field: OtherIncomeSort.category, flex: 3, minTableWidth: 700, value: (i) => MockFinance.incomeCategoryLabel(i.categoryId)),
+  DataColumnSpec(label: AppStrings.categorySort, field: OtherIncomeSort.category, flex: 3, minTableWidth: 700, value: (i) => FinanceCategories.incomeLabel(i.categoryId)),
   DataColumnSpec(label: AppStrings.paymentSort, field: OtherIncomeSort.payment, flex: 2, minTableWidth: 860, value: (i) => i.paymentType.label),
   DataColumnSpec(label: AppStrings.amountSort, field: OtherIncomeSort.amount, flex: 2, numeric: true, value: (i) => Fmt.money(i.amount)),
 ];

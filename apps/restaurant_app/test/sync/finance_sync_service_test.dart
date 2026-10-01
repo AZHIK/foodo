@@ -8,7 +8,7 @@ import 'package:decimal/decimal.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:restaurant_pos/database/app_database.dart';
-import 'package:restaurant_pos/sync/fake_finance_sync_api.dart';
+import '../test_helpers/fake_finance_sync_api.dart';
 import 'package:restaurant_pos/sync/finance_sync_dtos.dart';
 import 'package:restaurant_pos/sync/finance_sync_service.dart';
 

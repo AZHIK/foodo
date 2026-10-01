@@ -8,7 +8,7 @@ import '../../providers/settings_provider.dart';
 import '../../theme/app_theme.dart';
 import 'thermal_receipt_preview.dart';
 
-/// Paper preview of the claim coupon with fake data, mirroring the receipt's
+/// Paper preview of the claim coupon with sample data, mirroring the receipt's
 /// sample preview in Store Settings.
 Future<void> showSampleCouponPreviewDialog(
   BuildContext context,

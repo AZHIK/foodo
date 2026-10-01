@@ -1,8 +1,7 @@
 /// Pluggable interface for syncing sales to POS Service.
 ///
 /// This abstract interface decouples the sync engine from the actual HTTP/backend
-/// implementation. For this task, `FakeSyncApi` provides test behavior.
-/// A later task wires the real HTTP client to call `services/pos-service`'s
+/// implementation. `HttpSyncApi` calls `services/pos-service`'s
 /// `/sales/sync` endpoint.
 library;
 

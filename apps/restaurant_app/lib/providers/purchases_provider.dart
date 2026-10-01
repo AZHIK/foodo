@@ -5,7 +5,7 @@
 /// call, and every write is a direct API call followed by a re-fetch. When
 /// offline the state is an error/empty and the UI shows the offline
 /// placeholder instead of the list (see `PurchasesScreen`). There is no
-/// outbox, no background sync, and no demo-mode mock data: without a
+/// outbox and no background sync: without a
 /// business context the list is simply empty.
 library;
 

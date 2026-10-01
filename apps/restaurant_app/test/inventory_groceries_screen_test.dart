@@ -16,17 +16,79 @@ import 'package:restaurant_pos/widgets/inventory/inventory_tab_bar.dart';
 
 const _widths = <double>[360, 400, 768, 1024, 1440, 1920];
 
+/// Local catalog fixtures — a mix of grocery and sellable-only items with
+/// varied stock levels, so the query, summary and table tests have real
+/// rows to work with. Plain test data, not shared fixtures.
+List<InventoryItem> _fixtureItems() => [
+      InventoryItem(
+        id: 'test-flour',
+        sku: 'SKU-FLOUR',
+        name: 'All-purpose Flour',
+        categoryId: 'dry',
+        emoji: '🌾',
+        stock: 20,
+        reorderLevel: 5,
+        unitCost: 1.2,
+        unit: 'kg',
+        itemType: 'raw_material',
+      ),
+      InventoryItem(
+        id: 'test-tomatoes',
+        sku: 'SKU-TOMATO',
+        name: 'Heirloom Tomatoes',
+        categoryId: 'produce',
+        emoji: '🍅',
+        stock: 2,
+        reorderLevel: 5,
+        unitCost: 0.8,
+        unit: 'kg',
+        itemType: 'both',
+        sellingPrice: 3.5,
+        isSellable: true,
+      ),
+      InventoryItem(
+        id: 'test-milk',
+        sku: 'SKU-MILK',
+        name: 'Whole Milk',
+        categoryId: 'dairy',
+        emoji: '🥛',
+        stock: 0,
+        reorderLevel: 4,
+        unitCost: 1.0,
+        unit: 'L',
+        itemType: 'raw_material',
+      ),
+      InventoryItem(
+        id: 'test-pizza',
+        sku: 'SKU-PIZZA',
+        name: 'Margherita Pizza',
+        categoryId: 'mains',
+        emoji: '🍕',
+        stock: 0,
+        reorderLevel: 0,
+        unitCost: 2.5,
+        trackStock: false,
+        itemType: 'sellable',
+        sellingPrice: 12.0,
+        isSellable: true,
+      ),
+    ];
+
 Future<ProviderContainer> pumpGroceries(WidgetTester tester, Size size) async {
   tester.view.physicalSize = size * tester.view.devicePixelRatio;
   addTearDown(tester.view.reset);
 
-  // No business/store context is seeded, so this falls back to
-  // `MockInventory` — see inventory_provider.dart's `InventoryNotifier.build`.
+  // No business/store context is seeded, so the inventory list comes from
+  // the fixture override below — the provider itself returns empty with no
+  // context. See inventory_provider.dart's `InventoryNotifier.build`.
   final database = AppDatabase(NativeDatabase.memory());
   addTearDown(database.close);
 
   final container = ProviderContainer(
-    overrides: [appDatabaseProvider.overrideWithValue(database)],
+    overrides: [
+      appDatabaseProvider.overrideWithValue(database),
+      inventoryItemsListProvider.overrideWithValue(_fixtureItems()),
+    ],
   );
   addTearDown(container.dispose);
 
@@ -55,7 +117,10 @@ void main() {
       final database = AppDatabase(NativeDatabase.memory());
       addTearDown(database.close);
       final c = ProviderContainer(
-        overrides: [appDatabaseProvider.overrideWithValue(database)],
+        overrides: [
+          appDatabaseProvider.overrideWithValue(database),
+          inventoryItemsListProvider.overrideWithValue(_fixtureItems()),
+        ],
       );
       addTearDown(c.dispose);
       await c.read(inventoryItemsProvider.future);

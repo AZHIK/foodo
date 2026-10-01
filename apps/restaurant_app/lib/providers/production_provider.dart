@@ -243,9 +243,8 @@ final productionDateFilterProvider =
 
 /// Recorded production runs, newest first — the kitchen's ledger.
 ///
-/// With no business context this is empty (recording genuinely needs the
-/// backend's atomic transaction; unlike stock counts there is no meaningful
-/// demo-mode production to invent).
+/// With no business context this is empty — recording genuinely needs the
+/// backend's atomic transaction.
 class ProductionHistoryNotifier extends AsyncNotifier<List<ProductionEventDto>> {
   InventoryApiService get _api => ref.read(inventoryApiServiceProvider);
 

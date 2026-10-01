@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/mock_finance.dart';
+import '../../data/finance_categories.dart';
 import '../../constants/app_strings.dart';
 import '../../models/other_income.dart';
 import '../../models/order.dart';
@@ -94,7 +94,7 @@ class _OtherIncomeFormDialogState extends ConsumerState<OtherIncomeFormDialog> {
                     label: AppStrings.categoryLabel,
                     child: DropdownButtonFormField<String>(
                       initialValue: state.categoryId.isEmpty ? null : state.categoryId,
-                      items: MockFinance.incomeCategories
+                      items: FinanceCategories.incomeCategories
                           .map((c) => DropdownMenuItem(
                                 value: c.id,
                                 child: Text(c.label),

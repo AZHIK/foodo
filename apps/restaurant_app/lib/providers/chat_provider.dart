@@ -23,7 +23,7 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
     state = [...state, message];
 
     if (role == MessageRole.user) {
-      Future.delayed(AppDurations.mockChatReplyDelay, () {
+      Future.delayed(AppDurations.assistantReplyDelay, () {
         addMessage(_getBotResponse(content), MessageRole.assistant);
       });
     }

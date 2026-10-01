@@ -51,6 +51,12 @@ class PermissionCode(StrEnum):
     CUSTOMERS_UPDATE = "customers.update"
     CUSTOMERS_DELETE = "customers.delete"
 
+    # ── Couriers ───────────────────────────────
+    COURIERS_VIEW = "couriers.view"
+    COURIERS_CREATE = "couriers.create"
+    COURIERS_UPDATE = "couriers.update"
+    COURIERS_DELETE = "couriers.delete"
+
     # ── Inventory (cross-service reference) ────
     INVENTORY_VIEW = "inventory.view"
     INVENTORY_ADJUST = "inventory.adjust"

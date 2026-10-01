@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../data/mock_orders.dart';
 import '../constants/app_durations.dart';
 import '../constants/app_limits.dart';
 import '../database/app_database.dart';
@@ -66,9 +65,8 @@ enum SalesDateRange {
 /// cache current; if it fails the screen just keeps showing whatever was
 /// last cached — same stale-while-revalidate contract as `InventoryNotifier`.
 ///
-/// With no store context at all (no session yet), this falls back to
-/// [MockOrders] rather than an empty list, so screens/tests that don't care
-/// about backend wiring still see a populated demo sales history.
+/// With no store context at all (no session yet), this returns an empty
+/// list — there is no sales history until a store is selected.
 class OrdersNotifier extends AsyncNotifier<List<Order>> {
   SalesSyncService get _sync => ref.read(salesSyncServiceProvider);
   PosApiService get _api => ref.read(posApiServiceProvider);
@@ -82,7 +80,7 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
   @override
   Future<List<Order>> build() async {
     final storeId = ref.watch(currentStoreIdProvider);
-    if (storeId == null) return MockOrders.generate();
+    if (storeId == null) return const [];
 
     var disposed = false;
     ref.onDispose(() => disposed = true);
@@ -150,11 +148,10 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
 
   /// Re-runs the background sync and waits for it — for the Sales screen's
   /// refresh button, where the user expects it to reflect real completion
-  /// rather than an instant, still-stale return. A no-op with no store
-  /// context (demo mode has nothing to pull).
+  /// rather than an instant, still-stale return. Requires a store context.
   Future<void> refresh() async {
     final storeId = ref.read(currentStoreIdProvider);
-    if (storeId == null) return;
+    if (storeId == null) throw StateError('No active store context');
     state = const AsyncLoading<List<Order>>().copyWithPrevious(state);
     await _sync.syncSales(storeId: storeId);
     state = AsyncData(await _loadFromCache(storeId));
@@ -169,9 +166,8 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
   /// The order is added to local state immediately so the UI never waits on
   /// the network; with a store context, writing it to the sync outbox and
   /// kicking off a sync happen in the background afterward, same
-  /// local-update-now/sync-later shape as `InventoryNotifier.upsert()`. With
-  /// no store context (demo/mock mode), neither happens — same as before
-  /// this order round-tripped through a backend at all.
+  /// local-update-now/sync-later shape as `InventoryNotifier.upsert()`.
+  /// Without a store context the order stays local-only until one exists.
   Order placeOrder({
     required Cart cart,
     PaymentType? paymentType,
@@ -229,10 +225,9 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
 
   /// Voids or refunds a sale through the real `void-or-refund` endpoint when
   /// it has already synced (`serverSaleId` is set) and there's a store
-  /// context; otherwise falls back to a local-only status flip — demo mode,
-  /// or an order whose outbox write hasn't synced yet, same "no
-  /// `catalogItemId` yet → local-only" shape as `InventoryNotifier`'s write
-  /// methods.
+  /// context; otherwise falls back to a local-only status flip — an order
+  /// whose outbox write hasn't synced yet, same "no `catalogItemId` yet →
+  /// local-only" shape as `InventoryNotifier`'s write methods.
   Future<void> _voidOrRefund(
     String orderId,
     OrderStatus newStatus, {
@@ -279,7 +274,7 @@ class OrdersNotifier extends AsyncNotifier<List<Order>> {
   }
 
   /// Pulls the latest sales from the backend — the Sales screen's refresh
-  /// button. A no-op in demo mode, via `refresh()`'s own guard.
+  /// button.
   Future<void> checkForNewOrders() => refresh();
 
   Order? _byId(String id) {
@@ -302,8 +297,8 @@ final ordersProvider = AsyncNotifierProvider<OrdersNotifier, List<Order>>(
 );
 
 /// The list, unwrapped for widgets/providers that only ever want to render
-/// what's currently known (cached or demo data) without handling
-/// loading/error states themselves — mirrors `inventoryItemsListProvider`.
+/// what's currently known without handling loading/error states themselves
+/// — mirrors `inventoryItemsListProvider`.
 final ordersListProvider = Provider<List<Order>>(
   (ref) => ref.watch(ordersProvider).valueOrNull ?? const [],
 );

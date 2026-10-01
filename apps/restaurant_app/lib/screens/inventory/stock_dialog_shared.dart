@@ -304,8 +304,8 @@ Future<void> applyWaste({
   );
 }
 
-/// Transfers stock from the current store to [destinationStoreId]. Unlike
-/// the mock-only ledger this used to write, the real endpoint credits the
+/// Transfers stock from the current store to [destinationStoreId]. The
+/// real endpoint credits the
 /// destination store's stock too (one atomic transaction server-side) — this
 /// only has to record the local, single-store ledger's "out" half.
 Future<void> applyTransfer({

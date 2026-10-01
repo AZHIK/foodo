@@ -1,7 +1,7 @@
 /// Pluggable interface for fetching the inventory catalog and stock levels.
 ///
 /// This abstract interface decouples the catalog sync from the actual HTTP backend.
-/// For this task, `FakeInventoryCatalogApi` provides test/demo behavior.
+/// `HttpInventoryCatalogApi` calls the real endpoints.
 /// `HttpInventoryCatalogApi` calls Inventory Service's real endpoints.
 library;
 

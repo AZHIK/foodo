@@ -619,8 +619,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
               label: AppStrings.unitLabel,
               // Falls back to a single option carrying the current value
               // while the real taxonomy is still syncing (or offline with
-              // an empty cache) — mirrors the old MockInventory.units
-              // fallback shape without hardcoding a fake unit list.
+              // an empty cache).
               child: Builder(
                 builder: (_) {
                   final abbreviations = [

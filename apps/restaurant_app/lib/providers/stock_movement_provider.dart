@@ -1,7 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/mock_inventory.dart';
-import '../data/mock_stock_movements.dart';
 import '../models/stock_movement.dart';
 
 /// Owns the stock ledger for every item.
@@ -10,10 +8,11 @@ import '../models/stock_movement.dart';
 /// questions — one holds what is on the shelf now, this holds how it got there.
 /// The stock dialogs write to both, in that order, so a balance recorded here
 /// always matches the item it was recorded against.
+///
+/// Starts empty: every movement is a real recorded event, never sample data.
 class StockMovementsNotifier extends Notifier<List<StockMovement>> {
   @override
-  List<StockMovement> build() =>
-      MockStockMovements.forItems(MockInventory.items);
+  List<StockMovement> build() => const [];
 
   /// Appends a movement and returns it.
   ///

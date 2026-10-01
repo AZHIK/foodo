@@ -8,7 +8,7 @@ import '../../providers/settings_provider.dart';
 import '../../theme/app_theme.dart';
 import 'thermal_receipt_preview.dart';
 
-/// Paper preview of the standard thermal receipt with fake data, so the owner
+/// Paper preview of the standard thermal receipt with sample data, so the owner
 /// can approve the 80mm format from Store Settings without a real sale.
 ///
 /// The store header is real (this store's identity); only the order is

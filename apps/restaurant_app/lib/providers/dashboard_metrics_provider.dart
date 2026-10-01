@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/mock_menu.dart';
 import '../constants/app_durations.dart';
 import '../constants/app_strings.dart';
 import '../constants/app_limits.dart';
@@ -11,6 +10,7 @@ import '../models/inventory_item.dart';
 import '../models/order.dart';
 import '../models/staff_member.dart';
 import '../widgets/data_page/status_badge.dart';
+import 'categories_provider.dart';
 import 'inventory_provider.dart';
 import 'orders_provider.dart';
 import 'other_expenses_provider.dart';
@@ -89,6 +89,7 @@ class TopItem {
     required this.units,
     required this.revenue,
     required this.categoryId,
+    required this.colorIndex,
   });
 
   final String name;
@@ -97,10 +98,9 @@ class TopItem {
   final double revenue;
 
   /// Drives the rank badge's colour, so an item's colour matches its slice in
-  /// the donut beside it.
+  /// the donut beside it: the category's position in the synced taxonomy.
   final String categoryId;
-
-  int get colorIndex => MockMenu.categoryIndex(categoryId);
+  final int colorIndex;
 }
 
 /// How many days the trend and the top-sellers list look back over.
@@ -194,8 +194,20 @@ final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
 
   // ---- Category breakdown + top sellers --------------------------------
   // Both walk the same lines over the same window, so the donut and the list
-  // beside it are always describing the same trading period.
-  final categoryOf = {for (final item in MockMenu.items) item.id: item.categoryId};
+  // beside it are always describing the same trading period. Categories
+  // resolve against the synced taxonomy and the local inventory — never a
+  // bundled sample catalogue.
+  final categories = ref.watch(categoriesListProvider);
+  final categoryIndexById = {
+    for (var i = 0; i < categories.length; i++) categories[i].id: i,
+  };
+  // Anything uncategorised lands after the known categories rather than
+  // stealing the first one's colour.
+  int colorIndexFor(String categoryId) =>
+      categoryIndexById[categoryId] ?? categories.length;
+  final categoryOf = {
+    for (final item in items) item.id: item.categoryId,
+  };
   final categoryTotals = <String, double>{};
   final unitsByItem = <String, int>{};
   final revenueByItem = <String, double>{};
@@ -223,9 +235,9 @@ final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
       [
         for (final entry in categoryTotals.entries)
           CategorySlice(
-            label: AppStrings.menuCategoryName(entry.key),
+            label: categoryLabelFrom(categories, entry.key),
             value: entry.value,
-            colorIndex: MockMenu.categoryIndex(entry.key),
+            colorIndex: colorIndexFor(entry.key),
           ),
       ]..sort((a, b) => b.value.compareTo(a.value));
 
@@ -238,6 +250,7 @@ final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
             units: entry.value,
             revenue: revenueByItem[entry.key] ?? 0,
             categoryId: categoryOf[entry.key] ?? 'other',
+            colorIndex: colorIndexFor(categoryOf[entry.key] ?? 'other'),
           ),
       ]..sort((a, b) {
         final byUnits = b.units.compareTo(a.units);

@@ -3,7 +3,7 @@
 /// Every section reads its aggregate from the backend (POS or Inventory
 /// Service) — nothing here rolls its own numbers from the local cache, so
 /// the screen can never disagree with the server about what a day earned.
-/// With no business context every section is empty rather than demo data:
+/// With no business context every section is empty:
 /// invented takings would be worse than a blank report.
 library;
 

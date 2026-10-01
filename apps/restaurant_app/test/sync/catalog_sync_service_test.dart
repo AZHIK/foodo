@@ -4,7 +4,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:restaurant_pos/database/app_database.dart';
 import 'package:restaurant_pos/sync/catalog_sync_service.dart';
-import 'package:restaurant_pos/sync/fake_inventory_catalog_api.dart';
+import '../test_helpers/fake_inventory_catalog_api.dart';
 import 'package:restaurant_pos/sync/inventory_catalog_api.dart';
 
 void main() {

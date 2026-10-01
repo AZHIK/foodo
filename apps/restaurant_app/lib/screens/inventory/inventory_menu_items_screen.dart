@@ -47,7 +47,7 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
     final totalItems = ref.watch(menuCatalogItemsProvider).length;
     final filters = ref.watch(menuItemFiltersProvider);
     final notifier = ref.read(menuItemsQueryProvider.notifier);
-    final demoSales = ref.watch(_menuDemoSalesProvider);
+    final sales = ref.watch(_menuSalesSummaryProvider);
 
     return Column(
       children: [
@@ -78,16 +78,10 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
               onPressed: () => showItemFormDialog(context),
             ),
             // Three cards, matching the Groceries screen's stat row. The
-            // last two are demo/placeholder data: no real Sales Service
-            // integration reaches this screen yet, and the only sales
-            // history in the app today (`dashboardMetricsProvider`) is
-            // synthesised from a separate mock catalog whose item ids do not
-            // line up with these real inventory items — showing it against
-            // a specific real row would misattribute sales to the wrong
-            // item, which is worse than not showing it at all. An aggregate,
-            // clearly-labelled demo figure does not have that problem, so it
-            // stands in here until real per-item sales are wired up — at
-            // which point this card slots in unchanged.
+            // last two summarise real sales from `dashboardMetricsProvider`
+            // (top items by units over the trailing 7 days) — aggregate
+            // figures only, since per-row sales attribution needs a
+            // per-item sales join this screen doesn't have yet.
             metrics: [
               SummaryMetricCard(
                 label: AppStrings.menuItemsTitle,
@@ -97,17 +91,17 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
               ),
               SummaryMetricCard(
                 label: AppStrings.topSeller,
-                value: demoSales.topSellerName ?? AppStrings.emDash,
-                trend: demoSales.topSellerName == null
-                    ? AppStrings.noDemoSales
-                    : AppStrings.demoTopSeller(demoSales.topSellerUnits),
+                value: sales.topSellerName ?? AppStrings.emDash,
+                trend: sales.topSellerName == null
+                    ? AppStrings.last7Days
+                    : AppStrings.unitsSold(sales.topSellerUnits),
                 icon: Icons.trending_up_rounded,
                 accent: context.colors.tertiary,
               ),
               SummaryMetricCard(
                 label: AppStrings.menuRevenue,
-                value: Fmt.moneyCompact(demoSales.totalRevenue),
-                trend: AppStrings.last7DaysDemo,
+                value: Fmt.moneyCompact(sales.totalRevenue),
+                trend: AppStrings.last7Days,
                 icon: Icons.payments_outlined,
                 accent: context.semantic.success,
               ),
@@ -259,12 +253,13 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Demo sales — see the doc comment on the metrics row above for why this is
-// clearly labelled rather than presented as real per-item sales data.
+// Trailing-7-day sales summary — aggregates from `dashboardMetricsProvider`
+// (real synced sales), shown without per-row attribution, which would need
+// a per-item sales join this screen doesn't have yet.
 // ---------------------------------------------------------------------------
 
-class _MenuDemoSales {
-  const _MenuDemoSales({
+class _MenuSalesSummary {
+  const _MenuSalesSummary({
     required this.topSellerName,
     required this.topSellerUnits,
     required this.totalRevenue,
@@ -275,12 +270,12 @@ class _MenuDemoSales {
   final double totalRevenue;
 }
 
-final _menuDemoSalesProvider = Provider<_MenuDemoSales>((ref) {
+final _menuSalesSummaryProvider = Provider<_MenuSalesSummary>((ref) {
   final topItems = ref.watch(dashboardMetricsProvider).topItems;
   final top = topItems.isEmpty ? null : topItems.first;
   final total = topItems.fold<double>(0, (sum, item) => sum + item.revenue);
 
-  return _MenuDemoSales(
+  return _MenuSalesSummary(
     topSellerName: top?.name,
     topSellerUnits: top?.units ?? 0,
     totalRevenue: total,
@@ -293,11 +288,10 @@ final _menuDemoSalesProvider = Provider<_MenuDemoSales>((ref) {
 
 /// Column config for the Menu Items table.
 ///
-/// No units-sold/revenue columns: per-row sales data would need the same
-/// mock-catalog join the demo stat cards above avoid for exactly the reason
-/// explained there — showing it against a specific real row would name the
-/// wrong item's numbers. Once real per-item sales reach this screen, add
-/// them here without restructuring anything else.
+/// No units-sold/revenue columns: per-row sales data would need a per-item
+/// sales join — showing dashboard aggregates against a specific row would
+/// name the wrong item's numbers. Once real per-item sales reach this
+/// screen, add them here without restructuring anything else.
 final menuItemColumns = <DataColumnSpec<InventoryItem>>[
   DataColumnSpec(
     label: AppStrings.itemColumn,

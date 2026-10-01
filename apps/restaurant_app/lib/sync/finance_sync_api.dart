@@ -1,8 +1,8 @@
 /// Pluggable interface for syncing other-expense/other-income entries and
 /// receipt uploads to POS Service.
 ///
-/// Mirrors `pos_sync_api.dart`'s role for sales. `FakeFinanceSyncApi`
-/// provides test/demo behavior; `HttpFinanceSyncApi` calls the real
+/// Mirrors `pos_sync_api.dart`'s role for sales. `HttpFinanceSyncApi`
+/// calls the real
 /// `/other-expenses/sync`, `/other-incomes/sync`, and
 /// `/finance/attachments` endpoints.
 library;

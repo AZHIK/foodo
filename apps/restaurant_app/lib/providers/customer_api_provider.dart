@@ -12,34 +12,31 @@ import '../sync/customer_entry_writer.dart';
 import '../sync/customer_ledger_sync_service.dart';
 import '../sync/customer_sync_api.dart';
 import '../sync/customer_sync_service.dart';
-import '../sync/fake_customer_catalog_api.dart';
-import '../sync/fake_customer_sync_api.dart';
 import '../sync/http_customer_catalog_api.dart';
 import '../sync/http_customer_sync_api.dart';
 import 'database_providers.dart';
 import 'permissions_provider.dart';
 import 'pos_api_provider.dart';
 
-/// The real HTTP client once a business context exists, otherwise a fake —
-/// same branching shape as `financeSyncApiProvider`.
+/// The HTTP client for customer sync. Requires a business context — without
+/// one there is no ledger to sync against, so reading this provider throws
+/// instead of returning a stub.
 final customerSyncApiProvider = Provider<CustomerSyncApi>((ref) {
   final businessId = ref.watch(currentBusinessIdProvider);
-  return businessId == null
-      ? FakeCustomerSyncApi()
-      : HttpCustomerSyncApi(
-          dio: ref.watch(posServiceDioProvider),
-          businessId: businessId,
-        );
+  if (businessId == null) throw StateError('No active business context');
+  return HttpCustomerSyncApi(
+    dio: ref.watch(posServiceDioProvider),
+    businessId: businessId,
+  );
 });
 
 final customerCatalogApiProvider = Provider<CustomerCatalogApi>((ref) {
   final businessId = ref.watch(currentBusinessIdProvider);
-  return businessId == null
-      ? FakeCustomerCatalogApi()
-      : HttpCustomerCatalogApi(
-          dio: ref.watch(posServiceDioProvider),
-          businessId: businessId,
-        );
+  if (businessId == null) throw StateError('No active business context');
+  return HttpCustomerCatalogApi(
+    dio: ref.watch(posServiceDioProvider),
+    businessId: businessId,
+  );
 });
 
 /// Push: drains the customer outbox table.

@@ -55,6 +55,12 @@ class SaleSyncInput(BaseModel):
     occurred_at: datetime
     device_sequence: int | None = None
     void_or_refund_reason: str | None = None
+    order_type: Literal["dine_in", "takeaway", "delivery"] = "dine_in"
+    courier_id: UUID | None = None
+    delivery_address_line1: str | None = Field(default=None, max_length=500)
+    delivery_recipient_phone: str | None = Field(default=None, max_length=50)
+    delivery_note: str | None = Field(default=None, max_length=500)
+    delivery_fee: Decimal = Field(default=Decimal("0"), ge=Decimal("0"))
 
     @field_validator("occurred_at")
     @classmethod
@@ -78,6 +84,36 @@ class SaleSyncInput(BaseModel):
             raise ValueError(
                 "void_or_refund_reason is required when status is voided or refunded"
             )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_delivery_fields(self) -> "SaleSyncInput":
+        if self.order_type == "delivery":
+            if not self.delivery_address_line1:
+                raise ValueError(
+                    "delivery_address_line1 is required when order_type is delivery"
+                )
+        else:
+            if self.courier_id is not None:
+                raise ValueError(
+                    "courier_id is only allowed when order_type is delivery"
+                )
+            if self.delivery_address_line1 is not None:
+                raise ValueError(
+                    "delivery_address_line1 is only allowed when order_type is delivery"
+                )
+            if self.delivery_recipient_phone is not None:
+                raise ValueError(
+                    "delivery_recipient_phone is only allowed when order_type is delivery"
+                )
+            if self.delivery_note is not None:
+                raise ValueError(
+                    "delivery_note is only allowed when order_type is delivery"
+                )
+            if self.delivery_fee != Decimal("0"):
+                raise ValueError(
+                    "delivery_fee is only allowed when order_type is delivery"
+                )
         return self
 
 
@@ -126,10 +162,17 @@ class SaleRead(BaseModel):
     subtotal: Decimal
     discount_amount: Decimal
     tax_amount: Decimal
+    delivery_fee: Decimal = Decimal("0")
     total: Decimal
     payment_method: str
     actor_id: UUID | None = None
     customer_id: UUID | None = None
+    order_type: str = "dine_in"
+    courier_id: UUID | None = None
+    delivery_address_line1: str | None = None
+    delivery_recipient_phone: str | None = None
+    delivery_note: str | None = None
+    delivery_status: str | None = None
     occurred_at: datetime
     synced_at: datetime
     device_sequence: int | None = None
@@ -152,10 +195,14 @@ class SaleListItem(BaseModel):
     subtotal: Decimal
     discount_amount: Decimal
     tax_amount: Decimal
+    delivery_fee: Decimal = Decimal("0")
     total: Decimal
     payment_method: str
     actor_id: UUID | None = None
     customer_id: UUID | None = None
+    order_type: str = "dine_in"
+    courier_id: UUID | None = None
+    delivery_status: str | None = None
     occurred_at: datetime
     synced_at: datetime
     device_sequence: int | None = None
@@ -208,3 +255,17 @@ class SaleListFilters(BaseModel):
     status: Literal["completed", "voided", "refunded"] | None = None
     payment_method: Literal["cash", "mobile_money", "card", "other"] | None = None
     store_id: UUID | None = None
+    order_type: Literal["dine_in", "takeaway", "delivery"] | None = None
+    courier_id: UUID | None = None
+    delivery_status: (
+        Literal["pending", "assigned", "out_for_delivery", "delivered", "failed"] | None
+    ) = None
+
+
+class DeliveryStatusUpdate(BaseModel):
+    """PATCH body for advancing a delivery sale's fulfilment state."""
+
+    delivery_status: Literal[
+        "pending", "assigned", "out_for_delivery", "delivered", "failed"
+    ]
+    courier_id: UUID | None = None

@@ -124,6 +124,21 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
         "View the courier list and availability.",
     ),
     PermissionSeed(
+        PermissionCode.COURIERS_CREATE,
+        "Add couriers",
+        "Create a new courier record for delivery assignment.",
+    ),
+    PermissionSeed(
+        PermissionCode.COURIERS_UPDATE,
+        "Edit couriers",
+        "Change a courier's name, phone, vehicle, or availability.",
+    ),
+    PermissionSeed(
+        PermissionCode.COURIERS_DELETE,
+        "Delete couriers",
+        "Remove a courier record.",
+    ),
+    PermissionSeed(
         PermissionCode.INSIGHTS_VIEW,
         "View insights",
         "View business insights and recommendations.",

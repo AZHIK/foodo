@@ -30,7 +30,14 @@ class PermissionCode(StrEnum):
     # in this service today. Added so the restaurant app's nav sidebar and a
     # business owner's custom-role editor have a real code to gate/assign,
     # same forward-declared pattern as SETTINGS_* above.
+    # NOTE: COURIERS_CREATE/UPDATE/DELETE are enforced by POS Service's
+    # couriers endpoints — see services/pos-service/app/api/v1/endpoints/
+    # couriers.py. The full CRUD set lives here so seeds and role templates
+    # stay the single source of truth for assignable codes.
     COURIERS_VIEW = "couriers.view"
+    COURIERS_CREATE = "couriers.create"
+    COURIERS_UPDATE = "couriers.update"
+    COURIERS_DELETE = "couriers.delete"
     INSIGHTS_VIEW = "insights.view"
     # ── Finance (enforced by POS Service's other-expenses/other-incomes
     # endpoints — see services/pos-service/app/api/v1/endpoints/) ─────────

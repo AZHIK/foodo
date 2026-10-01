@@ -13,7 +13,6 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/mock_inventory.dart';
 import 'database_providers.dart';
 import 'inventory_api_provider.dart';
 import 'permissions_provider.dart';
@@ -35,14 +34,7 @@ class UnitsNotifier extends AsyncNotifier<List<InventoryUnit>> {
   @override
   Future<List<InventoryUnit>> build() async {
     final businessId = ref.watch(currentBusinessIdProvider);
-    if (businessId == null) {
-      // Demo mode has no backend units to resolve against — the id doubles
-      // as the abbreviation since it is never sent anywhere.
-      return [
-        for (final unit in MockInventory.units)
-          InventoryUnit(id: unit, abbreviation: unit),
-      ];
-    }
+    if (businessId == null) return const [];
 
     var disposed = false;
     ref.onDispose(() => disposed = true);
@@ -75,10 +67,12 @@ class UnitsNotifier extends AsyncNotifier<List<InventoryUnit>> {
     ];
   }
 
-  /// Re-runs sync and waits for it — for a manual refresh action. A no-op
-  /// with no business context (demo mode has nothing to pull).
+  /// Re-runs sync and waits for it — for a manual refresh action. Requires
+  /// a business context.
   Future<void> refresh() async {
-    if (ref.read(currentBusinessIdProvider) == null) return;
+    if (ref.read(currentBusinessIdProvider) == null) {
+      throw StateError('No active business context');
+    }
     state = const AsyncLoading<List<InventoryUnit>>().copyWithPrevious(state);
     await ref.read(unitsSyncServiceProvider).syncUnits();
     state = AsyncData(await _loadFromCache());

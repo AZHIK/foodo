@@ -4,8 +4,8 @@ import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
-import '../data/mock_inventory.dart';
 import '../constants/app_limits.dart';
 import '../database/app_database.dart';
 import '../models/inventory_item.dart';
@@ -47,10 +47,8 @@ abstract final class InventorySort {
 /// whatever was last cached instead of going blank or erroring — same
 /// stale-while-revalidate contract as `RolesNotifier`.
 ///
-/// With no store context at all (no session yet — e.g. a fresh
-/// `ProviderContainer` in a test that hasn't seeded one), this falls back to
-/// [MockInventory] rather than an empty list, so screens/tests that don't
-/// care about backend wiring still see a populated demo catalog.
+/// With no store context at all (no session yet), this returns an empty
+/// list — there is no catalogue to show until a store is selected.
 class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
   CatalogSyncService get _sync => ref.read(catalogSyncServiceProvider);
   InventoryApiService get _api => ref.read(inventoryApiServiceProvider);
@@ -64,7 +62,7 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
   @override
   Future<List<InventoryItem>> build() async {
     final storeId = ref.watch(currentStoreIdProvider);
-    if (storeId == null) return List.of(MockInventory.items);
+    if (storeId == null) return const [];
 
     var disposed = false;
     ref.onDispose(() => disposed = true);
@@ -144,9 +142,8 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
     state = AsyncData(await _loadFromCache(storeId));
   }
 
-  /// Creates a new item via the API, then refreshes. Falls back to a purely
-  /// local insert when there's no store context (demo/mock mode) so the
-  /// "Add item" form keeps working in that mode too.
+  /// Creates a new item via the API, then refreshes. Requires a store
+  /// context.
   ///
   /// The photo stays optional — no photo, no photo step. But when
   /// [item.image] holds freshly picked photo bytes the photo is part of the
@@ -161,18 +158,7 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
     bool deleteRemoteImage = false,
   }) async {
     final storeId = ref.read(currentStoreIdProvider);
-    if (storeId == null) {
-      final current = state.valueOrNull ?? const <InventoryItem>[];
-      final index = current.indexWhere((i) => i.id == item.id);
-      final next = [...current];
-      if (index == -1) {
-        next.insert(0, item);
-      } else {
-        next[index] = item;
-      }
-      state = AsyncData(next);
-      return;
-    }
+    if (storeId == null) throw StateError('No active store context');
 
     final sellingPrice = item.sellingPrice == null
         ? null
@@ -461,16 +447,10 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItem>> {
     return null;
   }
 
-  /// Continues the inv-## sequence from the highest existing id — only
-  /// meaningful in demo/mock mode; real items get their id from the server.
-  String nextId() {
-    var highest = 0;
-    for (final item in state.valueOrNull ?? const <InventoryItem>[]) {
-      final n = int.tryParse(item.id.split('-').last);
-      if (n != null && n > highest) highest = n;
-    }
-    return 'inv-${(highest + 1).toString().padLeft(2, '0')}';
-  }
+  /// Generates a client-side id for a not-yet-synced item — a UUID, so it
+  /// can never collide with a server id. Only meaningful before the first
+  /// sync; synced items carry the server's id.
+  String nextId() => const Uuid().v4();
 }
 
 final inventoryItemsProvider =
@@ -479,7 +459,7 @@ final inventoryItemsProvider =
     );
 
 /// The list, unwrapped for widgets that only ever want to render what's
-/// currently known (cached or demo data) without handling loading/error
+/// currently known (cached data) without handling loading/error
 /// states themselves — mirrors the idiom used for roles/staff.
 final inventoryItemsListProvider = Provider<List<InventoryItem>>(
   (ref) => ref.watch(inventoryItemsProvider).valueOrNull ?? const [],

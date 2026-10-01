@@ -110,6 +110,11 @@ _PLATFORM_FULL: tuple[PermissionCode, ...] = (
 
 # ── Non-owner (deferred) template permission sets ─────────────────────
 
+# Courier dispatch: managers and cashiers assign deliveries at the till, so
+# both get couriers.view alongside POS. Full courier CRUD stays owner-only
+# (restaurant_owner's "*" wildcard), same split as customers.* today.
+_COURIERS_VIEW: tuple[PermissionCode, ...] = (PermissionCode.COURIERS_VIEW,)
+
 # Restaurant "Manager" — POS_SALES_SYNC is resolved onto the existing
 # POS_WRITE enum member (see seed_mappings.py); POS_VIEW and the inventory
 # codes are first-class PermissionCode members and are referenced directly.
@@ -131,12 +136,14 @@ _MANAGER: tuple[PermissionCode, ...] = (
     PermissionCode.USER_BUSINESS_ROLES_VIEW,
     PermissionCode.USER_BUSINESS_ROLES_ASSIGN,
     PermissionCode.STORES_SWITCH,
+    *_COURIERS_VIEW,
 )
 
 _CASHIER: tuple[PermissionCode, ...] = (
     POS_SALES_SYNC,
     PermissionCode.POS_VIEW,
     PermissionCode.INVENTORY_VIEW,
+    *_COURIERS_VIEW,
 )
 
 _KITCHEN_STAFF: tuple[PermissionCode, ...] = (

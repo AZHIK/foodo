@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/mock_finance.dart';
+import '../../data/finance_categories.dart';
 import '../../constants/app_strings.dart';
 import '../../models/order.dart';
 import '../../providers/other_incomes_provider.dart';
@@ -24,9 +24,9 @@ class OtherIncomeFilterPanel extends ConsumerWidget {
             FilterSection(
               title: AppStrings.categoryFilter,
               child: FilterChipGroup<String>(
-                options: MockFinance.incomeCategories.map((c) => c.id).toList(),
+                options: FinanceCategories.incomeCategories.map((c) => c.id).toList(),
                 selected: filters.categoryIds,
-                labelOf: (id) => MockFinance.incomeCategoryLabel(id),
+                labelOf: (id) => FinanceCategories.incomeLabel(id),
                 onToggle: (id) => notifier.toggleCategory(id),
               ),
             ),

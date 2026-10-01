@@ -14,7 +14,6 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/mock_inventory.dart';
 import '../models/inventory_item.dart';
 import 'database_providers.dart';
 import 'inventory_api_provider.dart';
@@ -44,15 +43,14 @@ IconData _iconForCode(String code) => _iconsByCode[code] ?? Icons.category_outli
 /// row)` used by table cells, search and exports across the whole app, with
 /// no room to thread a `WidgetRef` through its signature — can still resolve
 /// a label/icon synchronously. [CategoriesNotifier] keeps this current on
-/// every state change; it starts as the demo list so these call sites work
-/// correctly even before any widget has read a categories provider yet.
-List<InventoryCategory> _latestCategories = List.of(MockInventory.categories);
+/// every state change; it starts empty and fills once the taxonomy syncs.
+List<InventoryCategory> _latestCategories = const [];
 
 class CategoriesNotifier extends AsyncNotifier<List<InventoryCategory>> {
   @override
   Future<List<InventoryCategory>> build() async {
     final businessId = ref.watch(currentBusinessIdProvider);
-    if (businessId == null) return _publish(List.of(MockInventory.categories));
+    if (businessId == null) return _publish(const []);
 
     var disposed = false;
     ref.onDispose(() => disposed = true);
@@ -91,10 +89,12 @@ class CategoriesNotifier extends AsyncNotifier<List<InventoryCategory>> {
     return categories;
   }
 
-  /// Re-runs sync and waits for it — for a manual refresh action. A no-op
-  /// with no business context (demo mode has nothing to pull).
+  /// Re-runs sync and waits for it — for a manual refresh action. Requires
+  /// a business context.
   Future<void> refresh() async {
-    if (ref.read(currentBusinessIdProvider) == null) return;
+    if (ref.read(currentBusinessIdProvider) == null) {
+      throw StateError('No active business context');
+    }
     state = const AsyncLoading<List<InventoryCategory>>().copyWithPrevious(state);
     await ref.read(categoriesSyncServiceProvider).syncCategories();
     state = AsyncData(_publish(await _loadFromCache()));
@@ -109,8 +109,7 @@ final categoriesListProvider = Provider<List<InventoryCategory>>(
   (ref) => ref.watch(categoriesProvider).valueOrNull ?? const [],
 );
 
-/// Lookup by id — mirrors `MockInventory.categoryById`'s ergonomics so
-/// widget call sites change minimally.
+/// Lookup by id over an explicit list, for call sites that already hold one.
 InventoryCategory? categoryByIdFrom(List<InventoryCategory> categories, String id) {
   for (final category in categories) {
     if (category.id == id) return category;
@@ -119,7 +118,7 @@ InventoryCategory? categoryByIdFrom(List<InventoryCategory> categories, String i
 }
 
 /// Resolves a category id to its display label, falling back to the id
-/// itself when unknown — mirrors `MockInventory.categoryLabel`.
+/// itself when unknown.
 String categoryLabelFrom(List<InventoryCategory> categories, String id) =>
     categoryByIdFrom(categories, id)?.label ?? id;
 

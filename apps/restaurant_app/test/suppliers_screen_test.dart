@@ -1,19 +1,19 @@
-/// Smoke tests for the Suppliers screen and its notifier in demo mode
-/// (no business/store context — see `newTestContainer()`).
+/// Smoke tests for the Suppliers screen and its notifier with no
+/// business/store context (see `newTestContainer()`).
+///
+/// With no context the list is empty and mutations are refused — the screen
+/// renders its empty state instead of sample data.
 ///
 /// Mirrors the shape of `customers_screens_test.dart`: a plain
-/// `MaterialApp` mount (no full router/permission-gate) verifying the
-/// demo-mode regression guard, plus direct provider-level checks of
-/// create/edit/delete now that they're `AsyncNotifier` methods. Also
-/// covers the item-type gate (a sellable-only item can never be
-/// purchase-received, so "Add to order cart" must be disabled for it).
+/// `MaterialApp` mount (no full router/permission-gate). Also covers the
+/// item-type gate (a sellable-only item can never be purchase-received, so
+/// "Add to order cart" must be disabled for it).
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:restaurant_pos/data/mock_suppliers.dart';
 import 'package:restaurant_pos/models/inventory_item.dart';
 import 'package:restaurant_pos/providers/inventory_provider.dart';
 import 'package:restaurant_pos/providers/suppliers_provider.dart';
@@ -33,35 +33,25 @@ Future<void> pumpScreen(WidgetTester tester, ProviderContainer container, Widget
 }
 
 void main() {
-  group('SuppliersScreen — demo mode', () {
-    testWidgets('renders the mock rows with no business context', (tester) async {
+  group('SuppliersScreen — no business context', () {
+    testWidgets('renders with an empty list', (tester) async {
       final container = newTestContainer();
       await pumpScreen(tester, container, const SuppliersScreen());
 
       expect(find.text('Suppliers'), findsWidgets);
-      expect(find.text(MockSuppliers.list.first.name), findsWidgets);
+      expect(container.read(suppliersListProvider), isEmpty);
     });
 
-    test('create/edit/delete work against in-memory state', () async {
+    test('mutations require a business context', () async {
       final container = newTestContainer();
-      final before = (await container.read(suppliersProvider.future)).length;
+      await container.read(suppliersProvider.future);
       final notifier = container.read(suppliersProvider.notifier);
 
-      final created = await notifier.create(name: 'New Vendor', phone: '+1-555-0199');
-      expect(container.read(suppliersListProvider).length, before + 1);
-
-      final edited = await notifier.edit(created, name: 'New Vendor (Preferred)');
-      expect(edited.name, 'New Vendor (Preferred)');
-      expect(
-        container.read(suppliersListProvider).firstWhere((s) => s.id == created.id).name,
-        'New Vendor (Preferred)',
+      await expectLater(
+        notifier.create(name: 'New Vendor', phone: '+1-555-0199'),
+        throwsStateError,
       );
-
-      await notifier.delete(created.id);
-      expect(
-        container.read(suppliersListProvider).any((s) => s.id == created.id),
-        isFalse,
-      );
+      await expectLater(notifier.delete('no-such-id'), throwsStateError);
     });
   });
 
@@ -72,14 +62,20 @@ void main() {
     // way that made both a viewport-size and an `ensureVisible` approach
     // flaky here — disproportionate machinery for a two-line boolean.
     // Covered instead by a direct check against the row-menu's actual
-    // condition, run against the same `MockInventory` data the screen
-    // itself renders — a mismatch here would still be a mismatch there.
+    // condition over local fixtures.
     test(
       "disables 'sellable' items and allows raw_material/both, matching "
       "inventory_menu_items_screen.dart's isEnabled predicate",
       () async {
-        final container = newTestContainer();
-        await container.read(inventoryItemsProvider.future);
+        final container = newTestContainer(
+          extraOverrides: [
+            inventoryItemsListProvider.overrideWithValue([
+              _item('inv-pizza', 'Margherita Pizza', 'sellable'),
+              _item('inv-water', 'Sparkling Water', 'both'),
+              _item('inv-tomato', 'Heirloom Tomatoes', 'raw_material'),
+            ]),
+          ],
+        );
         final items = container.read(inventoryItemsListProvider);
 
         bool addToCartRowEnabled(InventoryItem item) =>
@@ -100,3 +96,15 @@ void main() {
     );
   });
 }
+
+InventoryItem _item(String id, String name, String itemType) => InventoryItem(
+      id: id,
+      sku: 'SKU-$id',
+      name: name,
+      categoryId: 'produce',
+      emoji: '📦',
+      stock: 10,
+      reorderLevel: 2,
+      unitCost: 1.5,
+      itemType: itemType,
+    );

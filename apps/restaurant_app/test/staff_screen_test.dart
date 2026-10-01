@@ -34,9 +34,9 @@ const _cashierRoleId = 'role-cashier';
 const _stockRoleId = 'role-stock';
 
 /// A business with a handful of real-shaped roles and staff, seeded into a
-/// [FakeIdentityBackendState] — these screens now call the real
-/// identity-service endpoints (via `identityServiceDioProvider`), so there's
-/// no more `MockStaff` for them to read; this is the fixture in its place.
+/// [FakeIdentityBackendState] — these screens call the real
+/// identity-service endpoints (via `identityServiceDioProvider`), and this
+/// local backend fixture is what serves them in tests.
 Map<String, dynamic> _role(
   String id,
   String name, {

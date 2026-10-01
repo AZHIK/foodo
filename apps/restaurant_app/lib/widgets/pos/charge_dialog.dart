@@ -603,7 +603,7 @@ class _ChargeButton extends ConsumerWidget {
   }
 }
 
-/// Card, QRIS and the rest settle on a terminal this build only mocks: there
+/// Card, QRIS and the rest settle on a terminal this build simulates: there
 /// is no amount to key in, so the dialog says so rather than leaving a blank.
 class _TerminalNotice extends StatelessWidget {
   const _TerminalNotice({required this.method});

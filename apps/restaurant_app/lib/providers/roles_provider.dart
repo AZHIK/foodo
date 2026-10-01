@@ -197,7 +197,7 @@ class RolesNotifier extends AsyncNotifier<List<BusinessRole>> {
 
   /// Copies a role's permissions under a new name — the backend has no
   /// duplicate endpoint, so this is a real create-then-copy-each-permission
-  /// sequence (not instant/atomic like the old mock), not a fake action.
+  /// sequence (not instant/atomic), never optimistically faked.
   Future<BusinessRole> duplicate(String id) async {
     final source = byId(id);
     if (source == null) throw StateError('Role $id not found');

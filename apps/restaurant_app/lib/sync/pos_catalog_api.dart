@@ -3,8 +3,8 @@
 ///
 /// This is the read-side counterpart to `pos_sync_api.dart` (which pushes
 /// new sales), mirroring how `inventory_catalog_api.dart` pairs with
-/// `services/inventory_api_service.dart`. `FakePosCatalogApi` provides
-/// test/demo behavior; `HttpPosCatalogApi` calls the real endpoints.
+/// `services/inventory_api_service.dart`. `HttpPosCatalogApi` calls the
+/// real endpoints.
 library;
 
 import 'package:decimal/decimal.dart';

@@ -4,7 +4,6 @@ library;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/app_durations.dart';
 import '../sync/sync_service.dart';
-import '../sync/fake_sync_api.dart';
 import '../sync/http_sync_api.dart';
 import 'database_providers.dart';
 import 'permissions_provider.dart';
@@ -25,17 +24,15 @@ class SyncStatusState {
   });
 }
 
-/// Provides the sync service instance: the real HTTP API once a business
-/// context exists, otherwise a fake — same branching shape as
-/// `InventoryNotifier.build()`'s mock fallback, so the outbox has something
-/// to push to (harmlessly) in demo/no-backend mode instead of throwing.
+/// Provides the sync service instance, backed by the real HTTP API.
+/// Requires a business context — without one there is no ledger to sync
+/// against, so reading this provider throws instead of returning a stub.
 final syncServiceProvider = Provider<SyncService>((ref) {
   final db = ref.watch(appDatabaseProvider);
   final businessId = ref.watch(currentBusinessIdProvider);
+  if (businessId == null) throw StateError('No active business context');
 
-  final api = businessId == null
-      ? FakeSyncApi()
-      : HttpSyncApi(dio: ref.watch(posServiceDioProvider), businessId: businessId);
+  final api = HttpSyncApi(dio: ref.watch(posServiceDioProvider), businessId: businessId);
 
   return SyncService(db: db, api: api);
 });

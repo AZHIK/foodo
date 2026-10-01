@@ -138,7 +138,7 @@ class _StockTransferDialogState extends ConsumerState<StockTransferDialog> {
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
-    // Read live rather than from the mock table: a location added on the Store
+    // Read live from the provider: a location added on the Store
     // Management screen is a valid destination the moment it is saved.
     final targets = ref.watch(transferTargetsProvider);
     final currentStore = ref.watch(currentStoreProvider);

@@ -1,10 +1,10 @@
-/// Fake implementation of CustomerSyncApi for testing and demo mode.
+/// Test double for [CustomerSyncApi]. Unit tests only.
 ///
 /// Mirrors `FakeFinanceSyncApi`'s behavior knobs.
 library;
 
-import 'customer_sync_api.dart';
-import 'customer_sync_dtos.dart';
+import 'package:restaurant_pos/sync/customer_sync_api.dart';
+import 'package:restaurant_pos/sync/customer_sync_dtos.dart';
 
 /// Fake customer sync API for testing behavior.
 class FakeCustomerSyncApi extends CustomerSyncApi {

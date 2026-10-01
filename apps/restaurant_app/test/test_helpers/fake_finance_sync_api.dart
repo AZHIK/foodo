@@ -1,4 +1,4 @@
-/// Fake implementation of FinanceSyncApi for testing and demo mode.
+/// Test double for [FinanceSyncApi]. Unit tests only.
 ///
 /// Mirrors `FakeSyncApi`'s behavior knobs.
 library;
@@ -6,8 +6,8 @@ library;
 import 'dart:typed_data';
 import 'package:uuid/uuid.dart';
 
-import 'finance_sync_api.dart';
-import 'finance_sync_dtos.dart';
+import 'package:restaurant_pos/sync/finance_sync_api.dart';
+import 'package:restaurant_pos/sync/finance_sync_dtos.dart';
 
 /// Fake finance sync API for testing behavior.
 class FakeFinanceSyncApi extends FinanceSyncApi {

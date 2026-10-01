@@ -84,6 +84,35 @@ class PaymentMethod(str, PyEnum):
     OTHER = "other"
 
 
+class OrderType(str, PyEnum):
+    """How the order leaves the counter.
+
+    ``dine_in`` — seated service. ``takeaway`` — counter pickup.
+    ``delivery`` — courier fulfilment; requires a delivery address and
+    participates in the minimal ``DeliveryStatus`` lifecycle.
+    """
+
+    DINE_IN = "dine_in"
+    TAKEAWAY = "takeaway"
+    DELIVERY = "delivery"
+
+
+class DeliveryStatus(str, PyEnum):
+    """Minimal delivery lifecycle for a delivery sale.
+
+    ``NULL`` on the row means "not a delivery" (non-delivery sales never
+    carry a status). Delivery sales start at ``pending`` and advance via
+    ``PATCH .../delivery-status``: pending → assigned → out_for_delivery
+    → delivered (or failed from any non-terminal step).
+    """
+
+    PENDING = "pending"
+    ASSIGNED = "assigned"
+    OUT_FOR_DELIVERY = "out_for_delivery"
+    DELIVERED = "delivered"
+    FAILED = "failed"
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # Tables
 # ═══════════════════════════════════════════════════════════════════════
@@ -178,6 +207,49 @@ class Sale(SQLModel, table=True):
         sa_column=Column(
             PG_UUID,
             ForeignKey("customers.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
+    order_type: OrderType = Field(
+        default=OrderType.DINE_IN,
+        sa_column=Column(
+            SAEnum(
+                OrderType,
+                name="ordertype",
+                values_callable=lambda x: [e.value for e in x],
+            ),
+            nullable=False,
+            server_default="dine_in",
+            index=True,
+        ),
+    )
+    courier_id: UUID | None = Field(
+        default=None,
+        sa_column=Column(
+            PG_UUID,
+            ForeignKey("couriers.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
+    delivery_address_line1: str | None = Field(default=None, max_length=500)
+    delivery_recipient_phone: str | None = Field(default=None, max_length=50)
+    delivery_note: str | None = Field(default=None, max_length=500)
+    delivery_fee: Decimal = Field(
+        default=Decimal("0"),
+        nullable=False,
+        sa_type=Numeric(precision=12, scale=2),
+        sa_column_kwargs={"server_default": "0"},
+    )
+    delivery_status: DeliveryStatus | None = Field(
+        default=None,
+        sa_column=Column(
+            SAEnum(
+                DeliveryStatus,
+                name="deliverystatus",
+                values_callable=lambda x: [e.value for e in x],
+            ),
             nullable=True,
             index=True,
         ),

@@ -24,7 +24,7 @@ enum PaymentType {
   /// sales were taken on them.
   static const counterTenders = [cash, card, qris];
 
-  /// Card and QRIS settle through a terminal we only mock here: no amount is
+  /// Card and QRIS settle through a simulated terminal here: no amount is
   /// keyed in, the payment is simply approved or not.
   bool get isTerminal => this == card || this == qris || this == mobile;
 }

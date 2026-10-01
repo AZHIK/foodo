@@ -1,11 +1,8 @@
 /// Request/response models for the Identity Service business-RBAC endpoints
 /// (business roles, role permissions, staff assignment).
 ///
-/// Shapes verified directly against `app/schemas/business_rbac.py` and the
-/// three new endpoints added alongside this file — not assumed from the
-/// earlier mock data, which used different field names (`isSystem`,
-/// `permissionIds`) than the real API (`is_protected`, and permissions
-/// fetched separately).
+/// Shapes verified directly against `app/schemas/business_rbac.py`:
+/// `is_protected` flags, with permissions fetched separately.
 library;
 
 /// A custom role scoped to one business, as returned by the role endpoints.

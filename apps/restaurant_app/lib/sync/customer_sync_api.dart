@@ -1,7 +1,7 @@
 /// Pluggable interface for syncing customers to POS Service.
 ///
 /// Mirrors `finance_sync_api.dart`'s role for other-expenses/other-incomes.
-/// `FakeCustomerSyncApi` provides test/demo behavior; `HttpCustomerSyncApi`
+/// `HttpCustomerSyncApi`
 /// calls the real `/customers/sync` endpoint.
 library;
 

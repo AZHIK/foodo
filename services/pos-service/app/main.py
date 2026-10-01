@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.endpoints import (
+    couriers,
     customers,
     finance_attachments,
     other_expenses,
@@ -57,6 +58,7 @@ app.add_middleware(
 # matching identity-service and inventory-service's convention.
 app.include_router(health.router, prefix="")
 app.include_router(sales.router, prefix="/api/v1")
+app.include_router(couriers.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
 app.include_router(void_refund.router, prefix="/api/v1")
 app.include_router(other_expenses.router, prefix="/api/v1")
