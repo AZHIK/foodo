@@ -717,6 +717,174 @@ class StockValuationDto {
       );
 }
 
+/// One item+supplier bucket of purchasing (Product Purchase Report).
+class ProductPurchaseLineDto {
+  final String itemId;
+  final String itemName;
+  final String itemUnit;
+  final String? supplierId;
+  final String supplierName;
+  final Decimal quantityOrdered;
+  final Decimal quantityReceived;
+  final Decimal totalCost;
+
+  ProductPurchaseLineDto({
+    required this.itemId,
+    required this.itemName,
+    required this.itemUnit,
+    this.supplierId,
+    required this.supplierName,
+    required this.quantityOrdered,
+    required this.quantityReceived,
+    required this.totalCost,
+  });
+
+  factory ProductPurchaseLineDto.fromJson(Map<String, dynamic> json) =>
+      ProductPurchaseLineDto(
+        itemId: json['item_id'] as String,
+        itemName: json['item_name'] as String,
+        itemUnit: json['item_unit'] as String? ?? '',
+        supplierId: json['supplier_id'] as String?,
+        supplierName: json['supplier_name'] as String,
+        quantityOrdered: Decimal.parse(json['quantity_ordered'].toString()),
+        quantityReceived: Decimal.parse(json['quantity_received'].toString()),
+        totalCost: Decimal.parse(json['total_cost'].toString()),
+      );
+}
+
+/// One supplier+method bucket of payments (Purchase Payment Report).
+class PurchasePaymentLineDto {
+  final String supplierId;
+  final String supplierName;
+  final String? method;
+  final int paymentsCount;
+  final Decimal totalPaid;
+
+  PurchasePaymentLineDto({
+    required this.supplierId,
+    required this.supplierName,
+    this.method,
+    required this.paymentsCount,
+    required this.totalPaid,
+  });
+
+  factory PurchasePaymentLineDto.fromJson(Map<String, dynamic> json) =>
+      PurchasePaymentLineDto(
+        supplierId: json['supplier_id'] as String,
+        supplierName: json['supplier_name'] as String,
+        method: json['method'] as String?,
+        paymentsCount: json['payments_count'] as int,
+        totalPaid: Decimal.parse(json['total_paid'].toString()),
+      );
+}
+
+/// One manual correction (Stock Adjustment Report / Activity Log).
+class StockAdjustmentLineDto {
+  final String id;
+  final String itemId;
+  final String itemName;
+  final Decimal quantityDelta;
+  final String? reason;
+  final String createdAt;
+
+  StockAdjustmentLineDto({
+    required this.id,
+    required this.itemId,
+    required this.itemName,
+    required this.quantityDelta,
+    this.reason,
+    required this.createdAt,
+  });
+
+  factory StockAdjustmentLineDto.fromJson(Map<String, dynamic> json) =>
+      StockAdjustmentLineDto(
+        id: json['id'] as String,
+        itemId: json['item_id'] as String,
+        itemName: json['item_name'] as String,
+        quantityDelta: Decimal.parse(json['quantity_delta'].toString()),
+        reason: json['reason'] as String?,
+        createdAt: json['created_at'] as String,
+      );
+}
+
+/// One received batch (Lot Report).
+class LotLineDto {
+  final String lotNo;
+  final String itemName;
+  final Decimal quantityReceived;
+  final String? supplierName;
+  final String? expiryDate;
+
+  LotLineDto({
+    required this.lotNo,
+    required this.itemName,
+    required this.quantityReceived,
+    this.supplierName,
+    this.expiryDate,
+  });
+
+  factory LotLineDto.fromJson(Map<String, dynamic> json) => LotLineDto(
+        lotNo: json['lot_no'] as String,
+        itemName: json['item_name'] as String,
+        quantityReceived:
+            Decimal.parse(json['quantity_received'].toString()),
+        supplierName: json['supplier_name'] as String?,
+        expiryDate: json['expiry_date'] as String?,
+      );
+}
+
+/// One supplier's purchase position (Supplier & Customer Report).
+class SupplierPurchaseLineDto {
+  final String supplierId;
+  final String supplierName;
+  final int ordersCount;
+  final Decimal totalOrdered;
+  final Decimal totalPaid;
+  final Decimal balance;
+
+  SupplierPurchaseLineDto({
+    required this.supplierId,
+    required this.supplierName,
+    required this.ordersCount,
+    required this.totalOrdered,
+    required this.totalPaid,
+    required this.balance,
+  });
+
+  factory SupplierPurchaseLineDto.fromJson(Map<String, dynamic> json) =>
+      SupplierPurchaseLineDto(
+        supplierId: json['supplier_id'] as String,
+        supplierName: json['supplier_name'] as String,
+        ordersCount: json['orders_count'] as int,
+        totalOrdered: Decimal.parse(json['total_ordered'].toString()),
+        totalPaid: Decimal.parse(json['total_paid'].toString()),
+        balance: Decimal.parse(json['balance'].toString()),
+      );
+}
+
+/// One auditable event (Activity Log).
+class ActivityLogLineDto {
+  final String itemName;
+  final String movementType;
+  final Decimal quantityDelta;
+  final String createdAt;
+
+  ActivityLogLineDto({
+    required this.itemName,
+    required this.movementType,
+    required this.quantityDelta,
+    required this.createdAt,
+  });
+
+  factory ActivityLogLineDto.fromJson(Map<String, dynamic> json) =>
+      ActivityLogLineDto(
+        itemName: json['item_name'] as String,
+        movementType: json['movement_type'] as String,
+        quantityDelta: Decimal.parse(json['quantity_delta'].toString()),
+        createdAt: json['created_at'] as String,
+      );
+}
+
 class InventoryApiService {
   const InventoryApiService({required this._dio});
 
@@ -1152,6 +1320,160 @@ class InventoryApiService {
         InventoryApiPaths.stockValuation(businessId),
       );
       return StockValuationDto.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  Map<String, dynamic> _reportWindow(DateTime? from, DateTime? to) => {
+        if (from != null) 'from': _isoDate(from),
+        if (to != null) 'to': _isoDate(to),
+      };
+
+  List<T> _lines<T>(
+    Map<String, dynamic> data,
+    T Function(Map<String, dynamic>) fromJson,
+  ) =>
+      (data['lines'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(fromJson)
+          .toList();
+
+  /// Product Purchase Report.
+  Future<List<ProductPurchaseLineDto>> fetchProductPurchases({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      final response = await _dio.get(
+        InventoryApiPaths.productPurchases(businessId),
+        queryParameters: _reportWindow(from, to),
+      );
+      return _lines(
+        response.data as Map<String, dynamic>,
+        ProductPurchaseLineDto.fromJson,
+      );
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Purchase Payment Report.
+  Future<List<PurchasePaymentLineDto>> fetchPurchasePayments({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      final response = await _dio.get(
+        InventoryApiPaths.purchasePayments(businessId),
+        queryParameters: _reportWindow(from, to),
+      );
+      return _lines(
+        response.data as Map<String, dynamic>,
+        PurchasePaymentLineDto.fromJson,
+      );
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Stock Adjustment Report (business-wide manual corrections).
+  Future<List<StockAdjustmentLineDto>> fetchStockAdjustments({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      final response = await _dio.get(
+        InventoryApiPaths.stockAdjustments(businessId),
+        queryParameters: _reportWindow(from, to),
+      );
+      return _lines(
+        response.data as Map<String, dynamic>,
+        StockAdjustmentLineDto.fromJson,
+      );
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Lot Report.
+  Future<List<LotLineDto>> fetchLotReport({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      final response = await _dio.get(
+        InventoryApiPaths.lotReport(businessId),
+        queryParameters: _reportWindow(from, to),
+      );
+      return _lines(
+        response.data as Map<String, dynamic>,
+        LotLineDto.fromJson,
+      );
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Stock Expiry Report (lots expiring in the window).
+  Future<List<LotLineDto>> fetchExpiryReport({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      final response = await _dio.get(
+        InventoryApiPaths.expiryReport(businessId),
+        queryParameters: _reportWindow(from, to),
+      );
+      return _lines(
+        response.data as Map<String, dynamic>,
+        LotLineDto.fromJson,
+      );
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Supplier & Customer Report (supplier leg).
+  Future<List<SupplierPurchaseLineDto>> fetchSupplierPurchases({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      final response = await _dio.get(
+        InventoryApiPaths.supplierPurchases(businessId),
+        queryParameters: _reportWindow(from, to),
+      );
+      return _lines(
+        response.data as Map<String, dynamic>,
+        SupplierPurchaseLineDto.fromJson,
+      );
+    } on DioException catch (e) {
+      _rethrowAsInventoryError(e);
+    }
+  }
+
+  /// Activity Log (inventory leg).
+  Future<List<ActivityLogLineDto>> fetchActivityLog({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      final response = await _dio.get(
+        InventoryApiPaths.activityLog(businessId),
+        queryParameters: _reportWindow(from, to),
+      );
+      return _lines(
+        response.data as Map<String, dynamic>,
+        ActivityLogLineDto.fromJson,
+      );
     } on DioException catch (e) {
       _rethrowAsInventoryError(e);
     }

@@ -96,6 +96,20 @@ abstract final class InventoryApiPaths {
   static String stockValuation(String businessId) =>
       '/businesses/$businessId/stock-valuation';
   static String stock(String businessId) => '/businesses/$businessId/stock';
+  static String productPurchases(String businessId) =>
+      '/businesses/$businessId/product-purchases';
+  static String purchasePayments(String businessId) =>
+      '/businesses/$businessId/purchase-payments';
+  static String stockAdjustments(String businessId) =>
+      '/businesses/$businessId/stock-adjustments';
+  static String lotReport(String businessId) =>
+      '/businesses/$businessId/lot-report';
+  static String expiryReport(String businessId) =>
+      '/businesses/$businessId/expiry-report';
+  static String supplierPurchases(String businessId) =>
+      '/businesses/$businessId/supplier-purchases';
+  static String activityLog(String businessId) =>
+      '/businesses/$businessId/activity-log';
   static String suppliers(String businessId) =>
       '/businesses/$businessId/suppliers';
   static String supplier(String businessId, String supplierId) =>
@@ -148,6 +162,20 @@ abstract final class PosApiPaths {
       '/businesses/$businessId/reports/staff-performance';
   static String financeSummary(String businessId) =>
       '/businesses/$businessId/reports/finance-summary';
+  static String sellPayments(String businessId) =>
+      '/businesses/$businessId/reports/sell-payments';
+  static String taxReport(String businessId) =>
+      '/businesses/$businessId/reports/tax-report';
+  static String registerSummary(String businessId) =>
+      '/businesses/$businessId/reports/register-summary';
+  static String expenseReport(String businessId) =>
+      '/businesses/$businessId/reports/expense-report';
+  static String profitLoss(String businessId) =>
+      '/businesses/$businessId/reports/profit-loss';
+  static String customerGroups(String businessId) =>
+      '/businesses/$businessId/reports/customer-groups';
+  static String customerSpend(String businessId) =>
+      '/businesses/$businessId/reports/customer-spend';
   static String expense(String businessId, String expenseId) =>
       '/businesses/$businessId/other-expenses/$expenseId';
   static String expenses(String businessId) =>

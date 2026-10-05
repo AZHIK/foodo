@@ -38,8 +38,16 @@ final syncServiceProvider = Provider<SyncService>((ref) {
 });
 
 /// Provides sync status: pending count, last sync time, last error, syncing flag.
+///
+/// Safe to watch before sign-in: with no active business context there is
+/// no ledger to report on, so it yields an idle snapshot instead of throwing.
+/// Once a business id appears this rebuilds and reports the real status.
 final syncStatusProvider = StreamProvider<SyncStatusState>((ref) async* {
   final db = ref.watch(appDatabaseProvider);
+  if (ref.watch(currentBusinessIdProvider) == null) {
+    yield SyncStatusState(pendingCount: 0, isSyncing: false);
+    return;
+  }
 
   // Watch for changes to pending sales count.
   while (true) {

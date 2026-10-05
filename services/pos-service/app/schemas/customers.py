@@ -32,6 +32,7 @@ class CustomerSyncInput(BaseModel):
     phone: str = Field(min_length=1, max_length=50)
     email: str | None = Field(default=None, max_length=255)
     address_line1: str | None = Field(default=None, max_length=500)
+    customer_group: str | None = Field(default=None, max_length=100)
     joined_at: datetime
     device_sequence: int | None = None
 
@@ -83,6 +84,7 @@ class CustomerUpdate(BaseModel):
     phone: str | None = Field(default=None, min_length=1, max_length=50)
     email: str | None = Field(default=None, max_length=255)
     address_line1: str | None = Field(default=None, max_length=500)
+    customer_group: str | None = Field(default=None, max_length=100)
 
     @model_validator(mode="after")
     def _reject_empty_update(self) -> CustomerUpdate:
@@ -102,6 +104,7 @@ class CustomerRead(BaseModel):
     phone: str
     email: str | None = None
     address_line1: str | None = None
+    customer_group: str | None = None
     actor_id: UUID | None = None
     joined_at: datetime
     synced_at: datetime

@@ -554,6 +554,8 @@ async def receive_order(
                     purchase_order_line_id=pol.id,
                     item_id=item.id,
                     quantity_received=req.quantity_received,
+                    lot_no=req.lot_no,
+                    expiry_date=req.expiry_date,
                 )
             )
 

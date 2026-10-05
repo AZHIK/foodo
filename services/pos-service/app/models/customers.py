@@ -82,6 +82,7 @@ class Customer(SQLModel, table=True):
     name: str = Field(nullable=False, max_length=255, index=True)
     phone: str = Field(nullable=False, max_length=50, index=True)
     email: str | None = Field(default=None, max_length=255)
+    customer_group: str | None = Field(default=None, max_length=100, index=True)
     address_line1: str | None = Field(default=None, max_length=500)
     actor_id: UUID | None = Field(
         default=None,

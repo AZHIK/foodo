@@ -386,6 +386,12 @@ class AuthNotifier extends Notifier<AuthContext> {
   }
 
   /// Create a business and lock the device to it (owner onboarding path).
+  ///
+  /// Idempotent on retry: if the backend answers 409 (this owner already has
+  /// a business — e.g. onboarding was abandoned after the business was
+  /// created, then re-run with the same account), this recovers by switching
+  /// context to the existing business instead of failing. The wizard then
+  /// continues to the team step rather than stalling on a duplicate error.
   Future<void> createBusinessAndOnboard({
     required String name,
     required String address,
@@ -418,15 +424,31 @@ class AuthNotifier extends Notifier<AuthContext> {
         licenseDocumentUrl: licenseDocumentUrl,
       );
 
-      final businessOutput = await _api.createBusiness(
-        input: businessInput,
-        bearerToken: accessToken,
-      );
+      String businessId;
+      String effectiveBusinessName = name;
+      try {
+        final businessOutput = await _api.createBusiness(
+          input: businessInput,
+          bearerToken: accessToken,
+        );
+        businessId = businessOutput.businessId;
+      } on AuthException catch (e) {
+        // One-business-per-owner: a retried onboarding lands here. Recover
+        // by re-reading the existing business instead of surfacing 409.
+        if (e.statusCode != 409) rethrow;
+        final recoveredId = await _recoverExistingBusinessId(accessToken);
+        if (recoveredId == null) rethrow;
+        businessId = recoveredId;
+        final recoveredName = state.onboardingStatus?.businessName;
+        if (recoveredName != null && recoveredName.trim().isNotEmpty) {
+          effectiveBusinessName = recoveredName;
+        }
+      }
 
-      state = state.copyWith(selectedBusinessId: businessOutput.businessId);
+      state = state.copyWith(selectedBusinessId: businessId);
 
       // Now switch context and lock to this business.
-      await _switchContextAndLock(businessOutput.businessId, accessToken);
+      await _switchContextAndLock(businessId, accessToken);
 
       // The owner's PIN (and LocalUserProfiles row) was already set before
       // reaching onboarding, so their role/business can be cached now,
@@ -441,7 +463,7 @@ class AuthNotifier extends Notifier<AuthContext> {
           userId: state.userId!,
           businessId: state.selectedBusinessId!,
           businessLocationId: state.selectedStoreId!,
-          businessName: name,
+          businessName: effectiveBusinessName,
           claims: decodeAccessToken(state.accessToken!),
         );
       }
@@ -451,6 +473,20 @@ class AuthNotifier extends Notifier<AuthContext> {
         error: e.toString(),
       );
       rethrow;
+    }
+  }
+
+  /// Re-reads onboarding-status after a 409 on business creation and returns
+  /// the owner's existing business id, or null when there is nothing to
+  /// recover (backend still says onboarding is needed).
+  Future<String?> _recoverExistingBusinessId(String accessToken) async {
+    try {
+      final status = await _api.getOnboardingStatus(accessToken);
+      state = state.copyWith(onboardingStatus: status);
+      if (status.needsOnboarding || status.businessId == null) return null;
+      return status.businessId;
+    } catch (_) {
+      return null;
     }
   }
 

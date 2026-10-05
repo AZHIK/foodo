@@ -329,6 +329,11 @@ class GoodsReceiptLine(SQLModel, table=True):
         nullable=False,
         sa_type=Numeric(precision=12, scale=3),
     )
+    # Traceable lot identity for the Lot / Stock Expiry reports. Nullable so
+    # legacy receipts keep working — when absent the GRN number is used as
+    # the display lot.
+    lot_no: str | None = Field(default=None, max_length=64, index=True)
+    expiry_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
 
 class PurchaseReturn(SQLModel, table=True):

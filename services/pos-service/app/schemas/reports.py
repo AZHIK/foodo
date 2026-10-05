@@ -12,7 +12,7 @@ All aggregates share two conventions, matching ``GET /sales/summary``:
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -89,3 +89,160 @@ class FinanceSummaryResponse(BaseModel):
     net: Decimal
     expenses_by_category: list[FinanceCategoryTotal]
     incomes_by_category: list[FinanceCategoryTotal]
+
+
+# ── Sell payments: revenue grouped by payment method ──────────────────────
+
+
+class SellPaymentLine(BaseModel):
+    """Completed-sales revenue for one payment method.
+
+    Maps to the on-screen **Sell Payment Report**.
+    """
+
+    payment_method: str
+    sales_count: int
+    revenue: Decimal
+
+
+class SellPaymentsResponse(BaseModel):
+    lines: list[SellPaymentLine]
+    total_revenue: Decimal
+
+
+# ── Tax report: tax collected per day ─────────────────────────────────────
+
+
+class TaxDay(BaseModel):
+    """One calendar day (UTC) of collected tax.
+
+    Maps to the on-screen **Tax Report**. ``taxable_revenue`` counts
+    completed sales only; voided/refunded sales contribute counts, never
+    revenue or tax.
+    """
+
+    date: date
+    taxable_revenue: Decimal
+    tax_collected: Decimal
+    sales_count: int
+
+
+class TaxReportResponse(BaseModel):
+    days: list[TaxDay]
+    total_tax: Decimal
+    total_taxable_revenue: Decimal
+
+
+# ── Register report: per-day takings split by payment method ──────────────
+
+
+class RegisterDayMethod(BaseModel):
+    payment_method: str
+    sales_count: int
+    revenue: Decimal
+
+
+class RegisterDay(BaseModel):
+    """One calendar day of register activity.
+
+    Maps to the on-screen **Register Report** — the shift-close view:
+    revenue + ticket counts + void/refund counts, with the per-method
+    split a cashier needs to reconcile the drawer.
+    """
+
+    date: date
+    revenue: Decimal
+    sales_count: int
+    voided_count: int
+    refunded_count: int
+    by_method: list[RegisterDayMethod]
+
+
+class RegisterReportResponse(BaseModel):
+    days: list[RegisterDay]
+
+
+# ── Expense report: ad-hoc spend, detail + category totals ────────────────
+
+
+class ExpenseReportLine(BaseModel):
+    id: UUID
+    category: str
+    amount: Decimal
+    description: str
+    payment_method: str
+    store_id: UUID
+    occurred_at: datetime
+    actor_id: UUID | None = None
+
+
+class ExpenseReportResponse(BaseModel):
+    """Maps to the on-screen **Expense Report**."""
+
+    lines: list[ExpenseReportLine]
+    total: Decimal
+    by_category: list[FinanceCategoryTotal]
+
+
+# ── Profit / loss: sales + incomes − expenses ─────────────────────────────
+
+
+class ProfitLossResponse(BaseModel):
+    """Maps to the on-screen **Profit / Loss Report** (POS-side leg).
+
+    Purchase costs live in Inventory Service (separate database, no
+    cross-service JOIN) — the app subtracts
+    ``purchase_cost + waste_cost`` client-side for the full P&L, or a
+    dedicated BFF composes them. This endpoint reports the POS-side net
+    so the number here can never disagree with ``finance-summary``.
+    """
+
+    sales_revenue: Decimal
+    income_total: Decimal
+    expense_total: Decimal
+    gross_profit: Decimal
+    net: Decimal
+    expenses_by_category: list[FinanceCategoryTotal]
+    incomes_by_category: list[FinanceCategoryTotal]
+
+
+# ── Customer groups: spend grouped by customer group tag ──────────────────
+
+
+class CustomerGroupLine(BaseModel):
+    """One customer group bucket.
+
+    Maps to the on-screen **Customer Groups Report**. Customers without a
+    group land in the ``ungrouped`` bucket rather than vanishing.
+    """
+
+    group: str
+    customer_count: int
+    sales_count: int
+    revenue: Decimal
+
+
+class CustomerGroupsResponse(BaseModel):
+    lines: list[CustomerGroupLine]
+
+
+# ── Supplier & customer: customer-spend leg (supplier leg is inventory) ────
+
+
+class CustomerSpendLine(BaseModel):
+    customer_id: UUID | None
+    customer_name: str
+    sales_count: int
+    total_spent: Decimal
+
+
+class CustomerSpendResponse(BaseModel):
+    """Customer-spend leg of the **Supplier & Customer Report**.
+
+    A null ``customer_id`` row is the walk-in bucket (sales with no
+    attributed customer). The supplier-purchases leg lives in Inventory
+    Service's ``product-purchases`` report — the app renders both legs
+    side by side for the combined screen.
+    """
+
+    lines: list[CustomerSpendLine]

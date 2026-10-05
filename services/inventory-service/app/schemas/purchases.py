@@ -6,7 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.purchases import InvoiceStatus, PurchaseOrderStatus
 
@@ -128,6 +128,8 @@ class PurchaseOrderListResponse(BaseModel):
 class GoodsReceiptLineCreate(BaseModel):
     purchase_order_line_id: UUID
     quantity_received: Decimal
+    lot_no: str | None = Field(default=None, max_length=64)
+    expiry_date: datetime | None = None
 
     @field_validator("quantity_received")
     @classmethod
@@ -168,6 +170,8 @@ class GoodsReceiptLineRead(BaseModel):
     purchase_order_line_id: UUID
     item_id: UUID
     quantity_received: Decimal
+    lot_no: str | None = None
+    expiry_date: datetime | None = None
 
 
 class GoodsReceiptRead(BaseModel):

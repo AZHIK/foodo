@@ -11,10 +11,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'connectivity_provider.dart';
 import 'customer_api_provider.dart';
 import 'finance_api_provider.dart';
+import 'permissions_provider.dart';
 import 'sync_status_provider.dart';
 
 /// Arms the connectivity→sync trigger. Watch this once from the app shell.
+///
+/// Safe to watch before sign-in: with no active business context there is
+/// nothing to sync, so it no-ops instead of throwing. Once a business id
+/// appears this rebuilds and arms the listener.
 final syncTriggerProvider = Provider<void>((ref) {
+  if (ref.watch(currentBusinessIdProvider) == null) return;
+
   final syncService = ref.watch(syncServiceProvider);
   final financeSyncService = ref.watch(financeSyncServiceProvider);
   final customerSyncService = ref.watch(customerSyncServiceProvider);
@@ -34,10 +41,14 @@ final syncTriggerProvider = Provider<void>((ref) {
           // the server yet fails its FK insert and has to retry (see
           // `CustomerSyncService`'s doc comment).
           unawaited(() async {
-            await customerSyncService.syncNow();
-            await syncService.syncNow();
+            try {
+              await customerSyncService.syncNow();
+              await syncService.syncNow();
+              await financeSyncService.syncNow();
+            } catch (_) {
+              // Offline/transient — next online transition retries.
+            }
           }());
-          financeSyncService.syncNow();
         }
         wasOnline = isOnline;
       });

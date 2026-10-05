@@ -329,6 +329,453 @@ final stockValuationProvider =
       StockValuationNotifier.new,
     );
 
+class SellPaymentsNotifier extends AsyncNotifier<List<SellPaymentLineDto>> {
+  @override
+  Future<List<SellPaymentLineDto>> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    final filter = ref.watch(reportsDateFilterProvider);
+    if (businessId == null) return const [];
+    return ref.watch(posReportsApiServiceProvider).fetchSellPayments(
+          businessId: businessId,
+          from: filter.from,
+          to: filter.to,
+        );
+  }
+
+  Future<void> refresh() async {
+    final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) return;
+    final filter = ref.read(reportsDateFilterProvider);
+    state = const AsyncLoading<List<SellPaymentLineDto>>().copyWithPrevious(state);
+    state = AsyncData(
+      await ref.read(posReportsApiServiceProvider).fetchSellPayments(
+            businessId: businessId,
+            from: filter.from,
+            to: filter.to,
+          ),
+    );
+  }
+}
+
+final sellPaymentsProvider =
+    AsyncNotifierProvider<SellPaymentsNotifier, List<SellPaymentLineDto>>(
+      SellPaymentsNotifier.new,
+    );
+
+class TaxReportNotifier extends AsyncNotifier<List<TaxDayDto>> {
+  @override
+  Future<List<TaxDayDto>> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    final filter = ref.watch(reportsDateFilterProvider);
+    if (businessId == null) return const [];
+    return ref.watch(posReportsApiServiceProvider).fetchTaxReport(
+          businessId: businessId,
+          from: filter.from,
+          to: filter.to,
+        );
+  }
+
+  Future<void> refresh() async {
+    final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) return;
+    final filter = ref.read(reportsDateFilterProvider);
+    state = const AsyncLoading<List<TaxDayDto>>().copyWithPrevious(state);
+    state = AsyncData(
+      await ref.read(posReportsApiServiceProvider).fetchTaxReport(
+            businessId: businessId,
+            from: filter.from,
+            to: filter.to,
+          ),
+    );
+  }
+}
+
+final taxReportProvider =
+    AsyncNotifierProvider<TaxReportNotifier, List<TaxDayDto>>(
+      TaxReportNotifier.new,
+    );
+
+class ProfitLossNotifier extends AsyncNotifier<ProfitLossDto?> {
+  @override
+  Future<ProfitLossDto?> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    final filter = ref.watch(reportsDateFilterProvider);
+    if (businessId == null) return null;
+    return ref.watch(posReportsApiServiceProvider).fetchProfitLoss(
+          businessId: businessId,
+          from: filter.from,
+          to: filter.to,
+        );
+  }
+
+  Future<void> refresh() async {
+    final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) return;
+    final filter = ref.read(reportsDateFilterProvider);
+    state = const AsyncLoading<ProfitLossDto?>().copyWithPrevious(state);
+    state = AsyncData(
+      await ref.read(posReportsApiServiceProvider).fetchProfitLoss(
+            businessId: businessId,
+            from: filter.from,
+            to: filter.to,
+          ),
+    );
+  }
+}
+
+final profitLossProvider =
+    AsyncNotifierProvider<ProfitLossNotifier, ProfitLossDto?>(
+      ProfitLossNotifier.new,
+    );
+
+class TrendingProductsNotifier extends AsyncNotifier<List<ItemMixLineDto>> {
+  @override
+  Future<List<ItemMixLineDto>> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    final filter = ref.watch(reportsDateFilterProvider);
+    if (businessId == null) return const [];
+    return ref.watch(posReportsApiServiceProvider).fetchItemMixOrdered(
+          businessId: businessId,
+          from: filter.from,
+          to: filter.to,
+          orderBy: 'quantity',
+        );
+  }
+
+  Future<void> refresh() async {
+    final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) return;
+    final filter = ref.read(reportsDateFilterProvider);
+    state = const AsyncLoading<List<ItemMixLineDto>>().copyWithPrevious(state);
+    state = AsyncData(
+      await ref.read(posReportsApiServiceProvider).fetchItemMixOrdered(
+            businessId: businessId,
+            from: filter.from,
+            to: filter.to,
+            orderBy: 'quantity',
+          ),
+    );
+  }
+}
+
+final trendingProductsProvider =
+    AsyncNotifierProvider<TrendingProductsNotifier, List<ItemMixLineDto>>(
+      TrendingProductsNotifier.new,
+    );
+
+class CustomerGroupsNotifier
+    extends AsyncNotifier<List<CustomerGroupLineDto>> {
+  @override
+  Future<List<CustomerGroupLineDto>> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    final filter = ref.watch(reportsDateFilterProvider);
+    if (businessId == null) return const [];
+    return ref.watch(posReportsApiServiceProvider).fetchCustomerGroups(
+          businessId: businessId,
+          from: filter.from,
+          to: filter.to,
+        );
+  }
+
+  Future<void> refresh() async {
+    final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) return;
+    final filter = ref.read(reportsDateFilterProvider);
+    state =
+        const AsyncLoading<List<CustomerGroupLineDto>>().copyWithPrevious(state);
+    state = AsyncData(
+      await ref.read(posReportsApiServiceProvider).fetchCustomerGroups(
+            businessId: businessId,
+            from: filter.from,
+            to: filter.to,
+          ),
+    );
+  }
+}
+
+final customerGroupsProvider =
+    AsyncNotifierProvider<CustomerGroupsNotifier, List<CustomerGroupLineDto>>(
+      CustomerGroupsNotifier.new,
+    );
+
+class CustomerSpendNotifier
+    extends AsyncNotifier<List<CustomerSpendLineDto>> {
+  @override
+  Future<List<CustomerSpendLineDto>> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    final filter = ref.watch(reportsDateFilterProvider);
+    if (businessId == null) return const [];
+    return ref.watch(posReportsApiServiceProvider).fetchCustomerSpend(
+          businessId: businessId,
+          from: filter.from,
+          to: filter.to,
+        );
+  }
+
+  Future<void> refresh() async {
+    final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) return;
+    final filter = ref.read(reportsDateFilterProvider);
+    state =
+        const AsyncLoading<List<CustomerSpendLineDto>>().copyWithPrevious(state);
+    state = AsyncData(
+      await ref.read(posReportsApiServiceProvider).fetchCustomerSpend(
+            businessId: businessId,
+            from: filter.from,
+            to: filter.to,
+          ),
+    );
+  }
+}
+
+final customerSpendProvider =
+    AsyncNotifierProvider<CustomerSpendNotifier, List<CustomerSpendLineDto>>(
+      CustomerSpendNotifier.new,
+    );
+
+/// Inventory-side list reports share one shape: build + refresh against
+/// [InventoryApiService]. One notifier per report keeps the provider graph
+/// explicit (which endpoint backs which drawer entry).
+class ProductPurchasesNotifier
+    extends AsyncNotifier<List<ProductPurchaseLineDto>> {
+  @override
+  Future<List<ProductPurchaseLineDto>> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    final filter = ref.watch(reportsDateFilterProvider);
+    if (businessId == null) return const [];
+    return ref.watch(inventoryApiServiceProvider).fetchProductPurchases(
+          businessId: businessId,
+          from: filter.from,
+          to: filter.to,
+        );
+  }
+
+  Future<void> refresh() async {
+    final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) return;
+    final filter = ref.read(reportsDateFilterProvider);
+    state =
+        const AsyncLoading<List<ProductPurchaseLineDto>>().copyWithPrevious(state);
+    state = AsyncData(
+      await ref.read(inventoryApiServiceProvider).fetchProductPurchases(
+            businessId: businessId,
+            from: filter.from,
+            to: filter.to,
+          ),
+    );
+  }
+}
+
+final productPurchasesProvider = AsyncNotifierProvider<
+    ProductPurchasesNotifier, List<ProductPurchaseLineDto>>(
+  ProductPurchasesNotifier.new,
+);
+
+class PurchasePaymentsNotifier
+    extends AsyncNotifier<List<PurchasePaymentLineDto>> {
+  @override
+  Future<List<PurchasePaymentLineDto>> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    final filter = ref.watch(reportsDateFilterProvider);
+    if (businessId == null) return const [];
+    return ref.watch(inventoryApiServiceProvider).fetchPurchasePayments(
+          businessId: businessId,
+          from: filter.from,
+          to: filter.to,
+        );
+  }
+
+  Future<void> refresh() async {
+    final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) return;
+    final filter = ref.read(reportsDateFilterProvider);
+    state = const AsyncLoading<List<PurchasePaymentLineDto>>()
+        .copyWithPrevious(state);
+    state = AsyncData(
+      await ref.read(inventoryApiServiceProvider).fetchPurchasePayments(
+            businessId: businessId,
+            from: filter.from,
+            to: filter.to,
+          ),
+    );
+  }
+}
+
+final purchasePaymentsProvider = AsyncNotifierProvider<
+    PurchasePaymentsNotifier, List<PurchasePaymentLineDto>>(
+  PurchasePaymentsNotifier.new,
+);
+
+class StockAdjustmentsNotifier
+    extends AsyncNotifier<List<StockAdjustmentLineDto>> {
+  @override
+  Future<List<StockAdjustmentLineDto>> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    final filter = ref.watch(reportsDateFilterProvider);
+    if (businessId == null) return const [];
+    return ref.watch(inventoryApiServiceProvider).fetchStockAdjustments(
+          businessId: businessId,
+          from: filter.from,
+          to: filter.to,
+        );
+  }
+
+  Future<void> refresh() async {
+    final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) return;
+    final filter = ref.read(reportsDateFilterProvider);
+    state = const AsyncLoading<List<StockAdjustmentLineDto>>()
+        .copyWithPrevious(state);
+    state = AsyncData(
+      await ref.read(inventoryApiServiceProvider).fetchStockAdjustments(
+            businessId: businessId,
+            from: filter.from,
+            to: filter.to,
+          ),
+    );
+  }
+}
+
+final stockAdjustmentsProvider = AsyncNotifierProvider<
+    StockAdjustmentsNotifier, List<StockAdjustmentLineDto>>(
+  StockAdjustmentsNotifier.new,
+);
+
+class LotReportNotifier extends AsyncNotifier<List<LotLineDto>> {
+  @override
+  Future<List<LotLineDto>> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    final filter = ref.watch(reportsDateFilterProvider);
+    if (businessId == null) return const [];
+    return ref.watch(inventoryApiServiceProvider).fetchLotReport(
+          businessId: businessId,
+          from: filter.from,
+          to: filter.to,
+        );
+  }
+
+  Future<void> refresh() async {
+    final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) return;
+    final filter = ref.read(reportsDateFilterProvider);
+    state = const AsyncLoading<List<LotLineDto>>().copyWithPrevious(state);
+    state = AsyncData(
+      await ref.read(inventoryApiServiceProvider).fetchLotReport(
+            businessId: businessId,
+            from: filter.from,
+            to: filter.to,
+          ),
+    );
+  }
+}
+
+final lotReportProvider =
+    AsyncNotifierProvider<LotReportNotifier, List<LotLineDto>>(
+      LotReportNotifier.new,
+    );
+
+class ExpiryReportNotifier extends AsyncNotifier<List<LotLineDto>> {
+  @override
+  Future<List<LotLineDto>> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    final filter = ref.watch(reportsDateFilterProvider);
+    if (businessId == null) return const [];
+    return ref.watch(inventoryApiServiceProvider).fetchExpiryReport(
+          businessId: businessId,
+          from: filter.from,
+          to: filter.to,
+        );
+  }
+
+  Future<void> refresh() async {
+    final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) return;
+    final filter = ref.read(reportsDateFilterProvider);
+    state = const AsyncLoading<List<LotLineDto>>().copyWithPrevious(state);
+    state = AsyncData(
+      await ref.read(inventoryApiServiceProvider).fetchExpiryReport(
+            businessId: businessId,
+            from: filter.from,
+            to: filter.to,
+          ),
+    );
+  }
+}
+
+final expiryReportProvider =
+    AsyncNotifierProvider<ExpiryReportNotifier, List<LotLineDto>>(
+      ExpiryReportNotifier.new,
+    );
+
+class SupplierPurchasesNotifier
+    extends AsyncNotifier<List<SupplierPurchaseLineDto>> {
+  @override
+  Future<List<SupplierPurchaseLineDto>> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    final filter = ref.watch(reportsDateFilterProvider);
+    if (businessId == null) return const [];
+    return ref.watch(inventoryApiServiceProvider).fetchSupplierPurchases(
+          businessId: businessId,
+          from: filter.from,
+          to: filter.to,
+        );
+  }
+
+  Future<void> refresh() async {
+    final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) return;
+    final filter = ref.read(reportsDateFilterProvider);
+    state = const AsyncLoading<List<SupplierPurchaseLineDto>>()
+        .copyWithPrevious(state);
+    state = AsyncData(
+      await ref.read(inventoryApiServiceProvider).fetchSupplierPurchases(
+            businessId: businessId,
+            from: filter.from,
+            to: filter.to,
+          ),
+    );
+  }
+}
+
+final supplierPurchasesProvider = AsyncNotifierProvider<
+    SupplierPurchasesNotifier, List<SupplierPurchaseLineDto>>(
+  SupplierPurchasesNotifier.new,
+);
+
+class ActivityLogNotifier extends AsyncNotifier<List<ActivityLogLineDto>> {
+  @override
+  Future<List<ActivityLogLineDto>> build() async {
+    final businessId = ref.watch(currentBusinessIdProvider);
+    final filter = ref.watch(reportsDateFilterProvider);
+    if (businessId == null) return const [];
+    return ref.watch(inventoryApiServiceProvider).fetchActivityLog(
+          businessId: businessId,
+          from: filter.from,
+          to: filter.to,
+        );
+  }
+
+  Future<void> refresh() async {
+    final businessId = ref.read(currentBusinessIdProvider);
+    if (businessId == null) return;
+    final filter = ref.read(reportsDateFilterProvider);
+    state =
+        const AsyncLoading<List<ActivityLogLineDto>>().copyWithPrevious(state);
+    state = AsyncData(
+      await ref.read(inventoryApiServiceProvider).fetchActivityLog(
+            businessId: businessId,
+            from: filter.from,
+            to: filter.to,
+          ),
+    );
+  }
+}
+
+final activityLogProvider =
+    AsyncNotifierProvider<ActivityLogNotifier, List<ActivityLogLineDto>>(
+      ActivityLogNotifier.new,
+    );
+
 /// Re-reads every section — pull-to-refresh on the Reports screen.
 Future<void> refreshAllReports(WidgetRef ref) async {
   await Future.wait([
@@ -339,5 +786,18 @@ Future<void> refreshAllReports(WidgetRef ref) async {
     ref.read(wasteSummaryProvider.notifier).refresh(),
     ref.read(productionSummaryProvider.notifier).refresh(),
     ref.read(stockValuationProvider.notifier).refresh(),
+    ref.read(sellPaymentsProvider.notifier).refresh(),
+    ref.read(taxReportProvider.notifier).refresh(),
+    ref.read(profitLossProvider.notifier).refresh(),
+    ref.read(trendingProductsProvider.notifier).refresh(),
+    ref.read(customerGroupsProvider.notifier).refresh(),
+    ref.read(customerSpendProvider.notifier).refresh(),
+    ref.read(productPurchasesProvider.notifier).refresh(),
+    ref.read(purchasePaymentsProvider.notifier).refresh(),
+    ref.read(stockAdjustmentsProvider.notifier).refresh(),
+    ref.read(lotReportProvider.notifier).refresh(),
+    ref.read(expiryReportProvider.notifier).refresh(),
+    ref.read(supplierPurchasesProvider.notifier).refresh(),
+    ref.read(activityLogProvider.notifier).refresh(),
   ]);
 }

@@ -139,6 +139,119 @@ class FinanceSummaryDto {
       );
 }
 
+/// One payment-method bucket of sell payments (Sell Payment Report).
+class SellPaymentLineDto {
+  final String paymentMethod;
+  final int salesCount;
+  final Decimal revenue;
+
+  SellPaymentLineDto({
+    required this.paymentMethod,
+    required this.salesCount,
+    required this.revenue,
+  });
+
+  factory SellPaymentLineDto.fromJson(Map<String, dynamic> json) =>
+      SellPaymentLineDto(
+        paymentMethod: json['payment_method'] as String,
+        salesCount: json['sales_count'] as int,
+        revenue: Decimal.parse(json['revenue'].toString()),
+      );
+}
+
+/// One day of tax collected (Tax Report).
+class TaxDayDto {
+  final DateTime date;
+  final Decimal taxableRevenue;
+  final Decimal taxCollected;
+  final int salesCount;
+
+  TaxDayDto({
+    required this.date,
+    required this.taxableRevenue,
+    required this.taxCollected,
+    required this.salesCount,
+  });
+
+  factory TaxDayDto.fromJson(Map<String, dynamic> json) => TaxDayDto(
+        date: DateTime.parse(json['date'] as String),
+        taxableRevenue: Decimal.parse(json['taxable_revenue'].toString()),
+        taxCollected: Decimal.parse(json['tax_collected'].toString()),
+        salesCount: json['sales_count'] as int,
+      );
+}
+
+/// POS-side profit and loss (Profit / Loss Report).
+class ProfitLossDto {
+  final Decimal salesRevenue;
+  final Decimal incomeTotal;
+  final Decimal expenseTotal;
+  final Decimal grossProfit;
+  final Decimal net;
+
+  ProfitLossDto({
+    required this.salesRevenue,
+    required this.incomeTotal,
+    required this.expenseTotal,
+    required this.grossProfit,
+    required this.net,
+  });
+
+  factory ProfitLossDto.fromJson(Map<String, dynamic> json) => ProfitLossDto(
+        salesRevenue: Decimal.parse(json['sales_revenue'].toString()),
+        incomeTotal: Decimal.parse(json['income_total'].toString()),
+        expenseTotal: Decimal.parse(json['expense_total'].toString()),
+        grossProfit: Decimal.parse(json['gross_profit'].toString()),
+        net: Decimal.parse(json['net'].toString()),
+      );
+}
+
+/// One customer group bucket (Customer Groups Report).
+class CustomerGroupLineDto {
+  final String group;
+  final int customerCount;
+  final int salesCount;
+  final Decimal revenue;
+
+  CustomerGroupLineDto({
+    required this.group,
+    required this.customerCount,
+    required this.salesCount,
+    required this.revenue,
+  });
+
+  factory CustomerGroupLineDto.fromJson(Map<String, dynamic> json) =>
+      CustomerGroupLineDto(
+        group: json['group'] as String,
+        customerCount: json['customer_count'] as int,
+        salesCount: json['sales_count'] as int,
+        revenue: Decimal.parse(json['revenue'].toString()),
+      );
+}
+
+/// One customer's spend (Supplier & Customer Report — customer leg).
+class CustomerSpendLineDto {
+  final String? customerId;
+  final String customerName;
+  final int salesCount;
+  final Decimal totalSpent;
+
+  CustomerSpendLineDto({
+    this.customerId,
+    required this.customerName,
+    required this.salesCount,
+    required this.totalSpent,
+  });
+
+  factory CustomerSpendLineDto.fromJson(Map<String, dynamic> json) =>
+      CustomerSpendLineDto(
+        customerId: json['customer_id'] as String?,
+        customerName: json['customer_name'] as String,
+        salesCount: json['sales_count'] as int,
+        totalSpent: Decimal.parse(json['total_spent'].toString()),
+      );
+}
+
 /// Thrown when POS Service rejects a reports read with a domain-specific
 /// error — callers can show [message] directly.
 class PosReportsApiException implements Exception {
@@ -246,6 +359,130 @@ class PosReportsApiService {
         queryParameters: _window(from, to),
       );
       return FinanceSummaryDto.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsReportsError(e);
+    }
+  }
+
+  /// Sell Payment Report: revenue grouped by payment method.
+  Future<List<SellPaymentLineDto>> fetchSellPayments({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      final response = await _dio.get(
+        PosApiPaths.sellPayments(businessId),
+        queryParameters: _window(from, to),
+      );
+      return ((response.data as Map<String, dynamic>)['lines'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(SellPaymentLineDto.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      _rethrowAsReportsError(e);
+    }
+  }
+
+  /// Tax Report: tax collected per day.
+  Future<List<TaxDayDto>> fetchTaxReport({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      final response = await _dio.get(
+        PosApiPaths.taxReport(businessId),
+        queryParameters: _window(from, to),
+      );
+      return ((response.data as Map<String, dynamic>)['days'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(TaxDayDto.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      _rethrowAsReportsError(e);
+    }
+  }
+
+  /// Profit / Loss Report (POS-side leg).
+  Future<ProfitLossDto> fetchProfitLoss({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      final response = await _dio.get(
+        PosApiPaths.profitLoss(businessId),
+        queryParameters: _window(from, to),
+      );
+      return ProfitLossDto.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      _rethrowAsReportsError(e);
+    }
+  }
+
+  /// Customer Groups Report.
+  Future<List<CustomerGroupLineDto>> fetchCustomerGroups({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      final response = await _dio.get(
+        PosApiPaths.customerGroups(businessId),
+        queryParameters: _window(from, to),
+      );
+      return ((response.data as Map<String, dynamic>)['lines'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(CustomerGroupLineDto.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      _rethrowAsReportsError(e);
+    }
+  }
+
+  /// Supplier & Customer Report (customer-spend leg).
+  Future<List<CustomerSpendLineDto>> fetchCustomerSpend({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      final response = await _dio.get(
+        PosApiPaths.customerSpend(businessId),
+        queryParameters: _window(from, to),
+      );
+      return ((response.data as Map<String, dynamic>)['lines'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(CustomerSpendLineDto.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      _rethrowAsReportsError(e);
+    }
+  }
+
+  /// Per-item quantity/revenue ranked by [orderBy] (`revenue` = Product
+  /// Sell Report, `quantity` = Trending Products).
+  Future<List<ItemMixLineDto>> fetchItemMixOrdered({
+    required String businessId,
+    DateTime? from,
+    DateTime? to,
+    String orderBy = 'revenue',
+    int limit = AppLimits.reportsItemMixLimit,
+  }) async {
+    try {
+      final response = await _dio.get(
+        PosApiPaths.itemMix(businessId),
+        queryParameters: {
+          ..._window(from, to),
+          'limit': limit,
+          'order_by': orderBy,
+        },
+      );
+      return ((response.data as Map<String, dynamic>)['lines'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(ItemMixLineDto.fromJson)
+          .toList();
     } on DioException catch (e) {
       _rethrowAsReportsError(e);
     }

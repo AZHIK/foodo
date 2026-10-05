@@ -1,11 +1,16 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../constants/app_durations.dart';
+import '../../router/app_router.dart';
+import 'report_registry.dart';
 import '../../constants/app_strings.dart';
+import '../../models/inventory_item.dart';
 import '../../models/permission.dart';
 import '../../constants/app_limits.dart';
+import '../../providers/inventory_provider.dart';
 import '../../providers/permissions_provider.dart';
 import '../../providers/reports_provider.dart';
 import '../../services/inventory_api_service.dart';
@@ -17,99 +22,163 @@ import '../../widgets/data_page/data_column_spec.dart';
 import '../../widgets/data_page/export_actions.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
 
-/// Business reports, computed server-side per the shared date window.
+/// Opens the shared date-window picker and refreshes the open report.
 ///
-/// Every number on this screen comes from an aggregation endpoint — nothing
-/// is rolled up from the local cache, so the screen can never disagree with
-/// the server about what a day earned. Sections read while empty rather
-/// than showing demo figures: invented takings would be worse than blank.
-class ReportsScreen extends ConsumerWidget {
-  const ReportsScreen({super.key});
+/// The window lives in [reportsDateFilterProvider], so every report —
+/// menu or detail — reads the same period. Public so the detail screen
+/// shares the exact behaviour (and never drifts from it).
+Future<void> pickReportsRange(BuildContext context, WidgetRef ref) async {
+  final current = ref.read(reportsDateFilterProvider);
+  final picked = await showDateRangePicker(
+    context: context,
+    firstDate: DateTime(2020),
+    lastDate: DateTime.now().add(AppDurations.singleDay),
+    initialDateRange: current.from == null && current.to == null
+        ? null
+        : DateTimeRange(
+            start:
+                current.from ??
+                DateTime.now().subtract(AppDurations.analyticsWindow),
+            end: current.to ?? DateTime.now(),
+          ),
+  );
+  if (picked == null) return;
+  ref
+      .read(reportsDateFilterProvider.notifier)
+      .setRange(picked.start, picked.end);
+  await refreshAllReports(ref);
+}
 
-  Future<void> _pickRange(BuildContext context, WidgetRef ref) async {
-    final current = ref.read(reportsDateFilterProvider);
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(AppDurations.singleDay),
-      initialDateRange: current.from == null && current.to == null
-          ? null
-          : DateTimeRange(
-              start:
-                  current.from ??
-                  DateTime.now().subtract(AppDurations.analyticsWindow),
-              end: current.to ?? DateTime.now(),
-            ),
-    );
-    if (picked == null) return;
-    ref
-        .read(reportsDateFilterProvider.notifier)
-        .setRange(picked.start, picked.end);
-    await refreshAllReports(ref);
-  }
-
-  Future<void> _clearRange(WidgetRef ref) async {
-    ref.read(reportsDateFilterProvider.notifier).clear();
-    await refreshAllReports(ref);
-  }
+/// The calendar action shared by the menu and detail app bars.
+class ReportsDateAction extends ConsumerWidget {
+  const ReportsDateAction({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filter = ref.watch(reportsDateFilterProvider);
+    return IconButton(
+      tooltip: AppStrings.filterByDate,
+      onPressed: () => pickReportsRange(context, ref),
+      icon: Badge(
+        isLabelVisible: filter.from != null || filter.to != null,
+        child: const Icon(Icons.calendar_month_outlined),
+      ),
+    );
+  }
+}
 
+/// The active-window bar. Renders nothing when the window is fully open.
+///
+/// A full-width card — never a single-line chip — so the whole range is
+/// always visible: no truncation, no ellipsis, year included.
+class ReportsDateChip extends ConsumerWidget {
+  const ReportsDateChip({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filter = ref.watch(reportsDateFilterProvider);
+    if (filter.from == null && filter.to == null) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Insets.md),
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Insets.md,
+            vertical: Insets.sm,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.calendar_month_outlined,
+                size: 20,
+                color: context.colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: Insets.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppStrings.filterByDate,
+                      style: context.text.labelSmall?.copyWith(
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      _periodLabel(filter.from, filter.to),
+                      softWrap: true,
+                      style: context.text.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: MaterialLocalizations.of(
+                  context,
+                ).deleteButtonTooltip,
+                iconSize: 20,
+                onPressed: () async {
+                  ref.read(reportsDateFilterProvider.notifier).clear();
+                  await refreshAllReports(ref);
+                },
+                icon: const Icon(Icons.clear_rounded),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Business reports menu.
+///
+/// Lists every report; tapping one opens its detail screen, which reads
+/// live server-side aggregates for the shared date window and offers the
+/// usual PDF/Excel export. The menu itself fetches nothing — numbers load
+/// only when a report is opened, so landing here is always instant.
+class ReportsScreen extends ConsumerWidget {
+  const ReportsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: Text(AppStrings.reportsTitle),
         elevation: 0,
-        actions: [
-          IconButton(
-            tooltip: AppStrings.filterByDate,
-            onPressed: () => _pickRange(context, ref),
-            icon: Badge(
-              isLabelVisible: filter.from != null || filter.to != null,
-              child: const Icon(Icons.calendar_month_outlined),
-            ),
-          ),
-        ],
+        actions: const [ReportsDateAction()],
       ),
-      body: RefreshIndicator(
-        onRefresh: () => refreshAllReports(ref),
-        child: ListView(
-          padding: const EdgeInsets.all(Insets.lg),
-          children: [
-            if (filter.from != null || filter.to != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: Insets.md),
-                child: InputChip(
-                  label: Text(
-                    AppStrings.dateChip(
-                      filter.from == null
-                          ? AppStrings.ellipsis
-                          : Fmt.dayMonth(filter.from!),
-                      filter.to == null
-                          ? AppStrings.ellipsis
-                          : Fmt.dayMonth(filter.to!),
-                    ),
+      body: ListView(
+        padding: const EdgeInsets.all(Insets.lg),
+        children: [
+          const ReportsDateChip(),
+          for (final report in allReports)
+            Card(
+              margin: const EdgeInsets.only(bottom: Insets.sm),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(Insets.sm),
+                  decoration: BoxDecoration(
+                    color: context.colors.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  deleteIcon: const Icon(Icons.clear_rounded, size: 16),
-                  onDeleted: () => _clearRange(ref),
+                  child: Icon(
+                    report.icon,
+                    color: context.colors.onPrimaryContainer,
+                  ),
                 ),
+                title: Text(report.title),
+                subtitle: Text(report.subtitle),
+                trailing: const Icon(Icons.chevron_right_outlined),
+                onTap: () => context.push(AppRoute.reportDetail(report.id)),
               ),
-            const _TakingsSection(),
-            const SizedBox(height: Insets.xl),
-            const _ItemMixSection(),
-            const SizedBox(height: Insets.xl),
-            const _StaffSection(),
-            const SizedBox(height: Insets.xl),
-            const _FinanceSection(),
-            const SizedBox(height: Insets.xl),
-            const _WasteSection(),
-            const SizedBox(height: Insets.xl),
-            const _ProductionSection(),
-            const SizedBox(height: Insets.xl),
-            const _ValuationSection(),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -204,8 +273,8 @@ final _takingsColumns = <DataColumnSpec<DailyTakingsDayDto>>[
   ),
 ];
 
-class _TakingsSection extends ConsumerWidget {
-  const _TakingsSection();
+class TakingsSection extends ConsumerWidget {
+  const TakingsSection({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -293,15 +362,16 @@ final _itemMixColumns = <DataColumnSpec<ResolvedItemMixLine>>[
   ),
 ];
 
-class _ItemMixSection extends ConsumerWidget {
-  const _ItemMixSection();
+class ItemMixSection extends ConsumerWidget {
+  const ItemMixSection({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lines = ref.watch(resolvedItemMixProvider);
 
     return _Section(
-      title: AppStrings.itemMixSection,
+      // Exact drawer name: Product Sell Report (backed by item-mix).
+      title: 'Product Sell Report',
       columns: _itemMixColumns,
       rows: lines,
       exportTitle: AppStrings.itemMixSection,
@@ -353,15 +423,16 @@ final _staffColumns = <DataColumnSpec<StaffPerformanceLineDto>>[
   ),
 ];
 
-class _StaffSection extends ConsumerWidget {
-  const _StaffSection();
+class StaffSection extends ConsumerWidget {
+  const StaffSection({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lines = ref.watch(staffPerformanceProvider).valueOrNull ?? const [];
 
     return _Section(
-      title: AppStrings.staffPerformanceSection,
+      // Exact drawer name: Service Staff Report (staff-performance leg).
+      title: 'Service Staff Report',
       columns: _staffColumns,
       rows: lines,
       exportTitle: AppStrings.staffPerformanceSection,
@@ -410,8 +481,8 @@ final _financeExpenseColumns = <DataColumnSpec<FinanceCategoryTotalDto>>[
   ),
 ];
 
-class _FinanceSection extends ConsumerWidget {
-  const _FinanceSection();
+class FinanceSection extends ConsumerWidget {
+  const FinanceSection({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -494,8 +565,8 @@ final _wasteColumns = <DataColumnSpec<WasteLineDto>>[
   ),
 ];
 
-class _WasteSection extends ConsumerWidget {
-  const _WasteSection();
+class WasteSection extends ConsumerWidget {
+  const WasteSection({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -552,8 +623,8 @@ final _productionColumns = <DataColumnSpec<IngredientConsumptionDto>>[
   ),
 ];
 
-class _ProductionSection extends ConsumerWidget {
-  const _ProductionSection();
+class ProductionSection extends ConsumerWidget {
+  const ProductionSection({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -638,8 +709,8 @@ final _valuationColumns = <DataColumnSpec<StockValuationLineDto>>[
   ),
 ];
 
-class _ValuationSection extends ConsumerWidget {
-  const _ValuationSection();
+class ValuationSection extends ConsumerWidget {
+  const ValuationSection({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -679,6 +750,784 @@ class _ValuationSection extends ConsumerWidget {
                 ),
         ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// New reports — exact drawer names from the menu spec
+// ---------------------------------------------------------------------------
+
+/// One printed line of the profit-and-loss statement.
+///
+/// The statement body is custom layout, but PDF/Excel exporters only
+/// understand columns + rows — so the same figures are flattened into
+/// [_PLRow]s and handed to [_Section] for export. Screen and file always
+/// agree because both read this one list.
+class _PLRow {
+  const _PLRow(this.particulars, this.amount);
+
+  final String particulars;
+  final Decimal amount;
+}
+
+final _plColumns = <DataColumnSpec<_PLRow>>[
+  DataColumnSpec(
+    label: 'Particulars',
+    field: 'particulars',
+    value: (r) => r.particulars,
+  ),
+  DataColumnSpec(
+    label: 'Amount',
+    field: 'amount',
+    numeric: true,
+    value: (r) => _money(r.amount),
+  ),
+];
+
+String _periodLabel(DateTime? from, DateTime? to) {
+  String day(DateTime dt) => '${Fmt.dayMonth(dt)} ${dt.year}';
+  if (from == null && to == null) return 'All time';
+  if (from == null) return 'Up to ${day(to!)}';
+  if (to == null) return 'From ${day(from)}';
+  return '${day(from)} – ${day(to)}';
+}
+
+/// A muted uppercase heading for one block of the statement.
+class _PLBlockTitle extends StatelessWidget {
+  const _PLBlockTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: Insets.md, bottom: Insets.xs),
+      child: Text(
+        text,
+        style: context.text.labelMedium?.copyWith(
+          letterSpacing: 1.2,
+          fontWeight: FontWeight.w700,
+          color: context.colors.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
+/// One statement line: particulars left, tabular amount right, with an
+/// optional second-line note (e.g. "% of revenue").
+class _PLLine extends StatelessWidget {
+  const _PLLine({required this.label, required this.amount, this.note});
+
+  final String label;
+  final Decimal amount;
+  final String? note;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: Insets.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: context.text.bodyMedium),
+                if (note != null)
+                  Text(
+                    note!,
+                    style: context.text.bodySmall?.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: Insets.md),
+          Text(
+            _money(amount),
+            style: context.text.bodyMedium?.copyWith(
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A ruled subtotal/total line: amount row with a top border.
+class _PLTotal extends StatelessWidget {
+  const _PLTotal({required this.label, required this.amount});
+
+  final String label;
+  final Decimal amount;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = context.text.bodyMedium?.copyWith(fontWeight: FontWeight.w700);
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: Insets.xs),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: context.colors.outlineVariant),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: style)),
+          Text(
+            _money(amount),
+            style: style?.copyWith(
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Profit / Loss Report — a formal statement of profit and loss.
+///
+/// Revenue and operating expenses come from POS Service's finance
+/// summary; goods purchased in the period come from Inventory Service's
+/// product-purchases report and are treated as the cost of goods (no
+/// opening/closing stock adjustment — stated in the footnote, not hidden).
+/// Waste and on-hand value ride below the statement as memo lines: real
+/// figures, explicitly outside the formal totals.
+class ProfitLossSection extends ConsumerWidget {
+  const ProfitLossSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filter = ref.watch(reportsDateFilterProvider);
+    final summary = ref.watch(financeSummaryProvider).valueOrNull;
+    final purchases = ref.watch(productPurchasesProvider).valueOrNull ?? const [];
+    final waste = ref.watch(wasteSummaryProvider).valueOrNull;
+    final valuation = ref.watch(stockValuationProvider).valueOrNull;
+
+    final revenue = summary == null ? Decimal.zero : summary.salesRevenue + summary.incomeTotal;
+    var purchaseCost = Decimal.zero;
+    for (final p in purchases) {
+      purchaseCost += p.totalCost;
+    }
+    final grossProfit = revenue - purchaseCost;
+    final expenseTotal = summary?.expenseTotal ?? Decimal.zero;
+    final net = grossProfit - expenseTotal;
+
+    double pct(Decimal part) {
+      final r = _d(revenue);
+      if (r == 0) return 0;
+      return _d(part) / r * 100;
+    }
+
+    final exportRows = <_PLRow>[
+      _PLRow('Sales revenue', summary?.salesRevenue ?? Decimal.zero),
+      _PLRow('Other income', summary?.incomeTotal ?? Decimal.zero),
+      _PLRow('TOTAL REVENUE', revenue),
+      _PLRow('Goods purchased in period', purchaseCost),
+      _PLRow('GROSS PROFIT', grossProfit),
+      for (final e in summary?.expensesByCategory ?? const <FinanceCategoryTotalDto>[])
+        _PLRow('Expense — ${e.category}', e.total),
+      _PLRow('TOTAL OPERATING EXPENSES', expenseTotal),
+      _PLRow('NET PROFIT', net),
+    ];
+
+    final hasData = revenue != Decimal.zero ||
+        purchaseCost != Decimal.zero ||
+        expenseTotal != Decimal.zero;
+
+    return _Section(
+      title: 'Profit / Loss Report',
+      columns: _plColumns,
+      rows: exportRows,
+      exportTitle: 'Profit / Loss Report',
+      body: !hasData
+          ? _EmptySection(hint: AppStrings.noSalesInWindow)
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Statement of profit and loss',
+                  style: context.text.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: Insets.xs),
+                Text(
+                  _periodLabel(filter.from, filter.to),
+                  style: context.text.bodySmall?.copyWith(
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ),
+                const _PLBlockTitle('Revenue'),
+                _PLLine(
+                  label: 'Sales revenue',
+                  amount: summary?.salesRevenue ?? Decimal.zero,
+                ),
+                _PLLine(
+                  label: 'Other income',
+                  amount: summary?.incomeTotal ?? Decimal.zero,
+                ),
+                _PLTotal(label: 'Total revenue  (A)', amount: revenue),
+                const _PLBlockTitle('Cost of goods'),
+                _PLLine(
+                  label: 'Goods purchased in period',
+                  amount: purchaseCost,
+                  note: 'Treated as cost of goods — see note below',
+                ),
+                _PLTotal(label: 'Gross profit  (A − B)', amount: grossProfit),
+                const _PLBlockTitle('Operating expenses'),
+                for (final e in summary?.expensesByCategory ?? const <FinanceCategoryTotalDto>[])
+                  _PLLine(
+                    label: _capitalize(e.category),
+                    amount: e.total,
+                    note: '${pct(e.total).toStringAsFixed(1)}% of revenue',
+                  ),
+                if ((summary?.expensesByCategory ?? const []).isEmpty)
+                  _PLLine(label: 'No expenses recorded', amount: Decimal.zero),
+                _PLTotal(label: 'Total operating expenses  (C)', amount: expenseTotal),
+                const SizedBox(height: Insets.md),
+                Container(
+                  padding: const EdgeInsets.all(Insets.md),
+                  decoration: BoxDecoration(
+                    color: (net >= Decimal.zero
+                            ? context.semantic.success
+                            : context.semantic.warning)
+                        .withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'NET PROFIT',
+                              style: context.text.labelMedium?.copyWith(
+                                letterSpacing: 1.2,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              'Margin ${pct(net).toStringAsFixed(1)}% of revenue',
+                              style: context.text.bodySmall?.copyWith(
+                                color: context.colors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        _money(net),
+                        style: context.text.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: Insets.md),
+                _PLLine(
+                  label: 'Memo — waste cost in period',
+                  amount: waste?.totalCostWasted ?? Decimal.zero,
+                ),
+                _PLLine(
+                  label: 'Memo — inventory on hand (at cost)',
+                  amount: valuation?.totalValue ?? Decimal.zero,
+                ),
+                const SizedBox(height: Insets.sm),
+                Text(
+                  'Note: goods purchased are treated as cost of goods sold; '
+                  'opening and closing stock are not adjusted in this report. '
+                  'Memo lines are shown for context and are not part of the totals.',
+                  style: context.text.bodySmall?.copyWith(
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+String _capitalize(String value) =>
+    value.isEmpty ? value : value[0].toUpperCase() + value.substring(1);
+
+/// Register Report — shift-close view over daily takings.
+class RegisterSection extends ConsumerWidget {
+  const RegisterSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final days = ref.watch(dailyTakingsProvider).valueOrNull ?? const [];
+    return _Section(
+      title: 'Register Report',
+      columns: _takingsColumns,
+      rows: days,
+      exportTitle: 'Register Report',
+      body: days.isEmpty
+          ? _EmptySection(hint: AppStrings.noSalesInWindow)
+          : Column(
+              children: [
+                for (final day in days)
+                  _KeyValueRow(
+                    label: Fmt.dayMonth(day.date),
+                    value: AppStrings.takingsRow(_money(day.revenue), day.salesCount),
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+/// Trending Products — item-mix ranked by quantity.
+class TrendingSection extends ConsumerWidget {
+  const TrendingSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lines = ref.watch(trendingProductsProvider).valueOrNull ?? const [];
+    final items = ref.watch(inventoryItemsListProvider);
+    final nameById = {
+      for (final item in items)
+        if (item.catalogItemId != null) item.catalogItemId!: item.name,
+    };
+    return _Section(
+      title: 'Trending Products',
+      columns: const [],
+      rows: lines,
+      exportTitle: 'Trending Products',
+      body: lines.isEmpty
+          ? _EmptySection(hint: AppStrings.nothingSold)
+          : Column(
+              children: [
+                for (final line in lines)
+                  _KeyValueRow(
+                    label: nameById[line.itemId] ?? AppStrings.unknownItem,
+                    value: Fmt.quantity(_d(line.quantity)),
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+/// Sales Representative Report — same staff-performance leg, rep view.
+class SalesRepSection extends ConsumerWidget {
+  const SalesRepSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lines = ref.watch(staffPerformanceProvider).valueOrNull ?? const [];
+    return _Section(
+      title: 'Sales Representative Report',
+      columns: _staffColumns,
+      rows: lines,
+      exportTitle: 'Sales Representative Report',
+      body: lines.isEmpty
+          ? _EmptySection(hint: AppStrings.noStaffSales)
+          : Column(
+              children: [
+                for (final line in lines)
+                  _KeyValueRow(
+                    label: line.actorId == null ? AppStrings.unknown : _shortId(line.actorId!),
+                    value: AppStrings.staffRow(line.salesCount, _money(line.revenue)),
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+/// Expense Report — ad-hoc spend lines via finance summary categories.
+class ExpenseSection extends ConsumerWidget {
+  const ExpenseSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summary = ref.watch(financeSummaryProvider).valueOrNull;
+    final lines = summary?.expensesByCategory ?? const [];
+    return _Section(
+      title: 'Expense Report',
+      columns: _financeExpenseColumns,
+      rows: lines,
+      exportTitle: 'Expense Report',
+      body: lines.isEmpty
+          ? _EmptySection(hint: AppStrings.noExpenses)
+          : Column(
+              children: [
+                for (final line in lines)
+                  _KeyValueRow(label: line.category, value: _money(line.total)),
+              ],
+            ),
+    );
+  }
+}
+
+/// Sell Payment Report — revenue by payment method.
+class SellPaymentsSection extends ConsumerWidget {
+  const SellPaymentsSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lines = ref.watch(sellPaymentsProvider).valueOrNull ?? const [];
+    return _Section(
+      title: 'Sell Payment Report',
+      columns: const [],
+      rows: lines,
+      exportTitle: 'Sell Payment Report',
+      body: lines.isEmpty
+          ? _EmptySection(hint: AppStrings.noSalesInWindow)
+          : Column(
+              children: [
+                for (final line in lines)
+                  _KeyValueRow(label: line.paymentMethod, value: _money(line.revenue)),
+              ],
+            ),
+    );
+  }
+}
+
+/// Tax Report — tax collected per day.
+class TaxSection extends ConsumerWidget {
+  const TaxSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final days = ref.watch(taxReportProvider).valueOrNull ?? const [];
+    return _Section(
+      title: 'Tax Report',
+      columns: const [],
+      rows: days,
+      exportTitle: 'Tax Report',
+      body: days.isEmpty
+          ? _EmptySection(hint: AppStrings.noSalesInWindow)
+          : Column(
+              children: [
+                for (final day in days)
+                  _KeyValueRow(label: Fmt.dayMonth(day.date), value: _money(day.taxCollected)),
+              ],
+            ),
+    );
+  }
+}
+
+/// Product Purchase Report — what was bought, from whom.
+class ProductPurchasesSection extends ConsumerWidget {
+  const ProductPurchasesSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lines = ref.watch(productPurchasesProvider).valueOrNull ?? const [];
+    return _Section(
+      title: 'Product Purchase Report',
+      columns: const [],
+      rows: lines,
+      exportTitle: 'Product Purchase Report',
+      body: lines.isEmpty
+          ? _EmptySection(hint: AppStrings.noProduction)
+          : Column(
+              children: [
+                for (final line in lines)
+                  _KeyValueRow(
+                    label: '${line.itemName} · ${line.supplierName}',
+                    value: '${Fmt.quantity(_d(line.quantityOrdered))} · ${_money(line.totalCost)}',
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+/// Purchase Payment Report — what was paid to suppliers.
+class PurchasePaymentsSection extends ConsumerWidget {
+  const PurchasePaymentsSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lines = ref.watch(purchasePaymentsProvider).valueOrNull ?? const [];
+    return _Section(
+      title: 'Purchase Payment Report',
+      columns: const [],
+      rows: lines,
+      exportTitle: 'Purchase Payment Report',
+      body: lines.isEmpty
+          ? _EmptySection(hint: AppStrings.noExpenses)
+          : Column(
+              children: [
+                for (final line in lines)
+                  _KeyValueRow(label: line.supplierName, value: _money(line.totalPaid)),
+              ],
+            ),
+    );
+  }
+}
+
+/// Purchase & Sale — purchases side-by-side with sales in the window.
+class PurchaseSaleSection extends ConsumerWidget {
+  const PurchaseSaleSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final purchases = ref.watch(productPurchasesProvider).valueOrNull ?? const [];
+    final takings = ref.watch(dailyTakingsProvider).valueOrNull ?? const [];
+    var purchaseTotal = 0.0;
+    for (final p in purchases) {
+      purchaseTotal += _d(p.totalCost);
+    }
+    var salesTotal = 0.0;
+    for (final day in takings) {
+      salesTotal += _d(day.revenue);
+    }
+    return _Section(
+      title: 'Purchase & Sale',
+      columns: const [],
+      rows: const [],
+      exportTitle: 'Purchase & Sale',
+      body: (purchases.isEmpty && takings.isEmpty)
+          ? _EmptySection(hint: AppStrings.noSalesInWindow)
+          : Column(
+              children: [
+                _KeyValueRow(label: 'Purchases', value: Fmt.money(purchaseTotal)),
+                _KeyValueRow(label: 'Sales', value: Fmt.money(salesTotal)),
+              ],
+            ),
+    );
+  }
+}
+
+/// Items Report — every catalog item with its stock on hand.
+class ItemsSection extends ConsumerWidget {
+  const ItemsSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(inventoryItemsListProvider);
+    return _Section(
+      title: 'Items Report',
+      columns: <DataColumnSpec<InventoryItem>>[
+        DataColumnSpec(
+          label: 'Item',
+          field: 'name',
+          value: (r) => r.name,
+        ),
+        DataColumnSpec(
+          label: 'Stock',
+          field: 'stock',
+          numeric: true,
+          value: (r) => '${r.stock}',
+        ),
+        DataColumnSpec(
+          label: 'Reorder level',
+          field: 'reorder',
+          numeric: true,
+          value: (r) => '${r.reorderLevel}',
+        ),
+      ],
+      rows: items,
+      exportTitle: 'Items Report',
+      body: items.isEmpty
+          ? _EmptySection(hint: AppStrings.nothingOnHand)
+          : Column(
+              children: [
+                for (final item in items)
+                  _KeyValueRow(
+                    label: item.name,
+                    value: 'Stock ${item.stock} · Reorder ${item.reorderLevel}',
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+/// Stock Report — current on-hand value by category.
+class StockReportSection extends ConsumerWidget {
+  const StockReportSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final valuation = ref.watch(stockValuationProvider).valueOrNull;
+    final lines = valuation?.lines ?? const [];
+    return _Section(
+      title: 'Stock Report',
+      columns: _valuationColumns,
+      rows: lines,
+      exportTitle: 'Stock Report',
+      body: lines.isEmpty
+          ? _EmptySection(hint: AppStrings.nothingOnHand)
+          : Column(
+              children: [
+                for (final line in lines)
+                  _KeyValueRow(
+                    label: line.category ?? AppStrings.uncategorized,
+                    value: AppStrings.valuationRow(line.itemCount, _money(line.totalValue)),
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+/// Stock Adjustment Report — manual corrections.
+class StockAdjustmentsSection extends ConsumerWidget {
+  const StockAdjustmentsSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lines = ref.watch(stockAdjustmentsProvider).valueOrNull ?? const [];
+    return _Section(
+      title: 'Stock Adjustment Report',
+      columns: const [],
+      rows: lines,
+      exportTitle: 'Stock Adjustment Report',
+      body: lines.isEmpty
+          ? _EmptySection(hint: AppStrings.noProduction)
+          : Column(
+              children: [
+                for (final line in lines)
+                  _KeyValueRow(
+                    label: line.itemName,
+                    value: '${Fmt.quantity(_d(line.quantityDelta))} · ${line.reason ?? ''}',
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+/// Lot Report — received batches.
+class LotSection extends ConsumerWidget {
+  const LotSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lines = ref.watch(lotReportProvider).valueOrNull ?? const [];
+    return _Section(
+      title: 'Lot Report',
+      columns: const [],
+      rows: lines,
+      exportTitle: 'Lot Report',
+      body: lines.isEmpty
+          ? _EmptySection(hint: AppStrings.nothingOnHand)
+          : Column(
+              children: [
+                for (final line in lines)
+                  _KeyValueRow(
+                    label: '${line.lotNo} · ${line.itemName}',
+                    value: Fmt.quantity(_d(line.quantityReceived)),
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+/// Stock Expiry Report — lots expiring in the window.
+class ExpirySection extends ConsumerWidget {
+  const ExpirySection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lines = ref.watch(expiryReportProvider).valueOrNull ?? const [];
+    return _Section(
+      title: 'Stock Expiry Report',
+      columns: const [],
+      rows: lines,
+      exportTitle: 'Stock Expiry Report',
+      body: lines.isEmpty
+          ? _EmptySection(hint: AppStrings.nothingOnHand)
+          : Column(
+              children: [
+                for (final line in lines)
+                  _KeyValueRow(
+                    label: '${line.lotNo} · ${line.itemName}',
+                    value: line.expiryDate ?? '',
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+/// Customer Groups Report.
+class CustomerGroupsSection extends ConsumerWidget {
+  const CustomerGroupsSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lines = ref.watch(customerGroupsProvider).valueOrNull ?? const [];
+    return _Section(
+      title: 'Customer Groups Report',
+      columns: const [],
+      rows: lines,
+      exportTitle: 'Customer Groups Report',
+      body: lines.isEmpty
+          ? _EmptySection(hint: AppStrings.noStaffSales)
+          : Column(
+              children: [
+                for (final line in lines)
+                  _KeyValueRow(label: line.group, value: _money(line.revenue)),
+              ],
+            ),
+    );
+  }
+}
+
+/// Supplier & Customer Report — both legs side by side.
+class SupplierCustomerSection extends ConsumerWidget {
+  const SupplierCustomerSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final suppliers = ref.watch(supplierPurchasesProvider).valueOrNull ?? const [];
+    final customers = ref.watch(customerSpendProvider).valueOrNull ?? const [];
+    return _Section(
+      title: 'Supplier & Customer Report',
+      columns: const [],
+      rows: const [],
+      exportTitle: 'Supplier & Customer Report',
+      body: (suppliers.isEmpty && customers.isEmpty)
+          ? _EmptySection(hint: AppStrings.noStaffSales)
+          : Column(
+              children: [
+                for (final s in suppliers)
+                  _KeyValueRow(label: 'SUP · ${s.supplierName}', value: _money(s.totalOrdered)),
+                for (final c in customers)
+                  _KeyValueRow(label: 'CUS · ${c.customerName}', value: _money(c.totalSpent)),
+              ],
+            ),
+    );
+  }
+}
+
+/// Activity Log — recent stock movements.
+class ActivityLogSection extends ConsumerWidget {
+  const ActivityLogSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lines = ref.watch(activityLogProvider).valueOrNull ?? const [];
+    return _Section(
+      title: 'Activity Log',
+      columns: const [],
+      rows: lines,
+      exportTitle: 'Activity Log',
+      body: lines.isEmpty
+          ? _EmptySection(hint: AppStrings.noProduction)
+          : Column(
+              children: [
+                for (final line in lines)
+                  _KeyValueRow(label: '${line.movementType} · ${line.itemName}', value: Fmt.quantity(_d(line.quantityDelta))),
+              ],
+            ),
     );
   }
 }

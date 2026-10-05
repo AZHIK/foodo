@@ -65,11 +65,35 @@ from app.models.inventory import (
     StockMovement,
 )
 from app.models.units import Unit
+from app.models.purchases import (
+    GoodsReceipt,
+    GoodsReceiptLine,
+    PurchaseOrder,
+    PurchaseOrderLine,
+    PurchaseOrderStatus,
+    SupplierInvoice,
+    SupplierPayment,
+)
+from app.models.suppliers import Supplier
 from app.schemas.analytics import (
+    ActivityLogLine,
+    ActivityLogResponse,
+    ExpiryLine,
+    ExpiryReportResponse,
     IngredientConsumption,
+    LotLine,
+    LotReportResponse,
+    ProductPurchaseLine,
+    ProductPurchaseResponse,
     ProductionSummaryResponse,
+    PurchasePaymentLine,
+    PurchasePaymentResponse,
+    StockAdjustmentLine,
+    StockAdjustmentResponse,
     StockValuationLine,
     StockValuationResponse,
+    SupplierPurchaseLine,
+    SupplierPurchaseResponse,
     WasteLine,
     WasteSummaryResponse,
 )
@@ -458,3 +482,402 @@ async def stock_valuation(
         "reports.stock_valuation", business_id=str(business_id), total=str(total)
     )
     return StockValuationResponse(total_value=total, lines=lines)
+
+
+@router.get("/product-purchases", response_model=ProductPurchaseResponse)
+async def product_purchases(
+    business_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _jwt_biz_id: Annotated[str, Depends(require_business_permission("reports.view"))],
+    from_date: date | None = Query(default=None, alias="from", description="Start date (inclusive)"),
+    to_date: date | None = Query(default=None, alias="to", description="End date (inclusive)"),
+    store_id: UUID | None = Query(default=None, description="Filter by store"),
+    supplier_id: UUID | None = Query(default=None, description="Filter by supplier"),
+) -> ProductPurchaseResponse:
+    """Product Purchase Report: quantities and cost per item+supplier.
+
+    Reads ``PurchaseOrderLine`` (ordered/received/cost) joined to its order
+    header for the date/store/supplier scoping. Cancelled orders are
+    excluded — a cancelled PO is intent, not spend.
+    """
+    start, end = _day_bounds(from_date, to_date)
+    stmt = (
+        select(
+            PurchaseOrderLine.item_id.label("item_id"),
+            Item.name.label("item_name"),
+            Unit.code.label("unit_code"),
+            PurchaseOrder.supplier_id.label("supplier_id"),
+            Supplier.name.label("supplier_name"),
+            sa_func.sum(PurchaseOrderLine.quantity_ordered).label("qty_ordered"),
+            sa_func.sum(PurchaseOrderLine.quantity_received).label("qty_received"),
+            sa_func.sum(
+                PurchaseOrderLine.quantity_ordered * PurchaseOrderLine.unit_cost
+            ).label("cost"),
+        )
+        .join(PurchaseOrder, PurchaseOrderLine.purchase_order_id == PurchaseOrder.id)
+        .join(Item, PurchaseOrderLine.item_id == Item.id)
+        .join(Unit, Item.unit_id == Unit.id, isouter=True)
+        .join(Supplier, PurchaseOrder.supplier_id == Supplier.id, isouter=True)
+        .where(
+            PurchaseOrder.business_id == business_id,
+            PurchaseOrder.status != PurchaseOrderStatus.CANCELLED,
+        )
+    )
+    if start is not None:
+        stmt = stmt.where(PurchaseOrder.ordered_at >= start)
+    if end is not None:
+        stmt = stmt.where(PurchaseOrder.ordered_at <= end)
+    if store_id is not None:
+        stmt = stmt.where(PurchaseOrder.store_id == store_id)
+    if supplier_id is not None:
+        stmt = stmt.where(PurchaseOrder.supplier_id == supplier_id)
+    stmt = (
+        stmt.group_by(
+            PurchaseOrderLine.item_id, Item.name, Unit.code,
+            PurchaseOrder.supplier_id, Supplier.name,
+        )
+        .order_by(sa_func.sum(PurchaseOrderLine.quantity_ordered * PurchaseOrderLine.unit_cost).desc())
+    )
+    rows = (await session.exec(stmt)).all()
+    lines = [
+        ProductPurchaseLine(
+            item_id=row.item_id,
+            item_name=row.item_name,
+            item_unit=row.unit_code or "",
+            supplier_id=row.supplier_id,
+            supplier_name=row.supplier_name or "Unknown",
+            quantity_ordered=row.qty_ordered or Decimal("0"),
+            quantity_received=row.qty_received or Decimal("0"),
+            total_cost=row.cost or Decimal("0"),
+        )
+        for row in rows
+    ]
+    total = sum((line.total_cost for line in lines), Decimal("0"))
+    logger.info("reports.product_purchases", business_id=str(business_id), lines=len(lines))
+    return ProductPurchaseResponse(lines=lines, total_cost=total)
+
+
+@router.get("/purchase-payments", response_model=PurchasePaymentResponse)
+async def purchase_payments(
+    business_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _jwt_biz_id: Annotated[str, Depends(require_business_permission("reports.view"))],
+    from_date: date | None = Query(default=None, alias="from", description="Start date (inclusive)"),
+    to_date: date | None = Query(default=None, alias="to", description="End date (inclusive)"),
+    supplier_id: UUID | None = Query(default=None, description="Filter by supplier"),
+) -> PurchasePaymentResponse:
+    """Purchase Payment Report: supplier payments grouped by supplier+method."""
+    start, end = _day_bounds(from_date, to_date)
+    stmt = (
+        select(
+            SupplierInvoice.supplier_id.label("supplier_id"),
+            Supplier.name.label("supplier_name"),
+            SupplierPayment.method.label("method"),
+            sa_func.count(SupplierPayment.id).label("count"),
+            sa_func.sum(SupplierPayment.amount).label("paid"),
+        )
+        .join(SupplierInvoice, SupplierPayment.invoice_id == SupplierInvoice.id)
+        .join(Supplier, SupplierInvoice.supplier_id == Supplier.id, isouter=True)
+        .where(SupplierPayment.business_id == business_id)
+    )
+    if start is not None:
+        stmt = stmt.where(SupplierPayment.paid_at >= start)
+    if end is not None:
+        stmt = stmt.where(SupplierPayment.paid_at <= end)
+    if supplier_id is not None:
+        stmt = stmt.where(SupplierInvoice.supplier_id == supplier_id)
+    stmt = (
+        stmt.group_by(SupplierInvoice.supplier_id, Supplier.name, SupplierPayment.method)
+        .order_by(sa_func.sum(SupplierPayment.amount).desc())
+    )
+    rows = (await session.exec(stmt)).all()
+    lines = [
+        PurchasePaymentLine(
+            supplier_id=row.supplier_id,
+            supplier_name=row.supplier_name or "Unknown",
+            method=row.method,
+            payments_count=row.count,
+            total_paid=row.paid or Decimal("0"),
+        )
+        for row in rows
+    ]
+    total = sum((line.total_paid for line in lines), Decimal("0"))
+    logger.info("reports.purchase_payments", business_id=str(business_id), lines=len(lines))
+    return PurchasePaymentResponse(lines=lines, total_paid=total)
+
+
+@router.get("/stock-adjustments", response_model=StockAdjustmentResponse)
+async def stock_adjustments(
+    business_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _jwt_biz_id: Annotated[str, Depends(require_business_permission("reports.view"))],
+    from_date: date | None = Query(default=None, alias="from", description="Start date (inclusive)"),
+    to_date: date | None = Query(default=None, alias="to", description="End date (inclusive)"),
+    store_id: UUID | None = Query(default=None, description="Filter by store"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> StockAdjustmentResponse:
+    """Stock Adjustment Report: business-wide manual corrections, newest first."""
+    start, end = _day_bounds(from_date, to_date)
+    stmt = (
+        select(StockMovement, Item.name)
+        .join(Item, StockMovement.item_id == Item.id)
+        .where(
+            StockMovement.business_id == business_id,
+            StockMovement.movement_type == MovementType.MANUAL_ADJUSTMENT,
+        )
+    )
+    if start is not None:
+        stmt = stmt.where(StockMovement.created_at >= start)
+    if end is not None:
+        stmt = stmt.where(StockMovement.created_at <= end)
+    if store_id is not None:
+        stmt = stmt.where(StockMovement.store_id == store_id)
+    stmt = stmt.order_by(StockMovement.created_at.desc()).offset(offset).limit(limit)
+    rows = (await session.exec(stmt)).all()
+    count_stmt = select(sa_func.count(StockMovement.id)).where(
+        StockMovement.business_id == business_id,
+        StockMovement.movement_type == MovementType.MANUAL_ADJUSTMENT,
+    )
+    if start is not None:
+        count_stmt = count_stmt.where(StockMovement.created_at >= start)
+    if end is not None:
+        count_stmt = count_stmt.where(StockMovement.created_at <= end)
+    if store_id is not None:
+        count_stmt = count_stmt.where(StockMovement.store_id == store_id)
+    total = (await session.exec(count_stmt)).one() or 0
+    lines = [
+        StockAdjustmentLine(
+            id=m.id,
+            item_id=m.item_id,
+            item_name=name,
+            store_id=m.store_id,
+            quantity_delta=m.quantity_delta,
+            reason=m.reason,
+            actor_id=m.actor_id,
+            created_at=m.created_at.isoformat(),
+        )
+        for m, name in rows
+    ]
+    logger.info("reports.stock_adjustments", business_id=str(business_id), lines=len(lines))
+    return StockAdjustmentResponse(lines=lines, total=total)
+
+
+@router.get("/lot-report", response_model=LotReportResponse)
+async def lot_report(
+    business_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _jwt_biz_id: Annotated[str, Depends(require_business_permission("reports.view"))],
+    from_date: date | None = Query(default=None, alias="from", description="Start date (inclusive)"),
+    to_date: date | None = Query(default=None, alias="to", description="End date (inclusive)"),
+    store_id: UUID | None = Query(default=None, description="Filter by store"),
+    item_id: UUID | None = Query(default=None, description="Filter by item"),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> LotReportResponse:
+    """Lot Report: every received batch as a traceable lot."""
+    start, end = _day_bounds(from_date, to_date)
+    stmt = (
+        select(GoodsReceiptLine, GoodsReceipt, Item.name, Supplier.name)
+        .join(GoodsReceipt, GoodsReceiptLine.goods_receipt_id == GoodsReceipt.id)
+        .join(Item, GoodsReceiptLine.item_id == Item.id)
+        .join(PurchaseOrder, GoodsReceipt.purchase_order_id == PurchaseOrder.id, isouter=True)
+        .join(Supplier, PurchaseOrder.supplier_id == Supplier.id, isouter=True)
+        .where(GoodsReceipt.business_id == business_id)
+    )
+    if start is not None:
+        stmt = stmt.where(GoodsReceipt.received_at >= start)
+    if end is not None:
+        stmt = stmt.where(GoodsReceipt.received_at <= end)
+    if store_id is not None:
+        stmt = stmt.where(GoodsReceipt.store_id == store_id)
+    if item_id is not None:
+        stmt = stmt.where(GoodsReceiptLine.item_id == item_id)
+    stmt = stmt.order_by(GoodsReceipt.received_at.desc()).offset(offset).limit(limit)
+    rows = (await session.exec(stmt)).all()
+    lines = [
+        LotLine(
+            goods_receipt_id=gr.id,
+            lot_no=line.lot_no or gr.grn_number,
+            item_id=line.item_id,
+            item_name=item_name,
+            quantity_received=line.quantity_received,
+            supplier_name=supplier_name,
+            expiry_date=line.expiry_date.isoformat() if line.expiry_date else None,
+            received_at=gr.received_at.isoformat(),
+        )
+        for line, gr, item_name, supplier_name in rows
+    ]
+    logger.info("reports.lot_report", business_id=str(business_id), lines=len(lines))
+    return LotReportResponse(lines=lines)
+
+
+@router.get("/expiry-report", response_model=ExpiryReportResponse)
+async def expiry_report(
+    business_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _jwt_biz_id: Annotated[str, Depends(require_business_permission("reports.view"))],
+    from_date: date | None = Query(default=None, alias="from", description="Expiring from (inclusive)"),
+    to_date: date | None = Query(default=None, alias="to", description="Expiring until (inclusive)"),
+    store_id: UUID | None = Query(default=None, description="Filter by store"),
+    limit: int = Query(default=100, ge=1, le=500),
+) -> ExpiryReportResponse:
+    """Stock Expiry Report: receipt lots whose expiry falls in the window."""
+    start, end = _day_bounds(from_date, to_date)
+    stmt = (
+        select(GoodsReceiptLine, GoodsReceipt, Item.name)
+        .join(GoodsReceipt, GoodsReceiptLine.goods_receipt_id == GoodsReceipt.id)
+        .join(Item, GoodsReceiptLine.item_id == Item.id)
+        .where(
+            GoodsReceipt.business_id == business_id,
+            GoodsReceiptLine.expiry_date.is_not(None),
+        )
+    )
+    if start is not None:
+        stmt = stmt.where(GoodsReceiptLine.expiry_date >= start)
+    if end is not None:
+        stmt = stmt.where(GoodsReceiptLine.expiry_date <= end)
+    if store_id is not None:
+        stmt = stmt.where(GoodsReceipt.store_id == store_id)
+    stmt = stmt.order_by(GoodsReceiptLine.expiry_date.asc()).limit(limit)
+    rows = (await session.exec(stmt)).all()
+    lines = [
+        ExpiryLine(
+            goods_receipt_id=gr.id,
+            lot_no=line.lot_no or gr.grn_number,
+            item_id=line.item_id,
+            item_name=item_name,
+            quantity_received=line.quantity_received,
+            expiry_date=line.expiry_date.isoformat(),  # type: ignore[union-attr]
+            received_at=gr.received_at.isoformat(),
+        )
+        for line, gr, item_name in rows
+    ]
+    logger.info("reports.expiry_report", business_id=str(business_id), lines=len(lines))
+    return ExpiryReportResponse(lines=lines)
+
+
+@router.get("/supplier-purchases", response_model=SupplierPurchaseResponse)
+async def supplier_purchases(
+    business_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _jwt_biz_id: Annotated[str, Depends(require_business_permission("reports.view"))],
+    from_date: date | None = Query(default=None, alias="from", description="Start date (inclusive)"),
+    to_date: date | None = Query(default=None, alias="to", description="End date (inclusive)"),
+) -> SupplierPurchaseResponse:
+    """Supplier leg of the Supplier & Customer Report: ordered vs paid."""
+    start, end = _day_bounds(from_date, to_date)
+    po_filters = [PurchaseOrder.business_id == business_id, PurchaseOrder.status != PurchaseOrderStatus.CANCELLED]
+    if start is not None:
+        po_filters.append(PurchaseOrder.ordered_at >= start)
+    if end is not None:
+        po_filters.append(PurchaseOrder.ordered_at <= end)
+    po_rows = (
+        await session.exec(
+            select(
+                PurchaseOrder.supplier_id,
+                sa_func.count(PurchaseOrder.id).label("orders"),
+                sa_func.sum(PurchaseOrder.total_amount).label("ordered"),
+            )
+            .where(*po_filters)
+            .group_by(PurchaseOrder.supplier_id)
+        )
+    ).all()
+    ordered = {row[0]: (row[1], row[2] or Decimal("0")) for row in po_rows}
+    pay_filters = [SupplierPayment.business_id == business_id]
+    if start is not None:
+        pay_filters.append(SupplierPayment.paid_at >= start)
+    if end is not None:
+        pay_filters.append(SupplierPayment.paid_at <= end)
+    pay_rows = (
+        await session.exec(
+            select(
+                SupplierInvoice.supplier_id,
+                sa_func.sum(SupplierPayment.amount).label("paid"),
+            )
+            .join(SupplierInvoice, SupplierPayment.invoice_id == SupplierInvoice.id)
+            .where(*pay_filters)
+            .group_by(SupplierInvoice.supplier_id)
+        )
+    ).all()
+    paid = {row[0]: row[1] or Decimal("0") for row in pay_rows}
+    supplier_ids = set(ordered) | set(paid)
+    names: dict = {}
+    if supplier_ids:
+        sup_rows = (
+            await session.exec(select(Supplier.id, Supplier.name).where(Supplier.id.in_(supplier_ids)))
+        ).all()
+        names = {row[0]: row[1] for row in sup_rows}
+    lines = [
+        SupplierPurchaseLine(
+            supplier_id=sid,
+            supplier_name=names.get(sid, "Unknown"),
+            orders_count=ordered.get(sid, (0, Decimal("0")))[0],
+            total_ordered=ordered.get(sid, (0, Decimal("0")))[1],
+            total_paid=paid.get(sid, Decimal("0")),
+            balance=ordered.get(sid, (0, Decimal("0")))[1] - paid.get(sid, Decimal("0")),
+        )
+        for sid in supplier_ids
+    ]
+    lines.sort(key=lambda l: l.total_ordered, reverse=True)
+    logger.info("reports.supplier_purchases", business_id=str(business_id), lines=len(lines))
+    return SupplierPurchaseResponse(lines=lines)
+
+
+@router.get("/activity-log", response_model=ActivityLogResponse)
+async def activity_log(
+    business_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _jwt_biz_id: Annotated[str, Depends(require_business_permission("reports.view"))],
+    from_date: date | None = Query(default=None, alias="from", description="Start date (inclusive)"),
+    to_date: date | None = Query(default=None, alias="to", description="End date (inclusive)"),
+    store_id: UUID | None = Query(default=None, description="Filter by store"),
+    movement_type: MovementType | None = Query(default=None, description="Filter by movement type"),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> ActivityLogResponse:
+    """Activity Log (inventory leg): every stock movement, newest first."""
+    start, end = _day_bounds(from_date, to_date)
+    stmt = (
+        select(StockMovement, Item.name)
+        .join(Item, StockMovement.item_id == Item.id)
+        .where(StockMovement.business_id == business_id)
+    )
+    if start is not None:
+        stmt = stmt.where(StockMovement.created_at >= start)
+    if end is not None:
+        stmt = stmt.where(StockMovement.created_at <= end)
+    if store_id is not None:
+        stmt = stmt.where(StockMovement.store_id == store_id)
+    if movement_type is not None:
+        stmt = stmt.where(StockMovement.movement_type == movement_type)
+    stmt = stmt.order_by(StockMovement.created_at.desc()).offset(offset).limit(limit)
+    rows = (await session.exec(stmt)).all()
+    count_stmt = select(sa_func.count(StockMovement.id)).where(
+        StockMovement.business_id == business_id
+    )
+    if start is not None:
+        count_stmt = count_stmt.where(StockMovement.created_at >= start)
+    if end is not None:
+        count_stmt = count_stmt.where(StockMovement.created_at <= end)
+    if store_id is not None:
+        count_stmt = count_stmt.where(StockMovement.store_id == store_id)
+    if movement_type is not None:
+        count_stmt = count_stmt.where(StockMovement.movement_type == movement_type)
+    total = (await session.exec(count_stmt)).one() or 0
+    lines = [
+        ActivityLogLine(
+            id=m.id,
+            item_id=m.item_id,
+            item_name=name,
+            movement_type=str(m.movement_type.value if hasattr(m.movement_type, "value") else m.movement_type),
+            quantity_delta=m.quantity_delta,
+            store_id=m.store_id,
+            actor_id=m.actor_id,
+            reason=m.reason,
+            created_at=m.created_at.isoformat(),
+        )
+        for m, name in rows
+    ]
+    logger.info("reports.activity_log", business_id=str(business_id), lines=len(lines))
+    return ActivityLogResponse(lines=lines, total=total)

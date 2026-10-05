@@ -25,6 +25,7 @@ import '../screens/purchases/purchase_detail_screen_gated.dart';
 import '../screens/purchasing/purchasing_screen.dart';
 import '../screens/purchasing/requisition_export_screen.dart';
 import '../screens/purchasing/requisition_order_screen.dart';
+import '../screens/reports/report_detail_screen.dart';
 import '../screens/reports/reports_screen_gated.dart';
 import '../screens/suppliers/suppliers_screen_gated.dart';
 import '../screens/placeholder/module_placeholder_screen.dart';
@@ -108,6 +109,14 @@ abstract final class AppRoute {
 
   static const reportsPath = '/reports';
   static const reportsName = 'reports';
+
+  /// One report's detail, nested under [reportsPath] so the shell's
+  /// Reports tab stays selected — same pattern as `:itemId` under
+  /// `/inventory` and `:customerId` under `/customers`.
+  static const reportDetailPath = ':reportId';
+  static const reportDetailName = 'reportDetail';
+
+  static String reportDetail(String reportId) => '$reportsPath/$reportId';
 
   static const insightsPath = '/insights';
   static const insightsName = 'insights';
@@ -507,6 +516,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 path: AppRoute.reportsPath,
                 name: AppRoute.reportsName,
                 builder: (context, state) => const ReportsScreenGated(),
+                routes: [
+                  GoRoute(
+                    path: AppRoute.reportDetailPath,
+                    name: AppRoute.reportDetailName,
+                    builder: (context, state) => ReportDetailScreen(
+                      reportId: state.pathParameters['reportId']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
