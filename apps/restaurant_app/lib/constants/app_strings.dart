@@ -1186,6 +1186,8 @@ abstract final class AppStrings {
   static String get toleranceLabel => L10n.t('toleranceLabel', 'Threshold ±%');
   static String get recipesTab => L10n.t('recipesTab', 'Recipes');
   static String get runsTab => L10n.t('runsTab', 'Runs');
+  static String get productionZoneTab =>
+      L10n.t('productionZoneTab', 'Production Zone');
   static String get outputTab => L10n.t('outputTab', 'Output');
   static String get newRun => L10n.t('newRun', 'New run');
   static String get planRunTitle => L10n.t('planRunTitle', 'Plan a batch');
@@ -1206,6 +1208,25 @@ abstract final class AppStrings {
   );
   static String get publishAction =>
       L10n.t('publishAction', 'Publish to POS & Inventory');
+  static String get cookWizardTitle => L10n.t('cookWizardTitle', 'Cook a batch');
+  static String get cookStepRecipe => L10n.t('cookStepRecipe', 'Recipe');
+  static String get cookStepPlan => L10n.t('cookStepPlan', 'Plan');
+  static String get cookStepWeigh => L10n.t('cookStepWeigh', 'Weigh');
+  static String get cookStepCook => L10n.t('cookStepCook', 'Cook');
+  static String get cookStepRecord => L10n.t('cookStepRecord', 'Record');
+  static String get cookStepReview => L10n.t('cookStepReview', 'Publish');
+  static String get chooseRecipeHint =>
+      L10n.t('chooseRecipeHint', 'Choose what to cook today');
+  static String get recordOutputNow =>
+      L10n.t('recordOutputNow', 'Record output');
+  static String get illRecordLater =>
+      L10n.t('illRecordLater', 'I’ll record later');
+  static String get reviewPublishTitle =>
+      L10n.t('reviewPublishTitle', 'Review & publish');
+  static String get publishedTitle => L10n.t('publishedTitle', 'Published!');
+  static String get yieldLabel => L10n.t('yieldLabel', 'Yield');
+  static String get wasteLabel => L10n.t('wasteLabel', 'Waste');
+  static String get statusLabel => L10n.t('statusLabel', 'Status');
   static String get publishedBadge => L10n.t('publishedBadge', 'Published');
   static String get awaitingPublish =>
       L10n.t('awaitingPublish', 'Awaiting publish');
@@ -1272,7 +1293,7 @@ abstract final class AppStrings {
   static String get cookingTitle => L10n.t('cookingTitle', 'You’re cooking!');
   static String get cookingBody => L10n.t(
     'cookingBody',
-    'Ingredients are deducted. Come back to the Runs tab when the food is ready and tap Record output.',
+    'Ingredients are deducted. Come back to the Production Zone when the food is ready and tap Continue, then Record output.',
   );
   static String get welcomeBack => L10n.t('welcomeBack', 'Welcome back!');
   static String get howManyGot =>

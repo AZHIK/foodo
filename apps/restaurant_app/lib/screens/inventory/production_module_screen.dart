@@ -13,18 +13,20 @@ import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/labeled_form_field.dart';
 import '../../widgets/responsive_form_dialog.dart';
+import 'cook_wizard_dialog.dart';
 import 'recipe_form_dialog.dart';
 import 'stock_dialog_shared.dart';
 import '../../utils/dialog_helper.dart';
 
-/// The kitchen's Production Module: Recipes (blueprints), Runs (the plan),
-/// Output (results + publish).
+/// The kitchen's Production Module, arranged as one left-to-right flow:
 ///
-/// Tab 1 manages batch formulas with categories, target yields, and
-/// auto-computed cost per unit. Tab 2 schedules batches by status —
-/// starting one deducts the weighed ingredients instantly. Tab 3 verifies
-/// completed batches (actual yield, waste reason, variance) and publishes
-/// them to POS & inventory with one click.
+/// 1. Recipes (blueprints, rarely changed) → 2. Production Zone (today's
+/// batches: plan, weigh, cook, record) → 3. Output (verify + publish).
+///
+/// The tabs are numbered journey stages, not separate sections — and the
+/// module opens in the Production Zone, where the daily work happens.
+/// Every forward motion runs inside the cook wizard; the tabs are for
+/// overview and resume.
 class ProductionModuleScreen extends ConsumerStatefulWidget {
   const ProductionModuleScreen({super.key});
 
@@ -53,6 +55,8 @@ abstract final class ProductionModuleKeys {
       Key('productionModule.runComplete.$runId');
   static Key runPublish(String runId) =>
       Key('productionModule.runPublish.$runId');
+  static Key runContinue(String runId) =>
+      Key('productionModule.runContinue.$runId');
   static Key runDelete(String runId) =>
       Key('productionModule.runDelete.$runId');
   static Key recipeCard(String recipeId) =>
@@ -63,14 +67,71 @@ abstract final class ProductionModuleKeys {
   static const cookingDone = Key('productionModule.cookingDone');
 }
 
+/// One tab of the production journey: a stage number plus its name.
+///
+/// The numbers are the point — Recipes → Production Zone → Output reads as
+/// a flow the cook walks left to right, not three unrelated sections.
+class _FlowTab extends StatelessWidget {
+  const _FlowTab({
+    required this.number,
+    required this.label,
+    required this.active,
+  });
+
+  final int number;
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: active
+                ? context.colors.primary
+                : Colors.transparent,
+            border: Border.all(
+              color: active
+                  ? context.colors.primary
+                  : context.colors.onSurfaceVariant,
+            ),
+          ),
+          child: Text(
+            '$number',
+            style: context.text.labelSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: active
+                  ? context.colors.onPrimary
+                  : context.colors.onSurfaceVariant,
+            ),
+          ),
+        ),
+        const SizedBox(width: Insets.xs),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// "Step X of Y" header with progress dots — every guided dialog shows
 /// where the cook is in the journey, so nothing feels like a surprise.
 class _StepsHeader extends StatelessWidget {
-  const _StepsHeader({required this.step, required this.total, this.label});
+  const _StepsHeader({required this.step, required this.total});
 
   final int step;
   final int total;
-  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -100,10 +161,6 @@ class _StepsHeader extends StatelessWidget {
             color: context.colors.onSurfaceVariant,
           ),
         ),
-        if (label != null && label!.isNotEmpty) ...[
-          const SizedBox(height: Insets.xs),
-          Text(label!, style: context.text.titleSmall),
-        ],
       ],
     );
   }
@@ -116,13 +173,11 @@ class _DonePage extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.body,
-    this.bullets = const [],
   });
 
   final IconData icon;
   final String title;
   final String body;
-  final List<String> bullets;
 
   @override
   Widget build(BuildContext context) {
@@ -145,19 +200,6 @@ class _DonePage extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        if (bullets.isNotEmpty) ...[
-          const SizedBox(height: Insets.md),
-          for (final b in bullets)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: Insets.xs),
-              child: Text(
-                b,
-                style: context.text.bodySmall?.copyWith(
-                  color: context.colors.onSurfaceVariant,
-                ),
-              ),
-            ),
-        ],
       ],
     );
   }
@@ -170,7 +212,9 @@ class _ProductionModuleScreenState extends ConsumerState<ProductionModuleScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 3, vsync: this);
+    // The daily work happens in the Production Zone (index 1) — recipes
+    // are set up once and rarely touched, so the module lands there.
+    _tabs = TabController(length: 3, vsync: this, initialIndex: 1);
     _tabs.addListener(_syncFilterWithTab);
     // The FAB depends on the selected tab — rebuild as it changes.
     _tabs.addListener(_refreshAction);
@@ -215,9 +259,30 @@ class _ProductionModuleScreenState extends ConsumerState<ProductionModuleScreen>
         bottom: TabBar(
           controller: _tabs,
           tabs: [
-            Tab(key: ProductionModuleKeys.recipesTab, text: AppStrings.recipesTab),
-            Tab(key: ProductionModuleKeys.runsTab, text: AppStrings.runsTab),
-            Tab(key: ProductionModuleKeys.outputTab, text: AppStrings.outputTab),
+            Tab(
+              key: ProductionModuleKeys.recipesTab,
+              child: _FlowTab(
+                number: 1,
+                label: AppStrings.recipesTab,
+                active: _tabs.index == 0,
+              ),
+            ),
+            Tab(
+              key: ProductionModuleKeys.runsTab,
+              child: _FlowTab(
+                number: 2,
+                label: AppStrings.productionZoneTab,
+                active: _tabs.index == 1,
+              ),
+            ),
+            Tab(
+              key: ProductionModuleKeys.outputTab,
+              child: _FlowTab(
+                number: 3,
+                label: AppStrings.outputTab,
+                active: _tabs.index == 2,
+              ),
+            ),
           ],
         ),
       ),
@@ -233,7 +298,7 @@ class _ProductionModuleScreenState extends ConsumerState<ProductionModuleScreen>
           : (canProduce
               ? FloatingActionButton.extended(
                   key: ProductionModuleKeys.newRun,
-                  onPressed: () => _planRun(context, ref),
+                  onPressed: () => showCookWizard(context),
                   icon: const Icon(Icons.add_rounded),
                   label: Text(AppStrings.newRun),
                 )
@@ -242,28 +307,17 @@ class _ProductionModuleScreenState extends ConsumerState<ProductionModuleScreen>
         controller: _tabs,
         children: const [
           _RecipesTab(),
-          _RunsTab(),
+          _ProductionZoneTab(),
           _OutputTab(),
         ],
       ),
     );
   }
 
-  Future<void> _planRun(BuildContext context, WidgetRef ref) async {
-    final recipe = await showAppDialog<RecipeDto>(
-      context: context,
-      builder: (_) => const _RunRecipePicker(),
-    );
-    if (recipe == null || !context.mounted) return;
-    await showResponsiveFormDialog<void>(
-      context,
-      builder: (_) => _PlanRunDialog(recipe: recipe),
-    );
-  }
 }
 
 // ---------------------------------------------------------------------------
-// Tab 1: Recipes
+// Stage 1: Recipes (blueprints, rarely changed)
 // ---------------------------------------------------------------------------
 
 class _RecipesTab extends ConsumerWidget {
@@ -380,212 +434,12 @@ class _RecipeCard extends ConsumerWidget {
   }
 }
 
-/// Picks which recipe to schedule. Returns the choice; dismissing plans
-/// nothing.
-class _RunRecipePicker extends ConsumerWidget {
-  const _RunRecipePicker();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final recipes = ref.watch(recipesCatalogListProvider);
-
-    return ResponsiveFormDialog(
-      title: AppStrings.pickRecipe,
-      width: kStockDialogWidth,
-      actions: [
-        OutlinedButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(AppStrings.cancel),
-        ),
-      ],
-      child: recipes.isEmpty
-          ? Padding(
-              padding: const EdgeInsets.symmetric(vertical: Insets.lg),
-              child: Text(
-                AppStrings.noRecipesYet,
-                style: context.text.bodyMedium?.copyWith(
-                  color: context.colors.onSurfaceVariant,
-                ),
-              ),
-            )
-          : Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final recipe in recipes)
-                  Card(
-                    margin: const EdgeInsets.only(bottom: Insets.sm),
-                    child: ListTile(
-                      leading: Icon(
-                        Icons.soup_kitchen_outlined,
-                        color: context.colors.primary,
-                      ),
-                      title: Text(recipe.name),
-                      subtitle: Text(
-                        AppStrings.batchYieldLine(
-                          Fmt.quantity(double.parse(
-                              recipe.targetYieldQuantity.toString())),
-                          recipe.targetYieldUnit,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () => Navigator.of(context).pop(recipe),
-                    ),
-                  ),
-              ],
-            ),
-    );
-  }
-}
-
-/// Target quantity for the batch, then schedule it (pending — no stock).
-class _PlanRunDialog extends ConsumerStatefulWidget {
-  const _PlanRunDialog({required this.recipe});
-
-  final RecipeDto recipe;
-
-  @override
-  ConsumerState<_PlanRunDialog> createState() => _PlanRunDialogState();
-}
-
-class _PlanRunDialogState extends ConsumerState<_PlanRunDialog> {
-  final _target = TextEditingController();
-  bool _saving = false;
-  RunDto? _saved;
-
-  @override
-  void dispose() {
-    _target.dispose();
-    super.dispose();
-  }
-
-  double? get _targetQty => parseQuantity(_target.text);
-
-  Future<void> _submit() async {
-    final messenger = ScaffoldMessenger.of(context);
-    final target = _targetQty;
-    if (target == null || target <= 0) return;
-    setState(() => _saving = true);
-    try {
-      final run = await ref
-          .read(productionRunsProvider.notifier)
-          .createRun(recipeId: widget.recipe.id, targetOutput: target);
-      if (!mounted) return;
-      // Stay open on purpose: the cook needs to hear what happens next
-      // (weigh → cook for hours → record later), not be dropped.
-      setState(() {
-        _saving = false;
-        _saved = run;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _saving = false);
-      final message = e is InventoryApiException ? e.message : e.toString();
-      messenger.showSnackBar(SnackBar(content: Text(AppStrings.runFailed(message))));
-    }
-  }
-
-  void _seeWhatToWeigh() {
-    final run = _saved;
-    if (run == null) return;
-    Navigator.of(context).pop();
-    showResponsiveFormDialog<void>(
-      context,
-      builder: (_) => _StartRunDialog(run: run),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final saved = _saved;
-    if (saved != null) {
-      final target =
-          Fmt.quantity(double.parse(saved.targetOutputQuantity.toString()));
-      return ResponsiveFormDialog(
-        key: ProductionModuleKeys.planSaved,
-        title: AppStrings.planRunTitle,
-        width: kStockDialogWidth,
-        actions: [
-          OutlinedButton(
-            key: ProductionModuleKeys.cookLater,
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(AppStrings.illCookLater),
-          ),
-          FilledButton(
-            key: ProductionModuleKeys.seeWhatToWeigh,
-            onPressed: _seeWhatToWeigh,
-            child: Text(AppStrings.seeWhatToWeigh),
-          ),
-        ],
-        child: _DonePage(
-          icon: Icons.check_circle_outline_rounded,
-          title: AppStrings.planSavedTitle,
-          body: AppStrings.planSavedBody(target, saved.recipeName),
-          bullets: [
-            AppStrings.whatHappensNext,
-            AppStrings.nextWeigh,
-            AppStrings.nextCook,
-            AppStrings.nextRecord,
-          ],
-        ),
-      );
-    }
-
-    final valid = (_targetQty ?? 0) > 0;
-    return ResponsiveFormDialog(
-      title: AppStrings.whatMakingToday,
-      width: kStockDialogWidth,
-      actions: [
-        OutlinedButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(AppStrings.cancel),
-        ),
-        FilledButton(
-          key: ProductionModuleKeys.planSubmit,
-          onPressed: !_saving && valid ? _submit : null,
-          child: Text(AppStrings.newRun),
-        ),
-      ],
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const _StepsHeader(step: 1, total: 3),
-          Text(
-            widget.recipe.name,
-            style: context.text.titleSmall,
-          ),
-          const SizedBox(height: Insets.md),
-          LabeledFormField(
-            label: AppStrings.howManyToday,
-            helper: AppStrings.howManyTodayHint,
-            isRequired: true,
-            child: TextFormField(
-              key: ProductionModuleKeys.runTarget,
-              controller: _target,
-              autofocus: true,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
-              ],
-              decoration: const InputDecoration(hintText: '50'),
-              onChanged: (_) => setState(() {}),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ---------------------------------------------------------------------------
-// Tab 2: Runs
+// Stage 2: Production Zone (today's batches)
 // ---------------------------------------------------------------------------
 
-class _RunsTab extends ConsumerWidget {
-  const _RunsTab();
+class _ProductionZoneTab extends ConsumerWidget {
+  const _ProductionZoneTab();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -754,6 +608,13 @@ class _RunCard extends ConsumerWidget {
                       ),
                       child: Text(AppStrings.completeRun),
                     ),
+                  // Guided path: resumes the cook wizard at this run's
+                  // step (weigh → cook → record → publish in one place).
+                  TextButton(
+                    key: ProductionModuleKeys.runContinue(run.id),
+                    onPressed: () => showCookWizard(context, run: run),
+                    child: Text(AppStrings.continueAction),
+                  ),
                 ],
               ),
             ],
@@ -1195,7 +1056,7 @@ class _CompleteRunDialogState extends ConsumerState<_CompleteRunDialog> {
 }
 
 // ---------------------------------------------------------------------------
-// Tab 3: Output & publish
+// Stage 3: Output & publish
 // ---------------------------------------------------------------------------
 
 class _OutputTab extends ConsumerWidget {
@@ -1389,6 +1250,12 @@ class _OutputCardState extends ConsumerState<_OutputCard> {
                 onPressed: _publishing ? null : _publish,
                 icon: const Icon(Icons.publish_rounded, size: 18),
                 label: Text(AppStrings.publishAction),
+              ),
+              const SizedBox(height: Insets.xs),
+              TextButton(
+                key: ProductionModuleKeys.runContinue(run.id),
+                onPressed: () => showCookWizard(context, run: run),
+                child: Text(AppStrings.continueAction),
               ),
             ],
           ],

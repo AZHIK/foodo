@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:restaurant_pos/models/permission.dart';
 import 'package:restaurant_pos/providers/permissions_provider.dart';
 import 'package:restaurant_pos/providers/production_provider.dart';
+import 'package:restaurant_pos/screens/inventory/cook_wizard_dialog.dart';
 import 'package:restaurant_pos/screens/inventory/production_module_screen.dart';
 import 'package:restaurant_pos/services/inventory_api_service.dart';
 import 'package:restaurant_pos/theme/app_theme.dart';
@@ -103,6 +104,49 @@ class FakeRunsNotifier extends ProductionRunsNotifier {
     state = AsyncData([run]);
     return run;
   }
+
+  @override
+  Future<RunDto> completeRun({
+    required String runId,
+    required double actualOutput,
+    String? wasteReason,
+  }) async {
+    final run = _run(
+      id: runId,
+      status: RunStatusDto.completed,
+      actual: '$actualOutput',
+      waste: wasteReason,
+    );
+    state = AsyncData([run]);
+    return run;
+  }
+
+  @override
+  Future<ProductionEventDto> publishRun({required String runId}) async {
+    return ProductionEventDto(
+      id: 'event-1',
+      businessId: 'biz-1',
+      storeId: 'store-1',
+      recipeId: 'recipe-1',
+      recipeName: 'Pilau',
+      sellableItemId: 'sellable-1',
+      sellableItemName: 'Pilau',
+      leadingComponentItemId: 'rice',
+      leadingQuantityUsed: Decimal.parse('2'),
+      targetOutputQuantity: Decimal.parse('10'),
+      suggestedOutputQuantity: Decimal.parse('10'),
+      actualOutputQuantity: Decimal.parse('10'),
+      runId: runId,
+      yieldGoalQuantity: Decimal.parse('10'),
+      yieldVariance: Decimal.parse('0'),
+      yieldVariancePercent: Decimal.parse('0'),
+      yieldStatus: YieldStatusDto.withinThreshold,
+      yieldTolerancePercent: Decimal.parse('5'),
+      occurredAt: DateTime.utc(2026, 9, 14, 8),
+      createdAt: DateTime.utc(2026, 9, 14, 8),
+      components: const [],
+    );
+  }
 }
 
 Future<void> pumpModule(
@@ -147,13 +191,26 @@ Future<void> goToTab(WidgetTester tester, Key tabKey) async {
 
 void main() {
   group('ProductionModuleScreen', () {
-    testWidgets('three tabs render with recipes listed', (tester) async {
+    testWidgets('opens in the Production Zone with the flow numbered', (
+      tester,
+    ) async {
       await pumpModule(tester);
 
       expect(find.byKey(ProductionModuleKeys.recipesTab), findsOneWidget);
       expect(find.byKey(ProductionModuleKeys.runsTab), findsOneWidget);
       expect(find.byKey(ProductionModuleKeys.outputTab), findsOneWidget);
-      expect(find.text('Pilau'), findsWidgets);
+
+      // Tabs read as a numbered flow, not separate sections.
+      expect(find.text('Recipes'), findsOneWidget);
+      expect(find.text('Production Zone'), findsOneWidget);
+      expect(find.text('Output'), findsOneWidget);
+
+      // Default landing is the zone (hit-testable), not the recipes list.
+      expect(
+        find.text('No runs in this state yet').hitTestable(),
+        findsOneWidget,
+      );
+      expect(find.text('Pilau').hitTestable(), findsNothing);
     });
 
     testWidgets('pending run offers Start, in-progress offers Complete',
@@ -228,9 +285,7 @@ void main() {
       expect(find.textContaining('Could not update run'), findsOneWidget);
     });
 
-    testWidgets('planning ends on a saved page, never an output prompt', (
-      tester,
-    ) async {
+    testWidgets('wizard plans, then weighs in one place', (tester) async {
       await pumpModule(tester, runsNotifier: FakeRunsNotifier());
       await goToTab(tester, ProductionModuleKeys.runsTab);
 
@@ -240,21 +295,17 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(
-        find.byKey(ProductionModuleKeys.runTarget),
+        find.byKey(CookWizardKeys.targetField),
         '10',
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(ProductionModuleKeys.planSubmit));
+      await tester.tap(find.byKey(CookWizardKeys.planContinue));
       await tester.pumpAndSettle();
 
-      // No output question — the plan is saved with its next steps.
-      expect(find.byKey(ProductionModuleKeys.planSaved), findsOneWidget);
-      expect(find.text('Plan saved!'), findsOneWidget);
+      // Still inside the one wizard: step 3 of 6, lines to weigh.
+      expect(find.text('Step 3 of 6'), findsOneWidget);
+      expect(find.text('Rice'), findsOneWidget);
       expect(find.byKey(ProductionModuleKeys.runActual), findsNothing);
-      expect(
-        find.byKey(ProductionModuleKeys.seeWhatToWeigh),
-        findsOneWidget,
-      );
     });
 
     testWidgets('weighing through to a cooking-started landing page', (
@@ -268,22 +319,60 @@ void main() {
       await tester.tap(find.text('Pilau').first);
       await tester.pumpAndSettle();
       await tester.enterText(
-        find.byKey(ProductionModuleKeys.runTarget),
+        find.byKey(CookWizardKeys.targetField),
         '10',
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(ProductionModuleKeys.planSubmit));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(ProductionModuleKeys.seeWhatToWeigh));
+      await tester.tap(find.byKey(CookWizardKeys.planContinue));
       await tester.pumpAndSettle();
 
       expect(find.text('Rice'), findsOneWidget);
-      await tester.tap(find.byKey(ProductionModuleKeys.startSubmit));
+      await tester.tap(find.byKey(CookWizardKeys.startCooking));
       await tester.pumpAndSettle();
 
-      // Cooking takes hours — the app says so and where to finish.
-      expect(find.byKey(ProductionModuleKeys.cookingDone), findsOneWidget);
-      expect(find.textContaining('Runs tab'), findsOneWidget);
+      // Cooking takes hours — the wizard says so and offers both exits.
+      expect(find.text('Step 4 of 6'), findsOneWidget);
+      expect(find.byKey(CookWizardKeys.recordNow), findsOneWidget);
+      expect(find.byKey(CookWizardKeys.recordLater), findsOneWidget);
+    });
+
+    testWidgets('recording and publishing finish inside the wizard', (
+      tester,
+    ) async {
+      await pumpModule(tester, runsNotifier: FakeRunsNotifier());
+      await goToTab(tester, ProductionModuleKeys.runsTab);
+
+      await tester.tap(find.byKey(ProductionModuleKeys.newRun));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Pilau').first);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(CookWizardKeys.targetField),
+        '10',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(CookWizardKeys.planContinue));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(CookWizardKeys.startCooking));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(CookWizardKeys.recordNow));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(CookWizardKeys.actualField),
+        '10',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(CookWizardKeys.completeBatch));
+      await tester.pumpAndSettle();
+
+      // Review step: numbers to verify, then publish in the same dialog.
+      expect(find.text('Step 6 of 6'), findsOneWidget);
+      expect(find.text('Review & publish'), findsOneWidget);
+      await tester.tap(find.byKey(CookWizardKeys.publish));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Published!'), findsOneWidget);
     });
 
     testWidgets('completing welcomes back instead of demanding', (
