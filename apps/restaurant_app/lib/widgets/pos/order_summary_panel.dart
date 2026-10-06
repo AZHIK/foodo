@@ -178,18 +178,24 @@ class OrderTicketHeader extends ConsumerWidget {
                     color: colors.onSurfaceVariant,
                   ),
                 ),
-              SizedBox(
-                height: 32,
-                width: 32,
-                child: IconButton(
-                  tooltip: AppStrings.close,
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close_rounded, size: 20),
-                  color: colors.onSurfaceVariant,
+              if (Navigator.of(context).canPop())
+                SizedBox(
+                  height: 32,
+                  width: 32,
+                  child: IconButton(
+                    tooltip: AppStrings.close,
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    // The desktop ticket is a persistent panel on the POS root —
+                    // there is nothing to pop, so popping would throw
+                    // ("popped the last page off of the stack"). Only offer
+                    // close where a sheet/dialog actually stacked us (mobile
+                    // cart sheet).
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: Insets.sm),

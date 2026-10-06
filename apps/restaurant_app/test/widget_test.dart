@@ -168,8 +168,21 @@ void main() {
       );
     });
 
-    testWidgets('desktop width shows the navigation rail', (tester) async {
+    testWidgets('wide desktop groups the sidebar into dropdowns', (
+      tester,
+    ) async {
       await pumpAt(tester, const Size(1440, 900));
+
+      expect(find.byType(NavigationRail), findsNothing);
+      expect(find.byType(NavigationBar), findsNothing);
+      // No permissions seeded, so only the permission-free Dashboard shows
+      // and every dropdown stays hidden.
+      expect(find.text('Dashboard'), findsOneWidget);
+      expect(find.text('Sell'), findsNothing);
+    });
+
+    testWidgets('narrow desktop keeps the icon rail', (tester) async {
+      await pumpAt(tester, const Size(1100, 800));
 
       expect(find.byType(NavigationRail), findsOneWidget);
       expect(find.byType(NavigationBar), findsNothing);

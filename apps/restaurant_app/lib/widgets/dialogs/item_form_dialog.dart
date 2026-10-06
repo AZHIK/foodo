@@ -482,19 +482,8 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
         ),
 
         const SizedBox(height: Insets.xl),
-        SectionLabel(AppStrings.pricingStock),
+        SectionLabel(AppStrings.pricingSection),
         const SizedBox(height: Insets.md),
-        // The toggle governs the fields under it, so it comes before them —
-        // switching it off after typing a threshold reads as a mistake.
-        _SwitchTile(
-          key: ItemFormKeys.trackStock,
-          title: AppStrings.trackStockLabel,
-          subtitleOn: AppStrings.trackStockOn,
-          subtitleOff: AppStrings.trackStockOff,
-          value: state.trackStock,
-          onChanged: notifier.setTrackStock,
-        ),
-        const SizedBox(height: Insets.lg),
         _FieldPair(
           left: LabeledFormField(
             label: AppStrings.unitCostLabel,
@@ -517,41 +506,82 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
               validator: ItemFormState.validateUnitCost,
             ),
           ),
+          // Disabled rather than hidden for a raw material: hiding it would
+          // reflow the row around it, and a grocery-only item can still be
+          // reclassified later.
           right: LabeledFormField(
-            label: AppStrings.lowAlertLabel,
-            enabled: state.trackStock,
-            helper: state.trackStock ? AppStrings.lowAlertHelper : null,
+            label: AppStrings.sellingPrice,
+            enabled: state.itemType != 'raw_material',
+            helper: state.itemType == 'raw_material'
+                ? AppStrings.priceGroceryHint
+                : AppStrings.priceRequiredTill,
             child: TextFormField(
-              key: ItemFormKeys.lowStockAlert,
-              controller: _lowStock,
-              // Disabled rather than removed: hiding it would reflow the row
-              // and shift the unit cost field out from under the cursor.
-              enabled: state.trackStock,
-              keyboardType: TextInputType.number,
+              key: ItemFormKeys.sellingPrice,
+              controller: _sellingPrice,
+              enabled: state.itemType != 'raw_material',
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               textInputAction: TextInputAction.next,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(hintText: AppStrings.quantityHint),
-              onChanged: notifier.setLowStockAlert,
-              validator: (value) => state.trackStock
-                  ? ItemFormState.validateLowStockAlert(value)
-                  : null,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+              ],
+              decoration: InputDecoration(
+                hintText: AppStrings.moneyHint,
+                prefixText: Fmt.currencySymbol,
+              ),
+              onChanged: notifier.setSellingPrice,
+              validator: (value) => ItemFormState.validateSellingPrice(
+                value,
+                isRequired: state.itemType != 'raw_material',
+              ),
             ),
           ),
         ),
+
+        const SizedBox(height: Insets.xl),
+        SectionLabel(AppStrings.stockSection),
+        const SizedBox(height: Insets.md),
+        // The toggle governs the fields under it, so it comes before them —
+        // switching it off after typing a threshold reads as a mistake.
+        _SwitchTile(
+          key: ItemFormKeys.trackStock,
+          title: AppStrings.trackStockLabel,
+          subtitleOn: AppStrings.trackStockOn,
+          subtitleOff: AppStrings.trackStockOff,
+          value: state.trackStock,
+          onChanged: notifier.setTrackStock,
+        ),
         if (state.trackStock) ...[
           const SizedBox(height: Insets.lg),
-          LabeledFormField(
-            label: AppStrings.reorderQtyLabel,
-            helper: AppStrings.reorderQtyHelper,
-            child: TextFormField(
-              key: ItemFormKeys.reorderQuantity,
-              controller: _reorderQuantity,
-              keyboardType: TextInputType.number,
-              textInputAction: TextInputAction.next,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(hintText: AppStrings.quantityHint),
-              onChanged: notifier.setReorderQuantity,
-              validator: ItemFormState.validateReorderQuantity,
+          _FieldPair(
+            left: LabeledFormField(
+              label: AppStrings.lowAlertLabel,
+              helper: AppStrings.lowAlertHelper,
+              child: TextFormField(
+                key: ItemFormKeys.lowStockAlert,
+                controller: _lowStock,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.next,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(hintText: AppStrings.quantityHint),
+                onChanged: notifier.setLowStockAlert,
+                validator: ItemFormState.validateLowStockAlert,
+              ),
+            ),
+            right: LabeledFormField(
+              label: AppStrings.reorderQtyLabel,
+              helper: AppStrings.reorderQtyHelper,
+              child: TextFormField(
+                key: ItemFormKeys.reorderQuantity,
+                controller: _reorderQuantity,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.next,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(hintText: AppStrings.quantityHint),
+                onChanged: notifier.setReorderQuantity,
+                validator: ItemFormState.validateReorderQuantity,
+              ),
             ),
           ),
           const SizedBox(height: Insets.lg),
@@ -563,39 +593,6 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
             value: state.allowNegativeStock,
             onChanged: notifier.setAllowNegativeStock,
           ),
-        ],
-        const SizedBox(height: Insets.lg),
-        // Disabled rather than hidden for a raw material — same reasoning as
-        // the low-stock alert field above: hiding it would reflow the row
-        // around it, and a grocery-only item can still be reclassified later.
-        LabeledFormField(
-          label: AppStrings.sellingPrice,
-          enabled: state.itemType != 'raw_material',
-          helper: state.itemType == 'raw_material'
-              ? AppStrings.priceGroceryHint
-              : AppStrings.priceRequiredTill,
-          child: TextFormField(
-            key: ItemFormKeys.sellingPrice,
-            controller: _sellingPrice,
-            enabled: state.itemType != 'raw_material',
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            textInputAction: TextInputAction.next,
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-            ],
-            decoration: InputDecoration(
-              hintText: AppStrings.moneyHint,
-              prefixText: Fmt.currencySymbol,
-            ),
-            onChanged: notifier.setSellingPrice,
-            validator: (value) => ItemFormState.validateSellingPrice(
-              value,
-              isRequired: state.itemType != 'raw_material',
-            ),
-          ),
-        ),
-
-        if (state.trackStock) ...[
           const SizedBox(height: Insets.lg),
           _FieldPair(
             left: state.isEdit

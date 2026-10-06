@@ -30,6 +30,7 @@ class ReportDetailScreen extends ConsumerWidget {
       case 'profit-loss':
         return Future.wait([
           ref.read(financeSummaryProvider.notifier).refresh(),
+          ref.read(itemMixProvider.notifier).refresh(),
           ref.read(productPurchasesProvider.notifier).refresh(),
           ref.read(wasteSummaryProvider.notifier).refresh(),
           ref.read(stockValuationProvider.notifier).refresh(),

@@ -12,9 +12,11 @@ import '../../models/permission.dart';
 import '../../constants/app_limits.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/permissions_provider.dart';
+import '../../providers/production_provider.dart';
 import '../../providers/reports_provider.dart';
 import '../../services/inventory_api_service.dart';
 import '../../services/pos_reports_api_service.dart';
+import '../../utils/cogs.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
@@ -894,11 +896,11 @@ class _PLTotal extends StatelessWidget {
 /// Profit / Loss Report — a formal statement of profit and loss.
 ///
 /// Revenue and operating expenses come from POS Service's finance
-/// summary; goods purchased in the period come from Inventory Service's
-/// product-purchases report and are treated as the cost of goods (no
-/// opening/closing stock adjustment — stated in the footnote, not hidden).
-/// Waste and on-hand value ride below the statement as memo lines: real
-/// figures, explicitly outside the formal totals.
+/// summary; cost of goods sold is units sold (item-mix) valued at each
+/// recipe's cost per unit, falling back to the item's own unit cost for
+/// resold goods with no formula. Goods purchased in the period ride below
+/// as a memo line (procurement ≠ consumption). Waste and on-hand value
+/// are memo lines too: real figures, explicitly outside the formal totals.
 class ProfitLossSection extends ConsumerWidget {
   const ProfitLossSection({super.key});
 
@@ -907,15 +909,41 @@ class ProfitLossSection extends ConsumerWidget {
     final filter = ref.watch(reportsDateFilterProvider);
     final summary = ref.watch(financeSummaryProvider).valueOrNull;
     final purchases = ref.watch(productPurchasesProvider).valueOrNull ?? const [];
+    final itemMix = ref.watch(itemMixProvider).valueOrNull ?? const [];
+    final recipes = ref.watch(recipesCatalogListProvider);
+    final items = ref.watch(inventoryItemsListProvider);
     final waste = ref.watch(wasteSummaryProvider).valueOrNull;
     final valuation = ref.watch(stockValuationProvider).valueOrNull;
 
     final revenue = summary == null ? Decimal.zero : summary.salesRevenue + summary.incomeTotal;
+    // Recipe cost per sellable at current raw prices; fallback is the
+    // item's own unit cost (bought-and-resold lines).
+    final recipeCost = <String, Decimal>{
+      for (final r in recipes) r.sellableItemId: r.costPerUnit,
+    };
+    final recipeComplete = <String, bool>{
+      for (final r in recipes) r.sellableItemId: r.costComplete,
+    };
+    final fallbackCost = <String, Decimal>{
+      for (final i in items)
+        if (i.catalogItemId != null)
+          i.catalogItemId!: Decimal.parse(i.unitCost.toString()),
+    };
+    final index = CogsIndex(
+      recipeCost: recipeCost,
+      recipeComplete: recipeComplete,
+      fallbackCost: fallbackCost,
+    );
+    final cogsResult = index.cogsForQuantities({
+      for (final line in itemMix) line.itemId: line.quantity,
+    });
+    final cogs = cogsResult.cogs;
+    final cogsEstimated = cogsResult.estimated;
     var purchaseCost = Decimal.zero;
     for (final p in purchases) {
       purchaseCost += p.totalCost;
     }
-    final grossProfit = revenue - purchaseCost;
+    final grossProfit = revenue - cogs;
     final expenseTotal = summary?.expenseTotal ?? Decimal.zero;
     final net = grossProfit - expenseTotal;
 
@@ -929,7 +957,12 @@ class ProfitLossSection extends ConsumerWidget {
       _PLRow('Sales revenue', summary?.salesRevenue ?? Decimal.zero),
       _PLRow('Other income', summary?.incomeTotal ?? Decimal.zero),
       _PLRow('TOTAL REVENUE', revenue),
-      _PLRow('Goods purchased in period', purchaseCost),
+      _PLRow(
+        cogsEstimated
+            ? 'Cost of goods sold (recipes, estimated)'
+            : 'Cost of goods sold (recipes)',
+        cogs,
+      ),
       _PLRow('GROSS PROFIT', grossProfit),
       for (final e in summary?.expensesByCategory ?? const <FinanceCategoryTotalDto>[])
         _PLRow('Expense — ${e.category}', e.total),
@@ -938,7 +971,7 @@ class ProfitLossSection extends ConsumerWidget {
     ];
 
     final hasData = revenue != Decimal.zero ||
-        purchaseCost != Decimal.zero ||
+        cogs != Decimal.zero ||
         expenseTotal != Decimal.zero;
 
     return _Section(
@@ -976,9 +1009,11 @@ class ProfitLossSection extends ConsumerWidget {
                 _PLTotal(label: 'Total revenue  (A)', amount: revenue),
                 const _PLBlockTitle('Cost of goods'),
                 _PLLine(
-                  label: 'Goods purchased in period',
-                  amount: purchaseCost,
-                  note: 'Treated as cost of goods — see note below',
+                  label: 'Cost of goods sold (recipes × qty)',
+                  amount: cogs,
+                  note: cogsEstimated
+                      ? 'Estimated — some sales lack a recipe cost'
+                      : 'Units sold valued at recipe cost',
                 ),
                 _PLTotal(label: 'Gross profit  (A − B)', amount: grossProfit),
                 const _PLBlockTitle('Operating expenses'),
@@ -1035,6 +1070,10 @@ class ProfitLossSection extends ConsumerWidget {
                 ),
                 const SizedBox(height: Insets.md),
                 _PLLine(
+                  label: 'Memo — goods purchased in period',
+                  amount: purchaseCost,
+                ),
+                _PLLine(
                   label: 'Memo — waste cost in period',
                   amount: waste?.totalCostWasted ?? Decimal.zero,
                 ),
@@ -1044,9 +1083,10 @@ class ProfitLossSection extends ConsumerWidget {
                 ),
                 const SizedBox(height: Insets.sm),
                 Text(
-                  'Note: goods purchased are treated as cost of goods sold; '
-                  'opening and closing stock are not adjusted in this report. '
-                  'Memo lines are shown for context and are not part of the totals.',
+                  'Note: cost of goods is units sold valued at recipe cost '
+                  '(fallback: item unit cost for resold goods); purchases, '
+                  'waste and on-hand value are memo lines, not part of the '
+                  'totals.',
                   style: context.text.bodySmall?.copyWith(
                     color: context.colors.onSurfaceVariant,
                   ),

@@ -133,6 +133,102 @@ List<NavDestinationSpec> get _destinations => <NavDestinationSpec>[
   ),
 ];
 
+/// One sidebar dropdown: related destinations under a single heading.
+///
+/// [children] are indices into [_destinations], in display order. Branch
+/// order never changes — groups are display-only, so deep links, badges
+/// and the shell's index mapping are untouched.
+@immutable
+class NavGroupSpec {
+  const NavGroupSpec({
+    required this.label,
+    required this.icon,
+    required this.children,
+    this.expandedByDefault = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final List<int> children;
+
+  /// Groups that start open on first build. The counter lives here most
+  /// of the day, so Sell opens itself — every other group opens when it
+  /// holds the current branch, or when the staff member taps it.
+  final bool expandedByDefault;
+}
+
+/// Sidebar groups, in display order: Dashboard stays standalone on top,
+/// everything else folds into four dropdowns. This is a getter (not a
+/// top-level `final`) for the same language-toggle reason as [_destinations].
+List<NavGroupSpec> get _groups => <NavGroupSpec>[
+  NavGroupSpec(
+    label: AppStrings.navGroupSell,
+    icon: Icons.shopping_basket_outlined,
+    children: const [1, 2, 3, 7],
+    expandedByDefault: true,
+  ),
+  NavGroupSpec(
+    label: AppStrings.navGroupStock,
+    icon: Icons.warehouse_outlined,
+    children: const [11, 5, 6, 4],
+  ),
+  NavGroupSpec(
+    label: AppStrings.navGroupAnalytics,
+    icon: Icons.analytics_outlined,
+    children: const [9, 10],
+  ),
+  NavGroupSpec(
+    label: AppStrings.navGroupManage,
+    icon: Icons.admin_panel_settings_outlined,
+    children: const [12, 13],
+  ),
+];
+
+/// Standalone destinations, in display order: Finance sits right below
+/// the Reports & Insights dropdown.
+const _standaloneIndices = <int>[8];
+
+/// One row of the mobile More sheet: either a group header or a
+/// destination. Keeps the sheet's order identical to the sidebar's.
+@immutable
+class _MoreEntry {
+  const _MoreEntry.header(this.label) : index = -1;
+  const _MoreEntry.destination(this.index) : label = '';
+
+  final String label;
+  final int index;
+
+  bool get isHeader => index == -1;
+}
+
+/// Dashboard, Sell (+header), Stock (+header), Reports & Insights
+/// (+header), Finance, then Manage (+header) — the same sequence as
+/// [_SidebarSections].
+List<_MoreEntry> _moreSheetEntries(List<int> visible) {
+  final entries = <_MoreEntry>[];
+  void addGroup(NavGroupSpec group) {
+    final children = [
+      for (final i in group.children)
+        if (visible.contains(i)) i,
+    ];
+    if (children.isEmpty) return;
+    entries.add(_MoreEntry.header(group.label));
+    for (final i in children) {
+      entries.add(_MoreEntry.destination(i));
+    }
+  }
+
+  if (visible.contains(0)) entries.add(const _MoreEntry.destination(0));
+  addGroup(_groups[0]);
+  addGroup(_groups[1]);
+  addGroup(_groups[2]);
+  for (final i in _standaloneIndices) {
+    if (visible.contains(i)) entries.add(_MoreEntry.destination(i));
+  }
+  addGroup(_groups[3]);
+  return entries;
+}
+
 /// Destinations visible to the signed-in staff member, as indices into
 /// [_destinations] — a destination with no [NavDestinationSpec.requiredPermission]
 /// is always included; otherwise it needs that permission (or the `*`
@@ -231,11 +327,17 @@ class _ResponsiveScaffoldState extends ConsumerState<ResponsiveScaffold> {
             body: SafeArea(
               child: Row(
                 children: [
-                  _SideRail(
-                    currentIndex: index,
-                    onSelected: _onDestinationSelected,
-                    extended: constraints.maxWidth >= Breakpoints.extendedRail,
-                  ),
+                  if (constraints.maxWidth >= Breakpoints.extendedRail)
+                    _GroupedRail(
+                      currentIndex: index,
+                      onSelected: _onDestinationSelected,
+                    )
+                  else
+                    _SideRail(
+                      currentIndex: index,
+                      onSelected: _onDestinationSelected,
+                      extended: false,
+                    ),
                   const VerticalDivider(width: 1),
                   Expanded(child: body),
                 ],
@@ -346,18 +448,53 @@ class _BottomNav extends ConsumerWidget {
                   children: [
                     // Every destination the staff member can see, not only the
                     // overflow ones — a menu that hides where you already are
-                    // is harder to orient in.
-                    for (final i in visible)
+                    // is harder to orient in. Grouped exactly like the
+                    // sidebar dropdowns.
+                    if (visible.contains(0))
                       ListTile(
                         leading: Icon(
-                          i == currentIndex
-                              ? _destinations[i].selectedIcon
-                              : _destinations[i].icon,
+                          currentIndex == 0
+                              ? _destinations[0].selectedIcon
+                              : _destinations[0].icon,
                         ),
-                        title: Text(_destinations[i].label),
-                        selected: i == currentIndex,
-                        onTap: () => Navigator.of(sheetContext).pop(i),
+                        title: Text(_destinations[0].label),
+                        selected: currentIndex == 0,
+                        onTap: () => Navigator.of(sheetContext).pop(0),
                       ),
+                    for (final entry in _moreSheetEntries(visible)) ...[
+                      if (entry.isHeader)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            Insets.xl,
+                            Insets.md,
+                            Insets.xl,
+                            0,
+                          ),
+                          child: Text(
+                            entry.label.toUpperCase(),
+                            style: Theme.of(sheetContext)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  letterSpacing: 1.2,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        )
+                      else
+                        ListTile(
+                          leading: Icon(
+                            entry.index == currentIndex
+                                ? _destinations[entry.index].selectedIcon
+                                : _destinations[entry.index].icon,
+                          ),
+                          title: Text(_destinations[entry.index].label),
+                          selected: entry.index == currentIndex,
+                          onTap: () => Navigator.of(
+                            sheetContext,
+                          ).pop(entry.index),
+                        ),
+                    ],
                   ],
                 ),
               ),
@@ -376,6 +513,58 @@ class _BottomNav extends ConsumerWidget {
   }
 }
 
+/// The wide-rail replacement: Dashboard plus four dropdowns instead of
+/// fourteen flat rows. Collapsed windows keep the icon-only [_SideRail].
+class _GroupedRail extends ConsumerWidget {
+  const _GroupedRail({required this.currentIndex, required this.onSelected});
+
+  final int currentIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final themeMode = ref.watch(themeModeProvider);
+
+    return SizedBox(
+      width: _railExtendedWidth,
+      child: Column(
+        children: [
+          const _RailHeader(extended: true),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: Insets.sm),
+              children: [
+                _SidebarSections(
+                  currentIndex: currentIndex,
+                  onSelected: onSelected,
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: Insets.lg, top: Insets.sm),
+            child: IconButton(
+              tooltip: switch (themeMode) {
+                ThemeMode.system => AppStrings.themeFollowSystem,
+                ThemeMode.light => AppStrings.themeLight,
+                ThemeMode.dark => AppStrings.themeDark,
+              },
+              onPressed: () => ref.read(themeModeProvider.notifier).cycle(),
+              icon: Icon(switch (themeMode) {
+                ThemeMode.system => Icons.brightness_auto_rounded,
+                ThemeMode.light => Icons.light_mode_rounded,
+                ThemeMode.dark => Icons.dark_mode_rounded,
+              }),
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _NavDrawer extends ConsumerWidget {
   const _NavDrawer({required this.currentIndex, required this.onSelected});
 
@@ -384,37 +573,40 @@ class _NavDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cartCount = ref.watch(cartItemCountProvider);
-    final visible = ref.watch(_visibleNavIndicesProvider);
-    final selected = visible.indexOf(currentIndex);
-
-    return NavigationDrawer(
-      selectedIndex: selected == -1 ? 0 : selected,
-      onDestinationSelected: (position) => onSelected(visible[position]),
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(Insets.xl, Insets.xl, Insets.xl, Insets.sm),
-          child: BrandLockup(),
-        ),
-        for (final i in visible)
-          NavigationDrawerDestination(
-            icon: _badged(Icon(_destinations[i].icon), i, cartCount),
-            selectedIcon: _badged(
-              Icon(_destinations[i].selectedIcon),
-              i,
-              cartCount,
+    return Drawer(
+      child: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: Insets.sm),
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(
+                Insets.md,
+                Insets.xl,
+                Insets.md,
+                Insets.sm,
+              ),
+              child: BrandLockup(),
             ),
-            label: Text(_destinations[i].label),
-          ),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(Insets.xl, Insets.md, Insets.xl, Insets.sm),
-          child: Divider(),
+            _SidebarSections(
+              currentIndex: currentIndex,
+              onSelected: onSelected,
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(
+                Insets.md,
+                Insets.md,
+                Insets.md,
+                Insets.sm,
+              ),
+              child: Divider(),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: Insets.md),
+              child: _ThemeToggleTile(),
+            ),
+          ],
         ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: Insets.md),
-          child: _ThemeToggleTile(),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -490,6 +682,140 @@ class _SideRail extends ConsumerWidget {
 Widget _badged(Widget icon, int index, int cartCount) {
   if (index != _cartBadgeIndex || cartCount == 0) return icon;
   return Badge.count(count: cartCount, child: icon);
+}
+
+/// One destination row inside a dropdown (or the standalone Dashboard).
+/// Public so widget tests can drive the grouped navigation in isolation.
+class NavChildTile extends ConsumerWidget {
+  const NavChildTile({
+    required this.index,
+    required this.selected,
+    required this.onSelected,
+    super.key,
+  });
+
+  final int index;
+  final bool selected;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final cartCount = ref.watch(cartItemCountProvider);
+    final spec = _destinations[index];
+    return ListTile(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.pill),
+      ),
+      selected: selected,
+      selectedTileColor: colors.secondaryContainer,
+      selectedColor: colors.onSecondaryContainer,
+      iconColor: colors.onSurfaceVariant,
+      leading: _badged(
+        Icon(selected ? spec.selectedIcon : spec.icon),
+        index,
+        cartCount,
+      ),
+      title: Text(spec.label),
+      onTap: () => onSelected(index),
+    );
+  }
+}
+
+/// The sidebar's section order, shared by the rail and the drawer:
+/// Dashboard, Sell, Stock, Reports & Insights, Finance, then Manage.
+/// One definition so the two can never drift apart.
+class _SidebarSections extends ConsumerWidget {
+  const _SidebarSections({
+    required this.currentIndex,
+    required this.onSelected,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final visible = ref.watch(_visibleNavIndicesProvider);
+    // _groups is [Sell, Stock, Reports & Insights, Manage] — Finance
+    // stands alone between Reports & Insights and Manage.
+    Widget group(int g) => NavGroupTile(
+          group: _groups[g],
+          currentIndex: currentIndex,
+          onSelected: onSelected,
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (visible.contains(0))
+          NavChildTile(
+            index: 0,
+            selected: currentIndex == 0,
+            onSelected: onSelected,
+          ),
+        group(0),
+        group(1),
+        group(2),
+        for (final i in _standaloneIndices)
+          if (visible.contains(i))
+            NavChildTile(
+              index: i,
+              selected: currentIndex == i,
+              onSelected: onSelected,
+            ),
+        group(3),
+      ],
+    );
+  }
+}
+
+/// One sidebar dropdown. Expansion follows the active destination: the
+/// group holding the current branch opens itself (via the key, so a manual
+/// collapse of any other group survives rebuilds), and a group with no
+/// visible children renders nothing.
+/// Public so widget tests can drive the grouped navigation in isolation.
+class NavGroupTile extends ConsumerWidget {
+  const NavGroupTile({
+    required this.group,
+    required this.currentIndex,
+    required this.onSelected,
+    super.key,
+  });
+
+  final NavGroupSpec group;
+  final int currentIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final visible = ref.watch(_visibleNavIndicesProvider);
+    final children = [
+      for (final i in group.children)
+        if (visible.contains(i)) i,
+    ];
+    if (children.isEmpty) return const SizedBox.shrink();
+    final contains = children.contains(currentIndex);
+    return ExpansionTile(
+      key: ValueKey('nav-group-${group.label}-$contains'),
+      initiallyExpanded: contains || group.expandedByDefault,
+      shape: const Border(),
+      leading: Icon(group.icon),
+      title: Text(
+        group.label,
+        style: Theme.of(context).textTheme.titleSmall,
+      ),
+      childrenPadding: const EdgeInsets.only(left: Insets.md),
+      children: [
+        for (final i in children)
+          NavChildTile(
+            index: i,
+            selected: i == currentIndex,
+            onSelected: onSelected,
+          ),
+      ],
+    );
+  }
 }
 
 class _ThemeToggleTile extends ConsumerWidget {

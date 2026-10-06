@@ -16,6 +16,7 @@ import 'orders_provider.dart';
 import 'other_expenses_provider.dart';
 import 'other_incomes_provider.dart';
 import 'preferences_provider.dart';
+import 'production_provider.dart';
 import 'roles_provider.dart';
 import 'staff_provider.dart';
 
@@ -124,8 +125,29 @@ final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
   final startOfYesterday = startOfToday.subtract(AppDurations.singleDay);
 
   // ---- KPIs -------------------------------------------------------------
+  // COGS comes from recipes (cost per unit × qty sold), falling back to
+  // each item's own unit cost for resold goods with no formula. See
+  // `utils/cogs.dart` — profit without it counts takings as profit.
+  final recipes = ref.watch(recipesCatalogListProvider);
+  final recipeCost = <String, double>{
+    for (final r in recipes)
+      r.sellableItemId: double.parse(r.costPerUnit.toString()),
+  };
+  final fallbackCost = <String, double>{for (final i in items) i.id: i.unitCost};
+  double cogsOf(Order order) {
+    var cogs = 0.0;
+    for (final line in order.lines) {
+      final unit =
+          recipeCost[line.itemId] ?? fallbackCost[line.itemId] ?? 0.0;
+      cogs += unit * line.quantity;
+    }
+    return cogs;
+  }
+
   var salesToday = 0.0;
   var salesYesterday = 0.0;
+  var cogsToday = 0.0;
+  var cogsYesterday = 0.0;
   var ordersToday = 0;
   var ordersYesterday = 0;
   var otherIncomeToday = 0.0;
@@ -142,9 +164,11 @@ final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
     if (!order.placedAt.isBefore(startOfToday)) {
       ordersToday++;
       salesToday += order.total;
+      cogsToday += cogsOf(order);
     } else if (!order.placedAt.isBefore(startOfYesterday)) {
       ordersYesterday++;
       salesYesterday += order.total;
+      cogsYesterday += cogsOf(order);
     }
   }
 
@@ -292,8 +316,13 @@ final dashboardMetricsProvider = Provider<DashboardMetrics>((ref) {
       previous: ordersYesterday == 0 ? 0 : salesYesterday / ordersYesterday,
     ),
     netProfit: KpiValue(
-      current: salesToday + otherIncomeToday - otherExpensesToday,
-      previous: salesYesterday + otherIncomeYesterday - otherExpensesYesterday,
+      current:
+          salesToday + otherIncomeToday - otherExpensesToday - cogsToday,
+      previous:
+          salesYesterday +
+          otherIncomeYesterday -
+          otherExpensesYesterday -
+          cogsYesterday,
     ),
     staffOnShift: onShift,
     staffTotal: activeTotal,

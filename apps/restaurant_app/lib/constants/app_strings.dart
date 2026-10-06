@@ -119,6 +119,11 @@ abstract final class AppStrings {
   static String get navInventory => L10n.t('navInventory', 'Inventory');
   static String get navStaff => L10n.t('navStaff', 'Staff');
   static String get navSettings => L10n.t('navSettings', 'Settings');
+  static String get navGroupSell => L10n.t('navGroupSell', 'Sell');
+  static String get navGroupStock => L10n.t('navGroupStock', 'Stock');
+  static String get navGroupManage => L10n.t('navGroupManage', 'Manage');
+  static String get navGroupAnalytics =>
+      L10n.t('navGroupAnalytics', 'Reporting');
   static String get navMore => L10n.t('navMore', 'More');
   static String get navMoreDestinations =>
       L10n.t('navMoreDestinations', 'More destinations');
@@ -1554,6 +1559,8 @@ abstract final class AppStrings {
   static String get changeType => L10n.t('changeType', 'Change');
   static String get basicInfo => L10n.t('basicInfo', 'Basic info');
   static String get pricingStock => L10n.t('pricingStock', 'Pricing & stock');
+  static String get pricingSection => L10n.t('pricingSection', 'Pricing');
+  static String get stockSection => L10n.t('stockSection', 'Stock');
   static String get statusSection => L10n.t('statusSection', 'Status');
   static String get photoSection => L10n.t('photoSection', 'Photo');
   static String get itemNameLabel => L10n.t('itemNameLabel', 'Item name');

@@ -10,6 +10,7 @@ import 'inventory_provider.dart';
 import 'orders_provider.dart';
 import 'other_expenses_provider.dart';
 import 'other_incomes_provider.dart';
+import 'production_provider.dart';
 import 'staff_provider.dart';
 import 'stock_movement_provider.dart';
 
@@ -24,6 +25,7 @@ class DashboardSummary {
     required this.needsReordering,
     required this.otherIncomeToday,
     required this.otherExpensesToday,
+    required this.cogsToday,
   });
 
   final double takingsToday;
@@ -34,13 +36,15 @@ class DashboardSummary {
   final int needsReordering;
   final double otherIncomeToday;
   final double otherExpensesToday;
+  final double cogsToday;
 
   double? get takingsChange {
     if (takingsYesterday <= 0) return null;
     return (takingsToday - takingsYesterday) / takingsYesterday;
   }
 
-  double get netProfitToday => takingsToday + otherIncomeToday - otherExpensesToday;
+  double get netProfitToday =>
+      takingsToday + otherIncomeToday - otherExpensesToday - cogsToday;
 }
 
 final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
@@ -59,13 +63,29 @@ final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
   var openOrders = 0;
   var otherIncomeToday = 0.0;
   var otherExpensesToday = 0.0;
+  var cogsToday = 0.0;
+
+  // Recipe cost per sellable, else the item's own unit cost (resold goods).
+  final recipes = ref.watch(recipesCatalogListProvider);
+  final recipeCost = <String, double>{
+    for (final r in recipes)
+      r.sellableItemId: double.parse(r.costPerUnit.toString()),
+  };
+  final fallbackCost = <String, double>{for (final i in items) i.id: i.unitCost};
 
   for (final order in orders) {
     final counts = order.status.countsAsRevenue;
 
     if (!order.placedAt.isBefore(startOfToday)) {
       ordersToday++;
-      if (counts) takingsToday += order.total;
+      if (counts) {
+        takingsToday += order.total;
+        for (final line in order.lines) {
+          cogsToday +=
+              (recipeCost[line.itemId] ?? fallbackCost[line.itemId] ?? 0.0) *
+              line.quantity;
+        }
+      }
     } else if (!order.placedAt.isBefore(startOfYesterday)) {
       if (counts) takingsYesterday += order.total;
     }
@@ -99,6 +119,7 @@ final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
     needsReordering: needsReordering,
     otherIncomeToday: otherIncomeToday,
     otherExpensesToday: otherExpensesToday,
+    cogsToday: cogsToday,
   );
 });
 

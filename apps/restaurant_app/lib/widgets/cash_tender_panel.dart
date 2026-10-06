@@ -122,9 +122,9 @@ class _CashTenderPanelState extends ConsumerState<CashTenderPanel> {
 /// One-tap top-ups. Configured amounts plus "Exact", which is the single most
 /// common cash outcome and otherwise takes four keystrokes.
 ///
-/// A [Wrap] of self-sized chips: each button hugs its label so the full
-/// amount ("+TSh 10,000") always shows, never truncated with "...". Chips
-/// flow onto the next line when they outgrow the row.
+/// Equal-width cells — three across on desktop, two across on tablet and
+/// phone — so every amount ("+TSh 10,000") gets the same room and the rows
+/// line up instead of flowing as uneven chips.
 class _QuickAmounts extends ConsumerWidget {
   const _QuickAmounts({required this.amounts});
 
@@ -133,18 +133,42 @@ class _QuickAmounts extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cart = ref.read(cartProvider.notifier);
+    // Same breakpoint rule as the tender grid: a third column only where
+    // there is desktop room for it.
+    final perRow = context.formFactor.isDesktop ? 3 : 2;
+    const spacing = Insets.sm;
 
-    return Wrap(
-      spacing: Insets.sm,
-      runSpacing: Insets.sm,
-      children: [
-        for (final amount in amounts)
-          _QuickChip(
-            label: AppStrings.quickChip(Fmt.money(amount)),
-            onTap: () => cart.addTender(amount),
-          ),
-        _QuickChip(label: AppStrings.exactChip, emphasis: true, onTap: cart.tenderExact),
-      ],
+    final chips = [
+      for (final amount in amounts)
+        _QuickChip(
+          label: AppStrings.quickChip(Fmt.money(amount)),
+          onTap: () => cart.addTender(amount),
+        ),
+      _QuickChip(
+        label: AppStrings.exactChip,
+        emphasis: true,
+        onTap: cart.tenderExact,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = perRow.clamp(1, chips.length);
+        // Floored, so rounding never leaves the last chip a hair too wide
+        // for the row it is meant to share.
+        final width =
+            ((constraints.maxWidth - spacing * (columns - 1)) / columns)
+                .floorToDouble();
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (final chip in chips)
+              SizedBox(width: width > 0 ? width : null, child: chip),
+          ],
+        );
+      },
     );
   }
 }
