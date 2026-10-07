@@ -43,6 +43,34 @@ class LocalProfileRepository {
         );
   }
 
+  /// Provisions like [provisionDevice], but when the device is already locked
+  /// to a DIFFERENT business, wipes all local data first: one terminal
+  /// serves exactly one business, so the old business's profiles, caches
+  /// and outboxes must never linger under the new lock. Same-business
+  /// re-locks (store moves, re-logins) keep everything.
+  ///
+  /// Used on every login provisioning path, so a terminal that re-logs-in
+  /// after its business was deleted/reset online automatically starts afresh
+  /// instead of mixing stale rows with the new business.
+  Future<void> reprovisionDevice({
+    required String businessId,
+    required String businessLocationId,
+    required String businessName,
+    String? deviceLabel,
+  }) async {
+    final current = await currentDevice();
+    final lockedBusinessId = current?.businessId as String?;
+    if (lockedBusinessId != null && lockedBusinessId != businessId) {
+      await wipeAllLocalData();
+    }
+    await provisionDevice(
+      businessId: businessId,
+      businessLocationId: businessLocationId,
+      businessName: businessName,
+      deviceLabel: deviceLabel,
+    );
+  }
+
   /// Retrieves a staff profile by ID.
   Future getProfile(String staffId) {
     return (_db.select(_db.localUserProfiles)
@@ -123,6 +151,55 @@ class LocalProfileRepository {
     return (_db.delete(_db.localUserProfiles)
           ..where((row) => row.id.equals(staffId)))
         .go();
+  }
+
+  /// Removes the singleton `DeviceConfig` row, returning the device to an
+  /// unprovisioned state. Used when the locked store is deleted remotely:
+  /// the business still exists, so local cached data is kept and the next
+  /// login re-provisions the device to a surviving store.
+  Future<void> clearDeviceProvisioning() {
+    return (_db.delete(_db.deviceConfig)
+          ..where((row) => row.id.equals(0)))
+        .go();
+  }
+
+  /// Full local wipe for a remotely-deleted business: deletes EVERY local
+  /// row (all 20 tables) in one transaction, including `DeviceConfig` and
+  /// all profiles/caches/outboxes.
+  ///
+  /// This is destructive by design — unsynced outbox rows for the deleted
+  /// business can never sync (their FK targets are gone) and keeping them
+  /// would leave orphaned data on a device that no longer belongs to any
+  /// business. Callers must have already confirmed `businessGone` online
+  /// (see `remote_provision_guard.dart`) — never call this offline or on
+  /// transient errors. Tokens are cleared separately via `TokenStorage`.
+  Future<void> wipeAllLocalData() {
+    return _db.transaction(() async {
+      // Children before parents where FKs are enforced (permissions cascade
+      // off profiles, but explicit ordering keeps this robust even if the
+      // pragma is ever off).
+      await _db.delete(_db.pendingSaleLineItems).go();
+      await _db.delete(_db.pendingSales).go();
+      await _db.delete(_db.pendingVoidsRefunds).go();
+      await _db.delete(_db.cachedSaleLineItems).go();
+      await _db.delete(_db.cachedSales).go();
+      await _db.delete(_db.customerEntries).go();
+      await _db.delete(_db.cachedCustomers).go();
+      await _db.delete(_db.expenseEntries).go();
+      await _db.delete(_db.otherIncomeEntries).go();
+      await _db.delete(_db.cachedOtherExpenses).go();
+      await _db.delete(_db.cachedOtherIncomes).go();
+      await _db.delete(_db.cachedItems).go();
+      await _db.delete(_db.cachedStockLevels).go();
+      await _db.delete(_db.cachedSuppliers).go();
+      await _db.delete(_db.cachedCategories).go();
+      await _db.delete(_db.cachedUnits).go();
+      await _db.delete(_db.cachedBusinessRoles).go();
+      await _db.delete(_db.cachedPermissions).go();
+      await _db.delete(_db.localAuditLog).go();
+      await _db.delete(_db.localUserProfiles).go();
+      await _db.delete(_db.deviceConfig).go();
+    });
   }
 
   /// Updates failedPinAttempts and lockedUntil for a profile.

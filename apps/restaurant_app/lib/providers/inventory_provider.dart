@@ -465,21 +465,23 @@ final inventoryItemsListProvider = Provider<List<InventoryItem>>(
   (ref) => ref.watch(inventoryItemsProvider).valueOrNull ?? const [],
 );
 
-/// The Groceries view's source list — every item except a pure `sellable`
-/// one. This is the UI/query-level split the Inventory section is built on:
-/// the backend items table and its `item_type` column are untouched, only
-/// this filter decides what each of the two screens shows.
+/// The Groceries screen's source list — `raw_material` items only.
+///
+/// Strictly disjoint from [menuCatalogItemsProvider]: a `both` item (a
+/// bottled drink bought and resold unchanged) lives on Menu Items, never
+/// here. The two screens are standalone with no shared rows, so a count on
+/// one can never double-count the other.
 final groceryItemsProvider = Provider<List<InventoryItem>>(
   (ref) => [
     for (final item in ref.watch(inventoryItemsListProvider))
-      if (item.isGroceryItem) item,
+      if (item.itemType == 'raw_material') item,
   ],
 );
 
-/// The Menu Items view's source list — every item except a pure
-/// `raw_material` one. A `both` item (bought and resold unchanged) appears
-/// here *and* in [groceryItemsProvider] — that duplication is intentional,
-/// not a bug: the item genuinely belongs in both views.
+/// The Menu Items screen's source list — `sellable` and `both` items. A
+/// `both` item (bought and resold unchanged) lives here, never in
+/// [groceryItemsProvider]: Groceries is ingredients only, Menu Items is
+/// everything the till can sell.
 final menuCatalogItemsProvider = Provider<List<InventoryItem>>(
   (ref) => [
     for (final item in ref.watch(inventoryItemsListProvider))

@@ -120,9 +120,7 @@ class ReportsDateChip extends ConsumerWidget {
                 ),
               ),
               IconButton(
-                tooltip: MaterialLocalizations.of(
-                  context,
-                ).deleteButtonTooltip,
+                tooltip: MaterialLocalizations.of(context).deleteButtonTooltip,
                 iconSize: 20,
                 onPressed: () async {
                   ref.read(reportsDateFilterProvider.notifier).clear();
@@ -218,9 +216,7 @@ class _Section extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text(title, style: context.text.titleMedium),
-              ),
+              Expanded(child: Text(title, style: context.text.titleMedium)),
               if (ref.watch(
                 hasPermissionProvider(AppPermissions.reportsExport),
               ))
@@ -498,9 +494,7 @@ class FinanceSection extends ConsumerWidget {
             Expanded(
               child: SummaryMetricCard(
                 label: AppStrings.netMetric,
-                value: Fmt.money(
-                  summary == null ? 0 : _d(summary.net),
-                ),
+                value: Fmt.money(summary == null ? 0 : _d(summary.net)),
                 trend: AppStrings.netTrend,
                 icon: Icons.account_balance_wallet_outlined,
                 accent: context.semantic.success,
@@ -723,9 +717,7 @@ class ValuationSection extends ConsumerWidget {
       children: [
         SummaryMetricCard(
           label: AppStrings.inventoryValueMetric,
-          value: Fmt.money(
-            valuation == null ? 0 : _d(valuation.totalValue),
-          ),
+          value: Fmt.money(valuation == null ? 0 : _d(valuation.totalValue)),
           trend: AppStrings.onHandAtCost,
           icon: Icons.inventory_2_outlined,
           accent: context.colors.primary,
@@ -862,21 +854,26 @@ class _PLLine extends StatelessWidget {
 }
 
 /// A ruled subtotal/total line: amount row with a top border.
+///
+/// Pass [amountColor] for profit/loss totals so a profit reads green and a
+/// loss reads red — the label and amount share the colour.
 class _PLTotal extends StatelessWidget {
-  const _PLTotal({required this.label, required this.amount});
+  const _PLTotal({required this.label, required this.amount, this.amountColor});
 
   final String label;
   final Decimal amount;
+  final Color? amountColor;
 
   @override
   Widget build(BuildContext context) {
-    final style = context.text.bodyMedium?.copyWith(fontWeight: FontWeight.w700);
+    final style = context.text.bodyMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+      color: amountColor,
+    );
     return Container(
       padding: const EdgeInsets.symmetric(vertical: Insets.xs),
       decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: context.colors.outlineVariant),
-        ),
+        border: Border(top: BorderSide(color: context.colors.outlineVariant)),
       ),
       child: Row(
         children: [
@@ -908,14 +905,17 @@ class ProfitLossSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filter = ref.watch(reportsDateFilterProvider);
     final summary = ref.watch(financeSummaryProvider).valueOrNull;
-    final purchases = ref.watch(productPurchasesProvider).valueOrNull ?? const [];
+    final purchases =
+        ref.watch(productPurchasesProvider).valueOrNull ?? const [];
     final itemMix = ref.watch(itemMixProvider).valueOrNull ?? const [];
     final recipes = ref.watch(recipesCatalogListProvider);
     final items = ref.watch(inventoryItemsListProvider);
     final waste = ref.watch(wasteSummaryProvider).valueOrNull;
     final valuation = ref.watch(stockValuationProvider).valueOrNull;
 
-    final revenue = summary == null ? Decimal.zero : summary.salesRevenue + summary.incomeTotal;
+    final revenue = summary == null
+        ? Decimal.zero
+        : summary.salesRevenue + summary.incomeTotal;
     // Recipe cost per sellable at current raw prices; fallback is the
     // item's own unit cost (bought-and-resold lines).
     final recipeCost = <String, Decimal>{
@@ -946,6 +946,8 @@ class ProfitLossSection extends ConsumerWidget {
     final grossProfit = revenue - cogs;
     final expenseTotal = summary?.expenseTotal ?? Decimal.zero;
     final net = grossProfit - expenseTotal;
+    final isGrossLoss = grossProfit < Decimal.zero;
+    final isNetLoss = net < Decimal.zero;
 
     double pct(Decimal part) {
       final r = _d(revenue);
@@ -963,14 +965,16 @@ class ProfitLossSection extends ConsumerWidget {
             : 'Cost of goods sold (recipes)',
         cogs,
       ),
-      _PLRow('GROSS PROFIT', grossProfit),
-      for (final e in summary?.expensesByCategory ?? const <FinanceCategoryTotalDto>[])
+      _PLRow(isGrossLoss ? 'GROSS LOSS' : 'GROSS PROFIT', grossProfit),
+      for (final e
+          in summary?.expensesByCategory ?? const <FinanceCategoryTotalDto>[])
         _PLRow('Expense — ${e.category}', e.total),
       _PLRow('TOTAL OPERATING EXPENSES', expenseTotal),
-      _PLRow('NET PROFIT', net),
+      _PLRow(isNetLoss ? 'NET LOSS' : 'NET PROFIT', net),
     ];
 
-    final hasData = revenue != Decimal.zero ||
+    final hasData =
+        revenue != Decimal.zero ||
         cogs != Decimal.zero ||
         expenseTotal != Decimal.zero;
 
@@ -1015,9 +1019,19 @@ class ProfitLossSection extends ConsumerWidget {
                       ? 'Estimated — some sales lack a recipe cost'
                       : 'Units sold valued at recipe cost',
                 ),
-                _PLTotal(label: 'Gross profit  (A − B)', amount: grossProfit),
+                _PLTotal(
+                  label: isGrossLoss
+                      ? 'Gross loss  (A − B)'
+                      : 'Gross profit  (A − B)',
+                  amount: grossProfit,
+                  amountColor: isGrossLoss
+                      ? context.semantic.danger
+                      : context.semantic.success,
+                ),
                 const _PLBlockTitle('Operating expenses'),
-                for (final e in summary?.expensesByCategory ?? const <FinanceCategoryTotalDto>[])
+                for (final e
+                    in summary?.expensesByCategory ??
+                        const <FinanceCategoryTotalDto>[])
                   _PLLine(
                     label: _capitalize(e.category),
                     amount: e.total,
@@ -1025,16 +1039,27 @@ class ProfitLossSection extends ConsumerWidget {
                   ),
                 if ((summary?.expensesByCategory ?? const []).isEmpty)
                   _PLLine(label: 'No expenses recorded', amount: Decimal.zero),
-                _PLTotal(label: 'Total operating expenses  (C)', amount: expenseTotal),
+                _PLTotal(
+                  label: 'Total operating expenses  (C)',
+                  amount: expenseTotal,
+                ),
                 const SizedBox(height: Insets.md),
                 Container(
                   padding: const EdgeInsets.all(Insets.md),
                   decoration: BoxDecoration(
-                    color: (net >= Decimal.zero
-                            ? context.semantic.success
-                            : context.semantic.warning)
-                        .withValues(alpha: 0.12),
+                    color:
+                        (isNetLoss
+                                ? context.semantic.danger
+                                : context.semantic.success)
+                            .withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color:
+                          (isNetLoss
+                                  ? context.semantic.danger
+                                  : context.semantic.success)
+                              .withValues(alpha: 0.35),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -1043,10 +1068,13 @@ class ProfitLossSection extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'NET PROFIT',
+                              isNetLoss ? 'NET LOSS' : 'NET PROFIT',
                               style: context.text.labelMedium?.copyWith(
                                 letterSpacing: 1.2,
                                 fontWeight: FontWeight.w700,
+                                color: isNetLoss
+                                    ? context.semantic.danger
+                                    : context.semantic.success,
                               ),
                             ),
                             Text(
@@ -1062,6 +1090,9 @@ class ProfitLossSection extends ConsumerWidget {
                         _money(net),
                         style: context.text.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w800,
+                          color: isNetLoss
+                              ? context.semantic.danger
+                              : context.semantic.success,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
@@ -1119,7 +1150,10 @@ class RegisterSection extends ConsumerWidget {
                 for (final day in days)
                   _KeyValueRow(
                     label: Fmt.dayMonth(day.date),
-                    value: AppStrings.takingsRow(_money(day.revenue), day.salesCount),
+                    value: AppStrings.takingsRow(
+                      _money(day.revenue),
+                      day.salesCount,
+                    ),
                   ),
               ],
             ),
@@ -1177,8 +1211,13 @@ class SalesRepSection extends ConsumerWidget {
               children: [
                 for (final line in lines)
                   _KeyValueRow(
-                    label: line.actorId == null ? AppStrings.unknown : _shortId(line.actorId!),
-                    value: AppStrings.staffRow(line.salesCount, _money(line.revenue)),
+                    label: line.actorId == null
+                        ? AppStrings.unknown
+                        : _shortId(line.actorId!),
+                    value: AppStrings.staffRow(
+                      line.salesCount,
+                      _money(line.revenue),
+                    ),
                   ),
               ],
             ),
@@ -1228,7 +1267,10 @@ class SellPaymentsSection extends ConsumerWidget {
           : Column(
               children: [
                 for (final line in lines)
-                  _KeyValueRow(label: line.paymentMethod, value: _money(line.revenue)),
+                  _KeyValueRow(
+                    label: line.paymentMethod,
+                    value: _money(line.revenue),
+                  ),
               ],
             ),
     );
@@ -1252,7 +1294,10 @@ class TaxSection extends ConsumerWidget {
           : Column(
               children: [
                 for (final day in days)
-                  _KeyValueRow(label: Fmt.dayMonth(day.date), value: _money(day.taxCollected)),
+                  _KeyValueRow(
+                    label: Fmt.dayMonth(day.date),
+                    value: _money(day.taxCollected),
+                  ),
               ],
             ),
     );
@@ -1278,7 +1323,8 @@ class ProductPurchasesSection extends ConsumerWidget {
                 for (final line in lines)
                   _KeyValueRow(
                     label: '${line.itemName} · ${line.supplierName}',
-                    value: '${Fmt.quantity(_d(line.quantityOrdered))} · ${_money(line.totalCost)}',
+                    value:
+                        '${Fmt.quantity(_d(line.quantityOrdered))} · ${_money(line.totalCost)}',
                   ),
               ],
             ),
@@ -1303,7 +1349,10 @@ class PurchasePaymentsSection extends ConsumerWidget {
           : Column(
               children: [
                 for (final line in lines)
-                  _KeyValueRow(label: line.supplierName, value: _money(line.totalPaid)),
+                  _KeyValueRow(
+                    label: line.supplierName,
+                    value: _money(line.totalPaid),
+                  ),
               ],
             ),
     );
@@ -1316,7 +1365,8 @@ class PurchaseSaleSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final purchases = ref.watch(productPurchasesProvider).valueOrNull ?? const [];
+    final purchases =
+        ref.watch(productPurchasesProvider).valueOrNull ?? const [];
     final takings = ref.watch(dailyTakingsProvider).valueOrNull ?? const [];
     var purchaseTotal = 0.0;
     for (final p in purchases) {
@@ -1335,7 +1385,10 @@ class PurchaseSaleSection extends ConsumerWidget {
           ? _EmptySection(hint: AppStrings.noSalesInWindow)
           : Column(
               children: [
-                _KeyValueRow(label: 'Purchases', value: Fmt.money(purchaseTotal)),
+                _KeyValueRow(
+                  label: 'Purchases',
+                  value: Fmt.money(purchaseTotal),
+                ),
                 _KeyValueRow(label: 'Sales', value: Fmt.money(salesTotal)),
               ],
             ),
@@ -1353,11 +1406,7 @@ class ItemsSection extends ConsumerWidget {
     return _Section(
       title: 'Items Report',
       columns: <DataColumnSpec<InventoryItem>>[
-        DataColumnSpec(
-          label: 'Item',
-          field: 'name',
-          value: (r) => r.name,
-        ),
+        DataColumnSpec(label: 'Item', field: 'name', value: (r) => r.name),
         DataColumnSpec(
           label: 'Stock',
           field: 'stock',
@@ -1408,7 +1457,10 @@ class StockReportSection extends ConsumerWidget {
                 for (final line in lines)
                   _KeyValueRow(
                     label: line.category ?? AppStrings.uncategorized,
-                    value: AppStrings.valuationRow(line.itemCount, _money(line.totalValue)),
+                    value: AppStrings.valuationRow(
+                      line.itemCount,
+                      _money(line.totalValue),
+                    ),
                   ),
               ],
             ),
@@ -1435,7 +1487,8 @@ class StockAdjustmentsSection extends ConsumerWidget {
                 for (final line in lines)
                   _KeyValueRow(
                     label: line.itemName,
-                    value: '${Fmt.quantity(_d(line.quantityDelta))} · ${line.reason ?? ''}',
+                    value:
+                        '${Fmt.quantity(_d(line.quantityDelta))} · ${line.reason ?? ''}',
                   ),
               ],
             ),
@@ -1527,7 +1580,8 @@ class SupplierCustomerSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final suppliers = ref.watch(supplierPurchasesProvider).valueOrNull ?? const [];
+    final suppliers =
+        ref.watch(supplierPurchasesProvider).valueOrNull ?? const [];
     final customers = ref.watch(customerSpendProvider).valueOrNull ?? const [];
     return _Section(
       title: 'Supplier & Customer Report',
@@ -1539,9 +1593,15 @@ class SupplierCustomerSection extends ConsumerWidget {
           : Column(
               children: [
                 for (final s in suppliers)
-                  _KeyValueRow(label: 'SUP · ${s.supplierName}', value: _money(s.totalOrdered)),
+                  _KeyValueRow(
+                    label: 'SUP · ${s.supplierName}',
+                    value: _money(s.totalOrdered),
+                  ),
                 for (final c in customers)
-                  _KeyValueRow(label: 'CUS · ${c.customerName}', value: _money(c.totalSpent)),
+                  _KeyValueRow(
+                    label: 'CUS · ${c.customerName}',
+                    value: _money(c.totalSpent),
+                  ),
               ],
             ),
     );
@@ -1565,7 +1625,10 @@ class ActivityLogSection extends ConsumerWidget {
           : Column(
               children: [
                 for (final line in lines)
-                  _KeyValueRow(label: '${line.movementType} · ${line.itemName}', value: Fmt.quantity(_d(line.quantityDelta))),
+                  _KeyValueRow(
+                    label: '${line.movementType} · ${line.itemName}',
+                    value: Fmt.quantity(_d(line.quantityDelta)),
+                  ),
               ],
             ),
     );

@@ -36,9 +36,10 @@ abstract final class ShellBranch {
   static const finance = 8;
   static const reports = 9;
   static const insights = 10;
-  static const inventory = 11;
-  static const staff = 12;
-  static const settings = 13;
+  static const groceries = 11;
+  static const menuItems = 12;
+  static const staff = 13;
+  static const settings = 14;
 }
 
 /// The branch the shell is currently showing, as an index into [ShellBranch].
@@ -121,7 +122,8 @@ Future<void> _refreshBranchUnchecked(WidgetRef ref, int branchIndex) async {
       await refreshAllReports(ref);
     case ShellBranch.insights:
       ref.invalidate(aiInsightsProvider);
-    case ShellBranch.inventory:
+    case ShellBranch.groceries:
+    case ShellBranch.menuItems:
       await ref.read(inventoryItemsProvider.notifier).refresh();
     case ShellBranch.staff:
       await Future.wait([

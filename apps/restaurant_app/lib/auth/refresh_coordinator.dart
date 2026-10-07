@@ -1,0 +1,75 @@
+/// Process-wide coordinator for refresh-token use.
+///
+/// Background: the backend rotates the refresh token on EVERY use and treats
+/// a second concurrent use of the same token as a replay attack
+/// (`TokenReuseDetectedError` → the whole session family is revoked → every
+/// later refresh 401s forever). Three components refresh independently —
+/// `TokenRefreshInterceptor` (reactive 401 retry), `AuthNotifier` (cold-start
+/// restore, PIN-unlock restore) and, indirectly, the provision guard (whose
+/// 401s trigger the interceptor) — so without serialization two of them can
+/// fire with the same one-shot token at startup and permanently kill the
+/// session. A dead session means the provision guard can never verify
+/// anything (`indeterminate` forever) and the app can never get online again
+/// without a fresh OTP login.
+///
+/// Rules enforced here:
+/// - exactly ONE backend refresh call is ever in flight process-wide;
+///   concurrent callers share its result instead of firing their own;
+/// - the token sent is always re-read from storage INSIDE the lock, so a
+///   caller holding a stale captured pair transparently uses the rotated
+///   pair another caller just persisted;
+/// - this unit never clears storage and never interprets rejections — a 401
+///   propagates to the caller, which owns the policy (interceptor:
+///   clear + expire; AuthNotifier: fall back to cached offline session).
+library;
+
+import '../constants/app_durations.dart';
+import 'identity_service_api.dart';
+import 'token_storage.dart';
+
+/// Process-wide in-flight refreshes, keyed by session (null = current).
+/// Concurrent callers for the SAME session await the same future; different
+/// users on a shared device refresh independently.
+final Map<String?, Future<TokenSet>> _flights = {};
+
+/// Refreshes using the latest stored pair and persists the rotated result.
+///
+/// [userId] selects a per-user session; null means the current session.
+/// Throws when there is nothing stored, when offline, or when the backend
+/// rejects the token (expired/revoked/replayed) — callers decide policy.
+Future<TokenSet> refreshTokens({
+  required IdentityServiceApi api,
+  required TokenStorage storage,
+  String? userId,
+}) {
+  final flight = _flights[userId];
+  if (flight != null) return flight;
+  final future = _doRefresh(api: api, storage: storage, userId: userId);
+  _flights[userId] = future;
+  return future.whenComplete(() {
+    if (identical(_flights[userId], future)) _flights.remove(userId);
+  });
+}
+
+Future<TokenSet> _doRefresh({
+  required IdentityServiceApi api,
+  required TokenStorage storage,
+  String? userId,
+}) async {
+  // Re-read INSIDE the shared flight: whoever refreshed just before us
+  // already persisted the rotated pair, so this picks it up instead of
+  // replaying the stale token we may have captured earlier.
+  final stored = userId == null
+      ? await storage.getTokenSet()
+      : await storage.getTokenSetForUser(userId);
+  if (stored == null) throw StateError('No stored session to refresh');
+  final output = await api.refreshAccessToken(stored.refreshToken);
+  final fresh = TokenSet(
+    accessToken: output.accessToken,
+    refreshToken: output.refreshToken,
+    expiresAt: DateTime.now().add(AppDurations.sessionLifetime),
+    userId: stored.userId,
+  );
+  await storage.saveTokenSet(fresh);
+  return fresh;
+}

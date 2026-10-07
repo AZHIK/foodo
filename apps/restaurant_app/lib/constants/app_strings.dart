@@ -950,6 +950,61 @@ abstract final class AppStrings {
     'reqWhatsappFailed',
     'Could not open WhatsApp. Copy the message from Order details instead.',
   );
+  static String get reqSendViaApi =>
+      L10n.t('reqSendViaApi', 'Send via WhatsApp');
+  static String get reqOpenInWhatsapp =>
+      L10n.t('reqOpenInWhatsapp', 'Open in WhatsApp app');
+  static String get reqSentViaApi =>
+      L10n.t('reqSentViaApi', 'Sent via WhatsApp');
+  static String get reqApiSendFailedFallback => L10n.t(
+    'reqApiSendFailedFallback',
+    'Automatic send failed — use the WhatsApp app instead.',
+  );
+  // -------------------------------------------------------------------------
+  // WhatsApp Business connection (Settings)
+  // -------------------------------------------------------------------------
+
+  static String get waSettingsTitle => L10n.t('waSettingsTitle', 'WhatsApp');
+  static String get waSettingsSubtitle => L10n.t(
+    'waSettingsSubtitle',
+    'Connect the business number to send orders automatically',
+  );
+  static String get waConnected => L10n.t('waConnected', 'Connected');
+  static String get waNotConnected => L10n.t('waNotConnected', 'Not connected');
+  static String get waConnectionError =>
+      L10n.t('waConnectionError', 'Connection error');
+  static String get waConnectTitle =>
+      L10n.t('waConnectTitle', 'Connect WhatsApp Business');
+  static String get waConnectHint => L10n.t(
+    'waConnectHint',
+    'Paste the sender details from the Meta dashboard (WhatsApp > API Setup). Saving verifies the credentials immediately.',
+  );
+  static String get waPhoneNumberIdLabel =>
+      L10n.t('waPhoneNumberIdLabel', 'Phone number ID');
+  static String get waDisplayNumberLabel =>
+      L10n.t('waDisplayNumberLabel', 'Business number (optional)');
+  static String get waAccessTokenLabel =>
+      L10n.t('waAccessTokenLabel', 'Access token');
+  static String get waConnectAction => L10n.t('waConnectAction', 'Connect');
+  static String get waSaveAction => L10n.t('waSaveAction', 'Save');
+  static String get waTestAction => L10n.t('waTestAction', 'Test connection');
+  static String get waDisconnectAction =>
+      L10n.t('waDisconnectAction', 'Disconnect');
+  static String get waConnectedAs =>
+      L10n.t('waConnectedAs', 'Connected number');
+  static String get waWebhookTitle =>
+      L10n.t('waWebhookTitle', 'Delivery reports & replies');
+  static String get waWebhookHint => L10n.t(
+    'waWebhookHint',
+    'Point the Meta dashboard webhook at the URL below and paste the verify token there. Afterwards sent orders report delivered/read automatically and supplier replies appear with a confirm prompt.',
+  );
+  static String get waWebhookUrlLabel =>
+      L10n.t('waWebhookUrlLabel', 'Webhook URL');
+  static String get waVerifyTokenLabel =>
+      L10n.t('waVerifyTokenLabel', 'Verify token');
+  static String get waCopied => L10n.t('waCopied', 'Copied');
+  static String get waRequiredField =>
+      L10n.t('waRequiredField', 'This field is required');
   static String reqRemoveItem(String item) =>
       L10n.tp('reqRemoveItem', 'Remove {item}', {'item': item});
   static String reqCartCount(int count) => count == 1
@@ -1019,7 +1074,8 @@ abstract final class AppStrings {
   static String get adjustStock => L10n.t('adjustStock', 'Adjust stock');
   static String get addToOrderCart =>
       L10n.t('addToOrderCart', 'Add to order cart');
-  static String addedToOrderCart(String name) => 'Added $name to the order cart';
+  static String addedToOrderCart(String name) =>
+      'Added $name to the order cart';
   static String get viewCartAction => L10n.t('viewCartAction', 'View cart');
   static String get logWaste => L10n.t('logWaste', 'Log waste');
   static String get transferStock => L10n.t('transferStock', 'Transfer stock');
@@ -1213,7 +1269,8 @@ abstract final class AppStrings {
   );
   static String get publishAction =>
       L10n.t('publishAction', 'Publish to POS & Inventory');
-  static String get cookWizardTitle => L10n.t('cookWizardTitle', 'Cook a batch');
+  static String get cookWizardTitle =>
+      L10n.t('cookWizardTitle', 'Cook a batch');
   static String get cookStepRecipe => L10n.t('cookStepRecipe', 'Recipe');
   static String get cookStepPlan => L10n.t('cookStepPlan', 'Plan');
   static String get cookStepWeigh => L10n.t('cookStepWeigh', 'Weigh');
@@ -2154,6 +2211,7 @@ abstract final class AppStrings {
       L10n.tp('ofActive', 'of {total} active', {'total': total});
   static String get netProfitToday =>
       L10n.t('netProfitToday', 'Net profit today');
+  static String get netLossToday => L10n.t('netLossToday', 'Net loss today');
   static String get revenueCard => L10n.t('revenueCard', 'Revenue');
   static String get last7DaysLabel => L10n.t('last7DaysLabel', 'Last 7 days');
   static String get salesByCategory =>

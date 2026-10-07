@@ -12,7 +12,6 @@ import 'package:restaurant_pos/router/app_router.dart';
 import 'package:restaurant_pos/widgets/data_page/data_row_card.dart';
 import 'package:restaurant_pos/widgets/data_page/status_badge.dart';
 import 'package:restaurant_pos/widgets/data_page/summary_metric_card.dart';
-import 'package:restaurant_pos/widgets/inventory/inventory_tab_bar.dart';
 
 const _widths = <double>[360, 400, 768, 1024, 1440, 1920];
 
@@ -127,7 +126,7 @@ void main() {
       return c;
     }
 
-    test('only raw_material and both items appear', () async {
+    test('only raw_material items appear — never sellable, never both', () async {
       final c = await container();
       final all = c.read(inventoryItemsListProvider);
       final groceries = c.read(groceryItemsProvider);
@@ -135,11 +134,14 @@ void main() {
       expect(all.any((i) => i.itemType == 'sellable'), isTrue,
           reason: 'the fixture has to actually contain a pure menu item '
               'for this test to mean anything');
+      expect(all.any((i) => i.itemType == 'both'), isTrue,
+          reason: 'the fixture has to contain a both item to prove it stays '
+              'on Menu Items');
       expect(
-        groceries.every((i) => i.itemType == 'raw_material' || i.itemType == 'both'),
+        groceries.every((i) => i.itemType == 'raw_material'),
         isTrue,
       );
-      expect(groceries.any((i) => i.itemType == 'both'), isTrue);
+      expect(groceries.where((i) => i.itemType == 'both'), isEmpty);
       expect(groceries.where((i) => i.itemType == 'sellable'), isEmpty);
     });
 
@@ -174,11 +176,9 @@ void main() {
       }
     });
 
-    testWidgets('the tab bar shows Groceries selected', (tester) async {
+    testWidgets('no standalone tab bar links away from Groceries', (tester) async {
       await pumpGroceries(tester, const Size(1440, 900));
-      expect(find.byType(InventoryTabBar), findsOneWidget);
-      expect(find.text('Groceries'), findsWidgets);
-      expect(find.text('Menu items'), findsWidgets);
+      expect(find.byType(SegmentedButton), findsNothing);
     });
 
     testWidgets('desktop shows the grocery-specific columns', (tester) async {
@@ -195,14 +195,14 @@ void main() {
       expect(find.text('PRICE'), findsNothing);
     });
 
-    testWidgets('every row is a grocery item — none is a pure menu item', (
+    testWidgets('every row is a grocery item — raw materials only', (
       tester,
     ) async {
       final container = await pumpGroceries(tester, const Size(1440, 900));
       final rows = container.read(inventorySliceProvider).items;
 
       expect(rows, isNotEmpty);
-      expect(rows.every((i) => i.itemType != 'sellable'), isTrue);
+      expect(rows.every((i) => i.itemType == 'raw_material'), isTrue);
     });
 
     testWidgets('low-stock and out-of-stock rows carry the right badge', (

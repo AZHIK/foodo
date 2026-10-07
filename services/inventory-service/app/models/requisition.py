@@ -62,6 +62,7 @@ class MessageStatus(str, PyEnum):
     SENT = "sent"
     DELIVERED = "delivered"
     READ = "read"
+    RECEIVED = "received"
     FAILED = "failed"
 
 
@@ -177,13 +178,24 @@ class SupplierItem(SQLModel, table=True):
 
 class SupplierMessage(SQLModel, table=True):
     """Mirrored message record per PO. ``payload`` is the provider-agnostic
-    WhatsApp JSON (see service ``build_whatsapp_payload``). Status stays
-    ``draft``/``ready`` in this pass — never auto-advanced past ``ready``."""
+    WhatsApp JSON (see service ``build_whatsapp_payload``).
+
+    Outbound lifecycle: ``ready`` → ``sent`` → ``delivered`` → ``read``
+    (advanced by the Cloud API send call + inbound status webhooks;
+    ``failed`` with detail in ``last_error`` when the provider rejects).
+    ``provider_message_id`` is the Cloud API ``wamid`` used to join status
+    callbacks back to this row.
+
+    Inbound supplier replies are stored as ``direction=inbound`` rows with
+    ``status=received``; ``po_id`` is nullable for replies that cannot be
+    matched to a PO (matched ones link the latest PO from that sender).
+    """
 
     id: UUID = Field(default_factory=uuid4, primary_key=True, nullable=False, sa_type=PG_UUID)
-    po_id: UUID = Field(
+    po_id: UUID | None = Field(
+        default=None,
         sa_column=Column(
-            PG_UUID, ForeignKey("purchaseorder.id", ondelete="CASCADE"), nullable=False, index=True
+            PG_UUID, ForeignKey("purchaseorder.id", ondelete="CASCADE"), nullable=True, index=True
         ),
     )
     direction: MessageDirection = Field(
@@ -217,3 +229,7 @@ class SupplierMessage(SQLModel, table=True):
         nullable=False,
     )
     sent_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    # Cloud API message id (``wamid``) — joins status webhooks to this row.
+    provider_message_id: str | None = Field(default=None, max_length=255, index=True)
+    # Provider rejection / delivery-failure detail for ``status=failed``.
+    last_error: str | None = Field(default=None, max_length=1000)

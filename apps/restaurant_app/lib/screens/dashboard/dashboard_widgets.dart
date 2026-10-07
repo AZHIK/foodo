@@ -70,53 +70,60 @@ List<Widget> buildDashboardKpiCards(
   bool profitHero = false,
 }) {
   final palette = DashboardPalette.of(context);
+  final semantic = context.semantic;
+  // Net profit / loss gets its meaning from its sign, not its trend:
+  // green when the business made money, red when it lost money.
+  final isLoss = metrics.netProfit.current < 0;
+  final profitFamily = DashboardColor(
+    tint: isLoss ? semantic.dangerContainer : semantic.successContainer,
+    accent: isLoss ? semantic.danger : semantic.success,
+    onTint: isLoss ? semantic.danger : semantic.success,
+  );
   return [
-     ColorfulMetricCard(
-       label: AppStrings.todaySales,
-       value: Fmt.moneyCompact(metrics.sales.current),
-       icon: Icons.payments_outlined,
-       family: palette.revenue,
-       change: metrics.sales.change,
-       caption: AppStrings.vsYesterday(
-         Fmt.moneyCompact(metrics.sales.previous),
-       ),
-       deepGradient: true,
-     ),
-     ColorfulMetricCard(
-       label: AppStrings.ordersToday,
-       value: '${metrics.orders.current.round()}',
-       icon: Icons.receipt_long_outlined,
-       family: palette.orders,
-       change: metrics.orders.change,
-       caption: AppStrings.yesterdayCount(
-         '${metrics.orders.previous.round()}',
-       ),
-       deepGradient: true,
-     ),
-     ColorfulMetricCard(
-       label: AppStrings.avgOrderValue,
-       value: Fmt.money(metrics.averageOrderValue.current),
-       icon: Icons.local_offer_outlined,
-       family: palette.value,
-       change: metrics.averageOrderValue.change,
-       caption: AppStrings.perTicket,
-       deepGradient: true,
-     ),
-     ColorfulMetricCard(
-       label: AppStrings.staffOnShift,
-       value: '${metrics.staffOnShift}',
-       icon: Icons.groups_outlined,
-       family: palette.staff,
-       // No period-on-period comparison exists for a headcount, so the card
-       // carries a ratio instead of a fabricated percentage.
-       caption: AppStrings.ofActive('${metrics.staffTotal}'),
-       deepGradient: true,
-     ),
     ColorfulMetricCard(
-      label: AppStrings.netProfitToday,
-      value: Fmt.moneyCompact(metrics.netProfit.current),
-      icon: Icons.account_balance_wallet_outlined,
+      label: AppStrings.todaySales,
+      value: Fmt.moneyCompact(metrics.sales.current),
+      icon: Icons.payments_outlined,
       family: palette.revenue,
+      change: metrics.sales.change,
+      caption: AppStrings.vsYesterday(Fmt.moneyCompact(metrics.sales.previous)),
+      deepGradient: true,
+    ),
+    ColorfulMetricCard(
+      label: AppStrings.ordersToday,
+      value: '${metrics.orders.current.round()}',
+      icon: Icons.receipt_long_outlined,
+      family: palette.orders,
+      change: metrics.orders.change,
+      caption: AppStrings.yesterdayCount('${metrics.orders.previous.round()}'),
+      deepGradient: true,
+    ),
+    ColorfulMetricCard(
+      label: AppStrings.avgOrderValue,
+      value: Fmt.money(metrics.averageOrderValue.current),
+      icon: Icons.local_offer_outlined,
+      family: palette.value,
+      change: metrics.averageOrderValue.change,
+      caption: AppStrings.perTicket,
+      deepGradient: true,
+    ),
+    ColorfulMetricCard(
+      label: AppStrings.staffOnShift,
+      value: '${metrics.staffOnShift}',
+      icon: Icons.groups_outlined,
+      family: palette.staff,
+      // No period-on-period comparison exists for a headcount, so the card
+      // carries a ratio instead of a fabricated percentage.
+      caption: AppStrings.ofActive('${metrics.staffTotal}'),
+      deepGradient: true,
+    ),
+    ColorfulMetricCard(
+      label: isLoss ? AppStrings.netLossToday : AppStrings.netProfitToday,
+      value: Fmt.moneyCompact(metrics.netProfit.current),
+      icon: isLoss
+          ? Icons.trending_down_rounded
+          : Icons.account_balance_wallet_outlined,
+      family: profitFamily,
       change: metrics.netProfit.change,
       caption: AppStrings.vsYesterday(
         Fmt.moneyCompact(metrics.netProfit.previous),
@@ -165,18 +172,18 @@ class DashboardGreetingHeader extends ConsumerWidget {
               height: 46,
               width: 46,
               decoration: BoxDecoration(
-                color: isMobile
-                    ? colors.surfaceContainerLowest
-                    : null,
+                color: isMobile ? colors.surfaceContainerLowest : null,
                 shape: BoxShape.circle,
-                gradient: isMobile ? null : LinearGradient(
-                  colors: [colors.primary, colors.tertiary],
-                ),
+                gradient: isMobile
+                    ? null
+                    : LinearGradient(colors: [colors.primary, colors.tertiary]),
                 border: isMobile
                     ? Border.all(color: context.semantic.hairline)
                     : null,
               ),
-              padding: isMobile ? const EdgeInsets.all(2) : const EdgeInsets.all(2),
+              padding: isMobile
+                  ? const EdgeInsets.all(2)
+                  : const EdgeInsets.all(2),
               child: Container(
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
@@ -249,42 +256,42 @@ class DashboardGreetingHeader extends ConsumerWidget {
             ),
             const SizedBox(width: Insets.md),
             MediaQuery.sizeOf(context).width < _labelledActionMin
-                 ? SizedBox(
-                     height: 48,
-                     width: 48,
-                     child: Tooltip(
-                       message: AppStrings.openTill,
-                       child: Material(
-                         color: isMobile
-                             ? colors.surfaceContainerLowest
-                             : null,
-                         clipBehavior: Clip.antiAlias,
-                         shape: RoundedRectangleBorder(
-                           borderRadius: BorderRadius.circular(16),
-                           side: isMobile
-                               ? BorderSide(color: context.semantic.hairline)
-                               : BorderSide.none,
-                         ),
-                         child: Ink(
-                           decoration: BoxDecoration(
-                             gradient: isMobile
-                                 ? null
-                                 : LinearGradient(
-                                     colors: [colors.primary, colors.tertiary],
-                                   ),
-                             borderRadius: BorderRadius.circular(16),
-                           ),
-                           child: IconButton(
-                             padding: EdgeInsets.zero,
-                             iconSize: 22,
-                             onPressed: () => context.goNamed(AppRoute.posName),
-                             icon: const Icon(Icons.point_of_sale_rounded),
-                             color: isMobile ? colors.onSurface : colors.onPrimary,
-                           ),
-                         ),
-                       ),
-                     ),
-                   )
+                ? SizedBox(
+                    height: 48,
+                    width: 48,
+                    child: Tooltip(
+                      message: AppStrings.openTill,
+                      child: Material(
+                        color: isMobile ? colors.surfaceContainerLowest : null,
+                        clipBehavior: Clip.antiAlias,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: isMobile
+                              ? BorderSide(color: context.semantic.hairline)
+                              : BorderSide.none,
+                        ),
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            gradient: isMobile
+                                ? null
+                                : LinearGradient(
+                                    colors: [colors.primary, colors.tertiary],
+                                  ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            iconSize: 22,
+                            onPressed: () => context.goNamed(AppRoute.posName),
+                            icon: const Icon(Icons.point_of_sale_rounded),
+                            color: isMobile
+                                ? colors.onSurface
+                                : colors.onPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
                 : FilledButton.icon(
                     onPressed: () => context.goNamed(AppRoute.posName),
                     icon: const Icon(Icons.point_of_sale_rounded, size: 18),
@@ -339,7 +346,11 @@ class DashboardChartsRow extends StatelessWidget {
         if (!sideBySide) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [revenue, const SizedBox(height: Insets.lg), donut],
+            children: [
+              revenue,
+              const SizedBox(height: Insets.lg),
+              donut,
+            ],
           );
         }
 
@@ -395,7 +406,11 @@ class DashboardSecondaryRow extends StatelessWidget {
         if (!sideBySide) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [top, const SizedBox(height: Insets.lg), feed],
+            children: [
+              top,
+              const SizedBox(height: Insets.lg),
+              feed,
+            ],
           );
         }
 
@@ -432,8 +447,9 @@ class DashboardTopItemsList extends StatelessWidget {
     }
 
     final shown = items.take(AppLimits.dashboardListLimit).toList();
-    final maxRevenue =
-        shown.map((e) => e.revenue).reduce((a, b) => a > b ? a : b);
+    final maxRevenue = shown
+        .map((e) => e.revenue)
+        .reduce((a, b) => a > b ? a : b);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -499,7 +515,9 @@ class DashboardCard extends StatelessWidget {
         color: colors.surfaceContainerLowest,
         borderRadius: const BorderRadius.all(Radius.circular(20)),
         border: Border.all(color: context.semantic.hairline),
-        boxShadow: mobile ? null : DashboardStyle.shadow(Theme.of(context).brightness),
+        boxShadow: mobile
+            ? null
+            : DashboardStyle.shadow(Theme.of(context).brightness),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

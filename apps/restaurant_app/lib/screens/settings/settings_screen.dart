@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../providers/preferences_provider.dart';
+import '../../providers/whatsapp_provider.dart';
 import '../../constants/app_strings.dart';
 import '../../providers/roles_provider.dart';
 import '../../providers/session_provider.dart';
@@ -31,6 +32,7 @@ class SettingsScreen extends ConsumerWidget {
     final density = ref.watch(tableDensityProvider);
     final staffName =
         ref.watch(sessionStaffProvider)?.name ?? AppStrings.notSignedIn;
+    final whatsapp = ref.watch(whatsappConnectionProvider).valueOrNull;
     final pad = Insets.page(context.formFactor);
 
     final entries = <_SettingsEntry>[
@@ -85,6 +87,17 @@ class SettingsScreen extends ConsumerWidget {
               ThemeMode.dark => AppStrings.themeDark,
             }} · ${density.label}',
         onTap: () => context.goNamed(AppRoute.appPreferencesName),
+      ),
+      _SettingsEntry(
+        icon: Icons.chat_outlined,
+        title: AppStrings.waSettingsTitle,
+        subtitle: AppStrings.waSettingsSubtitle,
+        value: whatsapp == null
+            ? AppStrings.waNotConnected
+            : whatsapp.isConnected
+            ? '${AppStrings.waConnected} · ${whatsapp.displayPhoneNumber ?? whatsapp.phoneNumberId}'
+            : AppStrings.waConnectionError,
+        onTap: () => context.goNamed(AppRoute.whatsappName),
       ),
       _SettingsEntry(
         icon: Icons.print_outlined,
@@ -299,7 +312,12 @@ class _SettingsCard extends StatelessWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(children: [Expanded(child: identity), chevron]),
+                  Row(
+                    children: [
+                      Expanded(child: identity),
+                      chevron,
+                    ],
+                  ),
                   const SizedBox(height: Insets.sm),
                   Padding(
                     padding: const EdgeInsets.only(left: 50),

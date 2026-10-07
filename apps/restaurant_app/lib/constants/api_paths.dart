@@ -21,6 +21,10 @@ abstract final class IdentityApiPaths {
   static const businesses = '/businesses';
 
   static String business(String businessId) => '/businesses/$businessId';
+
+  /// Public (unauthenticated) existence probe — see `business_exists`.
+  static String businessExists(String businessId) =>
+      '/businesses/$businessId/exists';
   static String businessStores(String businessId) =>
       '/businesses/$businessId/stores';
   static String store(String businessId, String storeId) =>
@@ -34,8 +38,7 @@ abstract final class IdentityApiPaths {
     String storeId,
     String userId,
     String roleId,
-  ) =>
-      '/businesses/$businessId/stores/$storeId/staff/$userId/roles/$roleId';
+  ) => '/businesses/$businessId/stores/$storeId/staff/$userId/roles/$roleId';
 
   static String roles(String businessId) => '/businesses/$businessId/roles';
   static String role(String businessId, String roleId) =>
@@ -46,8 +49,7 @@ abstract final class IdentityApiPaths {
     String businessId,
     String roleId,
     String permissionCode,
-  ) =>
-      '/businesses/$businessId/roles/$roleId/permissions/$permissionCode';
+  ) => '/businesses/$businessId/roles/$roleId/permissions/$permissionCode';
   static String staff(String businessId) => '/businesses/$businessId/staff';
   static String staffRole(String businessId, String userId, String roleId) =>
       '/businesses/$businessId/staff/$userId/roles/$roleId';
@@ -57,6 +59,10 @@ abstract final class IdentityApiPaths {
     '/auth/otp/verify',
     '/auth/login/password',
     '/auth/platform/login',
+    // The refresh call itself: its own 401 means the session is dead, and
+    // retrying it through the refresher would resend the same dead token
+    // (nesting one refresh inside another) instead of surfacing the death.
+    '/auth/refresh',
   ];
 }
 
@@ -72,8 +78,7 @@ abstract final class InventoryApiPaths {
       '/businesses/$businessId/items/$itemId/waste';
   static String transfer(String businessId) =>
       '/businesses/$businessId/transfer';
-  static String recipes(String businessId) =>
-      '/businesses/$businessId/recipes';
+  static String recipes(String businessId) => '/businesses/$businessId/recipes';
   static String recipe(String businessId, String recipeId) =>
       '/businesses/$businessId/recipes/$recipeId';
   static String produce(String businessId, String recipeId) =>
@@ -118,8 +123,11 @@ abstract final class InventoryApiPaths {
       '/businesses/$businessId/purchases/orders';
   static String purchaseOrder(String businessId, String orderId) =>
       '/businesses/$businessId/purchases/orders/$orderId';
-  static String purchaseOrderAction(String businessId, String orderId, String action) =>
-      '/businesses/$businessId/purchases/orders/$orderId/$action';
+  static String purchaseOrderAction(
+    String businessId,
+    String orderId,
+    String action,
+  ) => '/businesses/$businessId/purchases/orders/$orderId/$action';
   static String purchaseReturns(String businessId) =>
       '/businesses/$businessId/purchases/returns';
   static String purchaseInvoices(String businessId) =>
@@ -134,12 +142,22 @@ abstract final class InventoryApiPaths {
       '/businesses/$businessId/requisitions';
   static String requisition(String businessId, String requisitionId) =>
       '/businesses/$businessId/requisitions/$requisitionId';
-  static String requisitionBulkAssign(String businessId, String requisitionId) =>
-      '/businesses/$businessId/requisitions/$requisitionId/bulk-assign';
+  static String requisitionBulkAssign(
+    String businessId,
+    String requisitionId,
+  ) => '/businesses/$businessId/requisitions/$requisitionId/bulk-assign';
   static String requisitionPayloads(String businessId, String requisitionId) =>
       '/businesses/$businessId/requisitions/$requisitionId/regenerate-payloads';
   static String supplierItems(String businessId) =>
       '/businesses/$businessId/supplier-items';
+
+  /// WhatsApp Business Cloud API connection + explicit PO send.
+  static String whatsappConnection(String businessId) =>
+      '/businesses/$businessId/whatsapp/connection';
+  static String whatsappConnectionTest(String businessId) =>
+      '/businesses/$businessId/whatsapp/connection/test';
+  static String whatsappSendOrder(String businessId, String orderId) =>
+      '/businesses/$businessId/purchases/orders/$orderId/send-whatsapp';
 
   /// Global taxonomy endpoints (no business scope).
   static const categories = '/categories';

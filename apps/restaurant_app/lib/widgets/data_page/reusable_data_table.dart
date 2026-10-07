@@ -204,7 +204,10 @@ class _HeaderRow<T> extends StatelessWidget {
 
   Widget _cell(DataColumnSpec<T> column, {required Widget child}) =>
       column.width != null
-      ? SizedBox(width: column.width, child: child)
+      ? Padding(
+          padding: const EdgeInsets.only(right: Insets.sm),
+          child: SizedBox(width: column.width, child: child),
+        )
       : Expanded(flex: column.flex, child: child);
 }
 
@@ -327,7 +330,10 @@ class _BodyRow<T> extends StatelessWidget {
 
   Widget _cell(DataColumnSpec<T> column, {required Widget child}) =>
       column.width != null
-      ? SizedBox(width: column.width, child: child)
+      ? Padding(
+          padding: const EdgeInsets.only(right: Insets.sm),
+          child: SizedBox(width: column.width, child: child),
+        )
       : Expanded(
           flex: column.flex,
           child: Padding(

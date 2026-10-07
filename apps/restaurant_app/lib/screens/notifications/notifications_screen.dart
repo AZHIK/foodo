@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../models/notification.dart';
 import '../../constants/app_strings.dart';
+import '../../providers/inventory_provider.dart';
 import '../../providers/notifications_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
@@ -103,7 +104,19 @@ class NotificationsScreen extends ConsumerWidget {
       case NotificationType.deliveryUpdate:
         context.go(AppRoute.orderDetail(notification.relatedEntityId!));
       case NotificationType.lowStock:
-        context.go(AppRoute.itemDetail(notification.relatedEntityId!));
+        // Groceries and counted menu lines each have their own detail —
+        // resolve by type, defaulting to Groceries when the line is gone.
+        final items = ref.read(inventoryItemsListProvider);
+        final type = items
+            .where((i) => i.id == notification.relatedEntityId)
+            .firstOrNull
+            ?.itemType;
+        context.go(
+          AppRoute.itemDetailFor(
+            itemType: type ?? 'raw_material',
+            itemId: notification.relatedEntityId!,
+          ),
+        );
       case NotificationType.aiInsight:
         // Navigate to insights screen or detail if available
         context.goNamed(AppRoute.insightsName);

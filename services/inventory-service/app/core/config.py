@@ -67,6 +67,23 @@ class Settings(BaseSettings):
     # Matches the "up to 5 MB" hint the app's image picker shows.
     item_image_max_bytes: int = 5 * 1024 * 1024
 
+    # ── WhatsApp Business Cloud API ──────────────
+    # Outbound PO sends POST to {graph_base_url}/{graph_version}/
+    # {phone_number_id}/messages with the connection's access token.
+    whatsapp_graph_base_url: str = "https://graph.facebook.com"
+    whatsapp_graph_version: str = "v21.0"
+    # Optional Meta App Secret — when set, inbound webhooks must carry a
+    # valid X-Hub-Signature-256 header; when unset the per-business
+    # verify-token query param is the only check (fine for MVP).
+    whatsapp_app_secret: str | None = None
+    # Optional global fallback for webhook GET verification when the caller
+    # does not supply a per-business ?business_id=…&t=… pair.
+    whatsapp_webhook_verify_token: str | None = None
+    # Public base URL of this service (e.g. https://api.example.com) used
+    # to render the per-business webhook URL shown in Settings. When unset
+    # the app composes the path itself.
+    public_base_url: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

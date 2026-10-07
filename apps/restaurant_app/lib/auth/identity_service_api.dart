@@ -184,6 +184,44 @@ class IdentityServiceApi {
     }
   }
 
+  /// GET /api/v1/businesses/{businessId}/exists - Public existence probe.
+  ///
+  /// Deliberately UNAUTHENTICATED (no Authorization header — the request
+  /// interceptor must not attach one): a device with a dead session still
+  /// needs to answer "is my locked business still on this server?".
+  /// 200 = present; 404 (as [AuthException] with status 404) = deleted.
+  Future<void> businessExists({required String businessId}) async {
+    try {
+      await _dio.get(IdentityApiPaths.businessExists(businessId));
+    } on DioException catch (e) {
+      throw AuthException.fromDio('Business probe failed', e);
+    }
+  }
+
+  /// GET /api/v1/businesses/{businessId}/stores/{storeId} - Fetch one store.
+  ///
+  /// This is the store-staff-safe check: `business_store_staff` is blocked
+  /// from `listStores` (business-wide operation) but CAN read its own store
+  /// detail (store-scope match enforced server-side). 404 = store (or its
+  /// business) gone. 403 = scope mismatch / access revoked.
+  Future<StoreReadDto> getStore({
+    required String businessId,
+    required String storeId,
+    required String bearerToken,
+  }) async {
+    try {
+      final response = await _dio.get(
+        IdentityApiPaths.store(businessId, storeId),
+        options: Options(
+          headers: {'Authorization': 'Bearer $bearerToken'},
+        ),
+      );
+      return StoreReadDto.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw AuthException.fromDio('Store fetch failed', e);
+    }
+  }
+
   /// GET /api/v1/businesses/{businessId}/stores - List stores for a business.
   Future<List<StoreDto>> listStores({
     required String businessId,
@@ -202,10 +240,7 @@ class IdentityServiceApi {
           .toList();
       return items;
     } on DioException catch (e) {
-      throw AuthException(
-        'Store list failed: ${e.message}',
-        e.response?.statusCode,
-      );
+      throw AuthException.fromDio('Store list failed', e);
     }
   }
 }
@@ -218,15 +253,19 @@ class AuthException implements Exception {
   AuthException(this.message, [this.statusCode]);
 
   /// Builds from a failed Dio call, preferring the backend's own `detail`
-  /// string over Dio's generic "Http status error [409]" — so a caller
-  /// surfacing this to the UI shows what the backend actually said, not an
-  /// invented paraphrase of it.
+  /// string over Dio's generic status-code explainer paragraph — so logs
+  /// and UI show what the backend actually said. Transport failures (no
+  /// response) embed the Dio error type + underlying error instead.
   factory AuthException.fromDio(String action, DioException e) {
     final data = e.response?.data;
     final detail = data is Map && data['detail'] is String
         ? data['detail'] as String
         : null;
-    return AuthException('$action: ${detail ?? e.message}', e.response?.statusCode);
+    final cause = detail ??
+        (e.response != null
+            ? 'HTTP ${e.response?.statusCode}'
+            : '${e.type}${e.error == null ? '' : ': ${e.error}'}');
+    return AuthException('$action: $cause', e.response?.statusCode);
   }
 
   @override

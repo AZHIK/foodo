@@ -11,7 +11,7 @@ from app.core.permission_codes import PermissionCode
 from app.deps.auth import get_current_user_id
 from app.deps.permissions import require_any_business_permission, require_business_permission
 from app.models.business import Business, BusinessRole
-from app.schemas.business import BusinessCreateRequest, BusinessCreateResponse, BusinessRead, BusinessUpdate
+from app.schemas.business import BusinessCreateRequest, BusinessCreateResponse, BusinessExistsResponse, BusinessRead, BusinessUpdate
 from app.schemas.business_rbac import BusinessRoleRead
 from app.services.business_service import create_business, update_business
 
@@ -85,6 +85,29 @@ async def get_business(
             detail="Business not found",
         )
     return BusinessRead.model_validate(business)
+
+
+@router.get("/{business_id}/exists", response_model=BusinessExistsResponse)
+async def business_exists(
+    business_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+) -> BusinessExistsResponse:
+    """Public existence probe for offline-first terminals.
+
+    Deliberately unauthenticated: a device whose session is dead (expired,
+    revoked, or wiped server-side) cannot call any authed endpoint, yet
+    must still answer "is my locked business still on this server?" before
+    deciding to wipe its local database. The UUID path is unguessable, so
+    this reveals nothing enumerable — 404 when absent, the id echoed when
+    present. No business data is returned.
+    """
+    business = await db.get(Business, business_id)
+    if business is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Business not found",
+        )
+    return BusinessExistsResponse(business_id=business.id, exists=True)
 
 
 @router.patch("/{business_id}", response_model=BusinessRead)

@@ -11,12 +11,14 @@ import 'database/encryption_key_service.dart';
 import 'l10n/l10n.dart';
 import 'providers/database_providers.dart';
 import 'providers/preferences_provider.dart';
+import 'providers/remote_provision_guard_provider.dart';
 import 'providers/session_expiry_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/sync_trigger_provider.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 import 'utils/formatters.dart';
+import 'widgets/deprovision_alert.dart';
 import 'widgets/session_expiry_alert.dart';
 
 void main() async {
@@ -64,6 +66,10 @@ class RestaurantPosApp extends ConsumerWidget {
     // OTP login from here on.
     ref.watch(sessionExpiryWatcherProvider);
 
+    // Arms the offline→online remote-deprovision guard: a business/store
+    // deleted online forces logout + local wipe/unprovision before any sync.
+    ref.watch(remoteProvisionGuardProvider);
+
     // Money is formatted through static helpers, so the store's currency is
     // applied here — above everything that prints a price — rather than passed
     // down through several hundred call sites. Watching it also means changing
@@ -98,9 +104,11 @@ class RestaurantPosApp extends ConsumerWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        // Shows the session-expired alert above whatever the router renders.
-        builder: (context, child) =>
-            SessionExpiryAlert(child: child ?? const SizedBox.shrink()),
+        // Shows the session-expired / deprovision alerts above whatever the
+        // router renders.
+        builder: (context, child) => SessionExpiryAlert(
+          child: DeprovisionAlert(child: child ?? const SizedBox.shrink()),
+        ),
       ),
     );
   }

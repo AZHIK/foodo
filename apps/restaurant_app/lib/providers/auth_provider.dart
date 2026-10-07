@@ -25,6 +25,7 @@ import '../auth/auth_dtos.dart';
 import '../auth/identity_service_api.dart';
 import '../auth/jwt_decoder.dart';
 import '../auth/permissions_cache_sync.dart';
+import '../auth/refresh_coordinator.dart';
 import '../auth/api_log_interceptor.dart';
 import '../auth/token_refresh_interceptor.dart';
 import '../auth/token_storage.dart';
@@ -180,20 +181,25 @@ class AuthNotifier extends Notifier<AuthContext> {
     }
   }
 
-  /// Exchanges [tokenSet]'s refresh token for a fresh access token and
-  /// persists the result under the same user, rather than trusting a
-  /// cached token that may already be expired.
+  /// Exchanges the latest stored refresh token for a fresh access token and
+  /// persists the result, rather than trusting a cached token that may
+  /// already be expired.
+  ///
+  /// Goes through the process-wide [refreshTokens] coordinator (re-reading
+  /// the latest stored pair inside its lock): a direct backend call here
+  /// would race the interceptor's own 401-refresh at startup, replay the
+  /// same one-shot token twice, and trip the backend's reuse detector —
+  /// revoking the session family and breaking online access until the next
+  /// OTP login. [tokenSet] only selects WHICH user's session to refresh;
+  /// the token value sent is whatever storage holds at lock time.
   Future<TokenSet> _refreshAndPersist(TokenSet tokenSet) async {
-    final refreshed = await _api.refreshAccessToken(tokenSet.refreshToken);
-    final newTokenSet = TokenSet(
-      accessToken: refreshed.accessToken,
-      refreshToken: refreshed.refreshToken,
-      expiresAt: DateTime.now().add(AppDurations.sessionLifetime),
+    final fresh = await refreshTokens(
+      api: _api,
+      storage: _tokenStorage,
       userId: tokenSet.userId,
     );
-    await _tokenStorage.saveTokenSet(newTokenSet);
-    await _syncPermissionsCache(newTokenSet);
-    return newTokenSet;
+    await _syncPermissionsCache(fresh);
+    return fresh;
   }
 
   /// Writes this token's permissions to the local `CachedPermissions` table
@@ -315,7 +321,7 @@ class AuthNotifier extends Notifier<AuthContext> {
     final userId = state.userId ?? decodeAccessToken(accessToken).sub;
 
     if (storeId != null) {
-      await _profileRepo.provisionDevice(
+      await _profileRepo.reprovisionDevice(
         businessId: businessId,
         businessLocationId: storeId,
         businessName: businessName,
@@ -521,7 +527,7 @@ class AuthNotifier extends Notifier<AuthContext> {
 
       if (primaryStore != null) {
         final businessName = state.onboardingStatus?.businessName ?? 'Restaurant';
-        await _profileRepo.provisionDevice(
+        await _profileRepo.reprovisionDevice(
           businessId: businessId,
           businessLocationId: primaryStore.id,
           businessName: businessName,

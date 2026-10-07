@@ -140,12 +140,47 @@ Run: `flutter test test/requisition_cart_test.dart test/requisition_cart_dialog_
 - [ ] Empty/error copy on all widths: no supplier, no WhatsApp number, payload
       skipped, TBC banner, offline notice, failed load + retry.
 
-## TODO: integration point (future WhatsApp API pass)
+## WhatsApp Cloud API pass (implemented 2026-10-06)
 
-`structured_data` maps 1:1 to WhatsApp Business Cloud API template parameters
-(`po_number` → template variable, `items` → body components, `total` → footer).
-When integrating: add an outbox worker consuming `SupplierMessage` rows in
-`ready`, POST to Cloud API, then advance `ready→sent→delivered→read` from
-webhooks (implement the inbound receiver + reply parser then). Never call the
-API from the submit transaction. Also: add `whatsapp_number` et al. to the
-Drift `cached_suppliers` table (+ mapper) so the directory sync carries them.
+The manual `wa.me` flow above stays as the fallback. When the business
+connects its sender in the app (Settings → WhatsApp), POs send through
+the WhatsApp Business Cloud API instead:
+
+* `whatsappconnection` (migration `q9r0s1t2u3v4`, one row per business):
+  `phone_number_id`, display number, access token (plaintext in this
+  pass — same MVP tradeoff as `internal_service_token`; move to a secret
+  manager before multi-tenant prod), server-generated webhook
+  `verify_token`, live `status` (`connected`/`error`/`disconnected`).
+* `PUT …/whatsapp/connection` stores + live-verifies credentials against
+  Graph in one call; `GET` returns a masked preview; `DELETE` clears the
+  token; `POST …/connection/test` re-checks. Auth: `procurement.view`
+  (GET) / `procurement.create` (writes).
+* `POST …/purchases/orders/{id}/send-whatsapp` sends the ready payload's
+  `text_preview` as a Cloud API `text` message (inside the 24h window;
+  template support is the follow-up and maps 1:1 from `structured_data`),
+  advancing message `ready → sent` (+ provider `wamid`) and the PO to
+  `SENT`. 409 when unconnected, 422 when the supplier has no number —
+  both tell the app to offer the manual `wa.me` send.
+* `GET /api/v1/whatsapp/webhook` verifies Meta's handshake against the
+  per-business token (`?business_id=…&t=…`, global
+  `WHATSAPP_WEBHOOK_VERIFY_TOKEN` fallback); `POST` applies
+  `sent → delivered → read` / `failed` callbacks by `wamid` and stores
+  inbound supplier replies (matched to the sender's latest PO by number,
+  unmatched kept with `po_id=NULL`), flagging EN+SW confirmation
+  keywords (`confirmation_detected`) so the UI can prompt Mark Confirmed
+  — the PO itself is never auto-advanced.
+* `SupplierMessage` gained `provider_message_id` + `last_error`;
+  `messagestatus` gained `received` (inbound rows).
+* Tests: `tests/test_whatsapp.py` (18 tests — CRUD, masking, send +
+  failure bookkeeping, webhook verify/status/inbound, reply parser).
+* App: Settings → WhatsApp screen (connect/test/disconnect + webhook
+  URL + verify token with copy), live status row in the Settings index,
+  and per-supplier-card "Send via WhatsApp" (API) with wa.me fallback.
+* Env: `WHATSAPP_GRAPH_BASE_URL` (default `https://graph.facebook.com`),
+  `WHATSAPP_GRAPH_VERSION` (`v21.0`), optional `WHATSAPP_APP_SECRET`
+  (enables `X-Hub-Signature-256` checks), `PUBLIC_BASE_URL`.
+
+Still open: template-message support for outside-the-window sends, and
+`whatsapp_number` et al. on the Drift `cached_suppliers` table (+ mapper)
+so the directory sync carries them. Never call the API from the submit
+transaction (the send endpoint is the only caller).

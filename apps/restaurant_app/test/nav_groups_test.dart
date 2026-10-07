@@ -22,7 +22,7 @@ const _sellGroup = NavGroupSpec(
 const _stockGroup = NavGroupSpec(
   label: 'Stock',
   icon: Icons.warehouse_outlined,
-  children: [11, 5, 6, 4],
+  children: [11, 12, 5, 6, 4],
 );
 
 const _stockPermissions = {
@@ -92,12 +92,13 @@ void main() {
       );
 
       expect(find.text('Stock'), findsOneWidget);
-      expect(find.text('Inventory'), findsNothing);
+      expect(find.text('Groceries'), findsNothing);
 
       await tester.tap(find.text('Stock'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Inventory'), findsOneWidget);
+      expect(find.text('Groceries'), findsOneWidget);
+      expect(find.text('Menu items'), findsOneWidget);
       expect(find.text('Production'), findsOneWidget);
       expect(find.text('Suppliers'), findsOneWidget);
       expect(find.text('Purchasing'), findsOneWidget);

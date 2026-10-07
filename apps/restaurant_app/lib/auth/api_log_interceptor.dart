@@ -9,8 +9,6 @@
 /// …>` summary for photos and uploads instead.
 library;
 
-import 'dart:typed_data';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -55,10 +53,17 @@ class ApiLogInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    debugPrint(
-      '<-- ERROR ${err.response?.statusCode} ${err.requestOptions.uri}: '
-      '${err.message}',
-    );
+    // One short line: backend `detail` when present, else the status, else
+    // the transport cause — never Dio's multi-line status-code lecture.
+    final status = err.response?.statusCode;
+    final data = err.response?.data;
+    final detail =
+        data is Map && data['detail'] is String ? data['detail'] as String : null;
+    final cause = detail ??
+        (status != null
+            ? 'HTTP $status'
+            : '${err.type}${err.error == null ? '' : ': ${err.error}'}');
+    debugPrint('<-- ERROR $cause ${err.requestOptions.uri}');
     handler.next(err);
   }
 }

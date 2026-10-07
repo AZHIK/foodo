@@ -118,6 +118,26 @@ class TokenStorage {
     await _storage.delete(key: _keyCurrentUserId);
   }
 
+  /// Best-effort wipe of EVERY stored token (all users + current pointer).
+  /// Used after a remotely-deleted business: per-user rows in secure storage
+  /// would otherwise survive the Drift wipe as orphans. Never throws.
+  Future<void> clearAllTokens() async {
+    try {
+      final all = await _storage.readAll();
+      final keys = all.keys.where(
+        (k) =>
+            k == _keyCurrentUserId ||
+            k.startsWith(_keyAccessToken) ||
+            k.startsWith(_keyRefreshToken) ||
+            k.startsWith(_keyExpiresAt) ||
+            k.startsWith(_keyUserId),
+      );
+      await Future.wait([for (final k in keys) _storage.delete(key: k)]);
+    } catch (_) {
+      // Secure-storage failure must not block the local wipe.
+    }
+  }
+
   /// Updates only the access token for a user (e.g., after a refresh).
   Future<void> updateAccessToken(String userId, String accessToken, DateTime expiresAt) async {
     await Future.wait([

@@ -18,10 +18,8 @@ import '../../widgets/data_page/export_actions.dart';
 import '../../widgets/data_page/reusable_data_table.dart';
 import '../../widgets/data_page/status_badge.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
-import '../../widgets/dialogs/item_form_dialog.dart';
+import '../../widgets/dialogs/grocery_form_dialog.dart';
 import '../../widgets/inventory/add_to_order_cart.dart';
-import '../../widgets/inventory/inventory_tab_bar.dart';
-import '../../widgets/inventory/item_type_badge.dart';
 import '../../widgets/item_photo.dart';
 import 'inventory_filter_panel.dart';
 import 'stock_adjust_dialog.dart';
@@ -44,17 +42,16 @@ extension StockStatusTone on StockStatus {
   };
 }
 
-/// Raw materials — everything bought to be used or prepped, not sold as-is.
+/// Raw materials — everything bought to be used or prepped, never sold
+/// as-is.
 ///
-/// One of the Inventory section's two views (see [InventoryTabBar]). Query
-/// filters to `item_type IN (raw_material, both)` via [groceryItemsProvider]
-/// — a `both` item (a bottled drink bought and resold unchanged) appears
-/// here *and* on [InventoryMenuItemsScreen], not one or the other, since it
-/// genuinely belongs in both.
+/// A standalone screen under Stock with its own route, form and detail.
+/// Strictly `item_type == raw_material`: counted menu lines (`both`, like a
+/// bottled drink bought and resold unchanged) live on Menu Items, never
+/// here, so the two screens share no rows and neither double-counts.
 ///
-/// Built entirely from the shared data-page layer, the same as the Inventory
-/// screen this replaces — this file contains column config, filters and
-/// actions, and no layout of its own beyond the tab bar.
+/// Built from the shared data-page layer: this file holds column config,
+/// filters and actions, and no layout of its own.
 class InventoryGroceriesScreen extends ConsumerWidget {
   const InventoryGroceriesScreen({super.key});
 
@@ -66,127 +63,120 @@ class InventoryGroceriesScreen extends ConsumerWidget {
     final filters = ref.watch(inventoryFiltersProvider);
     final notifier = ref.read(inventoryQueryProvider.notifier);
 
-    return Column(
-      children: [
-        const InventoryTabBar(active: InventoryTab.groceries),
-        Expanded(
-          child: DataPageScaffold(
-            title: AppStrings.groceriesTitle,
-            subtitle: AppStrings.groceriesSubtitle(
-              summary.totalItems,
-              ref.watch(categoriesListProvider).length,
-            ),
-            // Exports the filtered, sorted list — every matching row, not
-            // just the page on screen.
-            actions: dataPageExportActions<InventoryItem>(
-              context: context,
-              columns: groceryColumns,
-              rows: ref.watch(filteredInventoryProvider),
-              title: AppStrings.groceriesTitle,
-              subtitle: _exportSubtitle(filters, query.search),
-            ),
-            // On phones the scaffold moves this to the FAB, so no mobile-only
-            // icon variant is needed here.
-            primaryAction: FilledButton.icon(
-              onPressed: () => showItemFormDialog(context),
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: Text(AppStrings.addItem),
-            ),
-            onRefresh: () =>
-                ref.read(inventoryItemsProvider.notifier).refresh(),
-            fab: DataPageFab(
-              icon: Icons.add_rounded,
-              label: AppStrings.addGroceryItem,
-              onPressed: () => showItemFormDialog(context),
-            ),
-            metrics: [
-              SummaryMetricCard(
-                label: AppStrings.groceryItemsMetric,
-                value: '${summary.totalItems}',
-                trend: AppStrings.fullyStocked(
-                  summary.totalItems - summary.needsAttention,
-                ),
-                icon: Icons.shopping_basket_outlined,
-              ),
-              SummaryMetricCard(
-                label: AppStrings.belowThreshold,
-                value: '${summary.lowStockCount}',
-                trend: summary.outOfStockCount == 0
-                    ? AppStrings.nothingOutOfStock
-                    : AppStrings.outOfStockTrend(summary.outOfStockCount),
-                trendDirection: summary.needsAttention == 0
-                    ? TrendDirection.flat
-                    : TrendDirection.down,
-                icon: Icons.warning_amber_rounded,
-                accent: context.semantic.warning,
-              ),
-              SummaryMetricCard(
-                label: AppStrings.outOfStockMetric,
-                value: '${summary.outOfStockCount}',
-                trend: summary.outOfStockCount == 0
-                    ? AppStrings.allLinesCovered
-                    : AppStrings.needsDelivery,
-                trendDirection: summary.outOfStockCount == 0
-                    ? TrendDirection.flat
-                    : TrendDirection.down,
-                icon: Icons.remove_shopping_cart_outlined,
-                accent: context.semantic.danger,
-              ),
-              SummaryMetricCard(
-                label: AppStrings.stockValueMetric,
-                value: Fmt.moneyCompact(summary.totalValue),
-                // Cost basis is the item's own unit cost — the last price it
-                // was recorded at, not a fabricated figure.
-                trend: AppStrings.atLastKnownCost,
-                icon: Icons.savings_outlined,
-                accent: context.semantic.success,
-              ),
-            ],
-            toolbar: DataTableToolbar(
-              searchHint: AppStrings.searchItemsSkuSupplier,
-              searchValue: query.search,
-              onSearchChanged: notifier.setSearch,
-              activeFilterCount: filters.activeCount,
-              onClearFilters: ref.read(inventoryFiltersProvider.notifier).clear,
-              filterBuilder: (_) => const InventoryFilterPanel(),
-              sortOptions: [
-                SortOption(label: AppStrings.nameColumn, field: InventorySort.name),
-                SortOption(
-                  label: AppStrings.categoryColumn,
-                  field: InventorySort.category,
-                ),
-                SortOption(label: AppStrings.stockColumn, field: InventorySort.stock),
-                SortOption(
-                  label: AppStrings.reorderAtColumn,
-                  field: InventorySort.reorderLevel,
-                ),
-                SortOption(
-                  label: AppStrings.statusColumn,
-                  field: InventorySort.status,
-                ),
-              ],
-              sortField: query.sortField,
-              sortAscending: query.ascending,
-              onSortChanged: (field, ascending) =>
-                  notifier.setSort(field, ascending: ascending),
-            ),
-            table: ReusableDataTable<InventoryItem>(
-              columns: groceryColumns,
-              slice: slice,
-              query: query,
-              onSort: notifier.toggleSort,
-              onPageChanged: notifier.setPage,
-              // The row body opens the read-only detail screen; the row's
-              // own "Edit" action still goes straight to the form.
-              onRowTap: (item) => context.pushNamed(
-                AppRoute.itemDetailName,
-                pathParameters: {'itemId': item.id},
-              ),
-              rowActions: _actions(ref),
-            ),
+    return DataPageScaffold(
+      title: AppStrings.groceriesTitle,
+      subtitle: AppStrings.groceriesSubtitle(
+        summary.totalItems,
+        ref.watch(categoriesListProvider).length,
+      ),
+      // Exports the filtered, sorted list — every matching row, not
+      // just the page on screen.
+      actions: dataPageExportActions<InventoryItem>(
+        context: context,
+        columns: groceryColumns,
+        rows: ref.watch(filteredInventoryProvider),
+        title: AppStrings.groceriesTitle,
+        subtitle: _exportSubtitle(filters, query.search),
+      ),
+      // On phones the scaffold moves this to the FAB, so no mobile-only
+      // icon variant is needed here.
+      primaryAction: FilledButton.icon(
+        onPressed: () => showGroceryFormDialog(context),
+        icon: const Icon(Icons.add_rounded, size: 18),
+        label: Text(AppStrings.addItem),
+      ),
+      onRefresh: () =>
+          ref.read(inventoryItemsProvider.notifier).refresh(),
+      fab: DataPageFab(
+        icon: Icons.add_rounded,
+        label: AppStrings.addGroceryItem,
+        onPressed: () => showGroceryFormDialog(context),
+      ),
+      metrics: [
+        SummaryMetricCard(
+          label: AppStrings.groceryItemsMetric,
+          value: '${summary.totalItems}',
+          trend: AppStrings.fullyStocked(
+            summary.totalItems - summary.needsAttention,
           ),
+          icon: Icons.shopping_basket_outlined,
+        ),
+        SummaryMetricCard(
+          label: AppStrings.belowThreshold,
+          value: '${summary.lowStockCount}',
+          trend: summary.outOfStockCount == 0
+              ? AppStrings.nothingOutOfStock
+              : AppStrings.outOfStockTrend(summary.outOfStockCount),
+          trendDirection: summary.needsAttention == 0
+              ? TrendDirection.flat
+              : TrendDirection.down,
+          icon: Icons.warning_amber_rounded,
+          accent: context.semantic.warning,
+        ),
+        SummaryMetricCard(
+          label: AppStrings.outOfStockMetric,
+          value: '${summary.outOfStockCount}',
+          trend: summary.outOfStockCount == 0
+              ? AppStrings.allLinesCovered
+              : AppStrings.needsDelivery,
+          trendDirection: summary.outOfStockCount == 0
+              ? TrendDirection.flat
+              : TrendDirection.down,
+          icon: Icons.remove_shopping_cart_outlined,
+          accent: context.semantic.danger,
+        ),
+        SummaryMetricCard(
+          label: AppStrings.stockValueMetric,
+          value: Fmt.moneyCompact(summary.totalValue),
+          // Cost basis is the item's own unit cost — the last price it
+          // was recorded at, not a fabricated figure.
+          trend: AppStrings.atLastKnownCost,
+          icon: Icons.savings_outlined,
+          accent: context.semantic.success,
         ),
       ],
+      toolbar: DataTableToolbar(
+        searchHint: AppStrings.searchItemsSkuSupplier,
+        searchValue: query.search,
+        onSearchChanged: notifier.setSearch,
+        activeFilterCount: filters.activeCount,
+        onClearFilters: ref.read(inventoryFiltersProvider.notifier).clear,
+        filterBuilder: (_) => const InventoryFilterPanel(),
+        sortOptions: [
+          SortOption(label: AppStrings.nameColumn, field: InventorySort.name),
+          SortOption(
+            label: AppStrings.categoryColumn,
+            field: InventorySort.category,
+          ),
+          SortOption(label: AppStrings.stockColumn, field: InventorySort.stock),
+          SortOption(
+            label: AppStrings.reorderAtColumn,
+            field: InventorySort.reorderLevel,
+          ),
+          SortOption(
+            label: AppStrings.statusColumn,
+            field: InventorySort.status,
+          ),
+        ],
+        sortField: query.sortField,
+        sortAscending: query.ascending,
+        onSortChanged: (field, ascending) =>
+            notifier.setSort(field, ascending: ascending),
+      ),
+      table: ReusableDataTable<InventoryItem>(
+        columns: groceryColumns,
+        slice: slice,
+        query: query,
+        onSort: notifier.toggleSort,
+        onPageChanged: notifier.setPage,
+        // The row body opens the grocery detail screen; the row's
+        // own "Edit" action still goes straight to the form.
+        onRowTap: (item) => context.pushNamed(
+          AppRoute.groceryDetailName,
+          pathParameters: {'itemId': item.id},
+        ),
+        rowActions: _actions(ref),
+      ),
     );
   }
 
@@ -195,7 +185,7 @@ class InventoryGroceriesScreen extends ConsumerWidget {
       label: AppStrings.viewDetail,
       icon: Icons.open_in_new_rounded,
       onSelected: (context, item) => context.pushNamed(
-        AppRoute.itemDetailName,
+        AppRoute.groceryDetailName,
         pathParameters: {'itemId': item.id},
       ),
     ),
@@ -203,7 +193,7 @@ class InventoryGroceriesScreen extends ConsumerWidget {
       label: AppStrings.editItem,
       icon: Icons.edit_outlined,
       onSelected: (context, item) =>
-          showItemFormDialog(context, existingItem: item),
+          showGroceryFormDialog(context, existingItemId: item.id),
     ),
     DataRowAction(
       label: AppStrings.adjustStock,
@@ -322,15 +312,6 @@ final groceryColumns = <DataColumnSpec<InventoryItem>>[
     flex: 5,
     value: (item) => item.name,
     cellBuilder: (context, item) => _ItemCell(item: item),
-  ),
-  DataColumnSpec(
-    label: AppStrings.typeColumn,
-    field: 'itemType',
-    sortable: false,
-    width: 150,
-    minTableWidth: 860,
-    value: (item) => itemTypeLabel(item),
-    cellBuilder: (context, item) => ItemTypeBadge(item: item),
   ),
   DataColumnSpec(
     label: AppStrings.categoryColumn,

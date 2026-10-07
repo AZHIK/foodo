@@ -14,6 +14,12 @@ import '../utils/dialog_helper.dart';
 /// explains why. The single button only closes the dialog; the user is
 /// already on the login screen behind it. A local guard keeps a second
 /// storm from stacking a second dialog.
+///
+/// Like `DeprovisionAlert`, presentation is deferred past the current frame
+/// and retried (bounded) until a Navigator exists — the expiry can fire on
+/// cold start before the router has built one, and showing immediately then
+/// crashes with "Navigator operation requested with a context that does not
+/// include a Navigator".
 class SessionExpiryAlert extends ConsumerStatefulWidget {
   const SessionExpiryAlert({super.key, required this.child});
 
@@ -26,11 +32,28 @@ class SessionExpiryAlert extends ConsumerStatefulWidget {
 class _SessionExpiryAlertState extends ConsumerState<SessionExpiryAlert> {
   var _dialogOpen = false;
 
+  /// Frames to keep retrying presentation while no Navigator exists yet.
+  static const _maxRetries = 600;
+
   @override
   Widget build(BuildContext context) {
     ref.listen<bool>(sessionExpiredAlertProvider, (previous, next) {
-      if (next && !_dialogOpen) {
-        _dialogOpen = true;
+      if (!next) return;
+      _showWhenReady(_maxRetries);
+    });
+    return widget.child;
+  }
+
+  void _showWhenReady(int retriesLeft) {
+    if (!mounted || _dialogOpen) return;
+    if (!ref.read(sessionExpiredAlertProvider)) return;
+    _dialogOpen = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        _dialogOpen = false;
+        return;
+      }
+      try {
         showAppDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
@@ -47,8 +70,12 @@ class _SessionExpiryAlertState extends ConsumerState<SessionExpiryAlert> {
             ],
           ),
         ).then((_) => _dialogOpen = false);
+      } catch (_) {
+        // No Navigator above us yet — retry on a later frame, bounded so a
+        // truly Navigator-less tree can't spin forever.
+        _dialogOpen = false;
+        if (retriesLeft > 0) _showWhenReady(retriesLeft - 1);
       }
     });
-    return widget.child;
   }
 }

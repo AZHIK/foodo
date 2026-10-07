@@ -114,9 +114,15 @@ List<NavDestinationSpec> get _destinations => <NavDestinationSpec>[
     requiredPermission: AppPermissions.insightsView,
   ),
   NavDestinationSpec(
-    label: AppStrings.navInventory,
-    icon: Icons.inventory_2_outlined,
-    selectedIcon: Icons.inventory_2_rounded,
+    label: AppStrings.groceriesTab,
+    icon: Icons.shopping_basket_outlined,
+    selectedIcon: Icons.shopping_basket_rounded,
+    requiredPermission: AppPermissions.inventoryView,
+  ),
+  NavDestinationSpec(
+    label: AppStrings.menuItemsTab,
+    icon: Icons.restaurant_menu_outlined,
+    selectedIcon: Icons.restaurant_menu_rounded,
     requiredPermission: AppPermissions.inventoryView,
   ),
   NavDestinationSpec(
@@ -170,7 +176,7 @@ List<NavGroupSpec> get _groups => <NavGroupSpec>[
   NavGroupSpec(
     label: AppStrings.navGroupStock,
     icon: Icons.warehouse_outlined,
-    children: const [11, 5, 6, 4],
+    children: const [11, 12, 5, 6, 4],
   ),
   NavGroupSpec(
     label: AppStrings.navGroupAnalytics,
@@ -180,7 +186,7 @@ List<NavGroupSpec> get _groups => <NavGroupSpec>[
   NavGroupSpec(
     label: AppStrings.navGroupManage,
     icon: Icons.admin_panel_settings_outlined,
-    children: const [12, 13],
+    children: const [13, 14],
   ),
 ];
 

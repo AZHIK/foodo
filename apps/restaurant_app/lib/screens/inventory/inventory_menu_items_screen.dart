@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:decimal/decimal.dart';
 
 import '../../models/inventory_item.dart';
 import '../../constants/app_strings.dart';
+import '../../models/permission.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/dashboard_metrics_provider.dart';
 import '../../providers/inventory_provider.dart';
+import '../../providers/permissions_provider.dart';
+import '../../providers/production_provider.dart';
 import '../../providers/stock_movement_provider.dart';
 import '../../router/app_router.dart';
+import '../../services/inventory_api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
 import '../../utils/formatters.dart';
@@ -19,24 +24,21 @@ import '../../widgets/data_page/export_actions.dart';
 import '../../widgets/data_page/reusable_data_table.dart';
 import '../../widgets/data_page/status_badge.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
-import '../../widgets/dialogs/item_form_dialog.dart';
-import '../../widgets/inventory/add_to_order_cart.dart';
-import '../../widgets/inventory/inventory_tab_bar.dart';
-import '../../widgets/inventory/item_type_badge.dart';
+import '../../widgets/dialogs/menu_item_form_dialog.dart';
 import '../../widgets/item_photo.dart';
 import 'menu_item_filter_panel.dart';
-import 'stock_adjust_dialog.dart';
-import 'stock_transfer_dialog.dart';
-import 'waste_log_dialog.dart';
+import 'recipe_form_dialog.dart';
 import '../../utils/dialog_helper.dart';
 
 /// Sellable items — everything a customer can order at the till.
 ///
-/// One of the Inventory section's two views (see [InventoryTabBar]). Query
-/// filters to `item_type IN (sellable, both)` via [menuCatalogItemsProvider]
-/// — a `both` item (a bottled drink bought and resold unchanged) appears
-/// here *and* on [InventoryGroceriesScreen], not one or the other, since it
-/// genuinely belongs in both.
+/// A standalone screen under Stock with its own route, form and detail.
+/// Strictly `item_type IN (sellable, both)`: counted resold lines (`both`)
+/// live here, never on Groceries, so the two screens share no rows.
+///
+/// Price and recipe are this screen's actions — stock adjust, purchase
+/// ordering, waste and transfers belong to counted lines and live on
+/// Groceries. Production recording lives on the menu-item detail screen.
 class InventoryMenuItemsScreen extends ConsumerWidget {
   const InventoryMenuItemsScreen({super.key});
 
@@ -48,158 +50,157 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
     final filters = ref.watch(menuItemFiltersProvider);
     final notifier = ref.read(menuItemsQueryProvider.notifier);
     final sales = ref.watch(_menuSalesSummaryProvider);
+    // Production cost per sellable at current raw prices — raw-materials
+    // only, no labour yet. The table resolves each row against these.
+    final recipes = ref.watch(recipesCatalogListProvider);
+    final columns = menuItemColumns(
+      recipeCost: {for (final r in recipes) r.sellableItemId: r.costPerUnit},
+      recipeComplete: {for (final r in recipes) r.sellableItemId: r.costComplete},
+    );
 
-    return Column(
-      children: [
-        const InventoryTabBar(active: InventoryTab.menuItems),
-        Expanded(
-          child: DataPageScaffold(
-            title: AppStrings.menuItemsTitle,
-            subtitle: AppStrings.menuItemsSubtitle(totalItems),
-            actions: dataPageExportActions<InventoryItem>(
-              context: context,
-              columns: menuItemColumns,
-              rows: ref.watch(filteredMenuCatalogProvider),
-              title: AppStrings.menuItemsTitle,
-              subtitle: _exportSubtitle(filters, query.search),
-            ),
-            // On phones the scaffold moves this to the FAB, so no mobile-only
-            // icon variant is needed here.
-            primaryAction: FilledButton.icon(
-              onPressed: () => showItemFormDialog(context),
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: Text(AppStrings.addItem),
-            ),
-            onRefresh: () =>
-                ref.read(inventoryItemsProvider.notifier).refresh(),
-            fab: DataPageFab(
-              icon: Icons.add_rounded,
-              label: AppStrings.addMenuItem,
-              onPressed: () => showItemFormDialog(context),
-            ),
-            // Three cards, matching the Groceries screen's stat row. The
-            // last two summarise real sales from `dashboardMetricsProvider`
-            // (top items by units over the trailing 7 days) — aggregate
-            // figures only, since per-row sales attribution needs a
-            // per-item sales join this screen doesn't have yet.
-            metrics: [
-              SummaryMetricCard(
-                label: AppStrings.menuItemsTitle,
-                value: '$totalItems',
-                trend: AppStrings.availableAtTill,
-                icon: Icons.restaurant_menu_rounded,
-              ),
-              SummaryMetricCard(
-                label: AppStrings.topSeller,
-                value: sales.topSellerName ?? AppStrings.emDash,
-                trend: sales.topSellerName == null
-                    ? AppStrings.last7Days
-                    : AppStrings.unitsSold(sales.topSellerUnits),
-                icon: Icons.trending_up_rounded,
-                accent: context.colors.tertiary,
-              ),
-              SummaryMetricCard(
-                label: AppStrings.menuRevenue,
-                value: Fmt.moneyCompact(sales.totalRevenue),
-                trend: AppStrings.last7Days,
-                icon: Icons.payments_outlined,
-                accent: context.semantic.success,
-              ),
-            ],
-            toolbar: DataTableToolbar(
-              searchHint: AppStrings.searchItemsCategory,
-              searchValue: query.search,
-              onSearchChanged: notifier.setSearch,
-              activeFilterCount: filters.activeCount,
-              onClearFilters: ref.read(menuItemFiltersProvider.notifier).clear,
-              filterBuilder: (_) => const MenuItemFilterPanel(),
-              sortOptions: [
-                SortOption(
-                  label: AppStrings.nameColumn,
-                  field: MenuItemSort.name,
-                ),
-                SortOption(
-                  label: AppStrings.categoryColumn,
-                  field: MenuItemSort.category,
-                ),
-                SortOption(
-                  label: AppStrings.priceColumn,
-                  field: MenuItemSort.price,
-                ),
-              ],
-              sortField: query.sortField,
-              sortAscending: query.ascending,
-              onSortChanged: (field, ascending) =>
-                  notifier.setSort(field, ascending: ascending),
-            ),
-            table: ReusableDataTable<InventoryItem>(
-              columns: menuItemColumns,
-              slice: slice,
-              query: query,
-              onSort: notifier.toggleSort,
-              onPageChanged: notifier.setPage,
-              onRowTap: (item) => context.pushNamed(
-                AppRoute.itemDetailName,
-                pathParameters: {'itemId': item.id},
-              ),
-              rowActions: _actions(ref),
-            ),
-          ),
+    return DataPageScaffold(
+      title: AppStrings.menuItemsTitle,
+      subtitle: AppStrings.menuItemsSubtitle(totalItems),
+      actions: dataPageExportActions<InventoryItem>(
+        context: context,
+        columns: columns,
+        rows: ref.watch(filteredMenuCatalogProvider),
+        title: AppStrings.menuItemsTitle,
+        subtitle: _exportSubtitle(filters, query.search),
+      ),
+      // On phones the scaffold moves this to the FAB, so no mobile-only
+      // icon variant is needed here.
+      primaryAction: FilledButton.icon(
+        onPressed: () => showMenuItemFormDialog(context),
+        icon: const Icon(Icons.add_rounded, size: 18),
+        label: Text(AppStrings.addItem),
+      ),
+      onRefresh: () =>
+          ref.read(inventoryItemsProvider.notifier).refresh(),
+      fab: DataPageFab(
+        icon: Icons.add_rounded,
+        label: AppStrings.addMenuItem,
+        onPressed: () => showMenuItemFormDialog(context),
+      ),
+      // Three cards: the till count plus real sales from
+      // `dashboardMetricsProvider` (top items by units over the trailing
+      // 7 days) — aggregate figures only, since per-row sales attribution
+      // needs a per-item sales join this screen doesn't have yet.
+      metrics: [
+        SummaryMetricCard(
+          label: AppStrings.menuItemsTitle,
+          value: '$totalItems',
+          trend: AppStrings.availableAtTill,
+          icon: Icons.restaurant_menu_rounded,
+        ),
+        SummaryMetricCard(
+          label: AppStrings.topSeller,
+          value: sales.topSellerName ?? AppStrings.emDash,
+          trend: sales.topSellerName == null
+              ? AppStrings.last7Days
+              : AppStrings.unitsSold(sales.topSellerUnits),
+          icon: Icons.trending_up_rounded,
+          accent: context.colors.tertiary,
+        ),
+        SummaryMetricCard(
+          label: AppStrings.menuRevenue,
+          value: Fmt.moneyCompact(sales.totalRevenue),
+          trend: AppStrings.last7Days,
+          icon: Icons.payments_outlined,
+          accent: context.semantic.success,
         ),
       ],
+      toolbar: DataTableToolbar(
+        searchHint: AppStrings.searchItemsCategory,
+        searchValue: query.search,
+        onSearchChanged: notifier.setSearch,
+        activeFilterCount: filters.activeCount,
+        onClearFilters: ref.read(menuItemFiltersProvider.notifier).clear,
+        filterBuilder: (_) => const MenuItemFilterPanel(),
+        sortOptions: [
+          SortOption(
+            label: AppStrings.nameColumn,
+            field: MenuItemSort.name,
+          ),
+          SortOption(
+            label: AppStrings.categoryColumn,
+            field: MenuItemSort.category,
+          ),
+          SortOption(
+            label: AppStrings.priceColumn,
+            field: MenuItemSort.price,
+          ),
+        ],
+        sortField: query.sortField,
+        sortAscending: query.ascending,
+        onSortChanged: (field, ascending) =>
+            notifier.setSort(field, ascending: ascending),
+      ),
+      table: ReusableDataTable<InventoryItem>(
+        columns: columns,
+        slice: slice,
+        query: query,
+        onSort: notifier.toggleSort,
+        onPageChanged: notifier.setPage,
+        onRowTap: (item) => context.pushNamed(
+          AppRoute.menuItemDetailName,
+          pathParameters: {'itemId': item.id},
+        ),
+        rowActions: _actions(ref),
+      ),
     );
   }
 
-  List<DataRowAction<InventoryItem>> _actions(WidgetRef ref) => [
-    DataRowAction(
-      label: AppStrings.viewDetail,
-      icon: Icons.open_in_new_rounded,
-      onSelected: (context, item) => context.pushNamed(
-        AppRoute.itemDetailName,
-        pathParameters: {'itemId': item.id},
+  List<DataRowAction<InventoryItem>> _actions(WidgetRef ref) {
+    final recipe = _recipeActionFor(ref);
+    return [
+      DataRowAction(
+        label: AppStrings.viewDetail,
+        icon: Icons.open_in_new_rounded,
+        onSelected: (context, item) => context.pushNamed(
+          AppRoute.menuItemDetailName,
+          pathParameters: {'itemId': item.id},
+        ),
       ),
-    ),
-    DataRowAction(
-      label: AppStrings.editItem,
-      icon: Icons.edit_outlined,
-      onSelected: (context, item) =>
-          showItemFormDialog(context, existingItem: item),
-    ),
-    DataRowAction(
-      label: AppStrings.adjustStock,
-      icon: Icons.tune_rounded,
-      isEnabled: (item) => item.trackStock,
-      onSelected: (context, item) => showStockAdjustDialog(context, item),
-    ),
-    DataRowAction(
-      label: AppStrings.addToOrderCart,
-      icon: Icons.add_shopping_cart,
-      // A sellable-only item can never be purchase-received (see
-      // `services/inventory-service/app/services/stock_movement_service.py`'s
-      // `_COMPATIBILITY_RULES`) — ordering it would always fail at
-      // receive time, so it's disabled here rather than offered.
-      isEnabled: (item) => item.trackStock && item.itemType != 'sellable',
-      onSelected: (context, item) => addItemToOrderCart(context, ref, item),
-    ),
-    DataRowAction(
-      label: AppStrings.logWaste,
-      icon: Icons.delete_sweep_outlined,
-      isEnabled: (item) => item.trackStock && item.stock > 0,
-      onSelected: (context, item) => showWasteLogDialog(context, item),
-    ),
-    DataRowAction(
-      label: AppStrings.transferStock,
-      icon: Icons.swap_horiz_rounded,
-      isEnabled: (item) => item.trackStock && item.stock > 0,
-      onSelected: (context, item) => showStockTransferDialog(context, item),
-    ),
-    DataRowAction(
-      label: AppStrings.deleteAction,
-      icon: Icons.delete_outline_rounded,
-      isDestructive: true,
-      onSelected: (context, item) => _confirmDelete(context, ref, item),
-    ),
-  ];
+      DataRowAction(
+        label: AppStrings.editItem,
+        icon: Icons.edit_outlined,
+        onSelected: (context, item) =>
+            showMenuItemFormDialog(context, existingItemId: item.id),
+      ),
+      if (recipe != null)
+        DataRowAction(
+          label: AppStrings.pickRecipe,
+          icon: Icons.receipt_long_outlined,
+          isEnabled: recipe.appliesTo,
+          onSelected: (context, item) => recipe.open(context, item),
+        ),
+      DataRowAction(
+        label: AppStrings.deleteAction,
+        icon: Icons.delete_outline_rounded,
+        isDestructive: true,
+        onSelected: (context, item) => _confirmDelete(context, ref, item),
+      ),
+    ];
+  }
+
+  /// The recipe row action, resolved per row: "Edit recipe" where one is
+  /// defined (needs `recipes.update`), "Add recipe" where none is (needs
+  /// `recipes.create`). Null when the session may do neither — a row with
+  /// no recipe action simply has none, rather than a dead button.
+  _MenuRecipeAction? _recipeActionFor(WidgetRef ref) {
+    final canEdit =
+        ref.watch(hasPermissionProvider(AppPermissions.recipesUpdate));
+    final canCreate =
+        ref.watch(hasPermissionProvider(AppPermissions.recipesCreate));
+    if (!canEdit && !canCreate) return null;
+    final recipes = ref.watch(recipesCatalogListProvider);
+    return _MenuRecipeAction(
+      recipes: recipes,
+      canEdit: canEdit,
+      canCreate: canCreate,
+    );
+  }
 
   Future<void> _confirmDelete(
     BuildContext context,
@@ -253,6 +254,48 @@ class InventoryMenuItemsScreen extends ConsumerWidget {
 }
 
 // ---------------------------------------------------------------------------
+// Per-row recipe action — "Edit recipe" where the backend has one for the
+// row's catalog id, "Add recipe" where none is. Resolved per row because
+// the catalog, not the table, knows which lines have a formula.
+// ---------------------------------------------------------------------------
+
+class _MenuRecipeAction {
+  const _MenuRecipeAction({
+    required this.recipes,
+    required this.canEdit,
+    required this.canCreate,
+  });
+
+  final List<RecipeDto> recipes;
+  final bool canEdit;
+  final bool canCreate;
+
+  RecipeDto? _editFor(InventoryItem item) {
+    final catalogId = item.catalogItemId;
+    if (catalogId == null || !canEdit) return null;
+    return recipes.where((r) => r.sellableItemId == catalogId).firstOrNull;
+  }
+
+  /// Whether this row shows the Recipe entry at all: an existing formula
+  /// to edit, or permission to add one. Demo-mode rows without a backend
+  /// id never do — recipes need the backend's atomic catalog.
+  bool appliesTo(InventoryItem item) =>
+      _editFor(item) != null ||
+      (item.catalogItemId != null && canCreate);
+
+  /// Opens the formula for edit where one exists, else the add flow for
+  /// this row's line.
+  void open(BuildContext context, InventoryItem item) {
+    final recipe = _editFor(item);
+    if (recipe != null) {
+      showRecipeFormDialog(context, recipe: recipe);
+    } else {
+      showRecipeFormDialog(context, sellable: item);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Trailing-7-day sales summary — aggregates from `dashboardMetricsProvider`
 // (real synced sales), shown without per-row attribution, which would need
 // a per-item sales join this screen doesn't have yet.
@@ -288,34 +331,56 @@ final _menuSalesSummaryProvider = Provider<_MenuSalesSummary>((ref) {
 
 /// Column config for the Menu Items table.
 ///
+/// The Cost column values each row at its recipe's cost per unit —
+/// raw-materials cost only, no labour yet — falling back to the line's own
+/// unit cost for resold goods with no formula. A row with neither reads as
+/// an estimate rather than a confident zero.
+///
 /// No units-sold/revenue columns: per-row sales data would need a per-item
 /// sales join — showing dashboard aggregates against a specific row would
 /// name the wrong item's numbers. Once real per-item sales reach this
 /// screen, add them here without restructuring anything else.
-final menuItemColumns = <DataColumnSpec<InventoryItem>>[
-  DataColumnSpec(
-    label: AppStrings.itemColumn,
-    field: MenuItemSort.name,
-    role: ColumnRole.primary,
-    flex: 5,
-    value: (item) => item.name,
-    cellBuilder: (context, item) => _ItemCell(item: item),
-  ),
-  DataColumnSpec(
-    label: AppStrings.typeColumn,
-    field: 'itemType',
-    sortable: false,
-    width: 150,
-    minTableWidth: 800,
-    value: (item) => itemTypeLabel(item),
-    cellBuilder: (context, item) => ItemTypeBadge(item: item),
-  ),
+List<DataColumnSpec<InventoryItem>> menuItemColumns({
+  required Map<String, Decimal> recipeCost,
+  required Map<String, bool> recipeComplete,
+}) {
+  String costValue(InventoryItem item) {
+    final key = item.catalogItemId ?? item.id;
+    final recipe = recipeCost[key];
+    if (recipe != null) {
+      final value = Fmt.money(double.parse(recipe.toString()));
+      return recipeComplete[key] == false
+          ? '$value (${AppStrings.costEstimated})'
+          : value;
+    }
+    if (item.unitCost > 0) return Fmt.money(item.unitCost);
+    return '${Fmt.money(0)} (${AppStrings.costEstimated})';
+  }
+
+  return <DataColumnSpec<InventoryItem>>[
+    DataColumnSpec(
+      label: AppStrings.itemColumn,
+      field: MenuItemSort.name,
+      role: ColumnRole.primary,
+      flex: 3,
+      value: (item) => item.name,
+      cellBuilder: (context, item) => _ItemCell(item: item),
+    ),
   DataColumnSpec(
     label: AppStrings.categoryColumn,
     field: MenuItemSort.category,
-    flex: 3,
+    flex: 2,
     minTableWidth: 700,
     value: (item) => categoryLabelForId(item.categoryId),
+  ),
+  DataColumnSpec(
+    label: AppStrings.costColumn,
+    field: 'cost',
+    sortable: false,
+    flex: 2,
+    numeric: true,
+    minTableWidth: 700,
+    value: costValue,
   ),
   DataColumnSpec(
     label: AppStrings.priceColumn,
@@ -331,17 +396,24 @@ final menuItemColumns = <DataColumnSpec<InventoryItem>>[
     field: 'isActive',
     sortable: false,
     role: ColumnRole.status,
-    width: 110,
+    width: 128,
     value: (item) =>
         item.isArchived ? AppStrings.archivedBadge : AppStrings.activeBadge,
-    cellBuilder: (context, item) => StatusBadge(
-      label: item.isArchived ? AppStrings.archivedBadge : AppStrings.activeBadge,
-      tone: item.isArchived ? StatusTone.neutral : StatusTone.positive,
-      icon: item.isArchived ? Icons.archive_outlined : Icons.check_circle_rounded,
-      dense: true,
+    // Fixed-width cells get no gutter from the table (flex cells carry
+    // their own right padding), so the badge brings its own left inset —
+    // otherwise right-aligned prices sit right on top of it.
+    cellBuilder: (context, item) => Padding(
+      padding: const EdgeInsets.only(left: Insets.md),
+      child: StatusBadge(
+        label: item.isArchived ? AppStrings.archivedBadge : AppStrings.activeBadge,
+        tone: item.isArchived ? StatusTone.neutral : StatusTone.positive,
+        icon: item.isArchived ? Icons.archive_outlined : Icons.check_circle_rounded,
+        dense: true,
+      ),
     ),
   ),
-];
+  ];
+}
 
 class _ItemCell extends StatelessWidget {
   const _ItemCell({required this.item});

@@ -12,6 +12,7 @@ import 'connectivity_provider.dart';
 import 'customer_api_provider.dart';
 import 'finance_api_provider.dart';
 import 'permissions_provider.dart';
+import 'remote_provision_guard_provider.dart';
 import 'sync_status_provider.dart';
 
 /// Arms the connectivity→sync trigger. Watch this once from the app shell.
@@ -36,12 +37,17 @@ final syncTriggerProvider = Provider<void>((ref) {
       next.whenData((isOnline) {
         // Detect offline→online transition.
         if (!wasOnline && isOnline) {
-          // Device went online: trigger sync. Customers MUST drain before
+          // Device went online: FIRST verify the locked business/store still
+          // exists remotely (deleted business/store ⇒ logout + wipe, and
+          // sync must be skipped so orphaned rows are never pushed), THEN
+          // drain the outboxes. Customers MUST drain before
           // sales — a sale carrying a customer_id whose row hasn't reached
           // the server yet fails its FK insert and has to retry (see
           // `CustomerSyncService`'s doc comment).
           unawaited(() async {
             try {
+              final maySync = await runGuardCheck(ref);
+              if (!maySync) return; // Deprovision handled — skip sync.
               await customerSyncService.syncNow();
               await syncService.syncNow();
               await financeSyncService.syncNow();

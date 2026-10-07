@@ -19,7 +19,8 @@ import '../screens/order_detail/order_detail_screen.dart';
 import '../screens/inventory/inventory_groceries_screen_gated.dart';
 import '../screens/inventory/inventory_menu_items_screen_gated.dart';
 import '../screens/insights/ai_insights_screen.dart';
-import '../screens/inventory/item_detail_screen.dart';
+import '../screens/inventory/grocery_detail_screen.dart';
+import '../screens/inventory/menu_item_detail_screen.dart';
 import '../screens/inventory/production_module_screen_gated.dart';
 import '../screens/purchases/purchase_detail_screen_gated.dart';
 import '../screens/purchasing/purchasing_screen.dart';
@@ -38,6 +39,7 @@ import '../screens/settings/business_profile_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import '../screens/settings/store_management_screen.dart';
 import '../screens/settings/store_settings_screen.dart';
+import '../screens/settings/whatsapp_settings_screen.dart';
 import '../screens/staff/roles_screen.dart';
 import '../screens/staff/staff_detail_screen.dart';
 import '../screens/staff/staff_screen.dart';
@@ -122,31 +124,38 @@ abstract final class AppRoute {
   static const insightsName = 'insights';
 
   static const inventoryPath = '/inventory';
-  static const inventoryName = 'inventory';
-
-  /// The Inventory section's two views, nested under [inventoryPath] the
-  /// same way Finance nests Expenses/Incomes under `/finance` — one shell
-  /// branch, one Navigator, two sibling routes switched by
-  /// [InventoryTabBar]. The bare `/inventory` path itself renders Groceries,
-  /// matching Finance's parent route defaulting to Other Expenses.
-  static const groceriesPath = 'groceries';
   static const groceriesName = 'inventoryGroceries';
 
-  static String groceries() => '$inventoryPath/$groceriesPath';
+  static String groceries() => inventoryPath;
 
-  static const menuItemsPath = 'menu-items';
+  static const menuItemsPath = '/menu-items';
   static const menuItemsName = 'inventoryMenuItems';
 
-  static String menuItems() => '$inventoryPath/$menuItemsPath';
+  static String menuItems() => menuItemsPath;
 
-  /// Nested under inventory so the shell's Inventory tab stays selected.
-  /// Declared after the two tab paths above so the literal `groceries`/
-  /// `menu-items` segments are matched before this parameter — same ordering
-  /// rule as `/staff/roles` versus `:staffId`.
-  static const itemDetailPath = ':itemId';
-  static const itemDetailName = 'itemDetail';
+  /// Detail screens nest under their own list, so the shell highlights the
+  /// right Stock entry — groceries under Groceries, menu items under Menu
+  /// Items. Each detail redirects a mistyped line to its sibling, so an old
+  /// `/inventory/<id>` bookmark for a menu item still lands correctly.
+  static const groceryDetailPath = ':itemId';
+  static const groceryDetailName = 'groceryDetail';
 
-  static String itemDetail(String itemId) => '$inventoryPath/$itemId';
+  static String groceryDetail(String itemId) => '$inventoryPath/$itemId';
+
+  static const menuItemDetailPath = ':itemId';
+  static const menuItemDetailName = 'menuItemDetail';
+
+  static String menuItemDetail(String itemId) => '$menuItemsPath/$itemId';
+
+  /// The detail route for an item of [itemType] (`raw_material` goes to
+  /// Groceries, everything else to Menu Items). Used by callers that only
+  /// hold an id and resolve the type first.
+  static String itemDetailFor({
+    required String itemType,
+    required String itemId,
+  }) => itemType == 'raw_material'
+      ? groceryDetail(itemId)
+      : menuItemDetail(itemId);
 
   static const staffPath = '/staff';
   static const staffName = 'staff';
@@ -205,6 +214,11 @@ abstract final class AppRoute {
   static const accountName = 'account';
 
   static String account() => '$settingsPath/$accountPath';
+
+  static const whatsappPath = 'whatsapp';
+  static const whatsappName = 'whatsapp';
+
+  static String whatsapp() => '$settingsPath/$whatsappPath';
 
   /// Top-level route outside the shell, reached via the bell icon in the app bar.
   static const notificationsPath = '/notifications';
@@ -275,12 +289,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   final insightsNavigatorKey = GlobalKey<NavigatorState>(
     debugLabel: 'insights',
   );
-  final inventoryNavigatorKey = GlobalKey<NavigatorState>(
-    debugLabel: 'inventory',
+  final groceriesNavigatorKey = GlobalKey<NavigatorState>(
+    debugLabel: 'groceries',
   );
-  final financeNavigatorKey = GlobalKey<NavigatorState>(
-    debugLabel: 'finance',
+  final menuItemsNavigatorKey = GlobalKey<NavigatorState>(
+    debugLabel: 'menu-items',
   );
+  final financeNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'finance');
   final staffNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'staff');
   final settingsNavigatorKey = GlobalKey<NavigatorState>(
     debugLabel: 'settings',
@@ -347,6 +362,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoute.legacyReordersPath,
         redirect: (_, _) => AppRoute.purchasingPath,
+      ),
+      // The old tab routes from when Groceries and Menu Items shared one
+      // Inventory branch — send old bookmarks to their standalone homes.
+      GoRoute(
+        path: '/inventory/groceries',
+        redirect: (_, _) => AppRoute.inventoryPath,
+      ),
+      GoRoute(
+        path: '/inventory/menu-items',
+        redirect: (_, _) => AppRoute.menuItemsPath,
       ),
       // An IndexedStack shell: each branch keeps its own Navigator, so the
       // POS cart and the Sales scroll position both survive tab switches.
@@ -427,17 +452,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                     path: AppRoute.requisitionDetailPath,
                     name: AppRoute.requisitionDetailName,
                     builder: (context, state) => RequisitionOrderScreen(
-                      requisitionId:
-                          state.pathParameters['requisitionId']!,
+                      requisitionId: state.pathParameters['requisitionId']!,
                     ),
                     routes: [
                       GoRoute(
                         path: AppRoute.requisitionExportPath,
                         name: AppRoute.requisitionExportName,
-                        builder: (context, state) =>
-                            RequisitionExportScreen(
-                          requisitionId:
-                              state.pathParameters['requisitionId']!,
+                        builder: (context, state) => RequisitionExportScreen(
+                          requisitionId: state.pathParameters['requisitionId']!,
                         ),
                       ),
                     ],
@@ -495,12 +517,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: AppRoute.financeExpensesPath,
                     name: AppRoute.financeExpensesName,
-                    builder: (context, state) => const OtherExpensesScreenGated(),
+                    builder: (context, state) =>
+                        const OtherExpensesScreenGated(),
                   ),
                   GoRoute(
                     path: AppRoute.financeIncomesPath,
                     name: AppRoute.financeIncomesName,
-                    builder: (context, state) => const OtherIncomesScreenGated(),
+                    builder: (context, state) =>
+                        const OtherIncomesScreenGated(),
                   ),
                 ],
               ),
@@ -539,34 +563,38 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
           StatefulShellBranch(
-            navigatorKey: inventoryNavigatorKey,
+            navigatorKey: groceriesNavigatorKey,
             routes: [
               GoRoute(
                 path: AppRoute.inventoryPath,
-                name: AppRoute.inventoryName,
-                // The bare path renders Groceries, matching Finance's parent
-                // route defaulting to Other Expenses.
+                name: AppRoute.groceriesName,
                 builder: (context, state) =>
                     const InventoryGroceriesScreenGated(),
                 routes: [
-                  // Declared before `:itemId` so the literal segments match
-                  // first — same ordering rule as `/staff/roles`.
                   GoRoute(
-                    path: AppRoute.groceriesPath,
-                    name: AppRoute.groceriesName,
-                    builder: (context, state) =>
-                        const InventoryGroceriesScreenGated(),
+                    path: AppRoute.groceryDetailPath,
+                    name: AppRoute.groceryDetailName,
+                    builder: (context, state) => GroceryDetailScreen(
+                      itemId: state.pathParameters['itemId']!,
+                    ),
                   ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: menuItemsNavigatorKey,
+            routes: [
+              GoRoute(
+                path: AppRoute.menuItemsPath,
+                name: AppRoute.menuItemsName,
+                builder: (context, state) =>
+                    const InventoryMenuItemsScreenGated(),
+                routes: [
                   GoRoute(
-                    path: AppRoute.menuItemsPath,
-                    name: AppRoute.menuItemsName,
-                    builder: (context, state) =>
-                        const InventoryMenuItemsScreenGated(),
-                  ),
-                  GoRoute(
-                    path: AppRoute.itemDetailPath,
-                    name: AppRoute.itemDetailName,
-                    builder: (context, state) => ItemDetailScreen(
+                    path: AppRoute.menuItemDetailPath,
+                    name: AppRoute.menuItemDetailName,
+                    builder: (context, state) => MenuItemDetailScreen(
                       itemId: state.pathParameters['itemId']!,
                     ),
                   ),
@@ -633,6 +661,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                     path: AppRoute.accountPath,
                     name: AppRoute.accountName,
                     builder: (context, state) => const AccountSettingsScreen(),
+                  ),
+                  GoRoute(
+                    path: AppRoute.whatsappPath,
+                    name: AppRoute.whatsappName,
+                    builder: (context, state) => const WhatsAppSettingsScreen(),
                   ),
                 ],
               ),

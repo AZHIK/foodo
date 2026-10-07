@@ -77,8 +77,8 @@ class ColorfulMetricCard extends StatelessWidget {
           padding: constraints.maxWidth < _tightPadding
               ? const EdgeInsets.all(12)
               : isMobile
-                  ? DashboardStyle.cardPaddingMobile
-                  : DashboardStyle.cardPadding,
+              ? DashboardStyle.cardPaddingMobile
+              : DashboardStyle.cardPadding,
           caption: caption,
           isMobile: isMobile,
         );
@@ -86,7 +86,7 @@ class ColorfulMetricCard extends StatelessWidget {
     );
   }
 
-   Widget _build(
+  Widget _build(
     BuildContext context, {
     required bool showBadge,
     required EdgeInsets padding,
@@ -553,13 +553,17 @@ class _HeroBody extends StatelessWidget {
                               ? Icons.arrow_upward_rounded
                               : Icons.arrow_downward_rounded,
                           size: 13,
-                          color: context.semantic.success,
+                          color: (change ?? 0) >= 0
+                              ? context.semantic.success
+                              : context.semantic.danger,
                         ),
                         const SizedBox(width: 2),
                         Text(
                           AppStrings.trendPercent((change ?? 0).abs() * 100),
                           style: context.text.labelLarge?.copyWith(
-                            color: context.semantic.success,
+                            color: (change ?? 0) >= 0
+                                ? context.semantic.success
+                                : context.semantic.danger,
                           ),
                         ),
                       ],
@@ -573,8 +577,10 @@ class _HeroBody extends StatelessWidget {
     }
 
     // Desktop hero: gradient with decorative circles and white text.
+    // Uses the card's family as the base so profit reads green and loss
+    // reads red, matching the mobile hero and the plain KPI card.
     final bright = Theme.of(context).brightness == Brightness.light;
-    final base = Theme.of(context).colorScheme.primary;
+    final base = family.accent;
     final start = bright
         ? Color.lerp(base, Colors.black, 0.12) ?? base
         : Color.lerp(base, Colors.white, 0.08) ?? base;
@@ -748,9 +754,7 @@ class _TrendBadge extends StatelessWidget {
               AppStrings.trendPercent(percent),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: context.text.labelLarge?.copyWith(
-                color: colour,
-              ),
+              style: context.text.labelLarge?.copyWith(color: colour),
             ),
           ),
         ],

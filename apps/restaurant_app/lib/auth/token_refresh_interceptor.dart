@@ -15,6 +15,7 @@ import '../constants/app_durations.dart';
 import '../database/local_profile_repository.dart';
 import 'identity_service_api.dart';
 import 'permissions_cache_sync.dart';
+import 'refresh_coordinator.dart';
 import 'token_storage.dart';
 
 /// Handles silent token refresh on 401 responses.
@@ -151,7 +152,7 @@ class TokenRefreshInterceptor extends Interceptor {
 
     // Start the single shared refresh.
     _isRefreshing = true;
-    _refreshFuture = _performRefresh(tokenSet.refreshToken);
+    _refreshFuture = _performRefresh();
     try {
       await _refreshFuture;
     } catch (e) {
@@ -183,48 +184,40 @@ class TokenRefreshInterceptor extends Interceptor {
   /// Calls the API to refresh the access token.
   /// The backend rotates the refresh token on each refresh.
   ///
+  /// The single backend call goes through [refreshTokens] (process-wide
+  /// coordinator): parallel 401s share one rotation instead of replaying the
+  /// same one-shot token and tripping the backend's reuse detector (which
+  /// would revoke the whole session family).
+  ///
   /// Only a server *rejection* (400/401/403 — invalid, expired, revoked or
   /// already-used refresh token) means the session is dead: tokens are
   /// cleared and [sessionExpired] fires so the app can alert and send the
   /// user back to OTP login. Anything else (no connection, 5xx) is
   /// transient — tokens are kept so the next attempt can still succeed, and
   /// nothing fires: going offline must never log anyone out.
-  Future<void> _performRefresh(String refreshToken) async {
+  Future<void> _performRefresh() async {
     try {
-      final output = await _api.refreshAccessToken(refreshToken);
-      final expiresAt = DateTime.now().add(
-        AppDurations.sessionLifetime, // Assume 15-min TTL (env config default)
-      );
+      // Single flight shared with AuthNotifier's direct refreshes (cold
+      // start, PIN unlock) — see refresh_coordinator.dart. The passed-in
+      // token is only a fallback identity hint; the coordinator re-reads
+      // the latest stored pair inside the lock.
+      final fresh = await refreshTokens(api: _api, storage: _tokenStorage);
 
-      // Get the current token set to extract the userId for per-user storage.
-      final currentTokenSet = await _tokenStorage.getTokenSet();
-      final userId = currentTokenSet?.userId;
-
-      if (userId != null) {
-        // Update per-user tokens.
-        await _tokenStorage.updateTokens(
-          userId,
-          output.accessToken,
-          output.refreshToken,
-          expiresAt,
+      final profileRepo = _profileRepo;
+      if (profileRepo != null) {
+        await syncPermissionsCache(
+          profileRepo: profileRepo,
+          userId: fresh.userId,
+          accessToken: fresh.accessToken,
+          onSynced: _onPermissionsSynced,
         );
-
-        final profileRepo = _profileRepo;
-        if (profileRepo != null) {
-          await syncPermissionsCache(
-            profileRepo: profileRepo,
-            userId: userId,
-            accessToken: output.accessToken,
-            onSynced: _onPermissionsSynced,
-          );
-        }
       }
     } catch (e) {
       // Rejected by the server: the session is lost. Clear tokens and tell
       // the app, exactly once per death (the static lock guarantees only one
       // refresher runs, so this fires once no matter how many requests
       // 401'd together).
-      if (e is DioException && _isRejection(e)) {
+      if (_isRejection(e)) {
         await _tokenStorage.clearTokenSet();
         _sessionExpiredController.add(null);
       }
@@ -233,9 +226,16 @@ class TokenRefreshInterceptor extends Interceptor {
   }
 
   /// True when the refresh call itself was refused — as opposed to never
-  /// reaching the server, or the server erroring.
-  static bool _isRejection(DioException e) {
-    final status = e.response?.statusCode;
+  /// reaching the server, or the server erroring. Accepts both raw
+  /// [DioException] and the [AuthException] wrapper `IdentityServiceApi`
+  /// converts it into (checking only `DioException` here used to silently
+  /// never match, so dead sessions never surfaced).
+  static bool _isRejection(Object e) {
+    final int? status = switch (e) {
+      DioException() => e.response?.statusCode,
+      AuthException() => e.statusCode,
+      _ => null,
+    };
     return status == 400 || status == 401 || status == 403;
   }
 

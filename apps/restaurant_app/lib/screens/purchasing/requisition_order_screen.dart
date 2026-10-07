@@ -29,6 +29,8 @@ import '../../models/requisition.dart';
 import '../../providers/permissions_provider.dart';
 import '../../providers/requisition_cart_provider.dart';
 import '../../providers/requisition_order_provider.dart';
+import '../../providers/whatsapp_provider.dart';
+import '../../services/whatsapp_api_service.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
@@ -43,8 +45,9 @@ class RequisitionOrderScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cached =
-        ref.watch(requisitionCartProvider.select((c) => c.lastSubmitted));
+    final cached = ref.watch(
+      requisitionCartProvider.select((c) => c.lastSubmitted),
+    );
     if (cached != null && cached.id == requisitionId) {
       return _OrderView(order: cached);
     }
@@ -75,22 +78,30 @@ class _OrderError extends ConsumerWidget {
       padding: const EdgeInsets.all(Insets.lg),
       children: [
         const SizedBox(height: Insets.xl * 2),
-        Icon(Icons.error_outline_rounded,
-            size: 48, color: context.colors.onSurfaceVariant),
+        Icon(
+          Icons.error_outline_rounded,
+          size: 48,
+          color: context.colors.onSurfaceVariant,
+        ),
         const SizedBox(height: Insets.md),
-        Text(AppStrings.reqOrderLoadFailed,
-            style: context.text.titleMedium, textAlign: TextAlign.center),
+        Text(
+          AppStrings.reqOrderLoadFailed,
+          style: context.text.titleMedium,
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: Insets.sm),
-        Text(message,
-            style: context.text.bodySmall?.copyWith(
-              color: context.colors.onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center),
+        Text(
+          message,
+          style: context.text.bodySmall?.copyWith(
+            color: context.colors.onSurfaceVariant,
+          ),
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: Insets.lg),
         Center(
           child: FilledButton.tonal(
-            onPressed: () => ref
-                .refresh(requisitionOrderProvider(requisitionId)),
+            onPressed: () =>
+                ref.refresh(requisitionOrderProvider(requisitionId)),
             child: Text(AppStrings.retryAction),
           ),
         ),
@@ -122,13 +133,15 @@ class _OrderViewState extends ConsumerState<_OrderView> {
 
   String get _rollup {
     final statuses = order.groups.map(_statusOf).toList();
-    if (statuses.every((s) =>
-        s == 'confirmed' || s == 'fulfilled' || s == 'received')) {
+    if (statuses.every(
+      (s) => s == 'confirmed' || s == 'fulfilled' || s == 'received',
+    )) {
       return 'Confirmed';
     }
     if (statuses.every((s) => s == 'cancelled')) return 'Cancelled';
-    if (statuses.any((s) =>
-        s == 'confirmed' || s == 'fulfilled' || s == 'received')) {
+    if (statuses.any(
+      (s) => s == 'confirmed' || s == 'fulfilled' || s == 'received',
+    )) {
       return 'Partially Confirmed';
     }
     if (statuses.any((s) => s == 'sent')) return 'Sent';
@@ -144,8 +157,7 @@ class _OrderViewState extends ConsumerState<_OrderView> {
         actions: [
           IconButton(
             tooltip: AppStrings.reqExportTitle,
-            onPressed: () =>
-                context.push(AppRoute.requisitionExport(order.id)),
+            onPressed: () => context.push(AppRoute.requisitionExport(order.id)),
             icon: const Icon(Icons.receipt_long_outlined),
           ),
         ],
@@ -161,7 +173,8 @@ class _OrderViewState extends ConsumerState<_OrderView> {
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
-                    maxWidth: Breakpoints.maxContentWidth),
+                  maxWidth: Breakpoints.maxContentWidth,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -174,8 +187,7 @@ class _OrderViewState extends ConsumerState<_OrderView> {
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: columns,
                         crossAxisSpacing: Insets.lg,
                         mainAxisSpacing: Insets.lg,
@@ -190,13 +202,11 @@ class _OrderViewState extends ConsumerState<_OrderView> {
                           group: group,
                           status: _statusOf(group),
                           onStatusChanged: (poId, status) {
-                            setState(
-                                () => _statusOverrides[poId] = status);
+                            setState(() => _statusOverrides[poId] = status);
                             // Backend refetch when this order is provider-
                             // backed (deep link / reload path); no-op when
                             // the order came from the just-submitted cart.
-                            ref.invalidate(
-                                requisitionOrderProvider(order.id));
+                            ref.invalidate(requisitionOrderProvider(order.id));
                           },
                         );
                       },
@@ -240,7 +250,9 @@ class _OrderHeader extends StatelessWidget {
                 ),
                 if (order.expectedAt != null)
                   Text(
-                    AppStrings.reqDeliverySet('${order.expectedAt!.day}/${order.expectedAt!.month}/${order.expectedAt!.year}'),
+                    AppStrings.reqDeliverySet(
+                      '${order.expectedAt!.day}/${order.expectedAt!.month}/${order.expectedAt!.year}',
+                    ),
                     style: context.text.bodySmall?.copyWith(
                       color: context.colors.onSurfaceVariant,
                     ),
@@ -302,8 +314,7 @@ class _TbcBanner extends StatelessWidget {
         padding: const EdgeInsets.all(Insets.md),
         child: Row(
           children: [
-            Icon(Icons.info_outline_rounded,
-                color: context.semantic.onWarning),
+            Icon(Icons.info_outline_rounded, color: context.semantic.onWarning),
             const SizedBox(width: Insets.sm),
             Expanded(
               child: Text(
@@ -342,6 +353,10 @@ class _SupplierCard extends ConsumerStatefulWidget {
 class _SupplierCardState extends ConsumerState<_SupplierCard> {
   /// Set right after the wa.me link opens — the "Did this send?" confirm.
   bool _awaitingSendConfirm = false;
+
+  /// Set when the automatic Cloud API send fails — the card then offers the
+  /// manual wa.me send instead of retrying blindly.
+  bool _apiFailed = false;
   String? _actionError;
 
   RequisitionSupplierGroup get group => widget.group;
@@ -365,8 +380,7 @@ class _SupplierCardState extends ConsumerState<_SupplierCard> {
 
   @override
   Widget build(BuildContext context) {
-    final busy =
-        ref.watch(supplierCardStatesProvider)[group.poId] ?? false;
+    final busy = ref.watch(supplierCardStatesProvider)[group.poId] ?? false;
     final messenger = ScaffoldMessenger.of(context);
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -378,13 +392,11 @@ class _SupplierCardState extends ConsumerState<_SupplierCard> {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor:
-                      context.colors.surfaceContainerHighest,
+                  backgroundColor: context.colors.surfaceContainerHighest,
                   child: Text(
                     group.supplierName.isEmpty
                         ? '?'
-                        : group.supplierName.characters.first
-                            .toUpperCase(),
+                        : group.supplierName.characters.first.toUpperCase(),
                     style: context.text.titleSmall,
                   ),
                 ),
@@ -403,13 +415,11 @@ class _SupplierCardState extends ConsumerState<_SupplierCard> {
             const Divider(height: 1),
             Expanded(
               child: ListView(
-                padding:
-                    const EdgeInsets.symmetric(vertical: Insets.sm),
+                padding: const EdgeInsets.symmetric(vertical: Insets.sm),
                 children: [
                   for (final line in group.lines)
                     Padding(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: Insets.xs),
+                      padding: const EdgeInsets.symmetric(vertical: Insets.xs),
                       child: Row(
                         children: [
                           Expanded(
@@ -420,14 +430,17 @@ class _SupplierCardState extends ConsumerState<_SupplierCard> {
                             ),
                           ),
                           if (line.priceUnconfirmed)
-                            Text('price TBC',
-                                style: context.text.labelSmall
-                                    ?.copyWith(
-                                  color: context.semantic.warning,
-                                ))
+                            Text(
+                              'price TBC',
+                              style: context.text.labelSmall?.copyWith(
+                                color: context.semantic.warning,
+                              ),
+                            )
                           else
-                            Text(line.lineTotal ?? '',
-                                style: context.text.bodyMedium),
+                            Text(
+                              line.lineTotal ?? '',
+                              style: context.text.bodyMedium,
+                            ),
                         ],
                       ),
                     ),
@@ -439,19 +452,24 @@ class _SupplierCardState extends ConsumerState<_SupplierCard> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Subtotal', style: context.text.bodyMedium),
-                Text(Fmt.money(group.subtotal),
-                    style: context.text.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    )),
+                Text(
+                  Fmt.money(group.subtotal),
+                  style: context.text.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: Insets.sm),
             if (_actionError != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: Insets.xs),
-                child: Text(_actionError!,
-                    style: context.text.bodySmall
-                        ?.copyWith(color: context.colors.error)),
+                child: Text(
+                  _actionError!,
+                  style: context.text.bodySmall?.copyWith(
+                    color: context.colors.error,
+                  ),
+                ),
               ),
             if (!group.hasWhatsapp)
               Text(
@@ -464,41 +482,43 @@ class _SupplierCardState extends ConsumerState<_SupplierCard> {
               Row(
                 children: [
                   Expanded(
-                    child: Text(AppStrings.reqDidItSend,
-                        style: context.text.bodyMedium),
+                    child: Text(
+                      AppStrings.reqDidItSend,
+                      style: context.text.bodyMedium,
+                    ),
                   ),
                   TextButton(
                     onPressed: busy
                         ? null
-                        : () => setState(
-                            () => _awaitingSendConfirm = false),
+                        : () => setState(() => _awaitingSendConfirm = false),
                     child: Text(AppStrings.reqNotYet),
                   ),
                   FilledButton(
                     onPressed: busy
                         ? null
-                        : () => _mark(
-                            messenger, 'sent', ref),
+                        : () => _mark(messenger, 'sent', ref),
                     child: busy
                         ? const SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2),
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : Text(AppStrings.reqMarkSent),
                   ),
                 ],
               )
             else if (badge == 'Not sent')
-              FilledButton.icon(
-                onPressed:
-                    busy ? null : () => _sendViaWhatsapp(messenger),
-                icon: const Icon(Icons.send_rounded, size: 18),
-                label: Text(AppStrings.reqSendWhatsapp),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                ),
+              _SendAction(
+                busy: busy,
+                apiReady:
+                    ref
+                        .watch(whatsappConnectionProvider)
+                        .valueOrNull
+                        ?.isConnected ??
+                    false,
+                apiFailed: _apiFailed,
+                onSendApi: () => _sendViaApi(messenger, ref),
+                onSendApp: () => _sendViaWhatsapp(messenger),
               )
             else if (!isTerminal)
               OutlinedButton.icon(
@@ -539,8 +559,7 @@ class _SupplierCardState extends ConsumerState<_SupplierCard> {
     // desktop-app prompt. Both open with the message pre-filled.
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!opened && mounted) {
-      setState(() => _actionError =
-          AppStrings.reqWhatsappFailed);
+      setState(() => _actionError = AppStrings.reqWhatsappFailed);
       return;
     }
     if (mounted) {
@@ -549,6 +568,53 @@ class _SupplierCardState extends ConsumerState<_SupplierCard> {
         _awaitingSendConfirm = true;
         _actionError = null;
       });
+    }
+  }
+
+  /// Automatic send through the connected WhatsApp Business number. The
+  /// backend advances the PO to sent and reports the provider id; the card
+  /// rolls up instantly via the parent override. Any failure falls back to
+  /// the manual wa.me send rather than stranding the order.
+  Future<void> _sendViaApi(
+    ScaffoldMessengerState messenger,
+    WidgetRef ref,
+  ) async {
+    setState(() {
+      _actionError = null;
+      _apiFailed = false;
+    });
+    try {
+      await ref.read(supplierCardStatesProvider.notifier).run(
+        group.poId,
+        () async {
+          final businessId = ref.read(currentBusinessIdProvider);
+          if (businessId == null) throw StateError('No business context');
+          await ref
+              .read(whatsappApiServiceProvider)
+              .sendOrder(businessId: businessId, orderId: group.poId);
+          if (!mounted) return;
+          widget.onStatusChanged(group.poId, 'sent');
+          messenger.showSnackBar(
+            SnackBar(content: Text(AppStrings.reqSentViaApi)),
+          );
+        },
+      );
+    } on WhatsAppApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _apiFailed = true;
+          _actionError = e.statusCode == 409 || e.statusCode == 422
+              ? '${e.message} ${AppStrings.reqApiSendFailedFallback}'
+              : e.message;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _apiFailed = true;
+          _actionError = e.toString();
+        });
+      }
     }
   }
 
@@ -566,20 +632,25 @@ class _SupplierCardState extends ConsumerState<_SupplierCard> {
           if (businessId == null) throw StateError('No business context');
           final api = ref.read(requisitionApiServiceProvider);
           final result = kind == 'sent'
-              ? await api.markSent(
-                  businessId: businessId, orderId: group.poId)
+              ? await api.markSent(businessId: businessId, orderId: group.poId)
               : await api.markConfirmed(
-                  businessId: businessId, orderId: group.poId);
+                  businessId: businessId,
+                  orderId: group.poId,
+                );
           if (!mounted) return;
           // Parent rolls badges up instantly; provider invalidate refreshes
           // server truth on the fetch-backed path (no-op for the cached
           // just-submitted path).
           widget.onStatusChanged(group.poId, result['status'] as String);
-          messenger.showSnackBar(SnackBar(
-            content: Text(result['status'] == 'sent'
-                ? AppStrings.reqMarkedSent
-                : AppStrings.reqMarkedConfirmed),
-          ));
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                result['status'] == 'sent'
+                    ? AppStrings.reqMarkedSent
+                    : AppStrings.reqMarkedConfirmed,
+              ),
+            ),
+          );
           setState(() => _awaitingSendConfirm = false);
         },
       );
@@ -607,14 +678,68 @@ class _StatusBadge extends StatelessWidget {
     };
     return Container(
       padding: const EdgeInsets.symmetric(
-          horizontal: Insets.sm, vertical: Insets.xs),
+        horizontal: Insets.sm,
+        vertical: Insets.xs,
+      ),
       decoration: BoxDecoration(
         border: Border.all(color: color),
         borderRadius: BorderRadius.circular(Radii.pill),
       ),
-      child: Text(label,
-          style:
-              context.text.labelSmall?.copyWith(color: color)),
+      child: Text(
+        label,
+        style: context.text.labelSmall?.copyWith(color: color),
+      ),
+    );
+  }
+}
+
+/// The "Not sent" send action: automatic Cloud API send when the business
+/// number is connected, otherwise the manual wa.me send. After an API
+/// failure the manual send stays one tap away.
+class _SendAction extends StatelessWidget {
+  const _SendAction({
+    required this.busy,
+    required this.apiReady,
+    required this.apiFailed,
+    required this.onSendApi,
+    required this.onSendApp,
+  });
+
+  final bool busy;
+  final bool apiReady;
+  final bool apiFailed;
+  final VoidCallback onSendApi;
+  final VoidCallback onSendApp;
+
+  @override
+  Widget build(BuildContext context) {
+    if (apiReady && !apiFailed) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FilledButton.icon(
+            onPressed: busy ? null : onSendApi,
+            icon: const Icon(Icons.send_rounded, size: 18),
+            label: Text(AppStrings.reqSendViaApi),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
+          ),
+          const SizedBox(height: Insets.xs),
+          TextButton.icon(
+            onPressed: busy ? null : onSendApp,
+            icon: const Icon(Icons.open_in_new_rounded, size: 16),
+            label: Text(AppStrings.reqOpenInWhatsapp),
+          ),
+        ],
+      );
+    }
+    return FilledButton.icon(
+      onPressed: busy ? null : onSendApp,
+      icon: const Icon(Icons.send_rounded, size: 18),
+      label: Text(AppStrings.reqSendWhatsapp),
+      style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
     );
   }
 }

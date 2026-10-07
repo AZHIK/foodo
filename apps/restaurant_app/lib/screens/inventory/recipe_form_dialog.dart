@@ -10,7 +10,6 @@ import '../../providers/production_provider.dart';
 import '../../services/inventory_api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
-import '../../widgets/dialogs/item_form_dialog.dart';
 import '../../widgets/labeled_form_field.dart';
 import '../../widgets/responsive_form_dialog.dart';
 import 'stock_dialog_shared.dart';
@@ -291,8 +290,8 @@ class _RecipeFormDialogState extends ConsumerState<RecipeFormDialog> {
 
     return ResponsiveFormDialog(
       title: isEdit ? AppStrings.editRecipeTitle : AppStrings.addRecipeTitle,
-      // Same width as the item form — recipe editing reads as family.
-      width: ItemFormDialog.dialogWidth,
+      // Same width as the menu-item form — recipe editing reads as family.
+      width: 640,
       actions: [
         OutlinedButton(
           key: RecipeFormKeys.cancel,

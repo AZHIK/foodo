@@ -94,6 +94,13 @@ class BusinessRead(BusinessBase):
     updated_at: datetime
 
 
+class BusinessExistsResponse(BaseModel):
+    """Public existence probe answer — id echoed when present, 404 when not."""
+
+    business_id: UUID
+    exists: bool = True
+
+
 class BusinessCreateResponse(BaseModel):
     """Response returned after a successful business creation."""
 

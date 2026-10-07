@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:decimal/decimal.dart';
 
 import 'package:restaurant_pos/models/inventory_item.dart';
 import 'package:restaurant_pos/models/permission.dart';
 import 'package:restaurant_pos/providers/inventory_provider.dart';
 import 'package:restaurant_pos/providers/permissions_provider.dart';
 import 'package:restaurant_pos/providers/production_provider.dart';
-import 'package:restaurant_pos/screens/inventory/item_detail_screen.dart';
+import 'package:restaurant_pos/screens/inventory/menu_item_detail_screen.dart';
 import 'package:restaurant_pos/services/inventory_api_service.dart';
 import 'package:restaurant_pos/theme/app_theme.dart';
+import 'package:restaurant_pos/utils/formatters.dart';
 
 import 'test_helpers/test_container.dart';
 
@@ -54,7 +56,7 @@ Future<void> pumpDetail(
       container: container,
       child: MaterialApp(
         theme: AppTheme.light(),
-        home: const ItemDetailScreen(itemId: 'inv-99'),
+        home: const MenuItemDetailScreen(itemId: 'inv-99'),
       ),
     ),
   );
@@ -62,14 +64,14 @@ Future<void> pumpDetail(
 }
 
 void main() {
-  group('ItemDetailScreen recipe actions', () {
+  group('MenuItemDetailScreen recipe actions', () {
     testWidgets('an untracked dish still offers Add recipe', (tester) async {
       await pumpDetail(tester, permissions: {AppPermissions.recipesCreate});
 
-      // The regression: the tracked-stock early return used to hide the
-      // entire actions row for untracked lines, so sellables never showed
-      // the button groceries did.
+      // Production and recipe actions live outside any stock guard: the
+      // items being made are very often untracked prepared-to-order lines.
       expect(find.text('Add recipe'), findsOneWidget);
+      // No stock operations on a menu-item screen at all.
       expect(find.text('Adjust stock'), findsNothing);
     });
 
@@ -78,6 +80,57 @@ void main() {
 
       expect(find.text('Add recipe'), findsNothing);
       expect(find.text('Edit recipe'), findsNothing);
+    });
+
+    testWidgets('the Cost tile values the dish at its recipe cost', (
+      tester,
+    ) async {
+      final container = newTestContainer(
+        extraOverrides: [
+          inventoryItemsListProvider.overrideWithValue([untrackedDish()]),
+          recipesCatalogListProvider.overrideWithValue([
+            RecipeDto(
+              id: 'recipe-1',
+              businessId: 'biz-1',
+              sellableItemId: 'backend-pilau',
+              sellableItemName: 'Pilau Plate',
+              name: 'Pilau',
+              targetYieldQuantity: Decimal.fromInt(1),
+              totalCost: Decimal.parse('2.00'),
+              costPerUnit: Decimal.parse('2.00'),
+              costComplete: true,
+              createdAt: DateTime.utc(2026, 1, 1),
+              updatedAt: DateTime.utc(2026, 1, 1),
+              components: const [],
+            ),
+          ]),
+          hasPermissionProvider.overrideWith((ref, code) => false),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const MenuItemDetailScreen(itemId: 'inv-99'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Recipe raw materials (2.00), not the line's own unit cost (4.20).
+      expect(find.text('COST'), findsOneWidget);
+      expect(find.text(Fmt.money(2.0)), findsWidgets);
+    });
+
+    testWidgets('the Cost tile falls back to unit cost with no recipe', (
+      tester,
+    ) async {
+      await pumpDetail(tester, permissions: {AppPermissions.recipesCreate});
+
+      expect(find.text('COST'), findsOneWidget);
+      expect(find.text(Fmt.money(4.2)), findsWidgets);
     });
   });
 }

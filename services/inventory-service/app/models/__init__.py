@@ -44,6 +44,7 @@ from app.models.requisition import (
 )
 from app.models.suppliers import Supplier
 from app.models.units import Unit
+from app.models.whatsapp import WhatsAppConnection, WhatsAppConnectionStatus
 
 __all__ = [
     "ActorType",
@@ -79,4 +80,6 @@ __all__ = [
     "StockMovement",
     "Supplier",
     "Unit",
+    "WhatsAppConnection",
+    "WhatsAppConnectionStatus",
 ]

@@ -10,10 +10,9 @@ import 'package:restaurant_pos/router/app_router.dart';
 import 'package:restaurant_pos/screens/inventory/inventory_groceries_screen.dart';
 import 'package:restaurant_pos/screens/inventory/inventory_menu_items_screen.dart';
 
-/// Confirms the single "Inventory" nav destination hosts both Groceries and
-/// Menu Items via the [InventoryTabBar] segmented control — the same
-/// sub-navigation pattern Finance uses for Other Expenses / Other Incomes —
-/// rather than two separate nav destinations or a filter on one shared table.
+/// Confirms Groceries and Menu Items are standalone Stock destinations with
+/// their own routes and no shared tab bar: each renders from its own
+/// sidebar entry, and neither screen links to the other.
 void main() {
   Future<ProviderContainer> pumpApp(WidgetTester tester, Size size) async {
     tester.view.physicalSize = size * tester.view.devicePixelRatio;
@@ -47,41 +46,45 @@ void main() {
     expect(find.byType(InventoryMenuItemsScreen), findsNothing);
   });
 
-  testWidgets('tapping the Menu items segment switches views in place', (
+  testWidgets('/menu-items renders Menu Items on its own branch', (
     tester,
   ) async {
     final container = await pumpApp(tester, const Size(1440, 900));
-    container.read(goRouterProvider).go(AppRoute.groceries());
-    await tester.pumpAndSettle();
-    expect(find.byType(InventoryGroceriesScreen), findsOneWidget);
-
-    await tester.tap(find.text('Menu items'));
+    container.read(goRouterProvider).go(AppRoute.menuItems());
     await tester.pumpAndSettle();
 
     expect(find.byType(InventoryMenuItemsScreen), findsOneWidget);
     expect(find.byType(InventoryGroceriesScreen), findsNothing);
   });
 
-  testWidgets('tapping the Groceries segment switches back', (tester) async {
+  testWidgets('neither screen renders a shared tab bar', (tester) async {
     final container = await pumpApp(tester, const Size(1440, 900));
+
+    // The old InventoryTabBar was a SegmentedButton switching two views in
+    // place — neither standalone screen may contain one.
+    container.read(goRouterProvider).go(AppRoute.groceries());
+    await tester.pumpAndSettle();
+    expect(find.byType(SegmentedButton), findsNothing);
+
     container.read(goRouterProvider).go(AppRoute.menuItems());
     await tester.pumpAndSettle();
-    expect(find.byType(InventoryMenuItemsScreen), findsOneWidget);
-
-    await tester.tap(find.text('Groceries'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(InventoryGroceriesScreen), findsOneWidget);
-    expect(find.byType(InventoryMenuItemsScreen), findsNothing);
+    expect(find.byType(SegmentedButton), findsNothing);
   });
 
-  testWidgets('both routes stay under the same nav destination — no second '
-      'Inventory-like rail entry appears', (tester) async {
+  testWidgets('the Stock group lists Groceries and Menu items separately', (
+    tester,
+  ) async {
     final container = await pumpApp(tester, const Size(1440, 900));
     container.read(goRouterProvider).go(AppRoute.groceries());
     await tester.pumpAndSettle();
-    // "Inventory" appears exactly once in the rail; there is no separate
-    // "Groceries"/"Menu items" top-level destination.
-    expect(find.text('Inventory'), findsOneWidget);
+
+    await tester.tap(find.text('Stock'));
+    await tester.pumpAndSettle();
+
+    // Both standalone entries appear in the sidebar; the old single
+    // "Inventory" destination is gone.
+    expect(find.text('Groceries'), findsWidgets);
+    expect(find.text('Menu items'), findsWidgets);
+    expect(find.text('Inventory'), findsNothing);
   });
 }

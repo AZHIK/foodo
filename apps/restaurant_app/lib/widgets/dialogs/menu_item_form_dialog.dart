@@ -4,10 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../models/inventory_item.dart';
 import '../../constants/app_strings.dart';
 import '../../providers/categories_provider.dart';
-import '../../providers/item_form_provider.dart';
+import '../../providers/menu_item_form_provider.dart';
 import '../../providers/units_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/breakpoints.dart';
@@ -18,82 +17,67 @@ import '../responsive_form_dialog.dart';
 import '../section_label.dart';
 import '../selectable_option_card.dart';
 
-/// Opens the add/edit item form over the current screen.
+/// Opens the add/edit menu-item form over the current screen.
 ///
-/// The single entry point for both modes and both presentations — pass
-/// [existingItem] to edit, omit it to add, and the breakpoint is handled
-/// inside. Callers never branch on screen width, and there is no route: the
-/// form is a layer over the inventory list, and closing it returns the user to
-/// exactly the scroll position, filter and page they left.
-Future<void> showItemFormDialog(
+/// Menu items always carry a till price. The one switch is stock tracking:
+/// ON counts the line (`both` — ordered and received like a grocery), OFF
+/// leaves it a prepared-to-order dish (`sellable`). Pass [existingItemId]
+/// to edit, omit it to add. There is no route: the form layers over the
+/// list, and closing it returns to the same scroll position, filter and
+/// page.
+Future<void> showMenuItemFormDialog(
   BuildContext context, {
-  InventoryItem? existingItem,
+  String? existingItemId,
 }) {
   return showResponsiveFormDialog<void>(
     context,
-    builder: (_) => ItemFormDialog(itemId: existingItem?.id),
+    builder: (_) => MenuItemFormDialog(itemId: existingItemId),
   );
 }
 
-/// Widget keys for the form's controls.
-///
-/// The labels sit outside the inputs, so there is no `labelText` for a test to
-/// find a field by. Naming them here keeps the finders from depending on hint
-/// copy, which is the sort of thing that gets reworded.
-abstract final class ItemFormKeys {
-  static const name = Key('itemForm.name');
-  static const sku = Key('itemForm.sku');
-  static const category = Key('itemForm.category');
-  static const description = Key('itemForm.description');
-  static const unitCost = Key('itemForm.unitCost');
-  static const sellingPrice = Key('itemForm.sellingPrice');
-  static const lowStockAlert = Key('itemForm.lowStockAlert');
-  static const reorderQuantity = Key('itemForm.reorderQuantity');
-  static const allowNegativeStock = Key('itemForm.allowNegativeStock');
-  static const stock = Key('itemForm.stock');
-  static const unit = Key('itemForm.unit');
-  static const trackStock = Key('itemForm.trackStock');
-  static const cancel = Key('itemForm.cancel');
-  static const submit = Key('itemForm.submit');
-
-  /// The entry-choice step's three options.
-  static const chooseGrocery = Key('itemForm.chooseGrocery');
-  static const chooseMenuItem = Key('itemForm.chooseMenuItem');
-  static const chooseBoth = Key('itemForm.chooseBoth');
-  static const changeType = Key('itemForm.changeType');
+/// Widget keys for the menu-item form's controls.
+abstract final class MenuItemFormKeys {
+  static const name = Key('menuItemForm.name');
+  static const sku = Key('menuItemForm.sku');
+  static const category = Key('menuItemForm.category');
+  static const description = Key('menuItemForm.description');
+  static const unitCost = Key('menuItemForm.unitCost');
+  static const sellingPrice = Key('menuItemForm.sellingPrice');
+  static const trackStock = Key('menuItemForm.trackStock');
+  static const lowStockAlert = Key('menuItemForm.lowStockAlert');
+  static const reorderQuantity = Key('menuItemForm.reorderQuantity');
+  static const allowNegativeStock = Key('menuItemForm.allowNegativeStock');
+  static const stock = Key('menuItemForm.stock');
+  static const unit = Key('menuItemForm.unit');
+  static const cancel = Key('menuItemForm.cancel');
+  static const submit = Key('menuItemForm.submit');
 }
 
-/// The form itself. Prefer [showItemFormDialog] — this is public only so tests
-/// and future callers can mount it directly.
-class ItemFormDialog extends ConsumerStatefulWidget {
-  const ItemFormDialog({super.key, this.itemId});
+/// The menu-item form itself. Prefer [showMenuItemFormDialog].
+class MenuItemFormDialog extends ConsumerStatefulWidget {
+  const MenuItemFormDialog({super.key, this.itemId});
 
   /// Id of the item being edited, or null to add a new one.
   final String? itemId;
 
-  /// Wide enough for the photo column and two fields beside it without either
-  /// feeling squeezed. A confirmation dialog's width would put three controls
-  /// on top of each other.
   static const double dialogWidth = 640;
 
   /// The photo column on tablet and desktop.
   static const double _photoColumn = 190;
 
-  /// On a phone the dropzone goes full-width, but capped: a 360px square would
-  /// push every field below the fold.
+  /// On a phone the dropzone goes full-width, but capped.
   static const double _photoMobile = 172;
 
   @override
-  ConsumerState<ItemFormDialog> createState() => _ItemFormDialogState();
+  ConsumerState<MenuItemFormDialog> createState() =>
+      _MenuItemFormDialogState();
 }
 
-class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
+class _MenuItemFormDialogState extends ConsumerState<MenuItemFormDialog> {
   final _formKey = GlobalKey<FormState>();
 
   // The controllers hold what the user is typing; the notifier holds the
-  // committed value. One-way, controller to notifier — nothing in the form
-  // rewrites a field's text underneath the cursor, so no listener is needed
-  // in the other direction.
+  // committed value. One-way, controller to notifier.
   final _name = TextEditingController();
   final _sku = TextEditingController();
   final _unitCost = TextEditingController();
@@ -106,39 +90,18 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
   bool _seeded = false;
   bool _saving = false;
 
-  AutoDisposeFamilyNotifierProvider<ItemFormNotifier, ItemFormState, String?>
-  get _provider => itemFormProvider(widget.itemId);
+  AutoDisposeFamilyNotifierProvider<MenuItemFormNotifier, MenuItemFormState, String?>
+  get _provider => menuItemFormProvider(widget.itemId);
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Not `initState`: `ref` reaches for an inherited widget, which is not
-    // available that early. Guarded because this also runs on every resize.
     if (_seeded) return;
     _seeded = true;
 
-    // autoDispose tears the draft down when the last listener goes, but it does
-    // so asynchronously — reopening the form in the same frame it closed would
-    // otherwise inherit the abandoned edit. Invalidating first guarantees the
-    // read below builds from the stored item.
     ref.invalidate(_provider);
     final state = ref.read(_provider);
 
-    // Categories/units each sync themselves exactly once per app session
-    // (on the first widget that reads their provider) — reopening this form
-    // later in the same session would otherwise keep showing whatever
-    // taxonomy existed at that first read, even after someone adds a new
-    // category/unit on the backend. Re-syncing every time the form opens is
-    // the one place staleness here actually bites (picking a since-removed
-    // option, or not seeing a newly added one), so it's worth the extra
-    // network round trip — the dropdowns keep showing cached data while
-    // this resolves, no flash of empty state.
-    //
-    // `refresh()` writes `state` synchronously (before its first `await`,
-    // to flip to `AsyncLoading`), and `didChangeDependencies` still counts
-    // as build phase — Riverpod forbids a provider write there even via an
-    // unawaited call. `Future(() {...})` defers the call to a fresh
-    // microtask, after this build finishes.
     Future(() {
       if (!mounted) return;
       unawaited(ref.read(categoriesProvider.notifier).refresh());
@@ -169,8 +132,6 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
   }
 
   Future<void> _save() async {
-    // The button is already disabled on invalid state; this second pass is what
-    // paints the inline errors if anything slipped through.
     if (!_formKey.currentState!.validate()) return;
 
     final isEdit = ref.read(_provider).isEdit;
@@ -195,158 +156,45 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
     }
   }
 
-  /// True only while adding a new item that has not been through the
-  /// Grocery/Menu item/Both entry choice yet — an existing item always has a
-  /// real [ItemFormState.itemType], so editing never shows the chooser.
-  bool _chooserMode(ItemFormState state) =>
-      !state.isEdit && state.itemType.isEmpty;
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(_provider);
     final isMobile = MediaQuery.sizeOf(context).width < Breakpoints.tablet;
-    final chooserMode = _chooserMode(state);
 
     return Form(
       key: _formKey,
-      // Errors appear once a field has been touched, not the instant the empty
-      // form opens.
       autovalidateMode: AutovalidateMode.onUserInteraction,
       child: ResponsiveFormDialog(
-        title: state.isEdit
-            ? AppStrings.editItemTitle
-            : AppStrings.addItemTitle,
-        width: ItemFormDialog.dialogWidth,
+        title: state.isEdit ? AppStrings.editItemTitle : AppStrings.addMenuItem,
+        width: MenuItemFormDialog.dialogWidth,
         actions: [
           OutlinedButton(
-            key: ItemFormKeys.cancel,
+            key: MenuItemFormKeys.cancel,
             onPressed: () => Navigator.of(context).pop(),
             child: Text(AppStrings.cancel),
           ),
           FilledButton(
-            key: ItemFormKeys.submit,
+            key: MenuItemFormKeys.submit,
             onPressed: state.canSave && !_saving ? _save : null,
             child: Text(
-              state.isEdit ? AppStrings.saveChanges : AppStrings.addItemTitle,
+              state.isEdit ? AppStrings.saveChanges : AppStrings.addMenuItem,
             ),
           ),
         ],
-        child: chooserMode
-            ? _typeChoiceStep(context)
-            : (isMobile ? _mobileBody(state) : _wideBody(state)),
+        child: isMobile ? _mobileBody(state) : _wideBody(state),
       ),
     );
   }
 
-  // -------------------------------------------------------------------
-  // Entry choice
-  // -------------------------------------------------------------------
-
-  /// "Grocery or Menu item?" — the first thing an add-item flow asks, rather
-  /// than a generic item-type dropdown buried among other fields. The less
-  /// common "both bought and sold" case is still one tap away, just not the
-  /// lead option.
-  Widget _typeChoiceStep(BuildContext context) {
-    final notifier = ref.read(_provider.notifier);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(AppStrings.whatAdding, style: context.text.titleMedium),
-        const SizedBox(height: Insets.xs),
-        Text(
-          AppStrings.chooserSubtitle,
-          style: context.text.bodySmall?.copyWith(
-            color: context.colors.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: Insets.lg),
-        SelectableOptionGrid(
-          perRow: 2,
-          children: [
-            SelectableOptionCard(
-              key: ItemFormKeys.chooseGrocery,
-              label: AppStrings.groceryOption,
-              subtitle: AppStrings.groceryOptionBlurb,
-              icon: Icons.shopping_basket_outlined,
-              selected: false,
-              onTap: () => notifier.chooseType('raw_material'),
-            ),
-            SelectableOptionCard(
-              key: ItemFormKeys.chooseMenuItem,
-              label: AppStrings.menuItemOption,
-              subtitle: AppStrings.menuItemOptionBlurb,
-              icon: Icons.restaurant_menu_rounded,
-              selected: false,
-              onTap: () => notifier.chooseType('sellable'),
-            ),
-          ],
-        ),
-        const SizedBox(height: Insets.lg),
-        Center(
-          child: TextButton.icon(
-            key: ItemFormKeys.chooseBoth,
-            onPressed: () => notifier.chooseType('both'),
-            icon: const Icon(Icons.swap_horiz_rounded, size: 16),
-            label: Text(AppStrings.bothOptionBlurb),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Sits above the fields once a type has been chosen, naming the choice and
-  /// offering a way back to the chooser without losing anything else typed.
-  Widget _typeSummaryBar(BuildContext context, ItemFormState state) {
-    final (label, icon) = switch (state.itemType) {
-      'raw_material' => (
-        AppStrings.groceryOption,
-        Icons.shopping_basket_outlined,
-      ),
-      'sellable' => (AppStrings.menuItemOption, Icons.restaurant_menu_rounded),
-      _ => (AppStrings.bothType, Icons.swap_horiz_rounded),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Insets.lg,
-        vertical: Insets.sm,
-      ),
-      decoration: BoxDecoration(
-        color: context.colors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(Radii.md),
-        border: Border.all(color: context.semantic.hairline),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: context.colors.onSurfaceVariant),
-          const SizedBox(width: Insets.sm),
-          Expanded(child: Text(label, style: context.text.labelLarge)),
-          TextButton(
-            key: ItemFormKeys.changeType,
-            onPressed: () => ref.read(_provider.notifier).resetType(),
-            child: Text(AppStrings.changeType),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // -------------------------------------------------------------------
-  // Layouts
-  // -------------------------------------------------------------------
-
-  /// Photo pinned to a fixed left column, everything else flowing beside it.
-  Widget _wideBody(ItemFormState state) {
+  Widget _wideBody(MenuItemFormState state) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: ItemFormDialog._photoColumn,
+          width: MenuItemFormDialog._photoColumn,
           child: _PhotoSection(
             state: state,
-            size: ItemFormDialog._photoColumn,
+            size: MenuItemFormDialog._photoColumn,
             notifier: ref.read(_provider.notifier),
           ),
         ),
@@ -356,15 +204,13 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
     );
   }
 
-  /// One column, sections in reading order, the dropzone centred at a size that
-  /// leaves room for the fields under it.
-  Widget _mobileBody(ItemFormState state) {
+  Widget _mobileBody(MenuItemFormState state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _PhotoSection(
           state: state,
-          size: ItemFormDialog._photoMobile,
+          size: MenuItemFormDialog._photoMobile,
           centered: true,
           notifier: ref.read(_provider.notifier),
         ),
@@ -374,13 +220,9 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
     );
   }
 
-  Widget _fields(ItemFormState state) {
+  Widget _fields(MenuItemFormState state) {
     final notifier = ref.read(_provider.notifier);
     final categories = ref.watch(categoriesListProvider);
-    // The stored id can predate the cached taxonomy (synced items with no
-    // backend category, a category deleted server-side) — passing a value
-    // with no matching menu entry crashes DropdownButtonFormField, so fall
-    // back to the "pick one" hint and let the validator ask explicitly.
     final initialCategory =
         state.categoryId.isNotEmpty &&
             categories.any((c) => c.id == state.categoryId)
@@ -390,23 +232,19 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (!state.isEdit) ...[
-          _typeSummaryBar(context, state),
-          const SizedBox(height: Insets.lg),
-        ],
         SectionLabel(AppStrings.basicInfo),
         const SizedBox(height: Insets.md),
         LabeledFormField(
           label: AppStrings.itemNameLabel,
           isRequired: true,
           child: TextFormField(
-            key: ItemFormKeys.name,
+            key: MenuItemFormKeys.name,
             controller: _name,
             textCapitalization: TextCapitalization.words,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(hintText: AppStrings.itemNameExample),
             onChanged: notifier.setName,
-            validator: ItemFormState.validateName,
+            validator: MenuItemFormState.validateName,
           ),
         ),
         const SizedBox(height: Insets.lg),
@@ -415,10 +253,8 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
             label: AppStrings.categoryLabel,
             isRequired: true,
             child: DropdownButtonFormField<String>(
-              key: ItemFormKeys.category,
+              key: MenuItemFormKeys.category,
               initialValue: initialCategory,
-              // Without this the menu sizes to its widest entry and pushes past
-              // the field instead of ellipsising inside it.
               isExpanded: true,
               hint: Text(AppStrings.selectOption),
               items: [
@@ -433,14 +269,14 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
                   ),
               ],
               onChanged: (value) => notifier.setCategory(value ?? ''),
-              validator: ItemFormState.validateCategory,
+              validator: MenuItemFormState.validateCategory,
             ),
           ),
           right: LabeledFormField(
             label: AppStrings.skuLabel2,
             helper: state.isEdit ? null : AppStrings.skuHelper,
             child: TextFormField(
-              key: ItemFormKeys.sku,
+              key: MenuItemFormKeys.sku,
               controller: _sku,
               textCapitalization: TextCapitalization.characters,
               textInputAction: TextInputAction.next,
@@ -454,14 +290,12 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
           label: AppStrings.descriptionLabel,
           helper: AppStrings.descriptionHelper,
           child: TextFormField(
-            key: ItemFormKeys.description,
+            key: MenuItemFormKeys.description,
             controller: _description,
             maxLines: 2,
             textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
               hintText: AppStrings.descriptionExample,
-              // The theme's pill border is drawn for single-line inputs and
-              // looks wrong wrapped around a two-line box.
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(Radii.md),
               ),
@@ -480,7 +314,6 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
             onChanged: notifier.setDescription,
           ),
         ),
-
         const SizedBox(height: Insets.xl),
         SectionLabel(AppStrings.pricingSection),
         const SizedBox(height: Insets.md),
@@ -489,7 +322,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
             label: AppStrings.unitCostLabel,
             isRequired: true,
             child: TextFormField(
-              key: ItemFormKeys.unitCost,
+              key: MenuItemFormKeys.unitCost,
               controller: _unitCost,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
@@ -503,22 +336,16 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
                 prefixText: Fmt.currencySymbol,
               ),
               onChanged: notifier.setUnitCost,
-              validator: ItemFormState.validateUnitCost,
+              validator: MenuItemFormState.validateUnitCost,
             ),
           ),
-          // Disabled rather than hidden for a raw material: hiding it would
-          // reflow the row around it, and a grocery-only item can still be
-          // reclassified later.
           right: LabeledFormField(
             label: AppStrings.sellingPrice,
-            enabled: state.itemType != 'raw_material',
-            helper: state.itemType == 'raw_material'
-                ? AppStrings.priceGroceryHint
-                : AppStrings.priceRequiredTill,
+            isRequired: true,
+            helper: AppStrings.priceRequiredTill,
             child: TextFormField(
-              key: ItemFormKeys.sellingPrice,
+              key: MenuItemFormKeys.sellingPrice,
               controller: _sellingPrice,
-              enabled: state.itemType != 'raw_material',
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
@@ -531,21 +358,17 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
                 prefixText: Fmt.currencySymbol,
               ),
               onChanged: notifier.setSellingPrice,
-              validator: (value) => ItemFormState.validateSellingPrice(
-                value,
-                isRequired: state.itemType != 'raw_material',
-              ),
+              validator: MenuItemFormState.validateSellingPrice,
             ),
           ),
         ),
-
         const SizedBox(height: Insets.xl),
         SectionLabel(AppStrings.stockSection),
         const SizedBox(height: Insets.md),
-        // The toggle governs the fields under it, so it comes before them —
-        // switching it off after typing a threshold reads as a mistake.
+        // The one switch on this form: counted (`both`) or
+        // prepared-to-order (`sellable`). It governs the fields under it.
         _SwitchTile(
-          key: ItemFormKeys.trackStock,
+          key: MenuItemFormKeys.trackStock,
           title: AppStrings.trackStockLabel,
           subtitleOn: AppStrings.trackStockOn,
           subtitleOff: AppStrings.trackStockOff,
@@ -559,34 +382,38 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
               label: AppStrings.lowAlertLabel,
               helper: AppStrings.lowAlertHelper,
               child: TextFormField(
-                key: ItemFormKeys.lowStockAlert,
+                key: MenuItemFormKeys.lowStockAlert,
                 controller: _lowStock,
                 keyboardType: TextInputType.number,
                 textInputAction: TextInputAction.next,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(hintText: AppStrings.quantityHint),
+                decoration: InputDecoration(
+                  hintText: AppStrings.quantityHint,
+                ),
                 onChanged: notifier.setLowStockAlert,
-                validator: ItemFormState.validateLowStockAlert,
+                validator: MenuItemFormState.validateLowStockAlert,
               ),
             ),
             right: LabeledFormField(
               label: AppStrings.reorderQtyLabel,
               helper: AppStrings.reorderQtyHelper,
               child: TextFormField(
-                key: ItemFormKeys.reorderQuantity,
+                key: MenuItemFormKeys.reorderQuantity,
                 controller: _reorderQuantity,
                 keyboardType: TextInputType.number,
                 textInputAction: TextInputAction.next,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(hintText: AppStrings.quantityHint),
+                decoration: InputDecoration(
+                  hintText: AppStrings.quantityHint,
+                ),
                 onChanged: notifier.setReorderQuantity,
-                validator: ItemFormState.validateReorderQuantity,
+                validator: MenuItemFormState.validateReorderQuantity,
               ),
             ),
           ),
           const SizedBox(height: Insets.lg),
           _SwitchTile(
-            key: ItemFormKeys.allowNegativeStock,
+            key: MenuItemFormKeys.allowNegativeStock,
             title: AppStrings.allowNegativeLabel,
             subtitleOn: AppStrings.allowNegativeOn,
             subtitleOff: AppStrings.allowNegativeOff,
@@ -601,7 +428,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
                     label: AppStrings.openingStock,
                     helper: AppStrings.openingStockHelper,
                     child: TextFormField(
-                      key: ItemFormKeys.stock,
+                      key: MenuItemFormKeys.stock,
                       controller: _stock,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -609,14 +436,11 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
                         hintText: AppStrings.quantityHint,
                       ),
                       onChanged: notifier.setStock,
-                      validator: ItemFormState.validateStock,
+                      validator: MenuItemFormState.validateStock,
                     ),
                   ),
             right: LabeledFormField(
               label: AppStrings.unitLabel,
-              // Falls back to a single option carrying the current value
-              // while the real taxonomy is still syncing (or offline with
-              // an empty cache).
               child: Builder(
                 builder: (_) {
                   final abbreviations = [
@@ -627,7 +451,7 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
                       ? [state.unit]
                       : abbreviations;
                   return DropdownButtonFormField<String>(
-                    key: ItemFormKeys.unit,
+                    key: MenuItemFormKeys.unit,
                     initialValue: options.contains(state.unit)
                         ? state.unit
                         : options.first,
@@ -636,14 +460,14 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
                       for (final unit in options)
                         DropdownMenuItem(value: unit, child: Text(unit)),
                     ],
-                    onChanged: (value) => notifier.setUnit(value ?? state.unit),
+                    onChanged: (value) =>
+                        notifier.setUnit(value ?? state.unit),
                   );
                 },
               ),
             ),
           ),
         ],
-
         const SizedBox(height: Insets.xl),
         SectionLabel(AppStrings.statusSection),
         const SizedBox(height: Insets.md),
@@ -671,7 +495,6 @@ class _ItemFormDialogState extends ConsumerState<ItemFormDialog> {
   }
 }
 
-/// The "Photo" block: label plus the square dropzone.
 class _PhotoSection extends StatelessWidget {
   const _PhotoSection({
     required this.state,
@@ -680,9 +503,9 @@ class _PhotoSection extends StatelessWidget {
     this.centered = false,
   });
 
-  final ItemFormState state;
+  final MenuItemFormState state;
   final double size;
-  final ItemFormNotifier notifier;
+  final MenuItemFormNotifier notifier;
   final bool centered;
 
   @override
@@ -717,15 +540,12 @@ class _PhotoSection extends StatelessWidget {
   }
 }
 
-/// Two controls that sit side by side when there is room and stack when there
-/// is not — the guard that keeps a 360px phone from overflowing the row.
 class _FieldPair extends StatelessWidget {
   const _FieldPair({required this.left, required this.right});
 
   final Widget left;
   final Widget right;
 
-  /// Below this each half would be narrower than a usable input.
   static const double _stackBelow = 280;
 
   @override
@@ -755,11 +575,6 @@ class _FieldPair extends StatelessWidget {
   }
 }
 
-/// Current stock in edit mode: shown, not editable.
-///
-/// A count is a physical fact about a shelf. Letting it be retyped in the same
-/// form as a price edit loses the reason it changed, which is the one thing a
-/// stock audit needs — so it routes through Stock Adjust instead.
 class _ReadOnlyStock extends StatelessWidget {
   const _ReadOnlyStock({required this.value, required this.unit});
 
@@ -774,7 +589,6 @@ class _ReadOnlyStock extends StatelessWidget {
       label: AppStrings.currentStockReadonly,
       helper: AppStrings.adjustFlowHint,
       child: Container(
-        // Matches the height of a real input so the row's two halves line up.
         constraints: const BoxConstraints(minHeight: 48),
         padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
         decoration: BoxDecoration(
@@ -809,9 +623,6 @@ class _ReadOnlyStock extends StatelessWidget {
   }
 }
 
-/// A labelled on/off row in its own bordered card — the shared shape behind
-/// both the track-stock and allow-negative-stock toggles, so a second
-/// checkbox-like setting did not mean inventing a second widget.
 class _SwitchTile extends StatelessWidget {
   const _SwitchTile({
     super.key,
@@ -843,8 +654,6 @@ class _SwitchTile extends StatelessWidget {
         value: value,
         onChanged: onChanged,
         dense: true,
-        // Comfortably past the 44px touch floor, and the whole row is the
-        // target rather than just the switch.
         contentPadding: const EdgeInsets.symmetric(
           horizontal: Insets.lg,
           vertical: Insets.xs,

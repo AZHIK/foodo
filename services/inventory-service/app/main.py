@@ -17,6 +17,7 @@ from app.api.v1.endpoints import purchases as purchases_endpoints
 from app.api.v1.endpoints import recipes as recipes_endpoints
 from app.api.v1.endpoints import requisitions as requisitions_endpoints
 from app.api.v1.endpoints import runs as runs_endpoints
+from app.api.v1.endpoints import whatsapp as whatsapp_endpoints
 from app.api.v1.endpoints import reorders as reorders_endpoints
 from app.api.v1.endpoints import suppliers as suppliers_endpoints
 from app.api.v1.endpoints import units as units_endpoints
@@ -65,6 +66,12 @@ app.include_router(suppliers_endpoints.router, prefix="/api/v1")
 app.include_router(purchases_endpoints.router, prefix="/api/v1")
 app.include_router(requisitions_endpoints.router, prefix="/api/v1")
 app.include_router(requisitions_endpoints.catalogue_router, prefix="/api/v1")
+# WhatsApp send BEFORE the generic /orders/{order_id}/{action} route below:
+# FastAPI matches in registration order and "send-whatsapp" would otherwise
+# be swallowed by {action} → 404 "Unknown PO action".
+app.include_router(whatsapp_endpoints.router, prefix="/api/v1")
+app.include_router(whatsapp_endpoints.po_send_router, prefix="/api/v1")
+app.include_router(whatsapp_endpoints.webhook_router, prefix="/api/v1")
 app.include_router(requisitions_endpoints.po_actions_router, prefix="/api/v1")
 app.include_router(reorders_endpoints.router, prefix="/api/v1")
 app.include_router(recipes_endpoints.router, prefix="/api/v1")

@@ -124,7 +124,9 @@ List<AiInsight> _stockInsights(Ref ref, List<InventoryItem> items) {
         (label: AppStrings.evidenceUnitCost, value: Fmt.money(worst.unitCost)),
       ],
       actionLabel: AppStrings.actionViewItem,
-      actionRoute: AppRoute.itemDetailName,
+      actionRoute: worst.itemType == 'raw_material'
+          ? AppRoute.groceryDetailName
+          : AppRoute.menuItemDetailName,
       actionParams: {'itemId': worst.id},
     ),
   ];
@@ -141,6 +143,7 @@ List<AiInsight> _wasteInsights(
   final since = DateTime.now().subtract(AppDurations.analyticsWindow);
   final costById = {for (final item in items) item.id: item.unitCost};
   final nameById = {for (final item in items) item.id: item.name};
+  final typeById = {for (final item in items) item.id: item.itemType};
 
   final wastedUnits = <String, double>{};
   var totalCost = 0.0;
@@ -200,7 +203,9 @@ List<AiInsight> _wasteInsights(
         ),
       ],
       actionLabel: AppStrings.actionViewItem,
-      actionRoute: AppRoute.itemDetailName,
+      actionRoute: typeById[worstId] == 'sellable' || typeById[worstId] == 'both'
+          ? AppRoute.menuItemDetailName
+          : AppRoute.groceryDetailName,
       actionParams: {'itemId': worstId},
     ),
   ];

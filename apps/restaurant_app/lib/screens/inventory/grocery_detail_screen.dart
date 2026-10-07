@@ -5,13 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../models/inventory_item.dart';
 import '../../constants/app_limits.dart';
 import '../../constants/app_strings.dart';
-import '../../models/permission.dart';
 import '../../models/stock_movement.dart';
 import '../../models/table_query.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/inventory_provider.dart';
-import '../../providers/permissions_provider.dart';
-import '../../providers/production_provider.dart';
 import '../../providers/stock_movement_provider.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
@@ -22,25 +19,40 @@ import '../../widgets/data_page/reusable_data_table.dart';
 import '../../widgets/data_page/status_badge.dart';
 import '../../widgets/data_page/summary_metric_card.dart';
 import '../../widgets/detail_page/detail_page_scaffold.dart';
-import '../../widgets/dialogs/item_form_dialog.dart';
+import '../../widgets/dialogs/grocery_form_dialog.dart';
 import '../../widgets/inventory/add_to_order_cart.dart';
 import '../../widgets/item_photo.dart';
-import 'inventory_groceries_screen.dart' show StockStatusTone;
-import 'recipe_form_dialog.dart';
-import 'record_production_dialog.dart';
 import 'stock_adjust_dialog.dart';
 import 'stock_transfer_dialog.dart';
 import 'waste_log_dialog.dart';
 import '../../utils/dialog_helper.dart';
 
-/// Read-only view of one stock line: what it is, what it is worth, and every
-/// movement that got it to its current count.
+/// Maps the stockroom's vocabulary onto the shared badge tones. Local to
+/// this screen — Groceries and Menu Items render their own badges.
+extension StockStatusTone on StockStatus {
+  StatusTone get tone => switch (this) {
+    StockStatus.inStock => StatusTone.positive,
+    StockStatus.lowStock => StatusTone.warning,
+    StockStatus.outOfStock => StatusTone.danger,
+  };
+
+  IconData get badgeIcon => switch (this) {
+    StockStatus.inStock => Icons.check_circle_rounded,
+    StockStatus.lowStock => Icons.warning_amber_rounded,
+    StockStatus.outOfStock => Icons.remove_shopping_cart_outlined,
+  };
+}
+
+/// Read-only view of one grocery line: what it is, what it is worth, and
+/// every movement that got it to its current count.
 ///
-/// Reached by tapping a row body in the Inventory table. The row's "Edit"
-/// action still opens the form dialog directly — going through a screen to
-/// reach a dialog would be a step backwards for the common case.
-class ItemDetailScreen extends ConsumerWidget {
-  const ItemDetailScreen({super.key, required this.itemId});
+/// Reached by tapping a row body in the Groceries table. The row's "Edit"
+/// action still opens the grocery form directly.
+///
+/// A line that is not a grocery (deep link, stale bookmark) redirects to
+/// its Menu Item detail — this screen never renders a sellable row.
+class GroceryDetailScreen extends ConsumerWidget {
+  const GroceryDetailScreen({super.key, required this.itemId});
 
   final String itemId;
 
@@ -53,11 +65,21 @@ class ItemDetailScreen extends ConsumerWidget {
 
     if (item == null) return _NotFound(itemId: itemId);
 
+    if (item.itemType != 'raw_material') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          context.goNamed(
+            AppRoute.menuItemDetailName,
+            pathParameters: {'itemId': itemId},
+          );
+        }
+      });
+      return const SizedBox.shrink();
+    }
+
     final history = ref.watch(itemStockHistoryProvider(itemId));
 
     return DetailPageScaffold(
-      // The ledger is the point of this screen, so it leads on mobile rather
-      // than sitting under a block of reference fields.
       sideFirstOnMobile: false,
       header: _Header(item: item),
       sidePanel: [_AboutPanel(item: item)],
@@ -70,12 +92,6 @@ class ItemDetailScreen extends ConsumerWidget {
     );
   }
 }
-
-/// Which tab to land on when there is no back-stack to pop to (a deep link
-/// straight to an item, say) — a pure menu item's natural home is Menu
-/// Items, everything else (raw material or "both") is Groceries.
-String _fallbackTabName(InventoryItem item) =>
-    item.itemType == 'sellable' ? AppRoute.menuItemsName : AppRoute.groceriesName;
 
 // ---------------------------------------------------------------------------
 // Header
@@ -93,7 +109,7 @@ class _Header extends ConsumerWidget {
       subtitle: item.sku,
       onBack: () => context.canPop()
           ? context.pop()
-          : context.goNamed(_fallbackTabName(item)),
+          : context.goNamed(AppRoute.groceriesName),
       leading: _Thumbnail(item: item),
       badges: [
         StatusBadge(
@@ -106,8 +122,6 @@ class _Header extends ConsumerWidget {
               : Icons.check_circle_rounded,
           dense: true,
         ),
-        // Same badge treatment as the Inventory table's status column, so the
-        // two screens agree on what "Low stock" looks like.
         StatusBadge(
           label: item.status.label,
           tone: item.status.tone,
@@ -117,7 +131,8 @@ class _Header extends ConsumerWidget {
       ],
       actions: [
         OutlinedButton.icon(
-          onPressed: () => showItemFormDialog(context, existingItem: item),
+          onPressed: () =>
+              showGroceryFormDialog(context, existingItemId: item.id),
           icon: const Icon(Icons.edit_outlined, size: 18),
           label: Text(AppStrings.editAction),
         ),
@@ -260,7 +275,9 @@ class _OverflowMenu extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     // Leave first: this screen is watching the item that is about to stop
     // existing, and popping afterwards would flash the not-found state.
-    context.canPop() ? context.pop() : context.goNamed(_fallbackTabName(item));
+    context.canPop()
+        ? context.pop()
+        : context.goNamed(AppRoute.groceriesName);
 
     try {
       await ref.read(inventoryItemsProvider.notifier).delete(item.id);
@@ -277,7 +294,7 @@ class _OverflowMenu extends ConsumerWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Key stats
+// Key stats — stock figures only. Groceries are always counted.
 // ---------------------------------------------------------------------------
 
 class _KeyStats extends StatelessWidget {
@@ -285,27 +302,12 @@ class _KeyStats extends StatelessWidget {
 
   final InventoryItem item;
 
-  /// Four across needs this much room; below it the tiles pair up two-by-two
-  /// rather than shrinking to an unreadable width.
   static const double _fourAcross = 860;
 
   @override
   Widget build(BuildContext context) {
-    // An untracked item (the common case for a pure menu item — see
-    // item_form_provider.dart's `chooseType`) has no real stock count behind
-    // it: `stock` is a placeholder, so "Current stock"/"Inventory value"
-    // would be prominently showing a fabricated number. Lead with the
-    // till-relevant figures instead; a tracked item (every grocery, and a
-    // "both" item like a bottled drink) keeps the stock tiles, since those
-    // numbers are real for it.
-    final tiles = item.trackStock ? _stockTiles(context) : _salesTiles(context);
-
-    return _tileGrid(context, tiles);
-  }
-
-  List<Widget> _stockTiles(BuildContext context) {
     final semantic = context.semantic;
-    return [
+    final tiles = [
       SummaryMetricCard(
         label: AppStrings.currentStock,
         value: Fmt.quantity(item.stock),
@@ -336,56 +338,7 @@ class _KeyStats extends StatelessWidget {
         accent: semantic.warning,
       ),
     ];
-  }
 
-  List<Widget> _salesTiles(BuildContext context) {
-    final semantic = context.semantic;
-    final margin = item.sellingPrice == null
-        ? null
-        : item.sellingPrice! - item.unitCost;
-    final onMenu = item.isSellable && !item.isArchived;
-
-    return [
-      SummaryMetricCard(
-        label: AppStrings.sellingPrice,
-        value: item.sellingPrice == null
-            ? AppStrings.emDash
-            : Fmt.money(item.sellingPrice!),
-        trend: item.sellingPrice == null
-            ? AppStrings.notSet
-            : AppStrings.atTheTill,
-        icon: Icons.point_of_sale_rounded,
-      ),
-      SummaryMetricCard(
-        label: AppStrings.unitCostLabel,
-        value: Fmt.money(item.unitCost),
-        trend: AppStrings.costBasis,
-        icon: Icons.sell_outlined,
-      ),
-      SummaryMetricCard(
-        label: AppStrings.marginLabel,
-        value: margin == null ? AppStrings.emDash : Fmt.money(margin),
-        trend: margin == null
-            ? AppStrings.setPriceForMargin
-            : AppStrings.perItemSold,
-        icon: Icons.trending_up_rounded,
-        accent: margin == null
-            ? null
-            : (margin >= 0 ? semantic.success : semantic.danger),
-      ),
-      SummaryMetricCard(
-        label: AppStrings.posAvailability,
-        value: onMenu ? AppStrings.availableValue : AppStrings.notListed,
-        trend: onMenu ? AppStrings.showingAtTill : AppStrings.archivedNoPrice,
-        icon: onMenu
-            ? Icons.check_circle_rounded
-            : Icons.remove_circle_outline_rounded,
-        accent: onMenu ? semantic.success : semantic.warning,
-      ),
-    ];
-  }
-
-  Widget _tileGrid(BuildContext context, List<Widget> tiles) {
     return LayoutBuilder(
       builder: (context, constraints) {
         const spacing = Insets.md;
@@ -406,7 +359,8 @@ class _KeyStats extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Quick actions
+// Quick actions — every physical-stock operation. Recipes and production do
+// not apply here: the backend rejects recipes for `raw_material` lines.
 // ---------------------------------------------------------------------------
 
 class _QuickActions extends ConsumerWidget {
@@ -416,62 +370,38 @@ class _QuickActions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Nothing to adjust, waste or move on a line that is not counted —
-    // except production and recipe management, which live outside that
-    // guard: the items being made are very often untracked
-    // prepared-to-order lines, which is exactly what recipes and production
-    // events are for.
-    final recipeAction = _recipeAction(context, ref);
-    if (!item.trackStock && !_canProduce(ref) && recipeAction == null) {
-      return const SizedBox.shrink();
-    }
-
     final buttons = <Widget>[
-      if (_canProduce(ref)) _RecordProductionButton(item: item),
-      if (recipeAction != null) recipeAction,
-      // Everything below counts physical stock, so it stays behind the
-      // tracked guard — an untracked line with a recipe shows only the
-      // production button above.
-      if (item.trackStock) ...[
-        FilledButton.icon(
-          onPressed: () => showStockAdjustDialog(context, item),
-          icon: const Icon(Icons.tune_rounded, size: 18),
-          label: Text(AppStrings.adjustStock),
+      FilledButton.icon(
+        onPressed: () => showStockAdjustDialog(context, item),
+        icon: const Icon(Icons.tune_rounded, size: 18),
+        label: Text(AppStrings.adjustStock),
+      ),
+      OutlinedButton.icon(
+        onPressed: () => addItemToOrderCart(context, ref, item),
+        icon: const Icon(Icons.add_shopping_cart, size: 18),
+        label: Text(AppStrings.addToOrderCart),
+      ),
+      OutlinedButton.icon(
+        onPressed: item.stock == 0
+            ? null
+            : () => showWasteLogDialog(context, item),
+        icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+        label: Text(AppStrings.logWaste),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: item.stock == 0 ? null : context.semantic.warning,
         ),
-        // A sellable-only item can never be purchase-received (see
-        // `stock_movement_service.py`'s `_COMPATIBILITY_RULES`) — ordering
-        // it would always fail at receive time, so the action isn't offered.
-        if (item.itemType != 'sellable')
-          OutlinedButton.icon(
-            onPressed: () => addItemToOrderCart(context, ref, item),
-            icon: const Icon(Icons.add_shopping_cart, size: 18),
-            label: Text(AppStrings.addToOrderCart),
-          ),
-        OutlinedButton.icon(
-          onPressed: item.stock == 0
-              ? null
-              : () => showWasteLogDialog(context, item),
-          icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-          label: Text(AppStrings.logWaste),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: item.stock == 0 ? null : context.semantic.warning,
-          ),
-        ),
-        OutlinedButton.icon(
-          onPressed: item.stock == 0
-              ? null
-              : () => showStockTransferDialog(context, item),
-          icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-          label: Text(AppStrings.transferStock),
-        ),
-      ],
+      ),
+      OutlinedButton.icon(
+        onPressed: item.stock == 0
+            ? null
+            : () => showStockTransferDialog(context, item),
+        icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+        label: Text(AppStrings.transferStock),
+      ),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Three buttons need roughly this much to sit on one line. Below it
-        // they scroll sideways rather than wrapping into a tall stack that
-        // pushes the history off a phone screen.
         if (constraints.maxWidth >= 520) {
           return Wrap(
             spacing: Insets.md,
@@ -495,87 +425,6 @@ class _QuickActions extends ConsumerWidget {
       },
     );
   }
-
-  /// Whether the record-production action applies: the line is backed by a
-  /// backend item with a defined recipe, and the session may record runs.
-  /// Demo-mode rows (no `catalogItemId`) and recipe-less items get nothing.
-  /// Pure groceries never produce — only `sellable`/`both` may own a recipe.
-  bool _canProduce(WidgetRef ref) {
-    if (!item.isMenuCatalogItem) return false;
-    final catalogId = item.catalogItemId;
-    if (catalogId == null) return false;
-    if (!ref.watch(hasPermissionProvider(AppPermissions.productionCreate))) {
-      return false;
-    }
-    return ref
-            .watch(recipesCatalogProvider)
-            .valueOrNull
-            ?.any((recipe) => recipe.sellableItemId == catalogId) ??
-        false;
-  }
-
-  /// The recipe management action for this line, if any applies: "Edit
-  /// recipe" where one is defined (needs `recipes.update`), "Add recipe"
-  /// where none is (needs `recipes.create`). Demo-mode rows get nothing —
-  /// recipes genuinely need the backend's atomic catalog. Pure groceries
-  /// (`raw_material`) never get one either — the backend rejects recipes
-  /// for them (only `sellable`/`both` may own a recipe), so the button is
-  /// menu-items only.
-  Widget? _recipeAction(BuildContext context, WidgetRef ref) {
-    if (!item.isMenuCatalogItem) return null;
-    final catalogId = item.catalogItemId;
-    if (catalogId == null) return null;
-    final recipe = ref
-        .watch(recipesCatalogProvider)
-        .valueOrNull
-        ?.where((r) => r.sellableItemId == catalogId)
-        .firstOrNull;
-    if (recipe != null &&
-        ref.watch(hasPermissionProvider(AppPermissions.recipesUpdate))) {
-      return OutlinedButton.icon(
-        onPressed: () => showRecipeFormDialog(context, recipe: recipe),
-        icon: const Icon(Icons.receipt_long_outlined, size: 18),
-        label: Text(AppStrings.editRecipe),
-      );
-    }
-    if (recipe == null &&
-        ref.watch(hasPermissionProvider(AppPermissions.recipesCreate))) {
-      return OutlinedButton.icon(
-        onPressed: () =>
-            showRecipeFormDialog(context, sellable: item),
-        icon: const Icon(Icons.add_rounded, size: 18),
-        label: Text(AppStrings.addRecipe),
-      );
-    }
-    return null;
-  }
-}
-
-/// Opens the record-production dialog for this line's recipe.
-///
-/// Rendered only when [_QuickActions._canProduce] holds, so the recipe
-/// lookup here always succeeds — the `!` documents that invariant rather
-/// than hiding a real null case.
-class _RecordProductionButton extends ConsumerWidget {
-  const _RecordProductionButton({required this.item});
-
-  final InventoryItem item;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final recipe = ref
-        .watch(recipesCatalogProvider)
-        .valueOrNull
-        ?.where((r) => r.sellableItemId == item.catalogItemId)
-        .firstOrNull;
-    if (recipe == null) return const SizedBox.shrink();
-
-    return FilledButton.icon(
-      onPressed: () => showRecordProductionDialog(context, recipe),
-      icon: const Icon(Icons.soup_kitchen_outlined, size: 18),
-      label: Text(AppStrings.recordProduction),
-    );
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -593,10 +442,6 @@ class _StockHistoryPanel extends StatefulWidget {
 }
 
 class _StockHistoryPanelState extends State<_StockHistoryPanel> {
-  /// The ledger is already newest-first and scoped to one item, so the table is
-  /// handed a fixed query: no sort field, and a page size big enough that most
-  /// items never paginate at all. Local state rather than a provider because
-  /// which page of one item's history you are on is not app state.
   int _page = 0;
 
   @override
@@ -617,8 +462,6 @@ class _StockHistoryPanelState extends State<_StockHistoryPanel> {
         columns: _columns(widget.item),
         slice: slice,
         query: query,
-        // Scoped to a single item and already in date order, so re-sorting it
-        // would only ever make it harder to read.
         onSort: (_) {},
         onPageChanged: (page) => setState(() => _page = page),
         emptyState: const _NoHistory(),
@@ -761,7 +604,7 @@ class _NoHistory extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// About / basic info
+// About
 // ---------------------------------------------------------------------------
 
 class _AboutPanel extends ConsumerWidget {
@@ -773,7 +616,6 @@ class _AboutPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final hasDescription = item.description.trim().isNotEmpty;
-    final onPosMenu = item.isSellable && !item.isArchived;
 
     return DetailPanel(
       title: AppStrings.aboutThisItem,
@@ -793,24 +635,14 @@ class _AboutPanel extends ConsumerWidget {
           const SizedBox(height: Insets.lg),
           const Divider(height: 1),
           const SizedBox(height: Insets.lg),
-          // One column in the side panel, more when this folds into the main
-          // column on a narrow window.
           LabeledValueGrid(
             maxColumns: 2,
             minColumnWidth: 220,
             children: [
-              LabeledValue(
-                label: AppStrings.itemTypeLabel,
-                value: switch (item.itemType) {
-                  'raw_material' => AppStrings.itemTypeGrocery,
-                  'sellable' => AppStrings.itemTypeMenuItem,
-                  _ => AppStrings.itemTypeBoth,
-                },
-                icon: switch (item.itemType) {
-                  'raw_material' => Icons.shopping_basket_outlined,
-                  'sellable' => Icons.restaurant_menu_rounded,
-                  _ => Icons.swap_horiz_rounded,
-                },
+              const LabeledValue(
+                label: 'Item type',
+                value: 'Grocery',
+                icon: Icons.shopping_basket_outlined,
               ),
               LabeledValue(
                 label: AppStrings.categoryLabel,
@@ -837,31 +669,11 @@ class _AboutPanel extends ConsumerWidget {
                 icon: Icons.straighten_rounded,
               ),
               LabeledValue(
-                label: AppStrings.stockTracking,
-                value: item.trackStock
-                    ? AppStrings.onValue
-                    : AppStrings.offValue,
-                icon: item.trackStock
-                    ? Icons.toggle_on_outlined
-                    : Icons.toggle_off_outlined,
-              ),
-              LabeledValue(
                 label: AppStrings.lastCounted,
                 value: item.lastCountedAt == null
                     ? AppStrings.neverCounted
                     : Fmt.relativeDateTime(item.lastCountedAt!),
                 icon: Icons.event_available_outlined,
-              ),
-              LabeledValue(
-                label: AppStrings.posMenu,
-                value: onPosMenu
-                    ? AppStrings.availableForSale(
-                        Fmt.money(item.sellingPrice ?? 0),
-                      )
-                    : AppStrings.notForSaleTill,
-                icon: onPosMenu
-                    ? Icons.point_of_sale_rounded
-                    : Icons.point_of_sale_outlined,
               ),
             ],
           ),
